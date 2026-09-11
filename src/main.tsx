@@ -1,4 +1,4 @@
- import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 const tg: any = (window as any).Telegram?.WebApp;
@@ -24,7 +24,7 @@ const REALMS: Realm[] = [
   { id: "vanaheim", name: "Ванахейм", emoji: "🌿", tag: "Дикий мир природы", color: "#b8e986", glow: "rgba(184,233,134,0.8)", dark: "#1a3d00", runeSym: "ᛒ", x: 75, y: 22, runes: [
     { id: "berkanan", sym: "ᛒ", name: "Беркана", meaning: "Рост", task: "Позаботься о теле.", reward: 6 },
     { id: "perthro", sym: "ᛈ", name: "Пертро", meaning: "Тайна", task: "Прими неопределённость.", reward: 7 },
-    { id: "jera", sym: "ᛄ", name: "Йера", meaning: "Урожай", task: "Награди себя за труды.", reward: 8 },
+    { id: "jera", sym: "ᛃ", name: "Йера", meaning: "Урожай", task: "Награди себя за труды.", reward: 8 },
   ]},
   { id: "midgard", name: "Мидгард", emoji: "🏡", tag: "Земля людей", color: "#7ee787", glow: "rgba(126,231,135,0.8)", dark: "#003d0a", runeSym: "ᚠ", x: 50, y: 38, runes: [
     { id: "fehu", sym: "ᚠ", name: "Феху", meaning: "Богатство", task: "Запиши 3 вещи для благодарности.", reward: 5 },
@@ -60,7 +60,7 @@ const REALMS: Realm[] = [
 ];
 
 const ALL_RUNES = REALMS.flatMap(r => (r.runes || []).map(x => ({ ...x, realm: r.id })));
-const NAV = [{ id: "tree", ic: "🌲", t: "Путь" }, { id: "quests", ic: "📜", t: "Испытания" }, { id: "gift", ic: "🎁", t: "Дар" }, { id: "hall", ic: "🏛️", t: "Чертог" }];
+const NAV = [{ id: "tree", ic: "ᚱ", t: "Путь" }, { id: "quests", ic: "ᛏ", t: "Испытания" }, { id: "gift", ic: "ᚷ", t: "Дар" }, { id: "hall", ic: "ᛟ", t: "Чертог" }];
 type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "quests" } | { t: "gift" } | { t: "hall" };
 type Save = { sparks: number; done: string[]; gift: string };
 const DEF: Save = { sparks: 25, done: [], gift: "" };
@@ -121,8 +121,13 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .stats{display:flex;gap:10px;justify-content:center;margin:12px 0}
 .stat{flex:1;background:#0d130f;border:1px solid #223028;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:4px;align-items:center}.stat b{font-size:15px}.stat span{font-size:11px;color:#8fa39a}
 .rank{font-size:14px;color:#ffd76a}
-.nav{display:flex;background:rgba(10,13,11,.96);border-top:1px solid #1e2a20;padding:8px 6px calc(8px + env(safe-area-inset-bottom));z-index:6}
-.navbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;color:#8fa39a;font-size:11px}.navbtn .ic{font-size:20px}.navbtn.on{color:#6db3ff}
+/* Рунный пояс северной традиции внизу */
+.nav{display:flex;background:linear-gradient(180deg,#141b16,#0a0d0b);border-top:2px solid #2e3d31;box-shadow:inset 0 1px 0 rgba(255,215,106,.12);padding:8px 6px calc(8px + env(safe-area-inset-bottom));z-index:6}
+.navbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;color:#7d8f85;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.navbtn .ic{width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;border-radius:50%;border:1.5px solid #3a4a3d;background:linear-gradient(180deg,#131a15,#0b0f0c);color:#8fa39a;transition:all .2s;text-shadow:0 0 5px currentColor}
+.navbtn:active .ic{transform:scale(.88)}
+.navbtn.on{color:#ffd76a}
+.navbtn.on .ic{border-color:#ffd76a;color:#ffd76a;box-shadow:0 0 10px rgba(255,215,106,.45),inset 0 0 6px rgba(255,215,106,.2)}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(14,20,16,.97);border-top:1px solid #2a3a2e;border-radius:20px 20px 0 0;padding:18px 16px calc(16px + env(safe-area-inset-bottom));animation:up .25s ease}
 .shead{display:flex;align-items:center;gap:12px;margin-bottom:12px}
 .ssym{font-size:34px;width:56px;height:56px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:#0d130f;border:1px solid rgba(255,215,106,.33);color:#ffd76a}
