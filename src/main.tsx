@@ -2,32 +2,20 @@ import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 const tg: any = (window as any).Telegram?.WebApp;
-
-/* ==== КАРТИНКИ: положи файлы в репозиторий в папку public/img/ ====
-   tree.jpg         — твоя иллюстрация Древа с чертогами (главный экран)
-   midgard.jpg      — фон локации Мидгард
-   niflheim.jpg     — фон локации Нифльхейм
-   muspelheim.jpg   — фон локации Муспельхейм                        */
 const BASE: string = (import.meta as any).env?.BASE_URL || "/";
-const IMG_TREE = BASE + "img/tree.jpg";
-const IMG_MIDGARD = BASE + "img/midgard.jpg";
-const IMG_NIFLHEIM = BASE + "img/niflheim.jpg";
-const IMG_MUSPELHEIM = BASE + "img/muspelheim.jpg";
 
 type Rune = { id: string; sym: string; name: string; meaning: string; task: string; reward: number };
 type Realm = {
   id: string; name: string; emoji: string; tag: string; color: string;
-  x: number; y: number; locked?: boolean; bg?: string; runes?: Rune[];
+  x: number; y: number; locked?: boolean; runes?: Rune[];
 };
 
-/* ==== 9 МИРОВ. x, y — где чертог стоит НА КАРТИНЕ ДРЕВА, в процентах.
-   Хочешь подвинуть замок на карте — меняй только x и y. ==== */
 const REALMS: Realm[] = [
   { id: "asgard", name: "Асгард", emoji: "🏛️", tag: "Чертог богов • запечатан", color: "#ffd76a", x: 52, y: 7, locked: true },
   { id: "alfheim", name: "Альфхейм", emoji: "🏰", tag: "Мир светлых эльфов • спит", color: "#e8f4ff", x: 29, y: 24, locked: true },
   { id: "vanaheim", name: "Ванахейм", emoji: "🛖", tag: "Мир ванов • спит", color: "#b8e986", x: 72, y: 20, locked: true },
   {
-    id: "midgard", name: "Мидгард", emoji: "🏡", tag: "Домики у реки • Путь рун", color: "#7ee787", x: 58, y: 35, bg: IMG_MIDGARD, runes: [
+    id: "midgard", name: "Мидгард", emoji: "🏡", tag: "Домики у реки • Путь рун", color: "#7ee787", x: 58, y: 35, runes: [
       { id: "fehu", sym: "ᚠ", name: "Феху", meaning: "Искра богатства и изобилия", task: "Запиши 3 вещи, за которые благодарен сегодня. Это твоя первая искра.", reward: 5 },
       { id: "uruz", sym: "ᚢ", name: "Уруз", meaning: "Сила дикой природы", task: "Сделай сегодня одно дело для тела: прогулка, зарядка, холодная вода.", reward: 5 },
       { id: "thurisaz", sym: "ᚦ", name: "Турисаз", meaning: "Молот защиты и границ", task: "Защити границы: откажись от одного дела, которое тебя истощает.", reward: 6 },
@@ -37,14 +25,14 @@ const REALMS: Realm[] = [
   { id: "jotunheim", name: "Ётунхейм", emoji: "⛰️", tag: "Мир великанов • спит", color: "#c9b49a", x: 26, y: 60, locked: true },
   { id: "svartalfheim", name: "Свартальфхейм", emoji: "⚒️", tag: "Кузни дварфов • спят", color: "#ff9d5c", x: 68, y: 57, locked: true },
   {
-    id: "niflheim", name: "Нифльхейм", emoji: "❄️", tag: "Мир льдов и туманов", color: "#7ec8ff", x: 28, y: 73, bg: IMG_NIFLHEIM, runes: [
+    id: "niflheim", name: "Нифльхейм", emoji: "❄️", tag: "Мир льдов и туманов", color: "#7ec8ff", x: 28, y: 73, runes: [
       { id: "isa", sym: "ᛁ", name: "Иса", meaning: "Лёд неподвижности", task: "Проведи 10 минут в тишине без телефона. Услышь холод мыслей.", reward: 5 },
       { id: "nauthiz", sym: "ᚾ", name: "Наутиз", meaning: "Нужда, что учит", task: "Откажись сегодня от одной вредной привычки.", reward: 6 },
       { id: "eihwaz", sym: "ᛇ", name: "Эйваз", meaning: "Столп Древа, стойкость", task: "Доделай одно дело, которое давно откладывал.", reward: 7 },
     ]
   },
   {
-    id: "muspelheim", name: "Муспельхейм", emoji: "🔥", tag: "Мир огня и искр", color: "#ff6b4a", x: 67, y: 69, bg: IMG_MUSPELHEIM, runes: [
+    id: "muspelheim", name: "Муспельхейм", emoji: "🔥", tag: "Мир огня и искр", color: "#ff6b4a", x: 67, y: 69, runes: [
       { id: "kenaz", sym: "ᚲ", name: "Кеназ", meaning: "Факел творчества", task: "Создай сегодня что-то своими руками или словами.", reward: 5 },
       { id: "sowilo", sym: "ᛊ", name: "Совило", meaning: "Солнце победы", task: "Сделай один шаг к своей самой смелой цели.", reward: 6 },
       { id: "teiwaz", sym: "ᛏ", name: "Тейваз", meaning: "Меч справедливости", task: "Восстанови справедливость в одном малом деле.", reward: 7 },
@@ -68,9 +56,19 @@ const DEF: Save = { sparks: 25, done: [], gift: "" };
 const loadSave = (): Save => { try { return { ...DEF, ...JSON.parse(localStorage.getItem("yggdrasil") || "") }; } catch { return { ...DEF }; } };
 const today = () => new Date().toISOString().slice(0, 10);
 const rank = (n: number) => (n >= 9 ? "Мудрец Древа" : n >= 6 ? "Хранитель рун" : n >= 3 ? "Странник рун" : "Путник");
-/* Раскладка камней рун в локации: зигзагом сверху вниз */
 const stonePos = (i: number, total: number) => ({ x: i % 2 === 0 ? 30 : 70, y: total > 1 ? 30 + i * (48 / (total - 1)) : 45 });
-const hideImg = (e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = "none"; };
+
+function BgImg({ name, className }: { name: string; className: string }) {
+  const list = [
+    BASE + "img/" + name + ".png", BASE + "img/" + name + ".jpg",
+    BASE + "img/" + name + ".jpeg", BASE + "img/" + name + ".webp",
+    BASE + "images/" + name + ".png", BASE + "images/" + name + ".jpg",
+    BASE + name + ".png", BASE + name + ".jpg",
+  ];
+  const [i, setI] = useState(0);
+  if (i >= list.length) return null;
+  return <img className={className} src={list[i]} alt="" onError={() => setI(i + 1)} />;
+}
 
 const CSS = `
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -85,7 +83,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .maparea{flex:1;position:relative;overflow:hidden;background:linear-gradient(#241b3a,#141d24 55%,#0b0f0c)}
 .mapwrap{position:absolute;inset:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
 .mapwrap::-webkit-scrollbar{display:none}
-.mapcanvas{height:100%;position:relative;margin:0 auto}
+.mapcanvas{height:100%;width:max-content;min-width:100%;position:relative;margin:0 auto}
 .mapimg{height:100%;width:auto;max-width:none;display:block}
 .marker{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;z-index:3}
 .dot{position:relative;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.28),rgba(0,0,0,.6));border:2px solid;animation:pulse 2.4s ease-in-out infinite}
@@ -176,7 +174,7 @@ function App() {
     setModal(null);
     if (screen.t === "tree" && mapRef.current) {
       const w = mapRef.current;
-      w.scrollLeft = (w.scrollWidth - w.clientWidth) / 2; // центрируем Древо
+      w.scrollLeft = (w.scrollWidth - w.clientWidth) / 2;
     }
   }, [screen]);
 
@@ -185,7 +183,7 @@ function App() {
     try {
       if (k === "success") tg?.HapticFeedback?.notificationOccurred?.("success");
       else tg?.HapticFeedback?.impactOccurred?.("light");
-    } catch { /* нет в браузере */ }
+    } catch {}
   };
   const go = (s: Screen) => setScreen(s);
 
@@ -236,7 +234,7 @@ function App() {
         <div className="maparea">
           <div className="mapwrap" ref={mapRef}>
             <div className="mapcanvas">
-              <img className="mapimg" src={IMG_TREE} alt="" onError={hideImg} />
+              <BgImg name="tree" className="mapimg" />
               {REALMS.map(r => (
                 <button key={r.id} className={"marker" + (r.locked ? " locked" : "")}
                   style={{ left: r.x + "%", top: r.y + "%" }} onClick={() => openRealm(r)}>
@@ -259,7 +257,7 @@ function App() {
         const pts = runes.map((_, i) => { const p = stonePos(i, runes.length); return p.x + "," + p.y; }).join(" ");
         return (
           <div className="content">
-            <img className="bgimg" src={realm.bg} alt="" onError={hideImg} />
+            <BgImg name={realm.id} className="bgimg" />
             <div className="veil" />
             <div className="banner">
               <span className="bemoji">{realm.emoji}</span>
