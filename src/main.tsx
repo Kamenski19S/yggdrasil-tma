@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+ import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 const tg: any = (window as any).Telegram?.WebApp;
@@ -24,7 +24,7 @@ const REALMS: Realm[] = [
   { id: "vanaheim", name: "Ванахейм", emoji: "🌿", tag: "Дикий мир природы", color: "#b8e986", glow: "rgba(184,233,134,0.8)", dark: "#1a3d00", runeSym: "ᛒ", x: 75, y: 22, runes: [
     { id: "berkanan", sym: "ᛒ", name: "Беркана", meaning: "Рост", task: "Позаботься о теле.", reward: 6 },
     { id: "perthro", sym: "ᛈ", name: "Пертро", meaning: "Тайна", task: "Прими неопределённость.", reward: 7 },
-    { id: "jera", sym: "ᛃ", name: "Йера", meaning: "Урожай", task: "Награди себя за труды.", reward: 8 },
+    { id: "jera", sym: "ᛄ", name: "Йера", meaning: "Урожай", task: "Награди себя за труды.", reward: 8 },
   ]},
   { id: "midgard", name: "Мидгард", emoji: "🏡", tag: "Земля людей", color: "#7ee787", glow: "rgba(126,231,135,0.8)", dark: "#003d0a", runeSym: "ᚠ", x: 50, y: 38, runes: [
     { id: "fehu", sym: "ᚠ", name: "Феху", meaning: "Богатство", task: "Запиши 3 вещи для благодарности.", reward: 5 },
@@ -68,13 +68,13 @@ const loadSave = (): Save => { try { return { ...DEF, ...JSON.parse(localStorage
 const today = () => new Date().toISOString().slice(0, 10);
 const rank = (n: number) => (n >= 20 ? "Всеотец" : n >= 14 ? "Мудрец Древа" : n >= 8 ? "Хранитель рун" : n >= 3 ? "Странник рун" : "Путник");
 const stonePos = (i: number, total: number) => ({ x: i % 2 === 0 ? 30 : 70, y: total > 1 ? 25 + i * (50 / (total - 1)) : 45 });
-
 function BgImg({ name, className }: { name: string; className: string }) {
   const list = [BASE+"img/"+name+".jpg", BASE+"img/"+name+".jpeg", BASE+"img/"+name+".png", BASE+"img/"+name+".webp"];
   const [i, setI] = useState(0);
   if (i >= list.length) return null;
   return <img className={className} src={list[i]} alt="" onError={() => setI(i + 1)} />;
-}const CSS = `
+}
+const CSS = `
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body,#root{height:100%}
 body{background:#0b0f0c;color:#e8f0e8;font-family:system-ui,sans-serif;overflow:hidden}
@@ -92,12 +92,12 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .amulet-ring{position:absolute;inset:0;border-radius:50%;border:1px dashed;opacity:.5;animation:spin 15s linear infinite;pointer-events:none}
 /* Пульсирующее свечение вокруг амулета ("дыхание магии") */
 .amulet-glow{position:absolute;inset:-4px;border-radius:50%;opacity:.6;animation:breathe 3s ease-in-out infinite;pointer-events:none;z-index:1}
-.mname{font-size:9px; 
 /* Сам амулет: круглый древний медальон (без clip-path и backdrop-filter) */
 .amulet-core{position:relative;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:bold;border:2px solid;box-shadow:0 0 9px currentColor,inset 0 0 8px rgba(0,0,0,.85);transition:transform .2s;z-index:2;text-shadow:0 0 6px currentColor}
 /* Внутренний ободок медальона */
 .amulet-core::after{content:"";position:absolute;inset:3px;border-radius:50%;border:1px solid currentColor;opacity:.5;pointer-events:none}
-.marker:active .amulet-core{transform:scale(.85)}  font-weight:700;letter-spacing:.5px;padding:3px 8px;border-radius:6px;background:linear-gradient(180deg,rgba(20,25,22,.92),rgba(10,12,11,.96));border:1px solid;text-shadow:0 0 4px currentColor;box-shadow:0 2px 6px rgba(0,0,0,.6);white-space:nowrap;text-transform:uppercase}
+.marker:active .amulet-core{transform:scale(.85)}
+.mname{font-size:9px;font-weight:700;letter-spacing:.5px;padding:3px 8px;border-radius:6px;background:linear-gradient(180deg,rgba(20,25,22,.92),rgba(10,12,11,.96));border:1px solid;text-shadow:0 0 4px currentColor;box-shadow:0 2px 6px rgba(0,0,0,.6);white-space:nowrap;text-transform:uppercase}
 .fadeT,.fadeB{position:absolute;left:0;right:0;height:26px;pointer-events:none;z-index:4}
 .fadeT{top:0;background:linear-gradient(180deg,#0b0f0c,transparent)}.fadeB{bottom:0;background:linear-gradient(0deg,#0b0f0c,transparent)}
 .hint{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:11px;color:rgba(207,227,210,.7);z-index:5;pointer-events:none}
@@ -137,7 +137,6 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 @keyframes pulseT{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.08)}}
 @keyframes up{from{transform:translateY(50px);opacity:0}}@keyframes fade{from{opacity:0}}
 `;
-
 function App() {
   const [screen, setScreen] = useState<Screen>({ t: "tree" });
   const [save, setSave] = useState<Save>(loadSave);
