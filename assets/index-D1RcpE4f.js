@@ -67,8 +67,9 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .content{flex:1;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 30%,#182420,#0b0f0c)}
 .bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .veil{position:absolute;inset:0;background:linear-gradient(rgba(5,8,6,.6),transparent 30%,transparent 65%,rgba(5,8,6,.85));pointer-events:none}
-.banner{position:absolute;top:12px;left:12px;right:12px;z-index:4;display:flex;gap:10px;align-items:center;padding:12px;border-radius:16px;background:rgba(8,12,10,.72);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(6px)}
-.bemoji{font-size:30px}.bname{font-size:16px;font-weight:700}.btag{font-size:12px;color:#a9bfae}
+.banner{position:absolute;top:10px;left:12px;right:auto;z-index:4;padding:6px 12px;border-radius:10px;background:linear-gradient(180deg,rgba(20,25,22,.88),rgba(10,12,11,.92));border:1px solid rgba(255,215,106,.45);box-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none}
+.bemoji{display:none}.btag{display:none}
+.bname{font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#ffd76a;text-shadow:0 0 6px rgba(255,215,106,.5)}
 .pathline{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none}
 .stone{position:absolute;transform:translate(-50%,-50%);width:50px;height:50px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;background:rgba(10,14,12,.85);border:2px solid #55605a;color:#93a89b;z-index:3}
 .stone.avail{border-color:#ffd76a;color:#ffd76a;box-shadow:0 0 16px rgba(255,215,106,.5);animation:pulseT 2s ease-in-out infinite}
