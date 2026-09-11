@@ -6,7 +6,7 @@ function App() {
   const [wisdomSparks, setWisdomSparks] = useState(25);
   const [stepCompleted, setStepCompleted] = useState(false);
 
-  // Главный экран: Мировое Древо Иггдрасиль с замками прямо на ветвях
+  // Главный экран: Иллюстрация Древа с замками на ветвях
   if (currentScreen === 'map') {
     return (
       <div style={styles.containerMap}>
@@ -15,37 +15,40 @@ function App() {
           <span style={styles.sparks}>✨ {wisdomSparks} Искр</span>
         </div>
 
-        {/* Область с изображением Древа и замками */}
+        {/* Область с живописным фоном-деревом */}
         <div style={styles.treeViewport}>
+          {/* Твоя картинка Древа */}
           <img 
             src="https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&w=1000&auto=format&fit=crop" 
             alt="Иггдрасиль" 
             style={styles.treeBgImage}
           />
-          <div style={styles.treeDarkOverlay}></div>
+          <div style={styles.vignetteOverlay}></div>
 
-          {/* Интерактивные замки на ветвях */}
-          <div style={styles.castlesContainer}>
-            {/* Замок Мидгарда — активный */}
-            <div style={styles.castlePinActive} onClick={() => setCurrentScreen('midgard')}>
-              <span style={styles.pinIcon}>🏰</span>
-              <div style={styles.pinText}>
+          {/* Интерактивные замки на ветвях дерева */}
+          <div style={styles.castlesLayer}>
+            
+            {/* Замок Мидгарда (на средних ветвях, где домики и река) */}
+            <div style={styles.castlePinMidgard} onClick={() => setCurrentScreen('midgard')}>
+              <div style={styles.pinGlow}></div>
+              <span style={styles.pinCastleIcon}>🏰</span>
+              <div style={styles.pinTooltip}>
                 <strong>Мидгард</strong>
-                <span>Замок людей, реки и домики</span>
+                <span>Домики у реки • Путь рун</span>
               </div>
-              <span style={styles.pinArrow}>➔</span>
             </div>
 
-            {/* Заблокированные миры */}
-            <div style={styles.castlePinLocked}>
-              <span style={styles.pinIconLocked}>🔥</span>
-              <div style={styles.pinTextLocked}>Муспельхейм (В дымке)</div>
+            {/* Заблокированные замки других миров */}
+            <div style={styles.castlePinMuspel}>
+              <span style={styles.pinLockedIcon}>🔥</span>
+              <span style={styles.lockText}>Муспельхейм</span>
             </div>
 
-            <div style={styles.castlePinLocked}>
-              <span style={styles.pinIconLocked}>❄️</span>
-              <div style={styles.pinTextLocked}>Нифльхейм (В тумане)</div>
+            <div style={styles.castlePinNifil}>
+              <span style={styles.pinLockedIcon}>❄️</span>
+              <span style={styles.lockText}>Нифльхейм</span>
             </div>
+
           </div>
         </div>
 
@@ -59,7 +62,7 @@ function App() {
     );
   }
 
-  // Экран локации Мидгарда: живописное пространство с домиками и тропой рун
+  // Экран локации Мидгарда: домики, река, тропа рун
   if (currentScreen === 'midgard') {
     return (
       <div style={styles.container}>
@@ -70,10 +73,10 @@ function App() {
 
         <main style={styles.content}>
           <div style={styles.locationHeader}>
-            <span style={{fontSize: '34px'}}>🏡</span>
+            <span style={{fontSize: '36px'}}>🏡🌲</span>
             <div>
               <h2 style={styles.locTitle}>Мидгард • Земля людей</h2>
-              <p style={styles.locSubtitle}>Живописные долины, домики у реки и путь рун</p>
+              <p style={styles.locSubtitle}>Уютные домики у реки, зелёные леса и тропа рун</p>
             </div>
           </div>
 
@@ -81,7 +84,7 @@ function App() {
             <div style={styles.runeNode} onClick={() => setCurrentScreen('rune')}>
               <span style={styles.nodeSymbol}>ᚠ</span>
               <div style={{flex: 1}}>
-                <div style={styles.nodeName}>Феху</div>
+                <div style={styles.nodeName}>1. Феху</div>
                 <div style={styles.nodeDesc}>Искра в тумане у подножия гор</div>
               </div>
               <span style={{color: '#58a6ff'}}>➔</span>
@@ -90,7 +93,7 @@ function App() {
             <div style={{...styles.runeNode, opacity: 0.5}}>
               <span style={styles.nodeSymbol}>ᚢ</span>
               <div style={{flex: 1}}>
-                <div style={styles.nodeName}>Уруз</div>
+                <div style={styles.nodeName}>2. Уруз</div>
                 <div style={styles.nodeDesc}>Сила дикой природы (скоро)</div>
               </div>
             </div>
@@ -154,7 +157,7 @@ function App() {
   );
 }
 
-// Стили
+// Стили с абсолютным позиционированием замков на ветвях дерева
 const styles = {
   container: {
     display: 'flex',
@@ -208,9 +211,6 @@ const styles = {
     overflow: 'hidden',
     margin: '8px 0',
     border: '1px solid #30363d',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    justifyContent: 'flex-end',
   },
   treeBgImage: {
     position: 'absolute' as const,
@@ -220,64 +220,92 @@ const styles = {
     height: '100%',
     objectFit: 'cover' as const,
   },
-  treeDarkOverlay: {
+  vignetteOverlay: {
     position: 'absolute' as const,
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    background: 'linear-gradient(180deg, rgba(7,9,14,0.2) 0%, rgba(7,9,14,0.85) 100%)',
+    background: 'radial-gradient(circle, rgba(0,0,0,0.1) 40%, rgba(7,9,14,0.75) 100%)',
+    pointerEvents: 'none' as const,
   },
-  castlesContainer: {
-    position: 'relative' as const,
-    zIndex: 2,
-    padding: '16px',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '10px',
+  castlesLayer: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    pointerEvents: 'none' as const,
   },
-  castlePinActive: {
+  castlePinMidgard: {
+    position: 'absolute' as const,
+    top: '42%',
+    left: '52%',
+    transform: 'translate(-50%, -50%)',
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
-    background: 'rgba(22, 40, 30, 0.9)',
+    gap: '8px',
+    background: 'rgba(15, 35, 20, 0.9)',
     border: '2px solid #2ea043',
-    borderRadius: '14px',
-    padding: '14px',
+    borderRadius: '12px',
+    padding: '8px 12px',
     cursor: 'pointer',
-    boxShadow: '0 0 15px rgba(46, 160, 67, 0.4)',
+    pointerEvents: 'auto' as const,
+    boxShadow: '0 0 20px rgba(46, 160, 67, 0.6)',
+    zIndex: 5,
   },
-  pinIcon: {
-    fontSize: '28px',
+  pinGlow: {
+    position: 'absolute' as const,
+    inset: '-3px',
+    borderRadius: '14px',
+    border: '1px solid #56d364',
+    animation: 'pulse 2s infinite',
   },
-  pinText: {
-    flex: 1,
+  pinCastleIcon: {
+    fontSize: '24px',
+  },
+  pinTooltip: {
     display: 'flex',
     flexDirection: 'column' as const,
-    fontSize: '13px',
+    fontSize: '11px',
     color: '#fff',
+    whiteSpace: 'nowrap' as const,
   },
-  pinArrow: {
-    color: '#58a6ff',
-    fontSize: '18px',
-    fontWeight: 'bold' as const,
-  },
-  castlePinLocked: {
+  castlePinMuspel: {
+    position: 'absolute' as const,
+    bottom: '22%',
+    right: '18%',
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
-    background: 'rgba(20, 24, 33, 0.75)',
-    border: '1px solid #30363d',
-    borderRadius: '14px',
-    padding: '12px 14px',
-    opacity: 0.7,
+    gap: '6px',
+    background: 'rgba(30, 15, 15, 0.8)',
+    border: '1px solid #f85149',
+    borderRadius: '10px',
+    padding: '6px 10px',
+    opacity: 0.85,
+    pointerEvents: 'auto' as const,
   },
-  pinIconLocked: {
-    fontSize: '22px',
+  castlePinNifil: {
+    position: 'absolute' as const,
+    bottom: '26%',
+    left: '18%',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    background: 'rgba(15, 25, 35, 0.8)',
+    border: '1px solid #58a6ff',
+    borderRadius: '10px',
+    padding: '6px 10px',
+    opacity: 0.85,
+    pointerEvents: 'auto' as const,
   },
-  pinTextLocked: {
-    fontSize: '13px',
+  pinLockedIcon: {
+    fontSize: '16px',
+  },
+  lockText: {
+    fontSize: '11px',
     color: '#8b949e',
+    whiteSpace: 'nowrap' as const,
   },
   content: {
     flex: 1,
