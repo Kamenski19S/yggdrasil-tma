@@ -6,35 +6,35 @@ const BASE: string = (import.meta as any).env?.BASE_URL || "/";
 
 type Rune = { id: string; sym: string; name: string; meaning: string; task: string; reward: number };
 type Realm = {
-  id: string; name: string; emoji: string; tag: string; color: string;
+  id: string; name: string; emoji: string; tag: string; color: string; glow: string;
   x: number; y: number; runes?: Rune[];
 };
 
-/* ==== 9 ОТКРЫТЫХ МИРОВ. x, y — координаты на вертикальном Древе (в процентах). ==== */
+/* ==== 9 МИРОВ. color — цвет руны, glow — цвет свечения портала и таблички. ==== */
 const REALMS: Realm[] = [
   {
-    id: "asgard", name: "Асгард", emoji: "🏛️", tag: "Золотой чертог богов", color: "#ffd76a", x: 50, y: 8, runes: [
+    id: "asgard", name: "Асгард", emoji: "🏛️", tag: "Золотой чертог богов", color: "#ffd76a", glow: "rgba(255, 215, 106, 0.5)", x: 50, y: 8, runes: [
       { id: "algiz", sym: "ᛉ", name: "Альгиз", meaning: "Защита богов", task: "Поблагодари высшие силы за защиту в твоей жизни.", reward: 8 },
       { id: "ingwaz", sym: "ᛜ", name: "Ингуз", meaning: "Плодородие и новый цикл", task: "Заверши один важный этап и начни новый.", reward: 9 },
       { id: "dagaz", sym: "ᛞ", name: "Дагаз", meaning: "Рассвет и прорыв", task: "Сделай шаг навстречу своему главному прорыву.", reward: 10 },
     ]
   },
   {
-    id: "alfheim", name: "Альфхейм", emoji: "✨", tag: "Мир светлых эльфов", color: "#e8f4ff", x: 25, y: 22, runes: [
+    id: "alfheim", name: "Альфхейм", emoji: "✨", tag: "Мир светлых эльфов", color: "#e8f4ff", glow: "rgba(232, 244, 255, 0.5)", x: 25, y: 22, runes: [
       { id: "wunjo", sym: "ᚹ", name: "Вуньо", meaning: "Радость и гармония", task: "Сделай сегодня что-то, что принесёт тебе чистую радость.", reward: 6 },
       { id: "laguz", sym: "ᛚ", name: "Лагуз", meaning: "Поток и интуиция", task: "Доверься своей интуиции в одном важном решении.", reward: 7 },
       { id: "mannaz", sym: "ᛗ", name: "Манназ", meaning: "Человечность", task: "Прояви искреннюю доброту к случайному человеку.", reward: 7 },
     ]
   },
   {
-    id: "vanaheim", name: "Ванахейм", emoji: "🌿", tag: "Дикий мир природы", color: "#b8e986", x: 75, y: 22, runes: [
+    id: "vanaheim", name: "Ванахейм", emoji: "🌿", tag: "Дикий мир природы", color: "#b8e986", glow: "rgba(184, 233, 134, 0.5)", x: 75, y: 22, runes: [
       { id: "berkanan", sym: "ᛒ", name: "Беркана", meaning: "Рост и исцеление", task: "Позаботься о своём теле или вырасти что-то живое.", reward: 6 },
       { id: "perthro", sym: "ᛈ", name: "Пертро", meaning: "Тайна и судьба", task: "Прими неопределённость в одном деле, не пытайся всё контролировать.", reward: 7 },
       { id: "jera", sym: "ᛃ", name: "Йера", meaning: "Урожай и награда", task: "Подведи итоги недели и награди себя за труды.", reward: 8 },
     ]
   },
   {
-    id: "midgard", name: "Мидгард", emoji: "🏡", tag: "Земля людей", color: "#7ee787", x: 50, y: 38, runes: [
+    id: "midgard", name: "Мидгард", emoji: "🏡", tag: "Земля людей", color: "#7ee787", glow: "rgba(126, 231, 135, 0.5)", x: 50, y: 38, runes: [
       { id: "fehu", sym: "ᚠ", name: "Феху", meaning: "Искра богатства", task: "Запиши 3 вещи, за которые благодарен сегодня.", reward: 5 },
       { id: "uruz", sym: "ᚢ", name: "Уруз", meaning: "Сила природы", task: "Сделай одно дело для тела: прогулка или зарядка.", reward: 5 },
       { id: "thurisaz", sym: "ᚦ", name: "Турисаз", meaning: "Молот защиты", task: "Откажись от одного дела, которое тебя истощает.", reward: 6 },
@@ -42,37 +42,37 @@ const REALMS: Realm[] = [
     ]
   },
   {
-    id: "jotunheim", name: "Ётунхейм", emoji: "⛰️", tag: "Мир великанов", color: "#c9b49a", x: 25, y: 55, runes: [
+    id: "jotunheim", name: "Ётунхейм", emoji: "⛰️", tag: "Мир великанов", color: "#c9b49a", glow: "rgba(201, 180, 154, 0.5)", x: 25, y: 55, runes: [
       { id: "hagalaz", sym: "ᚺ", name: "Хагалаз", meaning: "Разрушение старого", task: "Избавься от одной старой вещи или привычки, которая мешает.", reward: 7 },
       { id: "othala", sym: "ᛟ", name: "Одал", meaning: "Наследие и дом", task: "Удели время семье или наведи порядок в доме.", reward: 8 },
       { id: "tiwaz_alt", sym: "ᛏ", name: "Тюр", meaning: "Жертва ради победы", task: "Пойди на малую жертву ради большой цели.", reward: 8 },
     ]
   },
   {
-    id: "svartalfheim", name: "Свартальфхейм", emoji: "⚒️", tag: "Кузни дварфов", color: "#ff9d5c", x: 75, y: 55, runes: [
+    id: "svartalfheim", name: "Свартальфхейм", emoji: "⚒️", tag: "Кузни дварфов", color: "#ff9d5c", glow: "rgba(255, 157, 92, 0.5)", x: 75, y: 55, runes: [
       { id: "gebo", sym: "ᚷ", name: "Гебо", meaning: "Дар и партнёрство", task: "Сделай искренний подарок или помоги партнёру.", reward: 7 },
       { id: "ehwaz", sym: "ᛖ", name: "Эваз", meaning: "Движение вперёд", task: "Сдвинься с мёртвой точки в одном застоявшемся деле.", reward: 7 },
       { id: "raido", sym: "ᚱ", name: "Райдо", meaning: "Путешествие и ритм", task: "Выстрой правильный ритм дня и следуй ему.", reward: 8 },
     ]
   },
   {
-    id: "niflheim", name: "Нифльхейм", emoji: "❄️", tag: "Мир льдов и туманов", color: "#7ec8ff", x: 25, y: 75, runes: [
+    id: "niflheim", name: "Нифльхейм", emoji: "❄️", tag: "Мир льдов и туманов", color: "#7ec8ff", glow: "rgba(126, 200, 255, 0.5)", x: 25, y: 75, runes: [
       { id: "isa", sym: "ᛁ", name: "Иса", meaning: "Лёд неподвижности", task: "Проведи 10 минут в тишине без телефона.", reward: 5 },
       { id: "nauthiz", sym: "ᚾ", name: "Наутиз", meaning: "Нужда, что учит", task: "Откажись сегодня от одной вредной привычки.", reward: 6 },
       { id: "eihwaz", sym: "ᛇ", name: "Эйваз", meaning: "Столп Древа", task: "Доделай одно дело, которое давно откладывал.", reward: 7 },
     ]
   },
   {
-    id: "muspelheim", name: "Муспельхейм", emoji: "🔥", tag: "Мир огня и искр", color: "#ff6b4a", x: 75, y: 75, runes: [
+    id: "muspelheim", name: "Муспельхейм", emoji: "🔥", tag: "Мир огня и искр", color: "#ff6b4a", glow: "rgba(255, 107, 74, 0.5)", x: 75, y: 75, runes: [
       { id: "kenaz", sym: "ᚲ", name: "Кеназ", meaning: "Факел творчества", task: "Создай сегодня что-то своими руками или словами.", reward: 5 },
       { id: "sowilo", sym: "ᛊ", name: "Совило", meaning: "Солнце победы", task: "Сделай один шаг к своей самой смелой цели.", reward: 6 },
       { id: "teiwaz", sym: "ᛏ", name: "Тейваз", meaning: "Меч справедливости", task: "Восстанови справедливость в одном малом деле.", reward: 7 },
     ]
   },
   {
-    id: "helheim", name: "Хельхейм", emoji: "🕯️", tag: "Врата подземного мира", color: "#b678ff", x: 50, y: 90, runes: [
-      { id: "calc", sym: "", name: "Кальк", meaning: "Трансформация", task: "Прими одно неизбежное изменение в своей жизни.", reward: 8 },
-      { id: "gar", sym: "", name: "Гар", meaning: "Копьё судьбы", task: "Направь свою энергию точно в одну главную цель.", reward: 9 },
+    id: "helheim", name: "Хельхейм", emoji: "🕯️", tag: "Врата подземного мира", color: "#b678ff", glow: "rgba(182, 120, 255, 0.5)", x: 50, y: 92, runes: [
+      { id: "calc", sym: "ᚲ", name: "Кальк", meaning: "Трансформация", task: "Прими одно неизбежное изменение в своей жизни.", reward: 8 },
+      { id: "gar", sym: "ᚷ", name: "Гар", meaning: "Копьё судьбы", task: "Направь свою энергию точно в одну главную цель.", reward: 9 },
       { id: "yggdrasil", sym: "ᛉ", name: "Иггдрасиль", meaning: "Единство всего", task: "Осознай связь всех своих действий в единое целое.", reward: 10 },
     ]
   },
@@ -115,18 +115,64 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .title{font-size:15px;font-weight:600}
 .back{color:#6db3ff;font-size:15px}
 .sparks{color:#ffb35c;font-weight:700;font-size:15px;white-space:nowrap}
+
+/* ==== ГЛАВНЫЙ ЭКРАН: ДРЕВО ==== */
 .maparea{flex:1;position:relative;overflow:hidden;background:#0b0f0c}
 .mapwrap{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
 .mapwrap::-webkit-scrollbar{display:none}
 .mapcanvas{width:100%;min-height:100%;position:relative;margin:0 auto}
 .mapimg{width:100%;height:auto;display:block}
-.marker{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;z-index:3}
-.dot{position:relative;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.28),rgba(0,0,0,.6));border:2px solid;animation:pulse 2.4s ease-in-out infinite}
-.lb{position:absolute;right:-6px;bottom:-6px;font-size:14px}
-.mname{font-size:11px;padding:3px 8px;border-radius:10px;background:rgba(0,0,0,.68);border:1px solid rgba(255,255,255,.16)}
+
+/* ==== МАГИЧЕСКИЕ КНОПКИ-ПОРТАЛЫ ==== */
+.marker{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:5px;z-index:3}
+.portal{
+  position:relative;
+  width:40px;height:40px;
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;
+  background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.2), rgba(0,0,0,0.75));
+  border:1.5px solid var(--glow-color);
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+  box-shadow:0 0 10px var(--glow-color), inset 0 0 6px rgba(255,255,255,0.15);
+  animation:portalPulse 3s ease-in-out infinite;
+  transition:transform 0.2s;
+}
+.marker:active .portal{transform:scale(0.85)}
+/* Вращающийся рунический ободок */
+.portal::before{
+  content:'';
+  position:absolute;
+  inset:-3px;
+  border-radius:50%;
+  border:1px dashed var(--glow-color);
+  opacity:0.5;
+  animation:spin 15s linear infinite;
+}
+
+/* ==== МАГИЧЕСКИЕ ТАБЛИЧКИ С НАЗВАНИЯМИ ==== */
+.mname{
+  font-size:9px;
+  font-weight:600;
+  letter-spacing:0.5px;
+  padding:3px 8px;
+  border-radius:6px;
+  background:linear-gradient(180deg, rgba(20,25,22,0.9), rgba(10,12,11,0.95));
+  border:1px solid var(--glow-color);
+  color:var(--glow-color);
+  text-shadow:0 0 4px var(--glow-color);
+  box-shadow:0 2px 6px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+  white-space:nowrap;
+  text-transform:uppercase;
+}
+
 .fadeT,.fadeB{position:absolute;left:0;right:0;height:26px;pointer-events:none;z-index:4}
 .fadeT{top:0;background:linear-gradient(180deg,#0b0f0c,transparent)}
 .fadeB{bottom:0;background:linear-gradient(0deg,#0b0f0c,transparent)}
+.hint{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:11px;color:rgba(207,227,210,.7);z-index:5;pointer-events:none}
+
+/* ==== ЭКРАН ЛОКАЦИИ ==== */
 .content{flex:1;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 30%,#182420,#0b0f0c)}
 .bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .veil{position:absolute;inset:0;background:linear-gradient(rgba(5,8,6,.6),transparent 30%,transparent 65%,rgba(5,8,6,.85));pointer-events:none}
@@ -135,12 +181,13 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .bname{font-size:16px;font-weight:700}
 .btag{font-size:12px;color:#a9bfae}
 .pathline{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none}
-.stone{position:absolute;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;background:rgba(10,14,12,.82);border:2px solid #55605a;color:#93a89b;z-index:3}
-.stone.avail{border-color:#ffd76a;color:#ffd76a;box-shadow:0 0 18px rgba(255,215,106,.55);animation:pulseT 2s ease-in-out infinite}
-.stone.done{border-color:#7ee787;color:#7ee787;box-shadow:0 0 14px rgba(126,231,135,.4)}
-.stone.lock{opacity:.45}
-.snum{position:absolute;top:-8px;right:-8px;background:rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.2);border-radius:8px;font-size:10px;padding:2px 5px}
-.hint{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:11px;color:rgba(207,227,210,.7);z-index:5;pointer-events:none}
+.stone{position:absolute;transform:translate(-50%,-50%);width:50px;height:50px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;background:rgba(10,14,12,.85);border:2px solid #55605a;color:#93a89b;z-index:3;backdrop-filter:blur(2px)}
+.stone.avail{border-color:#ffd76a;color:#ffd76a;box-shadow:0 0 16px rgba(255,215,106,.5);animation:pulseT 2s ease-in-out infinite}
+.stone.done{border-color:#7ee787;color:#7ee787;box-shadow:0 0 12px rgba(126,231,135,.4)}
+.stone.lock{opacity:.4}
+.snum{position:absolute;top:-6px;right:-6px;background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.2);border-radius:6px;font-size:9px;padding:1px 4px}
+
+/* ==== ВКЛАДКИ И МЕНЮ ==== */
 .scroll{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
 .card{background:#121a15;border:1px solid #223028;border-radius:16px;padding:14px}
 .center{text-align:center}
@@ -163,6 +210,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .navbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;color:#8fa39a;font-size:11px}
 .navbtn .ic{font-size:20px}
 .navbtn.on{color:#6db3ff}
+
+/* ==== ШТОРКА ИСПЫТАНИЯ ==== */
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(14,20,16,.97);border-top:1px solid #2a3a2e;border-radius:20px 20px 0 0;padding:18px 16px calc(16px + env(safe-area-inset-bottom));animation:up .25s ease}
 .shead{display:flex;align-items:center;gap:12px;margin-bottom:12px}
 .ssym{font-size:34px;width:56px;height:56px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:#0d130f;border:1px solid rgba(255,215,106,.33);color:#ffd76a}
@@ -177,8 +226,11 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .btn.ghost{background:transparent;border:1px solid #2a3a2e;color:#9ab0a2;margin-top:8px}
 .btn:disabled{opacity:.55}
 .toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:30;background:rgba(0,0,0,.85);border:1px solid rgba(255,215,106,.4);color:#ffd76a;padding:8px 14px;border-radius:12px;font-size:13px;animation:fade .3s}
-@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
-@keyframes pulseT{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.07)}}
+
+/* ==== АНИМАЦИИ ==== */
+@keyframes portalPulse{0%,100%{box-shadow:0 0 8px var(--glow-color), inset 0 0 4px rgba(255,255,255,0.1)}50%{box-shadow:0 0 16px var(--glow-color), inset 0 0 8px rgba(255,255,255,0.25)}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes pulseT{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.08)}}
 @keyframes up{from{transform:translateY(50px);opacity:0}}
 @keyframes fade{from{opacity:0}}
 `;
@@ -260,9 +312,8 @@ function App() {
             <div className="mapcanvas">
               <BgImg name="tree" className="mapimg" />
               {REALMS.map(r => (
-                <button key={r.id} className="marker"
-                  style={{ left: r.x + "%", top: r.y + "%" }} onClick={() => openRealm(r)}>
-                  <span className="dot" style={{ borderColor: r.color, boxShadow: "0 0 16px " + r.color }}>
+                <button key={r.id} className="marker" style={{ left: r.x + "%", top: r.y + "%", ["--glow-color" as any]: r.glow }} onClick={() => openRealm(r)}>
+                  <span className="portal" style={{ borderColor: r.color }}>
                     {r.emoji}
                   </span>
                   <span className="mname">{r.name}</span>
