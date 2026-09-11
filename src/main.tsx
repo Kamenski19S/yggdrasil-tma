@@ -6,39 +6,45 @@ function App() {
   const [wisdomSparks, setWisdomSparks] = useState(25);
   const [stepCompleted, setStepCompleted] = useState(false);
 
-  // Главная карта: Иггдрасиль с замками
+  // Главный экран: Мировое Древо Иггдрасиль с замками прямо на ветвях
   if (currentScreen === 'map') {
     return (
       <div style={styles.containerMap}>
         <div style={styles.statusBar}>
-          <span>🌳 Иггдрасиль • Выберите мир</span>
+          <span>🌳 Мировое Древо Иггдрасиль</span>
           <span style={styles.sparks}>✨ {wisdomSparks} Искр</span>
         </div>
 
-        {/* Интерактивная карта мира */}
-        <div style={styles.mapViewport}>
-          <div style={styles.worldNodeCard} onClick={() => setCurrentScreen('midgard')}>
-            <div style={styles.nodeIconWrap}>🏰</div>
-            <div style={styles.nodeInfo}>
-              <div style={styles.nodeTitle}>Мидгард</div>
-              <div style={styles.nodeDesc}>Домики, реки, тропа людей (Открыть)</div>
-            </div>
-            <span style={styles.arrow}>➔</span>
-          </div>
+        {/* Область с изображением Древа и замками */}
+        <div style={styles.treeViewport}>
+          <img 
+            src="https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&w=1000&auto=format&fit=crop" 
+            alt="Иггдрасиль" 
+            style={styles.treeBgImage}
+          />
+          <div style={styles.treeDarkOverlay}></div>
 
-          <div style={{...styles.worldNodeCard, opacity: 0.6, cursor: 'default'}}>
-            <div style={styles.nodeIconWrap}>🔥</div>
-            <div style={styles.nodeInfo}>
-              <div style={styles.nodeTitle}>Муспельхейм</div>
-              <div style={styles.nodeDesc}>Огненные земли (В дымке тумана)</div>
+          {/* Интерактивные замки на ветвях */}
+          <div style={styles.castlesContainer}>
+            {/* Замок Мидгарда — активный */}
+            <div style={styles.castlePinActive} onClick={() => setCurrentScreen('midgard')}>
+              <span style={styles.pinIcon}>🏰</span>
+              <div style={styles.pinText}>
+                <strong>Мидгард</strong>
+                <span>Замок людей, реки и домики</span>
+              </div>
+              <span style={styles.pinArrow}>➔</span>
             </div>
-          </div>
 
-          <div style={{...styles.worldNodeCard, opacity: 0.6, cursor: 'default'}}>
-            <div style={styles.nodeIconWrap}>❄️</div>
-            <div style={styles.nodeInfo}>
-              <div style={styles.nodeTitle}>Нифльхейм</div>
-              <div style={styles.nodeDesc}>Ледяные чертоги (Заблокировано)</div>
+            {/* Заблокированные миры */}
+            <div style={styles.castlePinLocked}>
+              <span style={styles.pinIconLocked}>🔥</span>
+              <div style={styles.pinTextLocked}>Муспельхейм (В дымке)</div>
+            </div>
+
+            <div style={styles.castlePinLocked}>
+              <span style={styles.pinIconLocked}>❄️</span>
+              <div style={styles.pinTextLocked}>Нифльхейм (В тумане)</div>
             </div>
           </div>
         </div>
@@ -53,7 +59,7 @@ function App() {
     );
   }
 
-  // Экран локации Мидгарда (домики, река, путь рун)
+  // Экран локации Мидгарда: живописное пространство с домиками и тропой рун
   if (currentScreen === 'midgard') {
     return (
       <div style={styles.container}>
@@ -63,40 +69,29 @@ function App() {
         </div>
 
         <main style={styles.content}>
-          <div style={styles.locationBanner}>
-            <span style={{fontSize: '32px'}}>🏡</span>
+          <div style={styles.locationHeader}>
+            <span style={{fontSize: '34px'}}>🏡</span>
             <div>
               <h2 style={styles.locTitle}>Мидгард • Земля людей</h2>
-              <p style={styles.locSubtitle}>Уютные домики, реки и горы. Тропа начинается здесь.</p>
+              <p style={styles.locSubtitle}>Живописные долины, домики у реки и путь рун</p>
             </div>
           </div>
 
           <div style={styles.runesList}>
-            <div 
-              style={styles.runeNode}
-              onClick={() => setCurrentScreen('rune')}
-            >
-              <span style={styles.runeSymbolSmall}>ᚠ</span>
+            <div style={styles.runeNode} onClick={() => setCurrentScreen('rune')}>
+              <span style={styles.nodeSymbol}>ᚠ</span>
               <div style={{flex: 1}}>
-                <div style={styles.runeName}>1. Феху</div>
-                <div style={styles.runeSub}>Искра в тумане</div>
+                <div style={styles.nodeName}>Феху</div>
+                <div style={styles.nodeDesc}>Искра в тумане у подножия гор</div>
               </div>
               <span style={{color: '#58a6ff'}}>➔</span>
             </div>
 
             <div style={{...styles.runeNode, opacity: 0.5}}>
-              <span style={styles.runeSymbolSmall}>ᚢ</span>
+              <span style={styles.nodeSymbol}>ᚢ</span>
               <div style={{flex: 1}}>
-                <div style={styles.runeName}>2. Уруз</div>
-                <div style={styles.runeSub}>Сила дикой природы (скоро)</div>
-              </div>
-            </div>
-
-            <div style={{...styles.runeNode, opacity: 0.5}}>
-              <span style={styles.runeSymbolSmall}>ᚦ</span>
-              <div style={{flex: 1}}>
-                <div style={styles.runeName}>3. Турисаз</div>
-                <div style={styles.runeSub}>Врата и молот (скоро)</div>
+                <div style={styles.nodeName}>Уруз</div>
+                <div style={styles.nodeDesc}>Сила дикой природы (скоро)</div>
               </div>
             </div>
           </div>
@@ -129,7 +124,7 @@ function App() {
 
       <main style={styles.contentCenter}>
         <div style={styles.runeCard}>
-          <div style={styles.runeSymbol}>ᚠ</div>
+          <div style={styles.runeBigSymbol}>ᚠ</div>
           <h2 style={styles.runeTitle}>Руна Феху • Искра в тумане</h2>
           <p style={styles.runeText}>
             Густой туман окутывает подножие гор Мидгарда. Здесь, у рек и лесов, зарождается твой путь. 
@@ -178,8 +173,8 @@ const styles = {
     flexDirection: 'column' as const,
     height: '100vh',
     justifyContent: 'space-between',
-    background: 'linear-gradient(180deg, #121824 0%, #07090e 100%)',
-    padding: '16px',
+    background: '#07090e',
+    padding: '12px',
     boxSizing: 'border-box' as const,
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     color: '#e6edf3',
@@ -206,45 +201,83 @@ const styles = {
     fontSize: '13px',
     padding: 0,
   },
-  mapViewport: {
+  treeViewport: {
+    position: 'relative' as const,
+    flex: 1,
+    borderRadius: '16px',
+    overflow: 'hidden',
+    margin: '8px 0',
+    border: '1px solid #30363d',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    justifyContent: 'flex-end',
+  },
+  treeBgImage: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover' as const,
+  },
+  treeDarkOverlay: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'linear-gradient(180deg, rgba(7,9,14,0.2) 0%, rgba(7,9,14,0.85) 100%)',
+  },
+  castlesContainer: {
+    position: 'relative' as const,
+    zIndex: 2,
+    padding: '16px',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '10px',
+  },
+  castlePinActive: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    background: 'rgba(22, 40, 30, 0.9)',
+    border: '2px solid #2ea043',
+    borderRadius: '14px',
+    padding: '14px',
+    cursor: 'pointer',
+    boxShadow: '0 0 15px rgba(46, 160, 67, 0.4)',
+  },
+  pinIcon: {
+    fontSize: '28px',
+  },
+  pinText: {
     flex: 1,
     display: 'flex',
     flexDirection: 'column' as const,
-    justifyContent: 'center',
-    gap: '14px',
-    padding: '10px 0',
+    fontSize: '13px',
+    color: '#fff',
   },
-  worldNodeCard: {
-    display: 'flex',
-    alignItems: 'center',
-    background: 'rgba(22, 27, 34, 0.9)',
-    border: '1px solid #30363d',
-    borderRadius: '14px',
-    padding: '16px',
-    gap: '14px',
-    cursor: 'pointer',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-  },
-  nodeIconWrap: {
-    fontSize: '32px',
-  },
-  nodeInfo: {
-    flex: 1,
-  },
-  nodeTitle: {
-    fontSize: '16px',
-    fontWeight: 'bold' as const,
-    color: '#e6edf3',
-    marginBottom: '2px',
-  },
-  nodeDesc: {
-    fontSize: '12px',
-    color: '#8b949e',
-  },
-  arrow: {
+  pinArrow: {
     color: '#58a6ff',
     fontSize: '18px',
     fontWeight: 'bold' as const,
+  },
+  castlePinLocked: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    background: 'rgba(20, 24, 33, 0.75)',
+    border: '1px solid #30363d',
+    borderRadius: '14px',
+    padding: '12px 14px',
+    opacity: 0.7,
+  },
+  pinIconLocked: {
+    fontSize: '22px',
+  },
+  pinTextLocked: {
+    fontSize: '13px',
+    color: '#8b949e',
   },
   content: {
     flex: 1,
@@ -257,7 +290,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  locationBanner: {
+  locationHeader: {
     display: 'flex',
     alignItems: 'center',
     gap: '14px',
@@ -292,16 +325,16 @@ const styles = {
     gap: '14px',
     cursor: 'pointer',
   },
-  runeSymbolSmall: {
+  nodeSymbol: {
     fontSize: '26px',
     color: '#58a6ff',
   },
-  runeName: {
+  nodeName: {
     fontSize: '15px',
     fontWeight: 'bold' as const,
     color: '#c9d1d9',
   },
-  runeSub: {
+  nodeDesc: {
     fontSize: '12px',
     color: '#8b949e',
   },
@@ -315,7 +348,7 @@ const styles = {
     maxWidth: '340px',
     width: '100%',
   },
-  runeSymbol: {
+  runeBigSymbol: {
     fontSize: '64px',
     color: '#58a6ff',
     marginBottom: '12px',
