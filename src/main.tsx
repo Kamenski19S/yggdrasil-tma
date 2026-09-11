@@ -7,38 +7,75 @@ const BASE: string = (import.meta as any).env?.BASE_URL || "/";
 type Rune = { id: string; sym: string; name: string; meaning: string; task: string; reward: number };
 type Realm = {
   id: string; name: string; emoji: string; tag: string; color: string;
-  x: number; y: number; locked?: boolean; runes?: Rune[];
+  x: number; y: number; runes?: Rune[];
 };
 
+/* ==== 9 ОТКРЫТЫХ МИРОВ. x, y — координаты на вертикальном Древе (в процентах). ==== */
 const REALMS: Realm[] = [
-  { id: "asgard", name: "Асгард", emoji: "🏛️", tag: "Чертог богов • запечатан", color: "#ffd76a", x: 52, y: 7, locked: true },
-  { id: "alfheim", name: "Альфхейм", emoji: "🏰", tag: "Мир светлых эльфов • спит", color: "#e8f4ff", x: 29, y: 24, locked: true },
-  { id: "vanaheim", name: "Ванахейм", emoji: "🛖", tag: "Мир ванов • спит", color: "#b8e986", x: 72, y: 20, locked: true },
   {
-    id: "midgard", name: "Мидгард", emoji: "🏡", tag: "Домики у реки • Путь рун", color: "#7ee787", x: 58, y: 35, runes: [
-      { id: "fehu", sym: "ᚠ", name: "Феху", meaning: "Искра богатства и изобилия", task: "Запиши 3 вещи, за которые благодарен сегодня. Это твоя первая искра.", reward: 5 },
-      { id: "uruz", sym: "ᚢ", name: "Уруз", meaning: "Сила дикой природы", task: "Сделай сегодня одно дело для тела: прогулка, зарядка, холодная вода.", reward: 5 },
-      { id: "thurisaz", sym: "ᚦ", name: "Турисаз", meaning: "Молот защиты и границ", task: "Защити границы: откажись от одного дела, которое тебя истощает.", reward: 6 },
-      { id: "ansuz", sym: "ᚨ", name: "Ансуз", meaning: "Слово Одина, мудрость", task: "Узнай сегодня что-то новое и передай это другу.", reward: 6 },
+    id: "asgard", name: "Асгард", emoji: "🏛️", tag: "Золотой чертог богов", color: "#ffd76a", x: 50, y: 8, runes: [
+      { id: "algiz", sym: "ᛉ", name: "Альгиз", meaning: "Защита богов", task: "Поблагодари высшие силы за защиту в твоей жизни.", reward: 8 },
+      { id: "ingwaz", sym: "ᛜ", name: "Ингуз", meaning: "Плодородие и новый цикл", task: "Заверши один важный этап и начни новый.", reward: 9 },
+      { id: "dagaz", sym: "ᛞ", name: "Дагаз", meaning: "Рассвет и прорыв", task: "Сделай шаг навстречу своему главному прорыву.", reward: 10 },
     ]
   },
-  { id: "jotunheim", name: "Ётунхейм", emoji: "⛰️", tag: "Мир великанов • спит", color: "#c9b49a", x: 26, y: 60, locked: true },
-  { id: "svartalfheim", name: "Свартальфхейм", emoji: "⚒️", tag: "Кузни дварфов • спят", color: "#ff9d5c", x: 68, y: 57, locked: true },
   {
-    id: "niflheim", name: "Нифльхейм", emoji: "❄️", tag: "Мир льдов и туманов", color: "#7ec8ff", x: 28, y: 73, runes: [
-      { id: "isa", sym: "ᛁ", name: "Иса", meaning: "Лёд неподвижности", task: "Проведи 10 минут в тишине без телефона. Услышь холод мыслей.", reward: 5 },
+    id: "alfheim", name: "Альфхейм", emoji: "✨", tag: "Мир светлых эльфов", color: "#e8f4ff", x: 25, y: 22, runes: [
+      { id: "wunjo", sym: "ᚹ", name: "Вуньо", meaning: "Радость и гармония", task: "Сделай сегодня что-то, что принесёт тебе чистую радость.", reward: 6 },
+      { id: "laguz", sym: "ᛚ", name: "Лагуз", meaning: "Поток и интуиция", task: "Доверься своей интуиции в одном важном решении.", reward: 7 },
+      { id: "mannaz", sym: "ᛗ", name: "Манназ", meaning: "Человечность", task: "Прояви искреннюю доброту к случайному человеку.", reward: 7 },
+    ]
+  },
+  {
+    id: "vanaheim", name: "Ванахейм", emoji: "🌿", tag: "Дикий мир природы", color: "#b8e986", x: 75, y: 22, runes: [
+      { id: "berkanan", sym: "ᛒ", name: "Беркана", meaning: "Рост и исцеление", task: "Позаботься о своём теле или вырасти что-то живое.", reward: 6 },
+      { id: "perthro", sym: "ᛈ", name: "Пертро", meaning: "Тайна и судьба", task: "Прими неопределённость в одном деле, не пытайся всё контролировать.", reward: 7 },
+      { id: "jera", sym: "ᛃ", name: "Йера", meaning: "Урожай и награда", task: "Подведи итоги недели и награди себя за труды.", reward: 8 },
+    ]
+  },
+  {
+    id: "midgard", name: "Мидгард", emoji: "🏡", tag: "Земля людей", color: "#7ee787", x: 50, y: 38, runes: [
+      { id: "fehu", sym: "ᚠ", name: "Феху", meaning: "Искра богатства", task: "Запиши 3 вещи, за которые благодарен сегодня.", reward: 5 },
+      { id: "uruz", sym: "ᚢ", name: "Уруз", meaning: "Сила природы", task: "Сделай одно дело для тела: прогулка или зарядка.", reward: 5 },
+      { id: "thurisaz", sym: "ᚦ", name: "Турисаз", meaning: "Молот защиты", task: "Откажись от одного дела, которое тебя истощает.", reward: 6 },
+      { id: "ansuz", sym: "ᚨ", name: "Ансуз", meaning: "Мудрость Одина", task: "Узнай что-то новое и передай это другу.", reward: 6 },
+    ]
+  },
+  {
+    id: "jotunheim", name: "Ётунхейм", emoji: "⛰️", tag: "Мир великанов", color: "#c9b49a", x: 25, y: 55, runes: [
+      { id: "hagalaz", sym: "ᚺ", name: "Хагалаз", meaning: "Разрушение старого", task: "Избавься от одной старой вещи или привычки, которая мешает.", reward: 7 },
+      { id: "othala", sym: "ᛟ", name: "Одал", meaning: "Наследие и дом", task: "Удели время семье или наведи порядок в доме.", reward: 8 },
+      { id: "tiwaz_alt", sym: "ᛏ", name: "Тюр", meaning: "Жертва ради победы", task: "Пойди на малую жертву ради большой цели.", reward: 8 },
+    ]
+  },
+  {
+    id: "svartalfheim", name: "Свартальфхейм", emoji: "⚒️", tag: "Кузни дварфов", color: "#ff9d5c", x: 75, y: 55, runes: [
+      { id: "gebo", sym: "ᚷ", name: "Гебо", meaning: "Дар и партнёрство", task: "Сделай искренний подарок или помоги партнёру.", reward: 7 },
+      { id: "ehwaz", sym: "ᛖ", name: "Эваз", meaning: "Движение вперёд", task: "Сдвинься с мёртвой точки в одном застоявшемся деле.", reward: 7 },
+      { id: "raido", sym: "ᚱ", name: "Райдо", meaning: "Путешествие и ритм", task: "Выстрой правильный ритм дня и следуй ему.", reward: 8 },
+    ]
+  },
+  {
+    id: "niflheim", name: "Нифльхейм", emoji: "❄️", tag: "Мир льдов и туманов", color: "#7ec8ff", x: 25, y: 75, runes: [
+      { id: "isa", sym: "ᛁ", name: "Иса", meaning: "Лёд неподвижности", task: "Проведи 10 минут в тишине без телефона.", reward: 5 },
       { id: "nauthiz", sym: "ᚾ", name: "Наутиз", meaning: "Нужда, что учит", task: "Откажись сегодня от одной вредной привычки.", reward: 6 },
-      { id: "eihwaz", sym: "ᛇ", name: "Эйваз", meaning: "Столп Древа, стойкость", task: "Доделай одно дело, которое давно откладывал.", reward: 7 },
+      { id: "eihwaz", sym: "ᛇ", name: "Эйваз", meaning: "Столп Древа", task: "Доделай одно дело, которое давно откладывал.", reward: 7 },
     ]
   },
   {
-    id: "muspelheim", name: "Муспельхейм", emoji: "🔥", tag: "Мир огня и искр", color: "#ff6b4a", x: 67, y: 69, runes: [
+    id: "muspelheim", name: "Муспельхейм", emoji: "🔥", tag: "Мир огня и искр", color: "#ff6b4a", x: 75, y: 75, runes: [
       { id: "kenaz", sym: "ᚲ", name: "Кеназ", meaning: "Факел творчества", task: "Создай сегодня что-то своими руками или словами.", reward: 5 },
       { id: "sowilo", sym: "ᛊ", name: "Совило", meaning: "Солнце победы", task: "Сделай один шаг к своей самой смелой цели.", reward: 6 },
       { id: "teiwaz", sym: "ᛏ", name: "Тейваз", meaning: "Меч справедливости", task: "Восстанови справедливость в одном малом деле.", reward: 7 },
     ]
   },
-  { id: "helheim", name: "Хельхейм", emoji: "🕯️", tag: "Врата подземного мира • спят", color: "#b678ff", x: 45, y: 86, locked: true },
+  {
+    id: "helheim", name: "Хельхейм", emoji: "🕯️", tag: "Врата подземного мира", color: "#b678ff", x: 50, y: 90, runes: [
+      { id: "calc", sym: "", name: "Кальк", meaning: "Трансформация", task: "Прими одно неизбежное изменение в своей жизни.", reward: 8 },
+      { id: "gar", sym: "", name: "Гар", meaning: "Копьё судьбы", task: "Направь свою энергию точно в одну главную цель.", reward: 9 },
+      { id: "yggdrasil", sym: "ᛉ", name: "Иггдрасиль", meaning: "Единство всего", task: "Осознай связь всех своих действий в единое целое.", reward: 10 },
+    ]
+  },
 ];
 
 const ALL_RUNES = REALMS.flatMap(r => (r.runes || []).map(x => ({ ...x, realm: r.id })));
@@ -55,15 +92,13 @@ const DEF: Save = { sparks: 25, done: [], gift: "" };
 
 const loadSave = (): Save => { try { return { ...DEF, ...JSON.parse(localStorage.getItem("yggdrasil") || "") }; } catch { return { ...DEF }; } };
 const today = () => new Date().toISOString().slice(0, 10);
-const rank = (n: number) => (n >= 9 ? "Мудрец Древа" : n >= 6 ? "Хранитель рун" : n >= 3 ? "Странник рун" : "Путник");
-const stonePos = (i: number, total: number) => ({ x: i % 2 === 0 ? 30 : 70, y: total > 1 ? 30 + i * (48 / (total - 1)) : 45 });
+const rank = (n: number) => (n >= 20 ? "Всеотец" : n >= 14 ? "Мудрец Древа" : n >= 8 ? "Хранитель рун" : n >= 3 ? "Странник рун" : "Путник");
+const stonePos = (i: number, total: number) => ({ x: i % 2 === 0 ? 30 : 70, y: total > 1 ? 25 + i * (50 / (total - 1)) : 45 });
 
 function BgImg({ name, className }: { name: string; className: string }) {
   const list = [
-    BASE + "img/" + name + ".png", BASE + "img/" + name + ".jpg",
-    BASE + "img/" + name + ".jpeg", BASE + "img/" + name + ".webp",
-    BASE + "images/" + name + ".png", BASE + "images/" + name + ".jpg",
-    BASE + name + ".png", BASE + name + ".jpg",
+    BASE + "img/" + name + ".jpg", BASE + "img/" + name + ".jpeg",
+    BASE + "img/" + name + ".png", BASE + "img/" + name + ".webp",
   ];
   const [i, setI] = useState(0);
   if (i >= list.length) return null;
@@ -80,23 +115,21 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .title{font-size:15px;font-weight:600}
 .back{color:#6db3ff;font-size:15px}
 .sparks{color:#ffb35c;font-weight:700;font-size:15px;white-space:nowrap}
-.maparea{flex:1;position:relative;overflow:hidden;background:linear-gradient(#241b3a,#141d24 55%,#0b0f0c)}
-.mapwrap{position:absolute;inset:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+.maparea{flex:1;position:relative;overflow:hidden;background:#0b0f0c}
+.mapwrap{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
 .mapwrap::-webkit-scrollbar{display:none}
-.mapcanvas{height:100%;width:max-content;min-width:100%;position:relative;margin:0 auto}
-.mapimg{height:100%;width:auto;max-width:none;display:block}
+.mapcanvas{width:100%;min-height:100%;position:relative;margin:0 auto}
+.mapimg{width:100%;height:auto;display:block}
 .marker{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;z-index:3}
-.dot{position:relative;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.28),rgba(0,0,0,.6));border:2px solid;animation:pulse 2.4s ease-in-out infinite}
-.marker.locked .dot{filter:grayscale(1);opacity:.5;animation:none}
+.dot{position:relative;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.28),rgba(0,0,0,.6));border:2px solid;animation:pulse 2.4s ease-in-out infinite}
 .lb{position:absolute;right:-6px;bottom:-6px;font-size:14px}
 .mname{font-size:11px;padding:3px 8px;border-radius:10px;background:rgba(0,0,0,.68);border:1px solid rgba(255,255,255,.16)}
-.marker.locked .mname{opacity:.55}
-.fadeL,.fadeR{position:absolute;top:0;bottom:0;width:26px;pointer-events:none;z-index:4}
-.fadeL{left:0;background:linear-gradient(90deg,#0b0f0c,transparent)}
-.fadeR{right:0;background:linear-gradient(-90deg,#0b0f0c,transparent)}
+.fadeT,.fadeB{position:absolute;left:0;right:0;height:26px;pointer-events:none;z-index:4}
+.fadeT{top:0;background:linear-gradient(180deg,#0b0f0c,transparent)}
+.fadeB{bottom:0;background:linear-gradient(0deg,#0b0f0c,transparent)}
 .content{flex:1;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 30%,#182420,#0b0f0c)}
 .bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.veil{position:absolute;inset:0;background:linear-gradient(rgba(5,8,6,.55),transparent 30%,transparent 65%,rgba(5,8,6,.75));pointer-events:none}
+.veil{position:absolute;inset:0;background:linear-gradient(rgba(5,8,6,.6),transparent 30%,transparent 65%,rgba(5,8,6,.85));pointer-events:none}
 .banner{position:absolute;top:12px;left:12px;right:12px;z-index:4;display:flex;gap:10px;align-items:center;padding:12px;border-radius:16px;background:rgba(8,12,10,.72);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(6px)}
 .bemoji{font-size:30px}
 .bname{font-size:16px;font-weight:700}
@@ -156,7 +189,6 @@ function App() {
   const [modal, setModal] = useState<{ realm: Realm; rune: Rune } | null>(null);
   const [toast, setToast] = useState("");
   const toastTimer = useRef<number>(0);
-  const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
   useEffect(() => {
@@ -170,13 +202,7 @@ function App() {
     else tg.BackButton.hide();
     return () => { tg.BackButton?.offClick?.(back); };
   }, [screen]);
-  useEffect(() => {
-    setModal(null);
-    if (screen.t === "tree" && mapRef.current) {
-      const w = mapRef.current;
-      w.scrollLeft = (w.scrollWidth - w.clientWidth) / 2;
-    }
-  }, [screen]);
+  useEffect(() => { setModal(null); }, [screen]);
 
   const say = (m: string) => { setToast(m); window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(""), 1800); };
   const haptic = (k: "light" | "success" = "light") => {
@@ -189,7 +215,6 @@ function App() {
 
   const openRealm = (r: Realm) => {
     haptic();
-    if (r.locked) { say(r.name + ": чертог ещё спит 🌫️"); return; }
     setScreen({ t: "realm", id: r.id });
   };
   const doneCount = (r: Realm) => (r.runes || []).filter(x => save.done.includes(x.id)).length;
@@ -220,7 +245,6 @@ function App() {
   return (
     <div className="app">
       <style>{CSS}</style>
-
       <div className="hdr">
         {screen.t === "tree" && <div className="title">🌳 Мировое Древо Иггдрасиль</div>}
         {screen.t === "realm" && <button className="back" onClick={() => go({ t: "tree" })}>← На Древо</button>}
@@ -232,22 +256,22 @@ function App() {
 
       {screen.t === "tree" && (
         <div className="maparea">
-          <div className="mapwrap" ref={mapRef}>
+          <div className="mapwrap">
             <div className="mapcanvas">
               <BgImg name="tree" className="mapimg" />
               {REALMS.map(r => (
-                <button key={r.id} className={"marker" + (r.locked ? " locked" : "")}
+                <button key={r.id} className="marker"
                   style={{ left: r.x + "%", top: r.y + "%" }} onClick={() => openRealm(r)}>
-                  <span className="dot" style={{ borderColor: r.color, boxShadow: r.locked ? "none" : "0 0 16px " + r.color }}>
-                    {r.emoji}{r.locked && <span className="lb">🔒</span>}
+                  <span className="dot" style={{ borderColor: r.color, boxShadow: "0 0 16px " + r.color }}>
+                    {r.emoji}
                   </span>
                   <span className="mname">{r.name}</span>
                 </button>
               ))}
             </div>
           </div>
-          <div className="fadeL" /><div className="fadeR" />
-          <div className="hint">← листай Древо • нажми на чертог →</div>
+          <div className="fadeT" /><div className="fadeB" />
+          <div className="hint">↓ листай Древо вниз • нажми на чертог ↓</div>
         </div>
       )}
 
@@ -261,10 +285,7 @@ function App() {
             <div className="veil" />
             <div className="banner">
               <span className="bemoji">{realm.emoji}</span>
-              <div>
-                <div className="bname">{realm.name}</div>
-                <div className="btag">{realm.tag}</div>
-              </div>
+              <div><div className="bname">{realm.name}</div><div className="btag">{realm.tag}</div></div>
             </div>
             <svg className="pathline" viewBox="0 0 100 100" preserveAspectRatio="none">
               <polyline points={pts} fill="none" stroke="#ffd76a" strokeOpacity=".6" strokeWidth=".7" strokeDasharray="2.5 2" />
@@ -286,7 +307,7 @@ function App() {
 
       {screen.t === "quests" && (
         <div className="scroll">
-          {REALMS.filter(r => (r.runes || []).length > 0).map(r => (
+          {REALMS.map(r => (
             <div className="card" key={r.id}>
               <div className="qhead" onClick={() => openRealm(r)}>{r.emoji} {r.name} <span className="go">→</span></div>
               {(r.runes || []).map((rn, i) => {
