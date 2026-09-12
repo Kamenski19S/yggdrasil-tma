@@ -161,7 +161,7 @@ const ARTIFACTS: Record<string, string> = {
   svartalfheim: "Драупнир — кольцо изобилия",
   helheim: "Слеза Хель",
   asgard: "Гунгнир — копьё Всеотца",
-};
+  };
 function BgImg({ name, className }: { name: string; className: string }) {
   const list = [BASE+"img/"+name+".jpg", BASE+"img/"+name+".jpeg", BASE+"img/"+name+".png", BASE+"img/"+name+".webp"];
   const [i, setI] = useState(0);
@@ -265,6 +265,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 @keyframes fade{from{opacity:0}}
 .mface{position:relative;overflow:hidden}
 `;
+];
 function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
   const [save, setSave] = useState<Save>(loadSave);
@@ -339,7 +340,7 @@ function App() {
   const nextStep = (id: string) => { if (trialIdx(id) >= 3 || save.artifacts.includes(id)) setScreen({ t: "realm", id }); else setScreen({ t: "trial", id }); };
   const isNav = (id: string) => (id === "tree" ? screen.t === "tree" || screen.t === "realm" : screen.t === id);
   const navScreen = (id: string): Screen => (id === "tree" ? { t: "tree" } : ({ t: id } as Screen));
-return (
+  return (
     <div className="app">
       <style>{CSS}</style>
       <div className="hdr">
@@ -536,4 +537,3 @@ return (
 }
 
 createRoot(document.getElementById("root")!).render(<App />);
-
