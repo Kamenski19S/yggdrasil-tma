@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 
-const tg: any = (window as any).Telegram?.WebApp;
-const BASE: string = (import.meta as any).env?.BASE_URL || "/";
+// Безопасное получение окружения Telegram WebApp
+const tg = (window as any).Telegram?.WebApp;
+const BASE = (typeof import.meta !== "undefined" && (import.meta as any).env?.BASE_URL) || "/";
 
 type Rune = { id: string; sym: string; name: string; meaning: string; task: string; reward: number };
 type Realm = {
@@ -17,59 +18,31 @@ type Quest = { q: string; a: string[]; c: number };
 type Master = { name: string; title: string; hp: number; atk: number; sym: string; greet: string };
 
 const REALMS: Realm[] = [
-  { id: "asgard", name: "Асгард", emoji: "🏛️", tag: "Золотой чертог богов", color: "#ffd76a", glow: "rgba(255,215,106,0.8)", dark: "#3d2e00", runeSym: "ᛟ", x: 50, y: 8, runes: [
-    { id: "algiz", sym: "ᛉ", name: "Альгиз", meaning: "Защита богов", task: "Поблагодари высшие силы за защиту.", reward: 8 },
-    { id: "ingwaz", sym: "ᛜ", name: "Ингуз", meaning: "Новый цикл", task: "Заверши этап и начни новый.", reward: 9 },
-    { id: "dagaz", sym: "ᛞ", name: "Дагаз", meaning: "Рассвет", task: "Сделай шаг к прорыву.", reward: 10 },
-  ]},
-  { id: "alfheim", name: "Альфхейм", emoji: "✨", tag: "Мир светлых эльфов", color: "#e8f4ff", glow: "rgba(232,244,255,0.8)", dark: "#1a2a3d", runeSym: "ᚹ", x: 25, y: 22, runes: [
-    { id: "wunjo", sym: "ᚹ", name: "Вуньо", meaning: "Радость", task: "Сделай что-то для радости.", reward: 6 },
-    { id: "laguz", sym: "ᛚ", name: "Лагуз", meaning: "Интуиция", task: "Доверься интуиции.", reward: 7 },
-    { id: "mannaz", sym: "ᛗ", name: "Манназ", meaning: "Человечность", task: "Прояви доброту.", reward: 7 },
-  ]},
-  { id: "vanaheim", name: "Ванахейм", emoji: "🌿", tag: "Дикий мир природы", color: "#b8e986", glow: "rgba(184,233,134,0.8)", dark: "#1a3d00", runeSym: "ᛒ", x: 75, y: 22, runes: [
-    { id: "berkanan", sym: "ᛒ", name: "Беркана", meaning: "Рост", task: "Позаботься о теле.", reward: 6 },
-    { id: "perthro", sym: "ᛈ", name: "Пертро", meaning: "Тайна", task: "Прими неопределённость.", reward: 7 },
-    { id: "jera", sym: "ᛃ", name: "Йера", meaning: "Урожай", task: "Награди себя за труды.", reward: 8 },
-  ]},
-  { id: "midgard", name: "Мидгард", emoji: "🏡", tag: "Земля людей", color: "#7ee787", glow: "rgba(126,231,135,0.8)", dark: "#003d0a", runeSym: "ᚠ", x: 50, y: 38, runes: [
-    { id: "fehu", sym: "ᚠ", name: "Феху", meaning: "Богатство", task: "Запиши 3 вещи для благодарности.", reward: 5 },
-    { id: "uruz", sym: "ᚢ", name: "Уруз", meaning: "Сила", task: "Прогулка или зарядка.", reward: 5 },
-    { id: "thurisaz", sym: "ᚦ", name: "Турисаз", meaning: "Защита", task: "Откажись от истощающего дела.", reward: 6 },
-    { id: "ansuz", sym: "ᚨ", name: "Ансуз", meaning: "Мудрость", task: "Узнай новое и передай другу.", reward: 6 },
-  ]},
-  { id: "jotunheim", name: "Ётунхейм", emoji: "⛰️", tag: "Мир великанов", color: "#c9b49a", glow: "rgba(201,180,154,0.8)", dark: "#3d2e1a", runeSym: "ᚺ", x: 25, y: 55, runes: [
-    { id: "hagalaz", sym: "ᚺ", name: "Хагалаз", meaning: "Разрушение", task: "Избавься от старого.", reward: 7 },
-    { id: "othala", sym: "ᛟ", name: "Одал", meaning: "Дом", task: "Удели время семье.", reward: 8 },
-    { id: "tiwaz_alt", sym: "ᛏ", name: "Тюр", meaning: "Жертва", task: "Малая жертва ради цели.", reward: 8 },
-  ]},
-  { id: "svartalfheim", name: "Свартальфхейм", emoji: "⚒️", tag: "Кузни дварфов", color: "#ff9d5c", glow: "rgba(255,157,92,0.8)", dark: "#3d1a00", runeSym: "ᚷ", x: 75, y: 55, runes: [
-    { id: "gebo", sym: "ᚷ", name: "Гебо", meaning: "Дар", task: "Сделай подарок.", reward: 7 },
-    { id: "ehwaz", sym: "ᛖ", name: "Эваз", meaning: "Движение", task: "Сдвинься с мёртвой точки.", reward: 7 },
-    { id: "raido", sym: "ᚱ", name: "Райдо", meaning: "Ритм", task: "Выстрой ритм дня.", reward: 8 },
-  ]},
-  { id: "niflheim", name: "Нифльхейм", emoji: "❄️", tag: "Мир льдов", color: "#7ec8ff", glow: "rgba(126,200,255,0.8)", dark: "#001a3d", runeSym: "ᛁ", x: 25, y: 75, runes: [
-    { id: "isa", sym: "ᛁ", name: "Иса", meaning: "Лёд", task: "10 минут тишины.", reward: 5 },
-    { id: "nauthiz", sym: "ᚾ", name: "Наутиз", meaning: "Нужда", task: "Откажись от привычки.", reward: 6 },
-    { id: "eihwaz", sym: "ᛇ", name: "Эйваз", meaning: "Стойкость", task: "Доделай отложенное.", reward: 7 },
-  ]},
-  { id: "muspelheim", name: "Муспельхейм", emoji: "🔥", tag: "Мир огня", color: "#ff6b4a", glow: "rgba(255,107,74,0.8)", dark: "#3d0000", runeSym: "ᚲ", x: 75, y: 75, runes: [
-    { id: "kenaz", sym: "ᚲ", name: "Кеназ", meaning: "Творчество", task: "Создай что-то.", reward: 5 },
-    { id: "sowilo", sym: "ᛊ", name: "Совило", meaning: "Победа", task: "Шаг к смелой цели.", reward: 6 },
-    { id: "teiwaz", sym: "ᛏ", name: "Тейваз", meaning: "Справедливость", task: "Восстанови справедливость.", reward: 7 },
-  ]},
-  { id: "helheim", name: "Хельхейм", emoji: "🕯️", tag: "Подземный мир", color: "#b678ff", glow: "rgba(182,120,255,0.8)", dark: "#1a003d", runeSym: "ᛉ", x: 50, y: 92, runes: [
-    { id: "calc", sym: "ᚲ", name: "Кальк", meaning: "Трансформация", task: "Прими изменение.", reward: 8 },
-    { id: "gar", sym: "ᚷ", name: "Гар", meaning: "Судьба", task: "Энергия в одну цель.", reward: 9 },
-    { id: "yggdrasil", sym: "ᛉ", name: "Иггдрасиль", meaning: "Единство", task: "Осознай связь действий.", reward: 10 },
-  ]},
+  { id: "asgard", name: "Асгард", emoji: "🏛️", tag: "Золотой чертог богов", color: "#ffd76a", glow: "rgba(255,215,106,0.8)", dark: "#3d2e00", runeSym: "ᛟ", x: 50, y: 8 },
+  { id: "alfheim", name: "Альфхейм", emoji: "✨", tag: "Мир светлых эльфов", color: "#e8f4ff", glow: "rgba(232,244,255,0.8)", dark: "#1a2a3d", runeSym: "ᚹ", x: 25, y: 22 },
+  { id: "vanaheim", name: "Ванахейм", emoji: "🌿", tag: "Дикий мир природы", color: "#b8e986", glow: "rgba(184,233,134,0.8)", dark: "#1a3d00", runeSym: "ᛒ", x: 75, y: 22 },
+  { id: "midgard", name: "Мидгард", emoji: "🏡", tag: "Земля людей", color: "#7ee787", glow: "rgba(126,231,135,0.8)", dark: "#003d0a", runeSym: "ᚠ", x: 50, y: 38 },
+  { id: "jotunheim", name: "Ётунхейм", emoji: "⛰️", tag: "Мир великанов", color: "#c9b49a", glow: "rgba(201,180,154,0.8)", dark: "#3d2e1a", runeSym: "ᚺ", x: 25, y: 55 },
+  { id: "svartalfheim", name: "Свартальфхейм", emoji: "⚒️", tag: "Кузни дварфов", color: "#ff9d5c", glow: "rgba(255,157,92,0.8)", dark: "#3d1a00", runeSym: "ᚷ", x: 75, y: 55 },
+  { id: "niflheim", name: "Нифльхейм", emoji: "❄️", tag: "Мир льдов", color: "#7ec8ff", glow: "rgba(126,200,255,0.8)", dark: "#001a3d", runeSym: "ᛁ", x: 25, y: 75 },
+  { id: "muspelheim", name: "Муспельхейм", emoji: "🔥", tag: "Мир огня", color: "#ff6b4a", glow: "rgba(255,107,74,0.8)", dark: "#3d0000", runeSym: "ᚲ", x: 75, y: 75 },
+  { id: "helheim", name: "Хельхейм", emoji: "🕯️", tag: "Подземный мир", color: "#b678ff", glow: "rgba(182,120,255,0.8)", dark: "#1a003d", runeSym: "ᛉ", x: 50, y: 92 },
 ];
 
 const NAV = [{ id: "tree", ic: "ᚱ", t: "Путь" }, { id: "hero", ic: "ᛗ", t: "Герой" }, { id: "gift", ic: "ᚷ", t: "Дар" }, { id: "hall", ic: "ᛟ", t: "Чертог" }];
 type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" } | { t: "hero" } | { t: "gift" } | { t: "hall" } | { t: "trial"; id: string } | { t: "fight"; id: string };
 type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[] };
 const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [] };
-const loadSave = (): Save => { try { return { ...DEF, ...JSON.parse(localStorage.getItem("yggdrasil") || "") }; } catch { return { ...DEF }; } };
+
+const loadSave = (): Save => { 
+  try { 
+    const saved = localStorage.getItem("yggdrasil");
+    return saved ? { ...DEF, ...JSON.parse(saved) } : { ...DEF }; 
+  } catch { 
+    return { ...DEF }; 
+  } 
+};
+
 const today = () => new Date().toISOString().slice(0, 10);
 const rank = (n: number) => (n >= 500 ? "Всеотец" : n >= 300 ? "Мудрец Древа" : n >= 150 ? "Хранитель рун" : n >= 50 ? "Странник рун" : "Путник");
 
@@ -84,7 +57,7 @@ const HEROES: HeroDef[] = [
 ];
 
 const MASTERS: Record<string, Master> = {
-  midgard: { name: "Хеймдалль", title: "Страж Радужного моста", hp: 30, atk: 5, sym: "ᚺ", greet: "Я слышу, как растёт трава и шерсть на овцах. Кто дерзнул подойти к моему мосту? Отвечай на загадки — или берись за оружие." },
+  midgard: { name: "Хеймдалль", title: "Страж Радужного моста", hp: 30, atk: 5, sym: "ᚺ", greet: "Я слышу, как растёт трава и шерсть на овцах. Кто дерзнул подойти к мосту? Отвечай на загадки — или берись за оружие." },
   muspelheim: { name: "Сурт", title: "Огненный великан", hp: 35, atk: 6, sym: "ᚲ", greet: "Моё пламя старше богов. Если твоя мудрость не вспыхнет ярче огня — судить тебя будет мой меч." },
   niflheim: { name: "Нидхёгг", title: "Дракон корней", hp: 35, atk: 6, sym: "ᚾ", greet: "Я точу корни Древа, и туман скрывает мои кольца. Отгадай мои загадки, смертный, или станешь добычей." },
   jotunheim: { name: "Вафтруднир", title: "Мудрейший из великанов", hp: 40, atk: 7, sym: "ᚺ", greet: "Я пил мудрость веков. Устроим состязание загадок, как в старину. Проигравший отдаёт голову." },
@@ -96,15 +69,9 @@ const MASTERS: Record<string, Master> = {
 };
 
 const MASTER_IMG: Record<string, string> = {
-  midgard: "master_midgard",
-  alfheim: "master_alfheim",
-  vanaheim: "master_vanaheim",
-  asgard: "master_asgard",
-  jotunheim: "master_jotunheim",
-  svartalfheim: "master_svartalfheim",
-  niflheim: "master_niflheim",
-  muspelheim: "master_muspelheim",
-  helheim: "master_helheim",
+  midgard: "master_midgard", alfheim: "master_alfheim", vanaheim: "master_vanaheim",
+  asgard: "master_asgard", jotunheim: "master_jotunheim", svartalfheim: "master_svartalfheim",
+  niflheim: "master_niflheim", muspelheim: "master_muspelheim", helheim: "master_helheim",
 };
 
 const QUESTS: Record<string, Quest[]> = {
@@ -156,19 +123,13 @@ const QUESTS: Record<string, Quest[]> = {
 };
 
 const ARTIFACTS: Record<string, string> = {
-  midgard: "Мегингъёрд — пояс силы",
-  muspelheim: "Пламя Муспеля",
-  niflheim: "Осколок Хвергельмира",
-  jotunheim: "Камень Ифинга",
-  vanaheim: "Ветер Ньёрда",
-  alfheim: "Свет Альфхейма",
-  svartalfheim: "Драупнир — кольцо изобилия",
-  helheim: "Слеза Хель",
-  asgard: "Гунгнир — копьё Всеотца",
+  midgard: "Мегингъёрд — пояс силы", muspelheim: "Пламя Муспеля", niflheim: "Осколок Хвергельмира",
+  jotunheim: "Камень Ифинга", vanaheim: "Ветер Ньёрда", alfheim: "Свет Альфхейма",
+  svartalfheim: "Драупнир — кольцо изобилия", helheim: "Слеза Хель", asgard: "Гунгнир — копьё Всеотца",
 };
 
 function BgImg({ name, className }: { name: string; className: string }) {
-  const list = [BASE+"img/"+name+".jpg", BASE+"img/"+name+".jpeg", BASE+"img/"+name+".png", BASE+"img/"+name+".webp"];
+  const list = [BASE + "img/" + name + ".jpg", BASE + "img/" + name + ".jpeg", BASE + "img/" + name + ".png", BASE + "img/" + name + ".webp"];
   const [i, setI] = useState(0);
   if (i >= list.length) return null;
   return <img className={className} src={list[i]} alt="" onError={() => setI(i + 1)} />;
@@ -192,7 +153,6 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .amulet-ring{position:absolute;inset:0;border-radius:50%;border:1px dashed;opacity:.5;animation:spin 15s linear infinite;pointer-events:none}
 .amulet-glow{position:absolute;inset:-4px;border-radius:50%;opacity:.6;animation:breathe 3s ease-in-out infinite;pointer-events:none;z-index:1}
 .amulet-core{position:relative;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:bold;border:2px solid;box-shadow:0 0 9px currentColor,inset 0 0 8px rgba(0,0,0,.85);transition:transform .2s;z-index:2;text-shadow:0 0 6px currentColor}
-.amulet-core::after{content:"";position:absolute;inset:3px;border-radius:50%;border:1px solid currentColor;opacity:.5;pointer-events:none}
 .marker:active .amulet-core{transform:scale(.85)}
 .mname{font-size:9px;font-weight:700;letter-spacing:.5px;padding:3px 8px;border-radius:6px;background:linear-gradient(180deg,rgba(20,25,22,.92),rgba(10,12,11,.96));border:1px solid;text-shadow:0 0 4px currentColor;box-shadow:0 2px 6px rgba(0,0,0,.6);white-space:nowrap;text-transform:uppercase}
 .fadeT,.fadeB{position:absolute;left:0;right:0;height:26px;pointer-events:none;z-index:4}
@@ -201,8 +161,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .content{flex:1;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 30%,#182420,#0b0f0c)}
 .bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .veil{position:absolute;inset:0;background:linear-gradient(rgba(5,8,6,.6),transparent 30%,transparent 65%,rgba(5,8,6,.85));pointer-events:none}
-.banner{position:absolute;top:10px;left:12px;right:auto;z-index:4;padding:6px 12px;border-radius:10px;background:linear-gradient(180deg,rgba(20,25,22,.88),rgba(10,12,11,.92));border:1px solid rgba(255,215,106,.45);box-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none}
-.bemoji{display:none}.btag{display:none}
+.banner{position:absolute;top:10px;left:12px;z-index:4;padding:6px 12px;border-radius:10px;background:linear-gradient(180deg,rgba(20,25,22,.88),rgba(10,12,11,.92));border:1px solid rgba(255,215,106,.45);box-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none}
 .bname{font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#ffd76a;text-shadow:0 0 6px rgba(255,215,106,.5)}
 .gate{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;display:flex;flex-direction:column;align-items:center;gap:8px}
 .gwrap{position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center}
@@ -243,7 +202,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .navbtn.on{color:#ffd76a}
 .navbtn.on .ic{border-color:#ffd76a;color:#ffd76a;box-shadow:0 0 10px rgba(255,215,106,.45),inset 0 0 6px rgba(255,215,106,.2)}
 .mhead{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 0 6px}
-.mface{width:84px;height:84px;border-radius:50%;border:3px solid;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;box-shadow:0 0 16px currentColor,inset 0 0 12px rgba(0,0,0,.9);text-shadow:0 0 10px currentColor;background:radial-gradient(circle,#1a221c,#0a0a0a 75%)}
+.mface{width:84px;height:84px;border-radius:50%;border:3px solid;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;box-shadow:0 0 16px currentColor,inset 0 0 12px rgba(0,0,0,.9);text-shadow:0 0 10px currentColor;background:radial-gradient(circle,#1a221c,#0a0a0a 75%);position:relative;overflow:hidden}
 .mname2{font-size:15px;font-weight:700}.mtitle{font-size:11px;color:#8fa39a}
 .greet{font-size:13px;line-height:1.5;color:#cfe3d2;background:rgba(8,12,10,.82);border:1px solid #223028;border-radius:14px;padding:12px}
 .riddle{font-size:15px;font-weight:600;line-height:1.45;text-align:center;padding:2px 4px 8px}
@@ -268,12 +227,11 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 @keyframes breathe{0%,100%{opacity:.3;transform:scale(.9)}50%{opacity:.7;transform:scale(1.1)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes fade{from{opacity:0}}
-.mface{position:relative;overflow:hidden}
 `;
 
 function App() {
-  const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
   const [save, setSave] = useState<Save>(loadSave);
+  const [screen, setScreen] = useState<Screen>(() => (save.hero ? { t: "tree" } : { t: "choose" }));
   const [pick, setPick] = useState("");
   const [pickName, setPickName] = useState("");
   const [toast, setToast] = useState("");
@@ -290,17 +248,37 @@ function App() {
   const [over, setOver] = useState("");
 
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
-  useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
+  useEffect(() => { 
+    try {
+      tg?.ready?.(); 
+      tg?.expand?.(); 
+      tg?.setHeaderColor?.("#0b0f0c"); 
+      tg?.setBackgroundColor?.("#0b0f0c"); 
+    } catch {}
+  }, []);
+
   useEffect(() => {
     if (!tg?.BackButton) return;
     const back = () => setScreen({ t: "tree" });
-    if (screen.t !== "tree" && screen.t !== "choose" && save.hero) { tg.BackButton.show(); tg.BackButton.onClick(back); } else tg.BackButton.hide();
-    return () => { tg.BackButton?.offClick?.(back); };
+    if (screen.t !== "tree" && screen.t !== "choose" && save.hero) { 
+      tg.BackButton.show(); 
+      tg.BackButton.onClick(back); 
+    } else {
+      tg.BackButton.hide();
+    }
+    return () => { try { tg.BackButton?.offClick?.(back); } catch {} };
   }, [screen, save.hero]);
+
   useEffect(() => { setRes(null); setRemoved(null); setWhisper(false); setOver(""); setShield(false); }, [screen]);
 
   const say = (m: string) => { setToast(m); window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(""), 1800); };
-  const haptic = (k: "light" | "success" = "light") => { try { if (k === "success") tg?.HapticFeedback?.notificationOccurred?.("success"); else tg?.HapticFeedback?.impactOccurred?.("light"); } catch {} };
+  const haptic = (k: "light" | "success" = "light") => { 
+    try { 
+      if (k === "success") tg?.HapticFeedback?.notificationOccurred?.("success"); 
+      else tg?.HapticFeedback?.impactOccurred?.("light"); 
+    } catch {} 
+  };
+  
   const go = (s: Screen) => setScreen(s);
   const openRealm = (r: Realm) => { haptic(); setScreen({ t: "realm", id: r.id }); };
   const claimGift = () => { if (save.gift === today()) return; setSave(s => ({ ...s, sparks: s.sparks + 3, gift: today() })); haptic("success"); say("Дар Древа получен! +3 ✨"); };
@@ -309,42 +287,127 @@ function App() {
   const rnd = (n: number) => Math.floor(Math.random() * n);
   const trialIdx = (id: string) => save.trials.filter(t => t.startsWith(id + ":")).length;
   const openGate = (r: Realm) => { if (save.artifacts.includes(r.id)) { say("Мир покорён. Артефакт хранится в листе героя."); return; } haptic(); setScreen({ t: "trial", id: r.id }); };
+  
   const finishTrial = (id: string, idx: number, add: number) => {
     const art = idx === 2;
-    setSave(s => ({ ...s, sparks: s.sparks + add + (art ? 30 : 0), trials: [...s.trials, id + ":" + idx], artifacts: art ? [...s.artifacts, id] : s.artifacts }));
+    setSave(s => ({ 
+      ...s, 
+      sparks: s.sparks + add + (art ? 30 : 0), 
+      trials: [...s.trials, id + ":" + idx], 
+      artifacts: art && !s.artifacts.includes(id) ? [...s.artifacts, id] : s.artifacts 
+    }));
     if (art) { haptic("success"); say("Мир пройден! Артефакт: " + ARTIFACTS[id]); }
   };
+
   const answer = (id: string, ai: number) => {
     if (res !== null) return;
-    const idx = trialIdx(id); const q = QUESTS[id][idx];
+    const idx = trialIdx(id); 
+    const q = QUESTS[id]?.[idx];
+    if (!q) return;
     setRes(ai);
-    if (ai === q.c) { haptic("success"); const add = 12 + idx * 3 + (heroDef?.id === "dwarf" ? 6 : 0); say("Верно! Сундук хозяина: +" + add + " ✨"); finishTrial(id, idx, add); }
-    else { haptic(); setFlog(MASTERS[id].name + " мрачнеет: «Что ж — пусть решит сталь!»"); }
+    if (ai === q.c) { 
+      haptic("success"); 
+      const add = 12 + idx * 3 + (heroDef?.id === "dwarf" ? 6 : 0); 
+      say("Верно! Сундук хозяина: +" + add + " ✨"); 
+      finishTrial(id, idx, add); 
+    } else { 
+      haptic(); 
+      setFlog(MASTERS[id].name + " мрачнеет: «Что ж — пусть решит сталь!»"); 
+    }
   };
-  const useWhisper = (id: string) => { const idx = trialIdx(id); const q = QUESTS[id][idx]; const wrong = q.a.findIndex((_, i) => i !== q.c && i !== removed); setRemoved(wrong); setWhisper(true); haptic(); say("Шёпот ветров уносит один ответ..."); };
-  const startFight = (id: string) => { const m = MASTERS[id]; setMhp(m.hp); setHhp(heroDef!.hp); setHen(heroDef!.en); setOver(""); setShield(false); setValk(false); setFlog(m.name + " поднимает оружие!"); setScreen({ t: "fight", id }); };
+
+  const useWhisper = (id: string) => { 
+    const idx = trialIdx(id); 
+    const q = QUESTS[id]?.[idx];
+    if (!q) return;
+    const wrong = q.a.findIndex((_, i) => i !== q.c && i !== removed); 
+    setRemoved(wrong); 
+    setWhisper(true); 
+    haptic(); 
+    say("Шёпот ветров уносит один ответ..."); 
+  };
+
+  const startFight = (id: string) => { 
+    const m = MASTERS[id]; 
+    if (!heroDef) return;
+    setMhp(m.hp); 
+    setHhp(heroDef.hp); 
+    setHen(heroDef.en); 
+    setOver(""); 
+    setShield(false); 
+    setValk(false); 
+    setFlog(m.name + " поднимает оружие!"); 
+    setScreen({ t: "fight", id }); 
+  };
+
   const fightAct = (id: string, kind: "hit" | "rune" | "shield") => {
-    if (over) return;
-    const m = MASTERS[id]; const idx = trialIdx(id);
+    if (over || !heroDef) return;
+    const m = MASTERS[id]; 
+    const idx = trialIdx(id);
     let dmg = 0; let log = ""; let nhen = hen; let nshield = shield;
-    if (kind === "hit") { dmg = heroDef!.str + rnd(4); if (heroDef!.id === "berserk" && hhp <= heroDef!.hp / 2) { dmg *= 2; log = "Медвежья ярость! "; } log += "Ты бьёшь: " + heroDef!.weapon + " — −" + dmg + " хозяину."; }
-    if (kind === "rune") { if (hen < 4) { say("Мало энергии для заклинания!"); return; } nhen = hen - 4; dmg = heroDef!.en + 2 + rnd(5); log = "Руническое заклинание вспыхивает: −" + dmg + " хозяину."; }
-    if (kind === "shield") { nshield = true; log = "Ты поднимаешь щит — удар ослабнет."; }
+    
+    if (kind === "hit") { 
+      dmg = heroDef.str + rnd(4); 
+      if (heroDef.id === "berserk" && hhp <= heroDef.hp / 2) { dmg *= 2; log = "Медвежья ярость! "; } 
+      log += "Ты бьёшь: " + heroDef.weapon + " — −" + dmg + " хозяину."; 
+    }
+    if (kind === "rune") { 
+      if (hen < 4) { say("Мало энергии для заклинания!"); return; } 
+      nhen = hen - 4; 
+      dmg = heroDef.en + 2 + rnd(5); 
+      log = "Руническое заклинание вспыхивает: −" + dmg + " хозяину."; 
+    }
+    if (kind === "shield") { 
+      nshield = true; 
+      log = "Ты поднимаешь щит — удар ослабнет."; 
+    }
+    
     const nm = mhp - dmg;
-    if (nm <= 0) { setMhp(0); setHen(nhen); setOver("win"); const add = 8 + idx * 2; setFlog("Хозяин повержен! Награда: +" + add + " ✨"); finishTrial(id, idx, add); return; }
-    let md = m.atk + rnd(3); let mlog = "";
+    if (nm <= 0) { 
+      setMhp(0); 
+      setHen(nhen); 
+      setOver("win"); 
+      const add = 8 + idx * 2; 
+      setFlog("Хозяин повержен! Награда: +" + add + " ✨"); 
+      finishTrial(id, idx, add); 
+      return; 
+    }
+    
+    let md = m.atk + rnd(3); 
+    let mlog = "";
     if (nshield) { md = Math.ceil(md * 0.3); mlog = " Щит принял большую часть удара."; }
-    if (heroDef!.id === "dwarf") md = Math.ceil(md * 0.75);
+    if (heroDef.id === "dwarf") md = Math.ceil(md * 0.75);
+    
     let nh = hhp;
-    if (heroDef!.id === "valkyrie" && !valk && nh - md <= 0) { setValk(true); md = 0; mlog = " Крылья бури поглотили смертельный удар!"; }
+    if (heroDef.id === "valkyrie" && !valk && nh - md <= 0) { 
+      setValk(true); 
+      md = 0; 
+      mlog = " Крылья бури поглотили смертельный удар!"; 
+    }
+    
     nh = nh - md;
-    setMhp(nm); setHhp(Math.max(0, nh)); setHen(nhen); setShield(false);
-    if (nh <= 0) { setOver("lose"); setSave(s => ({ ...s, sparks: Math.max(0, s.sparks - 10) })); setFlog(log + " " + m.name + " бьёт... Ты пал. Древо возрождает тебя (−10 ✨)."); return; }
+    setMhp(nm); 
+    setHhp(Math.max(0, nh)); 
+    setHen(nhen); 
+    setShield(false);
+    
+    if (nh <= 0) { 
+      setOver("lose"); 
+      setSave(s => ({ ...s, sparks: Math.max(0, s.sparks - 10) })); 
+      setFlog(log + " " + m.name + " бьёт... Ты пал. Древо возрождает тебя (−10 ✨)."); 
+      return; 
+    }
     setFlog(log + mlog + " " + m.name + " отвечает: −" + md + ".");
   };
-  const nextStep = (id: string) => { if (trialIdx(id) >= 3 || save.artifacts.includes(id)) setScreen({ t: "realm", id }); else setScreen({ t: "trial", id }); };
+
+  const nextStep = (id: string) => { 
+    if (trialIdx(id) >= 3 || save.artifacts.includes(id)) setScreen({ t: "realm", id }); 
+    else setScreen({ t: "trial", id }); 
+  };
+
   const isNav = (id: string) => (id === "tree" ? screen.t === "tree" || screen.t === "realm" : screen.t === id);
   const navScreen = (id: string): Screen => (id === "tree" ? { t: "tree" } : ({ t: id } as Screen));
+
   return (
     <div className="app">
       <style>{CSS}</style>
@@ -430,7 +493,7 @@ function App() {
           <div className="content">
             <BgImg name={realm.id} className="bgimg" />
             <div className="veil" />
-            <div className="banner"><span className="bemoji">{realm.emoji}</span><div><div className="bname">{realm.name}</div><div className="btag">{realm.tag}</div></div></div>
+            <div className="banner"><div className="bname">{realm.name}</div></div>
             <button className="gate" onClick={() => openGate(realm)}>
               <span className="gwrap">
                 <span className="gate-ring" style={{ borderColor: realm.color }} />
@@ -450,7 +513,8 @@ function App() {
         if (idx >= 3) return (
           <div className="scroll"><div className="card center"><div className="big">🏺</div><div className="qhead2">Мир покорён!</div><p className="dim">Артефакт: {ARTIFACTS[realm.id]}</p><button className="btn gold" onClick={() => go({ t: "realm", id: realm.id })}>К вратам</button></div></div>
         );
-        const q = QUESTS[realm.id][idx];
+        const q = QUESTS[realm.id]?.[idx];
+        if (!q) return null;
         return (
           <div className="scroll">
             <div className="mhead">
@@ -541,4 +605,7 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+const rootEl = document.getElementById("root");
+if (rootEl) {
+  createRoot(rootEl).render(<App />);
+}
