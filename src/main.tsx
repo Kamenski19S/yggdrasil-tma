@@ -498,6 +498,7 @@ function App() {
       {screen.t === "hero" && heroDef && save.hero && (
         <div className="scroll">
           <div className="card center">
+            color: realm.color }}><BgImg name={MASTER_IMG[realm.id]} className="himg" />{m.sym}
             <span className="hface bigface" style={{ borderColor: heroDef.color, color: heroDef.color, background: "linear-gradient(160deg,#101613,#0a0a0a)" }}><BgImg name={heroDef.img} className="himg" /><span className="hsym">{heroDef.sym}</span></span>
             <div className="qhead2" style={{ color: heroDef.color }}>{save.hero.name} • {heroDef.race}</div>
             <div className="stats">
