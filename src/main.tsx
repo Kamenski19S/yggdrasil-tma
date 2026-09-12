@@ -239,40 +239,53 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .navbtn:active .ic{transform:scale(.88)}
 .navbtn.on{color:#ffd76a}
 .navbtn.on .ic{border-color:#ffd76a;color:#ffd76a;box-shadow:0 0 10px rgba(255,215,106,.45),inset 0 0 6px rgba(255,215,106,.2)}
-/* Испытания хозяев и бой */
 .mhead{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 0 6px}
 .mface{width:84px;height:84px;border-radius:50%;border:3px solid;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;box-shadow:0 0 16px currentColor,inset 0 0 12px rgba(0,0,0,.9);text-shadow:0 0 10px currentColor;background:radial-gradient(circle,#1a221c,#0a0a0a 75%)}
 .mname2{font-size:15px;font-weight:700}.mtitle{font-size:11px;color:#8fa39a}
-.greet{font-size:13px;line-height:1.5;color:#cfe3d2;background:rgba(8,12,10,.82);border:1px solid #223028;border-radius:14px;padding:12px}
-.riddle{font-size:15px;font-weight:600;line-height:1.45;text-align:center;padding:2px 4px 8px}
-.ans{width:100%;padding:12px;border-radius:12px;background:#121a15;border:1px solid #2a3a2e;font-size:14px;margin-top:8px;text-align:left}
+/* Облако-мысль для загадки */
+.greet{background:none;border:none;padding:0;font-style:italic;color:#a9bfae;text-align:center;font-size:12px;line-height:1.5}
+.cloud{position:relative;margin:14px 10px 0;padding:16px 14px 12px;border-radius:26px;background:linear-gradient(180deg,#eef3ec,#d9e2da);color:#202b24;box-shadow:0 10px 26px rgba(0,0,0,.55), inset 0 -8px 16px rgba(110,130,120,.22);animation:cloudin .45s ease, bob 4s ease-in-out .45s infinite}
+.cloud::before{content:"";position:absolute;top:-12px;left:50%;width:30px;height:30px;border-radius:50%;background:#eef3ec;transform:translateX(-75%);box-shadow:0 -2px 6px rgba(0,0,0,.25)}
+.cloud::after{content:"";position:absolute;top:-22px;left:50%;width:14px;height:14px;border-radius:50%;background:#eef3ec;transform:translateX(-20%);box-shadow:0 -2px 4px rgba(0,0,0,.2)}
+.riddle{color:#202b24;font-size:15px;font-weight:700;line-height:1.45;text-align:center;padding:2px 2px 10px}
+.ans{width:100%;padding:11px 12px;border-radius:14px;background:rgba(255,255,255,.8);border:1px solid rgba(70,95,80,.3);color:#243028;font-size:14px;font-weight:600;margin-top:8px;text-align:center}
 .ans:active{transform:scale(.98)}
-.ans.good{border-color:#7ee787;color:#7ee787;box-shadow:0 0 10px rgba(126,231,135,.4)}
-.ans.bad{border-color:#ff6b4a;color:#ff6b4a;box-shadow:0 0 10px rgba(255,107,74,.4)}
-.ans.off{opacity:.35;pointer-events:none}
-.hprow{display:flex;align-items:center;gap:8px;margin:8px 0}
-.hpname{width:86px;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hpbar{flex:1;height:10px;border-radius:6px;background:#0d130f;border:1px solid #223028;overflow:hidden}
-.hpfill{height:100%;border-radius:6px;transition:width .3s}
-.hpnum{width:52px;font-size:11px;color:#8fa39a;text-align:right}
-.flog{min-height:40px;font-size:12px;color:#cfe3d2;line-height:1.4;text-align:center;margin:6px 0}
-.acts{display:flex;flex-direction:column;gap:8px}
+.ans.good{border-color:#2e9e4f;color:#1d7a37;background:rgba(210,255,220,.9);box-shadow:0 0 10px rgba(60,200,110,.5)}
+.ans.bad{border-color:#d0503a;color:#a83a28;background:rgba(255,220,214,.9);box-shadow:0 0 10px rgba(255,107,74,.5)}
+.ans.off{opacity:.4;pointer-events:none}
+.cloud .btn{margin-top:10px}
+@keyframes cloudin{from{opacity:0;transform:translateX(46px) scale(.92)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+/* Дуэльная пластина боя */
+.duel{display:flex;align-items:center;gap:8px;padding:12px 12px 10px;background:linear-gradient(180deg,rgba(20,28,23,.92),rgba(10,14,11,.96));border:1px solid #26342a;border-radius:20px;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.dside{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0}
+.dface{position:relative;width:54px;height:54px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;overflow:hidden;background:#0d130f;text-shadow:0 0 6px currentColor;box-shadow:0 0 10px currentColor}
+.dhp{width:100%;height:6px;border-radius:4px;background:#0a0f0b;border:1px solid #223028;overflow:hidden}
+.dhpfill{display:block;height:100%;border-radius:4px;transition:width .35s}
+.dname{font-size:10px;font-weight:700;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dnum{font-size:9px;color:#8fa39a}
+.dvs{font-size:15px;font-weight:700;color:#ffd76a;text-shadow:0 0 8px rgba(255,215,106,.55)}
+.denergy{display:flex;gap:3px;justify-content:center;flex-wrap:wrap}
+.pip{width:6px;height:6px;border-radius:50%;background:#233028}
+.pip.on{background:#b678ff;box-shadow:0 0 5px #b678ff}
+.flog{min-height:34px;font-size:12px;font-style:italic;color:#cfe3d2;line-height:1.45;text-align:center;margin:8px 4px}
+.acts{display:flex;flex-direction:column;gap:8px;padding:0 6px}
 .btn.rune{background:linear-gradient(135deg,#b678ff,#8a4fd6);color:#fff}
 .btn.shield{background:linear-gradient(135deg,#7ec8ff,#4a9fd6);color:#06202f}
-.btn{width:100%;padding:14px;border-radius:14px;background:linear-gradient(135deg,#2ea6ff,#1f7fd6);color:#fff;font-size:16px;font-weight:600}
+.btn{width:100%;padding:12px;border-radius:12px;background:linear-gradient(135deg,#2ea6ff,#1f7fd6);color:#fff;font-size:15px;font-weight:600}
 .btn.gold{background:linear-gradient(135deg,#ffd76a,#e0a53f);color:#231a05}.btn.ok{background:#17301d;color:#7ee787;border:1px solid rgba(126,231,135,.33)}
 .btn.ghost{background:transparent;border:1px solid #2a3a2e;color:#9ab0a2;margin-top:8px}.btn:disabled{opacity:.55}
 .toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:30;background:rgba(0,0,0,.85);border:1px solid rgba(255,215,106,.4);color:#ffd76a;padding:8px 14px;border-radius:12px;font-size:13px;animation:fade .3s}
-@keyframes breathe{0%,100%{opacity:.3;transform:scale(.9)}50%{opacity:.7;transform:scale(1.1)}}
-@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-@keyframes fade{from{opacity:0}}
-.mface{position:relative;overflow:hidden}
 .days{display:flex;gap:6px;justify-content:center;margin:10px 0}
 .day{flex:1;padding:8px 2px;border-radius:10px;background:#0d130f;border:1px solid #223028;font-size:10px;color:#8fa39a;display:flex;flex-direction:column;gap:4px;align-items:center}
 .day b{font-size:12px;color:#e8f0e8}
 .day.on{border-color:#ffd76a;box-shadow:0 0 8px rgba(255,215,106,.35)}
 .day.on b{color:#ffd76a}
 .day.done{opacity:.5}
+.mface{position:relative;overflow:hidden}
+@keyframes breathe{0%,100%{opacity:.3;transform:scale(.9)}50%{opacity:.7;transform:scale(1.1)}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes fade{from{opacity:0}}
 `;
 function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
@@ -463,8 +476,8 @@ function App() {
               <span className="mname2" style={{ color: realm.color }}>{m.name}</span>
               <span className="mtitle">{m.title} • испытание {idx + 1} из 3</span>
             </div>
-            {idx === 0 && <div className="greet">{m.greet}</div>}
-            <div className="card">
+            {idx === 0 && <div className="greet">«{m.greet}»</div>}
+            <div className="cloud">
               <div className="riddle">{q.q}</div>
               {q.a.map((a, i) => (
                 <button key={i} className={"ans" + (res !== null ? (i === q.c ? " good" : i === res ? " bad" : " off") : removed === i ? " off" : "")} onClick={() => answer(realm.id, i)}>{a}</button>
@@ -483,24 +496,29 @@ function App() {
         const m = MASTERS[realm.id];
         return (
           <div className="scroll">
-            <div className="mhead">
-              <span className="mface" style={{ borderColor: realm.color, color: realm.color }}><BgImg name={MASTER_IMG[realm.id]} className="himg" />{m.sym}</span>
-              <span className="mname2" style={{ color: realm.color }}>{m.name}</span>
-              <span className="mtitle">{m.title}</span>
+            <div className="duel">
+              <div className="dside">
+                <span className="dface" style={{ borderColor: realm.color, color: realm.color }}><BgImg name={MASTER_IMG[realm.id]} className="himg" />{m.sym}</span>
+                <span className="dname" style={{ color: realm.color }}>{m.name}</span>
+                <span className="dhp"><span className="dhpfill" style={{ width: Math.max(0, (mhp / m.hp) * 100) + "%", background: realm.color }} /></span>
+                <span className="dnum">{mhp}/{m.hp}</span>
+              </div>
+              <span className="dvs">⚔</span>
+              <div className="dside">
+                <span className="dface" style={{ borderColor: heroDef!.color, color: heroDef!.color }}><BgImg name={heroDef!.img} className="himg" />{heroDef!.sym}</span>
+                <span className="dname" style={{ color: heroDef!.color }}>{save.hero!.name}</span>
+                <span className="dhp"><span className="dhpfill" style={{ width: Math.max(0, (hhp / heroDef!.hp) * 100) + "%", background: "#7ee787" }} /></span>
+                <span className="denergy">{Array.from({ length: heroDef!.en }).map((_, i) => (<span key={i} className={"pip" + (i < hen ? " on" : "")} />))}</span>
+              </div>
             </div>
-            <div className="card">
-              <div className="hprow"><span className="hpname" style={{ color: realm.color }}>{m.name}</span><span className="hpbar"><span className="hpfill" style={{ display: "block", width: Math.max(0, (mhp / m.hp) * 100) + "%", background: realm.color }} /></span><span className="hpnum">{mhp}/{m.hp}</span></div>
-              <div className="hprow"><span className="hpname" style={{ color: heroDef!.color }}>{save.hero!.name}</span><span className="hpbar"><span className="hpfill" style={{ display: "block", width: Math.max(0, (hhp / heroDef!.hp) * 100) + "%", background: "#7ee787" }} /></span><span className="hpnum">{hhp}/{heroDef!.hp}</span></div>
-              <div className="hprow"><span className="hpname">✨ Энергия</span><span className="hpbar"><span className="hpfill" style={{ display: "block", width: (hen / heroDef!.en) * 100 + "%", background: "#b678ff" }} /></span><span className="hpnum">{hen}/{heroDef!.en}</span></div>
-              <div className="flog">{flog}</div>
-              {!over && (<div className="acts">
-                <button className="btn gold" onClick={() => fightAct(realm.id, "hit")}>⚔ Удар: {heroDef!.weapon}</button>
-                <button className="btn rune" onClick={() => fightAct(realm.id, "rune")}>🌀 Руническое заклинание (−4 ✨)</button>
-                <button className="btn shield" onClick={() => fightAct(realm.id, "shield")}>🛡 Щит</button>
-              </div>)}
-              {over === "win" && <button className="btn gold" onClick={() => nextStep(realm.id)}>Забрать награду →</button>}
-              {over === "lose" && <button className="btn ghost" onClick={() => go({ t: "tree" })}>Древо возрождает тебя</button>}
-            </div>
+            <div className="flog">{flog}</div>
+            {!over && (<div className="acts">
+              <button className="btn gold" onClick={() => fightAct(realm.id, "hit")}>⚔ Удар: {heroDef!.weapon}</button>
+              <button className="btn rune" onClick={() => fightAct(realm.id, "rune")}>🌀 Руническое заклинание (−4 ✨)</button>
+              <button className="btn shield" onClick={() => fightAct(realm.id, "shield")}>🛡 Щит</button>
+            </div>)}
+            {over === "win" && <button className="btn gold" onClick={() => nextStep(realm.id)}>Забрать награду →</button>}
+            {over === "lose" && <button className="btn ghost" onClick={() => go({ t: "tree" })}>Древо возрождает тебя</button>}
           </div>
         );
       })()}
