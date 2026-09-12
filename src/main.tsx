@@ -474,7 +474,7 @@ function App() {
         return (
           <div className="scroll">
             <div className="mhead">
-              <span className="mface" style={{ borderColor: realm.color, color: realm.color }}>{m.sym}</span>
+              <span className="mface" style={{ borderColor: realm.color, color: realm.color }}><BgImg name={MASTER_IMG[realm.id]} className="himg" />{m.sym}</span> 
               <span className="mname2" style={{ color: realm.color }}>{m.name}</span>
               <span className="mtitle">{m.title}</span>
             </div>
