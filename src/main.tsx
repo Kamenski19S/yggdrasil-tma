@@ -81,9 +81,7 @@ const HEROES: HeroDef[] = [
   { id: "valkyrie", race: "Валькирия", gender: "f", sym: "ᛉ", color: "#ffd76a", str: 9, en: 7, hp: 110, weapon: "Копьё Молний", ability: "Крылья бури", abilityDesc: "1 раз за бой щитом поглощает удар врага.", img: "hero_valkyrie" },
   { id: "dwarf", race: "Гном", gender: "m", sym: "ᚲ", color: "#ff9d5c", str: 10, en: 5, hp: 130, weapon: "Молот Глубин", ability: "Каменная кожа", abilityDesc: "Получает на 25% меньше урона; сундуки дают +50% искр.", img: "hero_dwarf" },
   { id: "berserk", race: "Берсерк", gender: "m", sym: "ᚦ", color: "#ff6b4a", str: 12, en: 4, hp: 100, weapon: "Секира «Клык Зверя»", ability: "Медвежья ярость", abilityDesc: "Когда здоровье ниже половины — урон удваивается.", img: "hero_berserk" },
-];
-
-const MASTERS: Record<string, Master> = {
+  const MASTERS: Record<string, Master> = {
   midgard: { name: "Хеймдалль", title: "Страж Радужного моста", hp: 30, atk: 5, sym: "ᚺ", greet: "Я слышу, как растёт трава и шерсть на овцах. Кто дерзнул подойти к моему мосту? Отвечай на загадки — или берись за оружие." },
   muspelheim: { name: "Сурт", title: "Огненный великан", hp: 35, atk: 6, sym: "ᚲ", greet: "Моё пламя старше богов. Если твоя мудрость не вспыхнет ярче огня — судить тебя будет мой меч." },
   niflheim: { name: "Нидхёгг", title: "Дракон корней", hp: 35, atk: 6, sym: "ᚾ", greet: "Я точу корни Древа, и туман скрывает мои кольца. Отгадай мои загадки, смертный, или станешь добычей." },
@@ -264,7 +262,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:30;background:rgba(0,0,0,.85);border:1px solid rgba(255,215,106,.4);color:#ffd76a;padding:8px 14px;border-radius:12px;font-size:13px;animation:fade .3s}
 @keyframes breathe{0%,100%{opacity:.3;transform:scale(.9)}50%{opacity:.7;transform:scale(1.1)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-@keyframes fade{from{opacity:0}}.mface{position:relative;overflow:hidden}
+@keyframes fade{from{opacity:0}}
+.mface{position:relative;overflow:hidden}
 `;
 function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
@@ -340,7 +339,7 @@ function App() {
   const nextStep = (id: string) => { if (trialIdx(id) >= 3 || save.artifacts.includes(id)) setScreen({ t: "realm", id }); else setScreen({ t: "trial", id }); };
   const isNav = (id: string) => (id === "tree" ? screen.t === "tree" || screen.t === "realm" : screen.t === id);
   const navScreen = (id: string): Screen => (id === "tree" ? { t: "tree" } : ({ t: id } as Screen));
-  return (
+return (
     <div className="app">
       <style>{CSS}</style>
       <div className="hdr">
@@ -449,7 +448,7 @@ function App() {
         return (
           <div className="scroll">
             <div className="mhead">
-              <span className="mface" style={{ borderColor: realm.color, color: realm.color }}>{m.sym}</span>
+              <span className="mface" style={{ borderColor: realm.color, color: realm.color }}><BgImg name={MASTER_IMG[realm.id]} className="himg" />{m.sym}</span>
               <span className="mname2" style={{ color: realm.color }}>{m.name}</span>
               <span className="mtitle">{m.title} • испытание {idx + 1} из 3</span>
             </div>
@@ -474,7 +473,7 @@ function App() {
         return (
           <div className="scroll">
             <div className="mhead">
-              <span className="mface" style={{ borderColor: realm.color, color: realm.color }}><BgImg name={MASTER_IMG[realm.id]} className="himg" />{m.sym}</span> 
+              <span className="mface" style={{ borderColor: realm.color, color: realm.color }}><BgImg name={MASTER_IMG[realm.id]} className="himg" />{m.sym}</span>
               <span className="mname2" style={{ color: realm.color }}>{m.name}</span>
               <span className="mtitle">{m.title}</span>
             </div>
@@ -498,7 +497,6 @@ function App() {
       {screen.t === "hero" && heroDef && save.hero && (
         <div className="scroll">
           <div className="card center">
-            color: realm.color }}><BgImg name={MASTER_IMG[realm.id]} className="himg" />{m.sym}
             <span className="hface bigface" style={{ borderColor: heroDef.color, color: heroDef.color, background: "linear-gradient(160deg,#101613,#0a0a0a)" }}><BgImg name={heroDef.img} className="himg" /><span className="hsym">{heroDef.sym}</span></span>
             <div className="qhead2" style={{ color: heroDef.color }}>{save.hero.name} • {heroDef.race}</div>
             <div className="stats">
@@ -538,3 +536,4 @@ function App() {
 }
 
 createRoot(document.getElementById("root")!).render(<App />);
+
