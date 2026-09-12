@@ -129,7 +129,7 @@ const ARTIFACTS: Record<string, string> = {
 };
 
 function BgImg({ name, className }: { name: string; className: string }) {
-  const list = [BASE + "img/" + name + ".jpg", BASE + "img/" + name + ".jpeg", BASE + "img/" + name + ".png", BASE + "img/" + name + ".webp"];
+const list = [BASE+"img/"+name+".jpg", BASE+"img/"+name+".jpg.jpg", BASE+"img/"+name+".jpeg", BASE+"img/"+name+".png", BASE+"img/"+name+".webp"];
   const [i, setI] = useState(0);
   if (i >= list.length) return null;
   return <img className={className} src={list[i]} alt="" onError={() => setI(i + 1)} />;
