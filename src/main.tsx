@@ -81,7 +81,9 @@ const HEROES: HeroDef[] = [
   { id: "valkyrie", race: "Валькирия", gender: "f", sym: "ᛉ", color: "#ffd76a", str: 9, en: 7, hp: 110, weapon: "Копьё Молний", ability: "Крылья бури", abilityDesc: "1 раз за бой щитом поглощает удар врага.", img: "hero_valkyrie" },
   { id: "dwarf", race: "Гном", gender: "m", sym: "ᚲ", color: "#ff9d5c", str: 10, en: 5, hp: 130, weapon: "Молот Глубин", ability: "Каменная кожа", abilityDesc: "Получает на 25% меньше урона; сундуки дают +50% искр.", img: "hero_dwarf" },
   { id: "berserk", race: "Берсерк", gender: "m", sym: "ᚦ", color: "#ff6b4a", str: 12, en: 4, hp: 100, weapon: "Секира «Клык Зверя»", ability: "Медвежья ярость", abilityDesc: "Когда здоровье ниже половины — урон удваивается.", img: "hero_berserk" },
-  const MASTERS: Record<string, Master> = {
+];
+
+const MASTERS: Record<string, Master> = {
   midgard: { name: "Хеймдалль", title: "Страж Радужного моста", hp: 30, atk: 5, sym: "ᚺ", greet: "Я слышу, как растёт трава и шерсть на овцах. Кто дерзнул подойти к моему мосту? Отвечай на загадки — или берись за оружие." },
   muspelheim: { name: "Сурт", title: "Огненный великан", hp: 35, atk: 6, sym: "ᚲ", greet: "Моё пламя старше богов. Если твоя мудрость не вспыхнет ярче огня — судить тебя будет мой меч." },
   niflheim: { name: "Нидхёгг", title: "Дракон корней", hp: 35, atk: 6, sym: "ᚾ", greet: "Я точу корни Древа, и туман скрывает мои кольца. Отгадай мои загадки, смертный, или станешь добычей." },
@@ -92,6 +94,7 @@ const HEROES: HeroDef[] = [
   helheim: { name: "Хель", title: "Госпожа подземного мира", hp: 50, atk: 9, sym: "ᛉ", greet: "Половина меня живая, половина мёртвая. Правда мне люба, ложь мерзка. Говори верно — или останься со мной навеки." },
   asgard: { name: "Один", title: "Всеотец", hp: 60, atk: 10, sym: "ᛟ", greet: "Я отдал глаз за мудрость. Посмотрим, что ты отдашь за неё. Моя последняя загадка без ответа — но попробуй." },
 };
+
 const MASTER_IMG: Record<string, string> = {
   midgard: "master_midgard",
   alfheim: "master_alfheim",
@@ -103,6 +106,7 @@ const MASTER_IMG: Record<string, string> = {
   muspelheim: "master_muspelheim",
   helheim: "master_helheim",
 };
+
 const QUESTS: Record<string, Quest[]> = {
   midgard: [
     { q: "Как зовут мост, что я стерегу, ярче пламени и светлее солнца?", a: ["Гьялларбру", "Биврёст", "Нагльфар"], c: 1 },
@@ -161,13 +165,15 @@ const ARTIFACTS: Record<string, string> = {
   svartalfheim: "Драупнир — кольцо изобилия",
   helheim: "Слеза Хель",
   asgard: "Гунгнир — копьё Всеотца",
-  };
+};
+
 function BgImg({ name, className }: { name: string; className: string }) {
   const list = [BASE+"img/"+name+".jpg", BASE+"img/"+name+".jpeg", BASE+"img/"+name+".png", BASE+"img/"+name+".webp"];
   const [i, setI] = useState(0);
   if (i >= list.length) return null;
   return <img className={className} src={list[i]} alt="" onError={() => setI(i + 1)} />;
 }
+
 const CSS = `
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body,#root{height:100%}
@@ -236,7 +242,6 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .navbtn:active .ic{transform:scale(.88)}
 .navbtn.on{color:#ffd76a}
 .navbtn.on .ic{border-color:#ffd76a;color:#ffd76a;box-shadow:0 0 10px rgba(255,215,106,.45),inset 0 0 6px rgba(255,215,106,.2)}
-/* Испытания хозяев и бой */
 .mhead{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 0 6px}
 .mface{width:84px;height:84px;border-radius:50%;border:3px solid;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;box-shadow:0 0 16px currentColor,inset 0 0 12px rgba(0,0,0,.9);text-shadow:0 0 10px currentColor;background:radial-gradient(circle,#1a221c,#0a0a0a 75%)}
 .mname2{font-size:15px;font-weight:700}.mtitle{font-size:11px;color:#8fa39a}
@@ -265,6 +270,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 @keyframes fade{from{opacity:0}}
 .mface{position:relative;overflow:hidden}
 `;
+
 function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
   const [save, setSave] = useState<Save>(loadSave);
