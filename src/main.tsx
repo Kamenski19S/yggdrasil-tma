@@ -94,7 +94,17 @@ const MASTERS: Record<string, Master> = {
   helheim: { name: "Хель", title: "Госпожа подземного мира", hp: 50, atk: 9, sym: "ᛉ", greet: "Половина меня живая, половина мёртвая. Правда мне люба, ложь мерзка. Говори верно — или останься со мной навеки." },
   asgard: { name: "Один", title: "Всеотец", hp: 60, atk: 10, sym: "ᛟ", greet: "Я отдал глаз за мудрость. Посмотрим, что ты отдашь за неё. Моя последняя загадка без ответа — но попробуй." },
 };
-
+const MASTER_IMG: Record<string, string> = {
+  midgard: "master_midgard",
+  alfheim: "master_alfheim",
+  vanaheim: "master_vanaheim",
+  asgard: "master_asgard",
+  jotunheim: "master_jotunheim",
+  svartalfheim: "master_svartalfheim",
+  niflheim: "master_niflheim",
+  muspelheim: "master_muspelheim",
+  helheim: "master_helheim",
+};
 const QUESTS: Record<string, Quest[]> = {
   midgard: [
     { q: "Как зовут мост, что я стерегу, ярче пламени и светлее солнца?", a: ["Гьялларбру", "Биврёст", "Нагльфар"], c: 1 },
@@ -254,7 +264,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:30;background:rgba(0,0,0,.85);border:1px solid rgba(255,215,106,.4);color:#ffd76a;padding:8px 14px;border-radius:12px;font-size:13px;animation:fade .3s}
 @keyframes breathe{0%,100%{opacity:.3;transform:scale(.9)}50%{opacity:.7;transform:scale(1.1)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-@keyframes fade{from{opacity:0}}
+@keyframes fade{from{opacity:0}}.mface{position:relative;overflow:hidden}
 `;
 function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
