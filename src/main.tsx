@@ -265,7 +265,6 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 @keyframes fade{from{opacity:0}}
 .mface{position:relative;overflow:hidden}
 `;
-];
 function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
   const [save, setSave] = useState<Save>(loadSave);
