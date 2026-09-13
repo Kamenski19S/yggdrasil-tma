@@ -405,17 +405,19 @@ const [playerX, setPlayerX] = useState(50);
   const nextStep = (id: string) => { if (trialIdx(id) >= 3 || save.artifacts.includes(id)) setScreen({ t: "realm", id }); else setScreen({ t: "trial", id }); };
   const isNav = (id: string) => (id === "tree" ? screen.t === "tree" || screen.t === "realm" : screen.t === id);
   const navScreen = (id: string): Screen => (id === "tree" ? { t: "tree" } : ({ t: id } as Screen));
-  // Мидгард: герой ходит по видимой дороге, а не по небу/воде.
-  // Границы дороги зависят от глубины сцены: вдали она узкая,
-  // ближе к игроку становится шире из-за перспективы.
+  // Мидгард: герой идёт вперёд и назад по дороге.
+  // По бокам есть только небольшое ограничение, чтобы герой не уходил
+  // далеко в лес и воду. Вперёд по сцене ограничение не ставим: игрок
+  // может пройти по дороге от переднего плана к деревне и дальше вверх.
   const roadBounds = (y: number) => {
     const points = [
-      { y: 57, left: 46, right: 57 },
-      { y: 63, left: 41, right: 62 },
-      { y: 69, left: 37, right: 67 },
-      { y: 76, left: 33, right: 72 },
-      { y: 84, left: 29, right: 77 },
-      { y: 92, left: 27, right: 81 },
+      { y: 18, left: 40, right: 60 },
+      { y: 28, left: 35, right: 65 },
+      { y: 40, left: 30, right: 70 },
+      { y: 52, left: 24, right: 76 },
+      { y: 66, left: 18, right: 82 },
+      { y: 82, left: 13, right: 87 },
+      { y: 94, left: 10, right: 90 },
     ];
 
     if (y <= points[0].y) return { left: points[0].left, right: points[0].right };
@@ -436,11 +438,12 @@ const [playerX, setPlayerX] = useState(50);
       }
     }
 
-    return { left: 46, right: 57 };
+    return { left: 10, right: 90 };
   };
 
   const clampPlayerToRoad = (x: number, y: number) => {
-    const nextY = Math.max(57, Math.min(92, y));
+    // Вперёд по дороге разрешаем идти почти до верхнего края сцены.
+    const nextY = Math.max(16, Math.min(94, y));
     const road = roadBounds(nextY);
     const nextX = Math.max(road.left, Math.min(road.right, x));
     return { x: nextX, y: nextY };
@@ -584,7 +587,7 @@ const [playerX, setPlayerX] = useState(50);
         </div>
 
         <div className="scene-hint">
-          ▲▼ — идти по дороге • ◀▶ — шаг в сторону
+          ▲▼ — вперёд / назад по дороге • ◀▶ — шаг в сторону
         </div>
       </div>
     );
