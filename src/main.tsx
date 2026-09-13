@@ -517,6 +517,80 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       door.position.set(0, 0.9, 2.52);
       g.add(door);
 
+      // Детали кузницы: навес, наковальня, очаг и лёгкие искры.
+      if (id === "forge") {
+        const canopy = midBox(7.2, 0.22, 6.2, 0x4a3326);
+        canopy.position.set(0, 5.75, 0.35);
+        g.add(canopy);
+
+        const postMat = midMat(0x3a281d, 0.95);
+        [[-3.1, 2.7, -2.5], [3.1, 2.7, -2.5], [-3.1, 2.7, 2.5], [3.1, 2.7, 2.5]].forEach(([px, py, pz]) => {
+          const post = midBox(0.28, 5.3, 0.28, 0x3a281d);
+          post.position.set(px, py, pz);
+          post.material = postMat;
+          g.add(post);
+        });
+
+        const anvilBase = midBox(1.35, 0.7, 0.85, 0x262826);
+        anvilBase.position.set(-2.0, 0.35, 1.0);
+        g.add(anvilBase);
+        const anvilTop = midBox(1.8, 0.25, 0.95, 0x343735);
+        anvilTop.position.set(-2.0, 0.82, 1.0);
+        g.add(anvilTop);
+
+        const hearth = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.9, 1.05, 0.55, 12),
+          midMat(0x29251f, 1)
+        );
+        hearth.position.set(1.9, 0.28, 1.0);
+        g.add(hearth);
+
+        const flame = new THREE.Mesh(
+          new THREE.ConeGeometry(0.52, 1.45, 7),
+          new THREE.MeshStandardMaterial({
+            color: 0xffb52e, emissive: 0xff5a00, emissiveIntensity: 2.4, roughness: 0.8
+          })
+        );
+        flame.position.set(1.9, 1.15, 1.0);
+        g.add(flame);
+
+        const chimney = midBox(1.25, 2.5, 1.25, 0x493d35);
+        chimney.position.set(1.25, 6.15, -1.25);
+        g.add(chimney);
+        const smoke = new THREE.Mesh(
+          new THREE.SphereGeometry(0.55, 8, 8),
+          new THREE.MeshBasicMaterial({ color: 0x77746e, transparent: true, opacity: 0.18 })
+        );
+        smoke.position.set(1.25, 7.7, -1.25);
+        g.add(smoke);
+
+        // Небольшой запас древесины.
+        for (let i = 0; i < 4; i++) {
+          const log = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.16, 0.16, 1.8, 8),
+            midMat(0x67432b, 1)
+          );
+          log.rotation.z = Math.PI / 2;
+          log.position.set(2.9, 0.2 + i * 0.28, -0.2 + (i % 2) * 0.18);
+          g.add(log);
+        }
+
+        // Простая ограда кузницы с проходом-калиткой.
+        const fenceMat = midMat(0x513826, 1);
+        const fence = (fx: number, fz: number, rot = 0) => {
+          const post = midBox(0.22, 1.55, 0.22, 0x3f2c20);
+          post.position.set(fx, 0.78, fz);
+          g.add(post);
+          const rail = midBox(1.7, 0.16, 0.14, 0x513826);
+          rail.rotation.y = rot;
+          rail.position.set(fx, 0.72, fz);
+          rail.material = fenceMat;
+          g.add(rail);
+        };
+        [-2.9, -1.1, 0.7, 2.5].forEach((fz) => fence(-4.15, fz));
+        [-2.9, -1.1, 0.7, 2.5].forEach((fz) => fence(4.15, fz));
+      }
+
       g.position.set(x, 0, z);
       g.traverse((o: any) => {
         if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
@@ -636,6 +710,16 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       last = now;
 
       const q = state.current;
+      const forge = objects.find((o: any) => o.userData?.id === "forge");
+      if (forge) {
+        const flame = forge.children.find((o: any) => (o as any).geometry?.type === "ConeGeometry") as THREE.Object3D | undefined;
+        const smoke = forge.children.find((o: any) => (o as any).geometry?.type === "SphereGeometry") as THREE.Object3D | undefined;
+        if (flame) flame.scale.y = 0.9 + Math.sin(now * 0.012) * 0.12;
+        if (smoke) {
+          smoke.position.y = 7.7 + Math.sin(now * 0.0013) * 0.25;
+          smoke.scale.setScalar(1 + Math.sin(now * 0.0011) * 0.12);
+        }
+      }
       const len = Math.hypot(q.dx, q.dz);
 
       if (len > 0.05) {
