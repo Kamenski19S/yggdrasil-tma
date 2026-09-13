@@ -519,22 +519,18 @@ function App() {
             </defs>
 
             <rect width="1200" height="2200" fill="url(#midGround)" />
-
-            <!-- дальние горы -->
+            {/* дальние горы */}
             <path d="M0 480 L160 180 L280 400 L420 110 L570 390 L720 120 L870 420 L1030 170 L1200 430 L1200 0 L0 0Z" fill="#263b46" />
             <path d="M0 560 L180 310 L310 500 L455 260 L590 520 L760 300 L910 530 L1060 290 L1200 510 L1200 690 L0 690Z" fill="#38544d" />
-
-            <!-- озеро и берег -->
+            {/* озеро и берег */}
             <path d="M790 430 C980 390 1120 440 1200 520 L1200 1540 C1080 1510 980 1430 900 1330 C850 1230 880 1080 820 960 C780 820 820 620 790 430Z" fill="url(#water)" />
             <path d="M830 650 C960 600 1090 640 1200 710" fill="none" stroke="#9ed5d0" strokeWidth="10" opacity=".35" />
             <path d="M850 820 C990 770 1100 800 1200 860" fill="none" stroke="#b6e1dc" strokeWidth="7" opacity=".3" />
-
-            <!-- снежные вершины -->
+            {/* снежные вершины */}
             <path d="M90 480 L210 250 L285 470 L210 400 L160 450Z" fill="#dce6e3" opacity=".85" />
             <path d="M390 430 L500 190 L585 450 L500 370 L455 410Z" fill="#e5ece8" opacity=".8" />
             <path d="M700 440 L805 210 L900 460 L810 370 L760 410Z" fill="#e0e9e5" opacity=".75" />
-
-            <!-- лес -->
+            {/* лес */}
             <g fill="#19372a">
               {Array.from({ length: 42 }).map((_, i) => {
                 const x = 45 + ((i * 137) % 700);
@@ -543,12 +539,10 @@ function App() {
                 return <path key={i} d={`M${x} ${y + 72 * s} L${x + 34 * s} ${y} L${x + 68 * s} ${y + 72 * s} Z`} opacity={0.78} />;
               })}
             </g>
-
-            <!-- поля и небольшие луга -->
+            {/* поля и небольшие луга */}
             <path d="M180 1030 C300 960 430 990 470 1090 C390 1170 260 1200 150 1150Z" fill="#78905d" opacity=".75" />
             <path d="M170 1440 C300 1350 430 1390 470 1500 C350 1580 250 1600 130 1530Z" fill="#708b57" opacity=".7" />
-
-            <!-- главная дорога -->
+            {/* главная дорога */}
             <polyline
               points={ROAD.map(r => `${r.x},${r.y}`).join(" ")}
               fill="none"
@@ -574,12 +568,10 @@ function App() {
               strokeDasharray="28 24"
               opacity=".65"
             />
-
-            <!-- ответвления -->
+            {/* ответвления */}
             <path d="M550 1740 C420 1660 310 1630 170 1640" fill="none" stroke="#b79b70" strokeWidth="90" strokeLinecap="round" />
             <path d="M610 1450 C760 1370 880 1280 1030 1260" fill="none" stroke="#b79b70" strokeWidth="76" strokeLinecap="round" />
-
-            <!-- деревня -->
+            {/* деревня */}
             <g filter="url(#softShadow)">
               <path d="M380 900 H520 V1040 H380Z" fill="#76563e" />
               <path d="M360 910 L450 820 L540 910Z" fill="#47352d" />
@@ -591,8 +583,7 @@ function App() {
               <rect x="678" y="980" width="28" height="44" fill="#d9a65d" />
               <rect x="808" y="1120" width="28" height="42" fill="#d9a65d" />
             </g>
-
-            <!-- кузница -->
+            {/* кузница */}
             <g>
               <rect x="300" y="1510" width="190" height="125" rx="10" fill="#4c3b31" />
               <path d="M280 1518 L395 1430 L510 1518Z" fill="#322824" />
@@ -600,8 +591,7 @@ function App() {
               <circle cx="405" cy="1535" r="52" fill="#ff8c3a" opacity=".2" />
               <text x="395" y="1675" textAnchor="middle" fill="#ffe1a4" fontSize="28" fontWeight="700">КУЗНИЦА</text>
             </g>
-
-            <!-- причал -->
+            {/* причал */}
             <g>
               <path d="M930 1190 L1130 1120 L1200 1190 L1010 1270Z" fill="#6f553b" />
               <path d="M1000 1180 L1190 1115" stroke="#d0ad76" strokeWidth="22" />
@@ -609,30 +599,26 @@ function App() {
               <path d="M1070 1260 Q1120 1190 1170 1260 L1170 1320 Q1120 1360 1070 1320Z" fill="#8b3f35" />
               <text x="1080" y="1410" textAnchor="middle" fill="#d8e9e3" fontSize="30" fontWeight="700">ПРИЧАЛ</text>
             </g>
-
-            <!-- рунический камень -->
+            {/* рунический камень */}
             <g>
               <path d="M160 1770 L235 1690 L315 1760 L295 1880 L180 1900Z" fill="#4b5b57" />
               <path d="M185 1780 L235 1725 L285 1770 L270 1850 L195 1860Z" fill="#223c3a" />
               <text x="235" y="1818" textAnchor="middle" fill="#6ce0d0" fontSize="64" fontWeight="700">ᚠ</text>
               <text x="235" y="1940" textAnchor="middle" fill="#a8cfc5" fontSize="25">РУНА</text>
             </g>
-
-            <!-- мост -->
+            {/* мост */}
             <g>
               <path d="M500 1310 L760 1310 L810 1370 L450 1370Z" fill="#6f5338" />
               <path d="M470 1325 L790 1325" stroke="#caa56f" strokeWidth="14" />
               <path d="M480 1350 L500 1410 M540 1350 L560 1410 M700 1350 L680 1410 M760 1350 L740 1410" stroke="#4c392b" strokeWidth="12" />
             </g>
-
-            <!-- небольшие костры/свет -->
+            {/* небольшие костры/свет */}
             <g fill="#ffbb62">
               <circle cx="555" cy="1010" r="13" />
               <circle cx="720" cy="1035" r="11" />
               <circle cx="515" cy="1500" r="10" />
             </g>
-
-            <!-- северная точка Мидгарда -->
+            {/* северная точка Мидгарда */}
             <g>
               <circle cx="600" cy="730" r="56" fill="#132a25" stroke="#8fc7a4" strokeWidth="6" />
               <text x="600" y="750" textAnchor="middle" fill="#9be7b1" fontSize="54">ᛉ</text>
@@ -758,62 +744,6 @@ function App() {
     return <MidgardScene />;
   }
 
-  return (
-      <div className="content">
-        <div className="midgard-world" style={{ transform: sceneTransform }}>
-          <BgImg name={realm.id} className="bgimg" />
-          <div className="veil" />
-        </div>
-
-        <div className="banner">
-          <span className="bemoji">{realm.emoji}</span>
-          <div>
-            <div className="bname">{realm.name}</div>
-            <div className="btag">{realm.tag}</div>
-          </div>
-        </div>
-
-        {save.hero && heroDef && (
-          <div
-            className="player"
-            style={{
-              left: `${playerPos.x}%`,
-              top: `${playerPos.y}%`,
-              transform: `translate(-50%, -88%) scale(${playerPos.scale})`,
-            }}
-          >
-            <BgImg name={heroDef.img} className="player-img" />
-          </div>
-        )}
-
-        <div className="move-pad">
-          <button onClick={() => movePlayer(0, -3)}>▲</button>
-
-          <div className="move-row">
-            <button onClick={() => movePlayer(-3, 0)}>◀</button>
-
-            <button
-              className="move-center"
-              onClick={() => {
-                setRoadT(0.12);
-                setRoadSide(0);
-              }}
-            >
-              ◆
-            </button>
-
-            <button onClick={() => movePlayer(3, 0)}>▶</button>
-          </div>
-
-          <button onClick={() => movePlayer(0, 3)}>▼</button>
-        </div>
-
-        <div className="scene-hint">
-          ▲▼ — вперёд / назад по дороге • ◀▶ — шаг в сторону
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="content">
