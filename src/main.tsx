@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import * as THREE from "three";
 
 const tg: any = (window as any).Telegram?.WebApp;
 const BASE: string = (import.meta as any).env?.BASE_URL || "/";
@@ -305,6 +306,451 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes fade{from{opacity:0}}
 `;
+
+/* ===== Midgard 3D: реальная сцена, герой, дорога, деревня, кузница и Мимир ===== */
+
+const midMat = (c: number, roughness = 0.88) =>
+  new THREE.MeshStandardMaterial({ color: c, roughness });
+
+const midBox = (w: number, h: number, d: number, c: number) =>
+  new THREE.Mesh(new THREE.BoxGeometry(w, h, d), midMat(c));
+
+const midCyl = (r: number, h: number, c: number, segments = 10) =>
+  new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, segments), midMat(c));
+
+function midTree(x: number, z: number, s = 1) {
+  const g = new THREE.Group();
+  const trunk = midCyl(0.38 * s, 2.3 * s, 0x5a3926);
+  trunk.position.y = 1.15 * s;
+  g.add(trunk);
+  for (let i = 0; i < 3; i++) {
+    const crown = new THREE.Mesh(
+      new THREE.ConeGeometry((1.55 - i * 0.25) * s, (2.5 - i * 0.2) * s, 8),
+      midMat(0x28512e)
+    );
+    crown.position.y = (2.5 + i * 0.95) * s;
+    g.add(crown);
+  }
+  g.position.set(x, 0, z);
+  g.traverse((o: any) => {
+    if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
+  });
+  return g;
+}
+
+function midHero3d(h: HeroDef) {
+  const g = new THREE.Group();
+  const clothColor =
+    h.id === "berserk" ? 0x5a2020 :
+    h.id === "dwarf" ? 0x71482f : 0x263b4d;
+  const skinColor = h.gender === "f" ? 0xd9ad8a : 0xc9936f;
+
+  const body = midCyl(0.46, 0.9, clothColor);
+  body.position.y = 0.95;
+  g.add(body);
+
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(0.35, 16, 12),
+    midMat(skinColor)
+  );
+  head.position.y = 1.65;
+  g.add(head);
+
+  const leg1 = midBox(0.2, 0.72, 0.2, 0x1b1e20);
+  const leg2 = midBox(0.2, 0.72, 0.2, 0x1b1e20);
+  leg1.position.set(-0.16, 0.36, 0);
+  leg2.position.set(0.16, 0.36, 0);
+  g.add(leg1, leg2);
+
+  const helm = new THREE.Mesh(
+    new THREE.ConeGeometry(0.43, 0.3, 8),
+    midMat(0x77736a)
+  );
+  helm.position.y = 1.96;
+  g.add(helm);
+
+  const cape = midBox(0.7, 1, 0.08, h.id === "berserk" ? 0x2b0c0c : 0x18272e);
+  cape.position.set(0, 1, -0.36);
+  g.add(cape);
+
+  const weapon = midBox(0.08, 1.25, 0.08, 0xc3c8ca);
+  weapon.position.set(0.58, 1.1, 0);
+  weapon.rotation.z = -0.35;
+  g.add(weapon);
+
+  const shadow = new THREE.Mesh(
+    new THREE.CircleGeometry(0.65, 24),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.32 })
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.y = 0.02;
+  g.add(shadow);
+
+  return g;
+}
+
+function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
+  const mount = useRef<HTMLDivElement>(null);
+  const joy = useRef<HTMLDivElement>(null);
+  const knob = useRef<HTMLDivElement>(null);
+  const state = useRef({ x: 0, z: 34, dx: 0, dz: 0 });
+
+  const [near, setNear] = useState("");
+  const [moving, setMoving] = useState(false);
+
+  useEffect(() => {
+    const el = mount.current;
+    if (!el) return;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x8da894);
+    scene.fog = new THREE.Fog(0x8da894, 38, 105);
+
+    const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 180);
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      powerPreference: "high-performance",
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.7));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    el.appendChild(renderer.domElement);
+
+    scene.add(new THREE.HemisphereLight(0xe4efe4, 0x3b2c22, 1.8));
+
+    const sun = new THREE.DirectionalLight(0xffefc8, 2.2);
+    sun.position.set(-18, 30, 12);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.camera.left = -55;
+    sun.shadow.camera.right = 55;
+    sun.shadow.camera.top = 55;
+    sun.shadow.camera.bottom = -55;
+    scene.add(sun);
+
+    // Большая земля — герой действительно стоит на поверхности мира.
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(100, 120),
+      new THREE.MeshStandardMaterial({ color: 0x557b4e, roughness: 1 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Дорога с развилками.
+    const roadMain = midBox(7, 0.08, 100, 0x8b7150);
+    roadMain.position.set(0, 0.05, 0);
+    roadMain.receiveShadow = true;
+    scene.add(roadMain);
+
+    const roadVillage = midBox(34, 0.08, 5, 0x8b7150);
+    roadVillage.position.set(15, 0.055, -18);
+    roadVillage.receiveShadow = true;
+    scene.add(roadVillage);
+
+    const roadForest = midBox(28, 0.08, 5, 0x8b7150);
+    roadForest.rotation.y = -0.42;
+    roadForest.position.set(-10, 0.055, -2);
+    roadForest.receiveShadow = true;
+    scene.add(roadForest);
+
+    // Река и мост.
+    const river = new THREE.Mesh(
+      new THREE.PlaneGeometry(18, 120),
+      new THREE.MeshStandardMaterial({ color: 0x2b6375, roughness: 0.22, metalness: 0.05 })
+    );
+    river.rotation.x = -Math.PI / 2;
+    river.position.set(-35, 0.02, 0);
+    scene.add(river);
+
+    const bridge = midBox(11, 0.55, 6, 0x6d5037);
+    bridge.position.set(-27, 0.3, 0);
+    bridge.castShadow = true;
+    scene.add(bridge);
+
+    // Лес.
+    const treeSpots: Array<[number, number, number]> = [
+      [-18, -34, 1.0], [-8, -39, 0.8], [18, -35, 1.2], [27, -27, 0.9],
+      [-25, -18, 0.8], [28, 2, 1.0], [-25, 18, 1.2], [24, 30, 0.9],
+      [-18, 31, 1.1], [17, 39, 0.85], [31, 18, 0.9], [-31, 8, 1.1],
+    ];
+    treeSpots.forEach(([x, z, s]) => scene.add(midTree(x, z, s)));
+
+    const objects: THREE.Object3D[] = [];
+
+    function placeHouse(x: number, z: number, label: string, id: string) {
+      const g = new THREE.Group();
+      g.userData = { label, id };
+
+      const body = midBox(6, 3.7, 5, 0x79543a);
+      body.position.y = 1.85;
+      g.add(body);
+
+      const roof = new THREE.Mesh(
+        new THREE.ConeGeometry(4.5, 2.8, 4),
+        midMat(0x392b27)
+      );
+      roof.rotation.y = Math.PI / 4;
+      roof.position.y = 5.1;
+      g.add(roof);
+
+      const door = midBox(1.0, 1.8, 0.18, 0x2c1c13);
+      door.position.set(0, 0.9, 2.52);
+      g.add(door);
+
+      g.position.set(x, 0, z);
+      g.traverse((o: any) => {
+        if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
+      });
+      scene.add(g);
+      objects.push(g);
+    }
+
+    placeHouse(12, -18, "Дом старейшины", "house");
+    placeHouse(-11, -9, "Кузница", "forge");
+
+    // Колодец Мимира.
+    const mimir = new THREE.Group();
+    mimir.userData = { label: "Колодец Мимира", id: "mimir" };
+
+    const well = midCyl(1.25, 1.3, 0x3e4d46, 14);
+    well.position.y = 0.65;
+    mimir.add(well);
+
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(1.45, 0.10, 8, 32),
+      new THREE.MeshStandardMaterial({
+        color: 0x7ee787,
+        emissive: 0x245d35,
+        emissiveIntensity: 1.6,
+      })
+    );
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 1.25;
+    mimir.add(ring);
+
+    const water = new THREE.Mesh(
+      new THREE.CircleGeometry(0.9, 24),
+      new THREE.MeshStandardMaterial({
+        color: 0x163b45,
+        emissive: 0x0b2830,
+        emissiveIntensity: 0.8,
+      })
+    );
+    water.rotation.x = -Math.PI / 2;
+    water.position.y = 1.32;
+    mimir.add(water);
+
+    mimir.position.set(13, 0, 6);
+    scene.add(mimir);
+    objects.push(mimir);
+
+    // Камень с руной.
+    const runeStone = new THREE.Group();
+    runeStone.userData = { label: "Древний камень", id: "rune" };
+    const stone = new THREE.Mesh(
+      new THREE.DodecahedronGeometry(1.25, 0),
+      midMat(0x4b554e, 0.98)
+    );
+    stone.position.y = 1.1;
+    runeStone.add(stone);
+    const runeGlow = new THREE.Mesh(
+      new THREE.TorusGeometry(0.75, 0.06, 8, 24),
+      new THREE.MeshStandardMaterial({
+        color: 0xffd76a,
+        emissive: 0x8a5d12,
+        emissiveIntensity: 1.8,
+      })
+    );
+    runeGlow.rotation.x = Math.PI / 2;
+    runeGlow.position.y = 1.15;
+    runeStone.add(runeGlow);
+    runeStone.position.set(8, 0, 18);
+    scene.add(runeStone);
+    objects.push(runeStone);
+
+    const hero = midHero3d(h);
+    scene.add(hero);
+
+    const ray = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+
+    const click = (e: PointerEvent) => {
+      // Не обрабатываем клики по джойстику/кнопкам UI.
+      if ((e.target as HTMLElement)?.closest?.(".mid3d-ui")) return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      ray.setFromCamera(pointer, camera);
+      const hit = ray.intersectObjects(objects, true)[0];
+      if (hit) {
+        let o: any = hit.object;
+        while (o.parent && !o.userData?.id) o = o.parent;
+        if (o.userData?.id) on(o.userData.id);
+      }
+    };
+    renderer.domElement.addEventListener("pointerup", click);
+
+    const resize = () => {
+      const w = Math.max(1, el.clientWidth);
+      const hh = Math.max(1, el.clientHeight);
+      camera.aspect = w / hh;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, hh, false);
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(el);
+
+    let raf = 0;
+    let last = performance.now();
+
+    const destinations = [
+      { id: "house", label: "Дом старейшины", x: 12, z: -18 },
+      { id: "forge", label: "Кузница", x: -11, z: -9 },
+      { id: "mimir", label: "Колодец Мимира", x: 13, z: 6 },
+      { id: "rune", label: "Древний камень", x: 8, z: 18 },
+    ];
+
+    const loop = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+
+      const q = state.current;
+      const len = Math.hypot(q.dx, q.dz);
+
+      if (len > 0.05) {
+        q.x += (q.dx / len) * 7 * dt;
+        q.z += (q.dz / len) * 7 * dt;
+        hero.rotation.y = Math.atan2(q.dx, q.dz);
+        setMoving(true);
+      } else {
+        setMoving(false);
+      }
+
+      // Границы доступной первой зоны.
+      q.x = Math.max(-29, Math.min(29, q.x));
+      q.z = Math.max(-47, Math.min(47, q.z));
+
+      hero.position.set(q.x, 0.02, q.z);
+
+      const targetCam = new THREE.Vector3(q.x, 10.5, q.z + 15.5);
+      camera.position.lerp(targetCam, 0.10);
+      camera.lookAt(q.x, 1.2, q.z);
+
+      let found = "";
+      let foundId = "";
+      for (const d of destinations) {
+        if (Math.hypot(q.x - d.x, q.z - d.z) < 5.2) {
+          found = d.label;
+          foundId = d.id;
+          break;
+        }
+      }
+      setNear(found ? `${found}|${foundId}` : "");
+
+      renderer.render(scene, camera);
+      raf = requestAnimationFrame(loop);
+    };
+
+    raf = requestAnimationFrame(loop);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+      renderer.domElement.removeEventListener("pointerup", click);
+      renderer.dispose();
+      renderer.domElement.remove();
+    };
+  }, [h.id, on]);
+
+  const joyMove = (e: React.PointerEvent) => {
+    const a = joy.current;
+    const b = knob.current;
+    if (!a || !b) return;
+    const r = a.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const max = 42;
+    let x = e.clientX - cx;
+    let y = e.clientY - cy;
+    const len = Math.hypot(x, y);
+    if (len > max) {
+      x = (x / len) * max;
+      y = (y / len) * max;
+    }
+    b.style.transform = `translate(${x}px, ${y}px)`;
+    state.current.dx = x / max;
+    state.current.dz = y / max;
+  };
+
+  const stopJoy = () => {
+    if (knob.current) knob.current.style.transform = "translate(0,0)";
+    state.current.dx = 0;
+    state.current.dz = 0;
+  };
+
+  return (
+    <div
+      className="content mid3d-scene"
+      ref={mount}
+      style={{ touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <div className="mid3d-ui mid3d-top">
+        <div className="mid3d-pill"><b>МИДГАРД</b><span>Земля людей</span></div>
+        <div className="mid3d-pill"><b>ᚠ</b><span>Путь начинается</span></div>
+      </div>
+
+      {near && (() => {
+        const [label, id] = near.split("|");
+        return (
+          <div className="mid3d-ui mid3d-interact">
+            <b>{label}</b>
+            <span>Ты достаточно близко</span>
+            <button
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => on(id)}
+            >
+              Взаимодействовать
+            </button>
+          </div>
+        );
+      })()}
+
+      <div
+        className="mid3d-ui mid3d-joy"
+        ref={joy}
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture(e.pointerId);
+          joyMove(e);
+        }}
+        onPointerMove={(e) => {
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) joyMove(e);
+        }}
+        onPointerUp={stopJoy}
+        onPointerCancel={stopJoy}
+      >
+        <div className="mid3d-knob" ref={knob} />
+      </div>
+
+      <button
+        className="mid3d-ui mid3d-action"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={() => on("event")}
+      >
+        ᚠ
+      </button>
+
+      <div className="mid3d-ui mid3d-hint">
+        {moving ? "Герой идёт по земле" : "Исследуй Мидгард • подойди к месту"}
+      </div>
+    </div>
+  );
+}
+
+
 function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
   const [save, setSave] = useState<Save>(loadSave);
@@ -323,10 +769,6 @@ function App() {
   const [valk, setValk] = useState(false);
   const [over, setOver] = useState("");
 const [roadT, setRoadT] = useState(0.06);
-  const [roadSide, setRoadSide] = useState(0);
-  const [midgardSize, setMidgardSize] = useState({ w: 0, h: 0 });
-  const midgardViewportRef = useRef<HTMLDivElement>(null);
-  const moveTimerRef = useRef<number | null>(null);
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
   useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
   useEffect(() => {
@@ -387,94 +829,6 @@ const [roadT, setRoadT] = useState(0.06);
   const navScreen = (id: string): Screen => (id === "tree" ? { t: "tree" } : ({ t: id } as Screen));
   // Реальная траектория дороги на исходной карте 1024×1536.
   // Герой всегда находится на этой линии, а камера двигается вместе с ним.
-  const MIDGARD_BASE_W = 1024;
-  const MIDGARD_BASE_H = 1536;
-  const MIDGARD_SCALE = 1.35;
-
-  const ROAD: Array<{ x: number; y: number }> = [
-    { x: 492, y: 1510 }, { x: 470, y: 1450 }, { x: 452, y: 1380 },
-    { x: 458, y: 1310 }, { x: 482, y: 1240 }, { x: 510, y: 1170 },
-    { x: 520, y: 1100 }, { x: 505, y: 1030 }, { x: 475, y: 960 },
-    { x: 438, y: 900 }, { x: 420, y: 840 }, { x: 430, y: 790 },
-    { x: 455, y: 745 }, { x: 485, y: 710 }, { x: 455, y: 675 },
-    { x: 405, y: 650 }, { x: 360, y: 620 }, { x: 325, y: 580 },
-    { x: 315, y: 535 }, { x: 340, y: 490 }, { x: 380, y: 445 },
-    { x: 405, y: 395 }, { x: 385, y: 345 }, { x: 350, y: 300 },
-    { x: 365, y: 255 }, { x: 405, y: 215 }, { x: 440, y: 180 },
-  ];
-
-  const pointOnRoad = (t: number) => {
-    const tt = Math.max(0, Math.min(1, t)) * (ROAD.length - 1);
-    const i = Math.min(ROAD.length - 2, Math.floor(tt));
-    const f = tt - i;
-    const a = ROAD[i], b = ROAD[i + 1];
-    return {
-      x: (a.x + (b.x - a.x) * f) * MIDGARD_SCALE,
-      y: (a.y + (b.y - a.y) * f) * MIDGARD_SCALE,
-    };
-  };
-
-  const playerWorld = pointOnRoad(roadT);
-  const worldW = MIDGARD_BASE_W * MIDGARD_SCALE;
-  const worldH = MIDGARD_BASE_H * MIDGARD_SCALE;
-
-  const midgardActive = screen.t === "realm" && screen.id === "midgard";
-
-  useEffect(() => {
-    if (!midgardActive) {
-      setMidgardSize({ w: 0, h: 0 });
-      return;
-    }
-
-    const el = midgardViewportRef.current;
-    if (!el) return;
-
-    const update = () => {
-      setMidgardSize({ w: el.clientWidth, h: el.clientHeight });
-    };
-
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [midgardActive]);
-
-  const cameraX = midgardSize.w
-    ? Math.max(midgardSize.w - worldW, Math.min(0, midgardSize.w * 0.5 - playerWorld.x))
-    : 0;
-  const cameraY = midgardSize.h
-    ? Math.max(midgardSize.h - worldH, Math.min(0, midgardSize.h * 0.58 - playerWorld.y))
-    : 0;
-
-  const moveRoad = (amount: number) => {
-    if (screen.t !== "realm" || screen.id !== "midgard") return;
-    setRoadT(v => Math.max(0, Math.min(1, v + amount)));
-  };
-
-  const moveSide = (amount: number) => {
-    if (screen.t !== "realm" || screen.id !== "midgard") return;
-    setRoadSide(v => Math.max(-6, Math.min(6, v + amount)));
-  };
-
-  const startMove = (kind: "forward" | "back" | "left" | "right") => {
-    if (moveTimerRef.current !== null) return;
-    const tick = () => {
-      if (kind === "forward") moveRoad(-0.0012);
-      if (kind === "back") moveRoad(0.0012);
-      if (kind === "left") moveSide(-0.10);
-      if (kind === "right") moveSide(0.10);
-    };
-    tick();
-    moveTimerRef.current = window.setInterval(tick, 90);
-  };
-
-  const stopMove = () => {
-    if (moveTimerRef.current !== null) {
-      window.clearInterval(moveTimerRef.current);
-      moveTimerRef.current = null;
-    }
-  };
-
   return (
     <div className="app">
       <style>{CSS}</style>
@@ -557,56 +911,32 @@ const [roadT, setRoadT] = useState(0.06);
   const realm = REALMS.find(r => r.id === screen.id)!;
 
   if (realm.id === "midgard") {
-    const heroX = playerWorld.x + roadSide * 1.35;
-    const heroY = playerWorld.y;
+    if (!heroDef) return null;
 
-    return (
-      <div className="content midgard-content" ref={midgardViewportRef}>
-        <div
-          className="midgard-world"
-          style={{
-            width: `${worldW}px`,
-            height: `${worldH}px`,
-            transform: `translate3d(${cameraX}px, ${cameraY}px, 0)`,
-          }}
-        >
-          <img src={`${BASE}img/midgard_map.jpg`} className="midgard-mapimg" alt="" draggable={false} />
-          {save.hero && heroDef && (
-            <div className="player" style={{ left: `${heroX}px`, top: `${heroY}px` }}>
-              <BgImg name={heroDef.img} className="player-img" />
-            </div>
-          )}
-        </div>
+    const interact = (id: string) => {
+      haptic();
+      if (id === "mimir") {
+        say('Мимир: «Знание имеет цену. Слушай внимательно.»');
+        return;
+      }
+      if (id === "forge") {
+        say("Кузница ждёт. Здесь можно будет закалить оружие.");
+        return;
+      }
+      if (id === "house") {
+        say("Старейшина Мидгарда: «В деревне знают путь к лесу.»");
+        return;
+      }
+      if (id === "rune") {
+        say("Древний камень откликается руной ᚠ.");
+        return;
+      }
+      if (id === "event") {
+        say("Первое событие Мидгарда начинается здесь.");
+      }
+    };
 
-        <div className="midgard-shade" />
-
-        <div className="banner"><div className="bname">МИДГАРД</div></div>
-
-        <div className="move-pad">
-          <button
-            onPointerDown={() => startMove("forward")}
-            onPointerUp={stopMove} onPointerCancel={stopMove}
-          >▲</button>
-          <div className="move-row">
-            <button
-              onPointerDown={() => startMove("left")}
-              onPointerUp={stopMove} onPointerCancel={stopMove}
-            >◀</button>
-            <button className="move-center" onClick={() => { setRoadT(0.06); setRoadSide(0); }}>◆</button>
-            <button
-              onPointerDown={() => startMove("right")}
-              onPointerUp={stopMove} onPointerCancel={stopMove}
-            >▶</button>
-          </div>
-          <button
-            onPointerDown={() => startMove("back")}
-            onPointerUp={stopMove} onPointerCancel={stopMove}
-          >▼</button>
-        </div>
-
-        <div className="scene-hint">▲ путь вперёд • ▼ назад</div>
-      </div>
-    );
+    return <Midgard3D h={heroDef} on={interact} />;
   }
 
   return (
