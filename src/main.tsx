@@ -228,7 +228,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .fadeT{top:0;background:linear-gradient(180deg,#0b0f0c,transparent)}.fadeB{bottom:0;background:linear-gradient(0deg,#0b0f0c,transparent)}
 .hint{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:11px;color:rgba(207,227,210,.7);z-index:5;pointer-events:none}
 .content{flex:1;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 30%,#182420,#0b0f0c)}
-.bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center}
+.midgard-world{position:absolute;inset:0;will-change:transform;transition:transform .18s ease-out}.bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center}
 .veil{position:absolute;inset:0;background:linear-gradient(rgba(5,8,6,.6),transparent 30%,transparent 65%,rgba(5,8,6,.85));pointer-events:none}
 .banner{position:absolute;top:10px;left:12px;right:auto;z-index:4;padding:6px 12px;border-radius:10px;background:linear-gradient(180deg,rgba(20,25,22,.88),rgba(10,12,11,.92));border:1px solid rgba(255,215,106,.45);box-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none}
 .bemoji{display:none}.btag{display:none}
@@ -237,7 +237,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .gwrap{position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center}
 .gate-ring{position:absolute;inset:0;border-radius:50%;border:1.5px dashed;opacity:.6;animation:spin 12s linear infinite;pointer-events:none}
 .gate-core{width:76px;height:76px;border-radius:50%;border:3px solid;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;box-shadow:0 0 18px currentColor,inset 0 0 14px rgba(0,0,0,.9);animation:breathe 3s ease-in-out infinite;text-shadow:0 0 10px currentColor}
-.player{position:absolute;width:76px;height:110px;transform:translate(-50%,-88%);z-index:20;pointer-events:none;transition:left .12s linear,top .12s linear;filter:drop-shadow(0 5px 7px rgba(0,0,0,.65))}
+.player{position:absolute;width:76px;height:110px;transform:translate(-50%,-88%);z-index:20;pointer-events:none;transition:left .12s linear,top .12s linear,transform .12s linear;filter:drop-shadow(0 5px 7px rgba(0,0,0,.65))}
 .player-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .move-pad{position:absolute;left:14px;bottom:86px;z-index:30;width:142px;display:flex;flex-direction:column;align-items:center;gap:3px}
 .move-row{display:flex;align-items:center;justify-content:center}
@@ -359,6 +359,7 @@ function App() {
     return () => { tg.BackButton?.offClick?.(back); };
   }, [screen, save.hero]);
   useEffect(() => { setRes(null); setRemoved(null); setWhisper(false); setOver(""); setShield(false); }, [screen]);
+  useEffect(() => { if (screen.t === "realm" && screen.id === "midgard") { setRoadT(0.12); setRoadSide(0); } }, [screen]);
 
   const say = (m: string) => { setToast(m); window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(""), 1800); };
   const haptic = (k: "light" | "success" = "light") => { try { if (k === "success") tg?.HapticFeedback?.notificationOccurred?.("success"); else tg?.HapticFeedback?.impactOccurred?.("light"); } catch {} };
@@ -451,15 +452,28 @@ function App() {
     };
   };
 
-  const playerPos = roadPosition(roadT, roadSide);
+  // Камера следует за героем. Поэтому ▲ не двигает героя по экрану вверх:
+  // вместо этого приближает сам мир по перспективе дороги.
+  const rawRoadPos = roadPosition(roadT, roadSide);
+  const cameraScale = 1 + roadT * 0.62;
+  const scaledRoadY = 100 + (rawRoadPos.y - 100) * cameraScale;
+  const cameraTargetY = 80;
+  const cameraY = cameraTargetY - scaledRoadY;
+  const playerPos = {
+    x: 50 + (rawRoadPos.x - 50) * cameraScale,
+    y: cameraTargetY,
+    scale: 0.94 + roadT * 0.10,
+  };
+  const sceneTransform = `translateY(${cameraY}%) scale(${cameraScale})`;
 
   const movePlayer = (dx: number, dy: number) => {
-    // ▲▼ = движение вдоль дороги, а не по вертикальной оси экрана.
+    // ▲▼ = идти по дороге. Сам герой остаётся в нижней части экрана,
+    // а камера приближает/отдаляет Мидгард.
     if (dy !== 0) {
       setRoadT(t => Math.max(0, Math.min(1, t + (-dy / 3) * 0.055)));
     }
 
-    // ◀▶ = небольшой шаг в сторону от центра дороги.
+    // ◀▶ = небольшой шаг относительно центра дороги.
     if (dx !== 0) {
       setRoadSide(s => Math.max(-1, Math.min(1, s + (dx / 3) * 0.22)));
     }
@@ -549,8 +563,10 @@ function App() {
   if (realm.id === "midgard") {
     return (
       <div className="content">
-        <BgImg name={realm.id} className="bgimg" />
-        <div className="veil" />
+        <div className="midgard-world" style={{ transform: sceneTransform }}>
+          <BgImg name={realm.id} className="bgimg" />
+          <div className="veil" />
+        </div>
 
         <div className="banner">
           <span className="bemoji">{realm.emoji}</span>
