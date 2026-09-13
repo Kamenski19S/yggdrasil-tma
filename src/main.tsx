@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 const tg: any = (window as any).Telegram?.WebApp;
@@ -181,8 +181,8 @@ html,body,#root{height:100%}
 body{background:#0b0f0c;color:#e8f0e8;font-family:system-ui,sans-serif;overflow:hidden}
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .app{height:100vh;display:flex;flex-direction:column}
-.hdr{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:rgba(8,10,9,.92);border-bottom:1px solid #1e2a20;z-index:6}
-.title{font-size:15px;font-weight:600}.back{color:#6db3ff;font-size:15px}.sparks{color:#ffb35c;font-weight:700;font-size:15px}
+.hdr{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;background:rgba(8,10,9,.92);border-bottom:1px solid #1e2a20;z-index:6}
+.title{font-size:14px;font-weight:600}.back{color:#6db3ff;font-size:13px}.sparks{color:#ffb35c;font-weight:700;font-size:13px}
 .maparea{flex:1;position:relative;overflow:hidden;background:#0b0f0c}
 .mapwrap{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
 .mapwrap::-webkit-scrollbar{display:none}
@@ -192,7 +192,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .amulet-wrap{position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center}
 .amulet-ring{position:absolute;inset:0;border-radius:50%;border:1px dashed;opacity:.5;animation:spin 15s linear infinite;pointer-events:none}
 .amulet-glow{position:absolute;inset:-4px;border-radius:50%;opacity:.6;animation:breathe 3s ease-in-out infinite;pointer-events:none;z-index:1}
-.amulet-core{position:relative;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:bold;border:2px solid;box-shadow:0 0 9px currentColor,inset 0 0 8px rgba(0,0,0,.85);transition:transform .2s;z-index:2;text-shadow:0 0 6px currentColor}
+.amulet-core{position:relative;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold;border:2px solid;box-shadow:0 0 9px currentColor,inset 0 0 8px rgba(0,0,0,.85);transition:transform .2s;z-index:2;text-shadow:0 0 6px currentColor}
 .amulet-core::after{content:"";position:absolute;inset:3px;border-radius:50%;border:1px solid currentColor;opacity:.5;pointer-events:none}
 .marker:active .amulet-core{transform:scale(.85)}
 .mname{font-size:9px;font-weight:700;letter-spacing:.5px;padding:3px 8px;border-radius:6px;background:linear-gradient(180deg,rgba(20,25,22,.92),rgba(10,12,11,.96));border:1px solid;text-shadow:0 0 4px currentColor;box-shadow:0 2px 6px rgba(0,0,0,.6);white-space:nowrap;text-transform:uppercase}
@@ -211,19 +211,19 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .gate-core{width:76px;height:76px;border-radius:50%;border:3px solid;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;box-shadow:0 0 18px currentColor,inset 0 0 14px rgba(0,0,0,.9);animation:breathe 3s ease-in-out infinite;text-shadow:0 0 10px currentColor}
 .player{position:absolute;width:76px;height:110px;transform:translate(-50%,-88%);z-index:20;pointer-events:none;transition:left .12s linear,top .12s linear;filter:drop-shadow(0 5px 7px rgba(0,0,0,.65))}
 .player-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-.midgard-content{position:absolute;inset:0;overflow:hidden;background:#09110c}
-.midgard-viewport{position:absolute;inset:0;overflow:hidden;background:#0b130e;isolation:isolate}
-.midgard-world{position:absolute;left:0;top:0;width:100%;aspect-ratio:2 / 3;background:#0b130e;will-change:transform;transition:transform .28s ease-out}
-.midgard-mapimg{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:fill;user-select:none;-webkit-user-drag:none}
-.midgard-content .player{z-index:20;transition:left .18s ease-out,top .18s ease-out;will-change:left,top}
-.midgard-fog{position:absolute;inset:0;z-index:23;pointer-events:none;background:linear-gradient(180deg,rgba(5,10,7,.16),transparent 20%,transparent 78%,rgba(4,8,5,.52))}
-.midgard-vignette{position:absolute;inset:0;z-index:24;pointer-events:none;background:radial-gradient(ellipse at center,transparent 48%,rgba(3,7,5,.18) 75%,rgba(3,7,5,.62) 100%)}
-.move-pad{position:absolute;left:14px;bottom:76px;z-index:30;width:142px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.midgard-content{position:relative;flex:1;min-height:0;overflow:hidden;background:#09110c}
+.midgard-scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;overscroll-behavior:none}
+.midgard-scroll::-webkit-scrollbar{display:none}
+.midgard-world{position:relative;width:140%;margin-left:-20%;background:#0b130e;line-height:0}
+.midgard-mapimg{display:block;width:100%;height:auto;user-select:none;-webkit-user-drag:none}
+.midgard-road-overlay{position:absolute;inset:0;pointer-events:none}
+.midgard-content .player{z-index:20;width:46px;height:68px;transition:left .18s ease-out,top .18s ease-out}
+.move-pad{position:absolute;left:10px;bottom:18px;z-index:30;width:142px;display:flex;flex-direction:column;align-items:center;gap:3px}
 .move-row{display:flex;align-items:center;justify-content:center}
 .move-pad button{width:42px;height:42px;margin:2px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(12,18,14,.78);color:#e8f0e8;font-size:18px;font-weight:700;box-shadow:0 3px 8px rgba(0,0,0,.45),inset 0 0 8px rgba(126,231,135,.08);backdrop-filter:blur(4px)}
 .move-pad button:active{transform:scale(.88);background:rgba(35,55,42,.9)}
 .move-pad .move-center{width:34px;height:34px;font-size:10px;color:#ffd76a;border-color:rgba(255,215,106,.35)}
-.scene-hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:25;padding:6px 10px;border-radius:9px;background:rgba(5,9,7,.72);border:1px solid rgba(126,231,135,.2);color:rgba(207,227,210,.72);font-size:10px;white-space:nowrap;pointer-events:none}
+.scene-hint{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);z-index:25;padding:6px 10px;border-radius:9px;background:rgba(5,9,7,.72);border:1px solid rgba(126,231,135,.2);color:rgba(207,227,210,.72);font-size:10px;white-space:nowrap;pointer-events:none}
 .herobar{display:flex;gap:10px;align-items:center;padding:8px 12px;background:rgba(10,13,11,.96);border-top:1px solid #1e2a20;z-index:6}
 .hbface{position:relative;width:34px;height:34px;flex-shrink:0;border-radius:50%;border:1.5px solid;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;overflow:hidden;background:#0d130f;text-shadow:0 0 5px currentColor}
 .hbimg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
@@ -253,9 +253,9 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .stats{display:flex;gap:10px;justify-content:center;margin:12px 0}
 .stat{flex:1;background:#0d130f;border:1px solid #223028;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:4px;align-items:center}.stat b{font-size:15px}.stat span{font-size:11px;color:#8fa39a}
 .rank{font-size:14px;color:#ffd76a}
-.nav{display:flex;background:linear-gradient(180deg,#141b16,#0a0d0b);border-top:2px solid #2e3d31;box-shadow:inset 0 1px 0 rgba(255,215,106,.12);padding:8px 6px calc(8px + env(safe-area-inset-bottom));z-index:6}
-.navbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;color:#7d8f85;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
-.navbtn .ic{width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;border-radius:50%;border:1.5px solid #3a4a3d;background:linear-gradient(180deg,#131a15,#0b0f0c);color:#8fa39a;transition:all .2s;text-shadow:0 0 5px currentColor}
+.nav{display:flex;flex-shrink:0;background:linear-gradient(180deg,#141b16,#0a0d0b);border-top:2px solid #2e3d31;box-shadow:inset 0 1px 0 rgba(255,215,106,.12);padding:3px 4px calc(3px + env(safe-area-inset-bottom));z-index:6}
+.navbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;padding:2px 0;color:#7d8f85;font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.navbtn .ic{width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;border-radius:50%;border:1.5px solid #3a4a3d;background:linear-gradient(180deg,#131a15,#0b0f0c);color:#8fa39a;transition:all .2s;text-shadow:0 0 5px currentColor}
 .navbtn:active .ic{transform:scale(.88)}
 .navbtn.on{color:#ffd76a}
 .navbtn.on .ic{border-color:#ffd76a;color:#ffd76a;box-shadow:0 0 10px rgba(255,215,106,.45),inset 0 0 6px rgba(255,215,106,.2)}
@@ -325,9 +325,8 @@ function App() {
   const [valk, setValk] = useState(false);
   const [over, setOver] = useState("");
 const [playerX, setPlayerX] = useState(0);
-  const [playerY, setPlayerY] = useState(84);
-  const [midgardCameraY, setMidgardCameraY] = useState(0);
-  const midgardViewportRef = useRef<HTMLDivElement>(null);
+const [playerY, setPlayerY] = useState(88);
+  const midgardScrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
   useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
   useEffect(() => {
@@ -387,17 +386,18 @@ const [playerX, setPlayerX] = useState(0);
   const isNav = (id: string) => (id === "tree" ? screen.t === "tree" || screen.t === "realm" : screen.t === id);
   const navScreen = (id: string): Screen => (id === "tree" ? { t: "tree" } : ({ t: id } as Screen));
   const roadX = (y: number) => {
-    // Центральная дорога на новой карте: от нижнего края она плавно
-    // уходит к деревне, слегка изгибаясь влево/вправо.
+    // Основная дорога на обзорной карте: от южного порта к деревне.
     const pts = [
-      { y: 92, x: 50 },
-      { y: 82, x: 48 },
-      { y: 72, x: 46 },
-      { y: 62, x: 49 },
-      { y: 52, x: 53 },
-      { y: 42, x: 54 },
-      { y: 32, x: 50 },
-      { y: 22, x: 45 },
+      { y: 90, x: 47 },
+      { y: 84, x: 46 },
+      { y: 78, x: 45 },
+      { y: 72, x: 45 },
+      { y: 66, x: 48 },
+      { y: 61, x: 51 },
+      { y: 57, x: 54 },
+      { y: 53, x: 55 },
+      { y: 49, x: 54 },
+      { y: 45, x: 52 },
     ];
     for (let i = 0; i < pts.length - 1; i++) {
       const a = pts[i], b = pts[i + 1];
@@ -406,38 +406,22 @@ const [playerX, setPlayerX] = useState(0);
         return a.x + (b.x - a.x) * t;
       }
     }
-    return y > 92 ? 50 : 45;
+    return y > 90 ? 47 : 52;
   };
-
-  // Камера Мидгарда: мы не "скроллим страницу" и не зумим картинку.
-  // Карта остаётся большим миром, а окно экрана двигается по ней вслед за героем.
-  const updateMidgardCamera = () => {
-    if (screen.t !== "realm" || screen.id !== "midgard") return;
-    const el = midgardViewportRef.current;
-    if (!el) return;
-
-    // midgard_map.jpg имеет пропорцию 2:3.
-    const mapWidth = el.clientWidth;
-    const mapHeight = mapWidth * 1.5;
-    const viewportHeight = el.clientHeight;
-    const maxCamera = Math.max(0, mapHeight - viewportHeight);
-
-    // Герой держится примерно в нижней/средней части экрана.
-    const heroWorldY = (playerY / 100) * mapHeight;
-    const desired = heroWorldY - viewportHeight * 0.62;
-    const next = Math.max(0, Math.min(maxCamera, desired));
-    setMidgardCameraY(next);
-  };
-
-  useLayoutEffect(() => {
-    updateMidgardCamera();
-  }, [screen, playerY]);
 
   useEffect(() => {
     if (screen.t !== "realm" || screen.id !== "midgard") return;
-    const onResize = () => updateMidgardCamera();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    const el = midgardScrollRef.current;
+    if (!el) return;
+
+    // Камера держит героя примерно в нижней части экрана,
+    // а не прокручивает карту по процентам.
+    const world = el.firstElementChild as HTMLElement | null;
+    if (!world) return;
+    const heroY = (playerY / 100) * world.offsetHeight;
+    const target = heroY - el.clientHeight * 0.62;
+    const max = Math.max(0, el.scrollHeight - el.clientHeight);
+    el.scrollTop = Math.max(0, Math.min(max, target));
   }, [screen, playerY]);
 
   const movePlayer = (dx: number, dy: number) => {
@@ -532,21 +516,16 @@ const [playerX, setPlayerX] = useState(0);
 
   if (realm.id === "midgard") {
     const mapX = roadX(playerY) + playerX;
-
     return (
       <div className="content midgard-content">
-        <div ref={midgardViewportRef} className="midgard-viewport">
-          <div
-            className="midgard-world"
-            style={{ transform: `translate3d(0, ${-midgardCameraY}px, 0)` }}
-          >
+        <div className="midgard-scroll" ref={midgardScrollRef}>
+          <div className="midgard-world">
             <img
               src={`${BASE}img/midgard_map.jpg`}
               className="midgard-mapimg"
-              alt="Карта Мидгарда"
+              alt=""
               draggable={false}
             />
-
             {save.hero && heroDef && (
               <div
                 className="player"
@@ -559,27 +538,25 @@ const [playerX, setPlayerX] = useState(0);
               </div>
             )}
           </div>
-
-          <div className="midgard-fog" />
-          <div className="midgard-vignette" />
         </div>
+
+        <div className="veil" />
 
         <div className="banner">
           <div className="bname">{realm.name}</div>
         </div>
 
         <div className="move-pad">
-          <button aria-label="Вперёд" onClick={() => movePlayer(0, -2.5)}>▲</button>
+          <button onClick={() => movePlayer(0, -3)}>▲</button>
           <div className="move-row">
-            <button aria-label="Влево" onClick={() => movePlayer(-1.5, 0)}>◀</button>
+            <button onClick={() => movePlayer(-2, 0)}>◀</button>
             <button
               className="move-center"
-              aria-label="Вернуться на дорогу"
-              onClick={() => setPlayerX(0)}
+              onClick={() => { setPlayerX(0); setPlayerY(88); }}
             >◆</button>
-            <button aria-label="Вправо" onClick={() => movePlayer(1.5, 0)}>▶</button>
+            <button onClick={() => movePlayer(2, 0)}>▶</button>
           </div>
-          <button aria-label="Назад" onClick={() => movePlayer(0, 2.5)}>▼</button>
+          <button onClick={() => movePlayer(0, 3)}>▼</button>
         </div>
 
         <div className="scene-hint">▲ вперёд по дороге • ▼ назад</div>
