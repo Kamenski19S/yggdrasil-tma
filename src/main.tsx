@@ -239,7 +239,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .gate-core{width:76px;height:76px;border-radius:50%;border:3px solid;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;box-shadow:0 0 18px currentColor,inset 0 0 14px rgba(0,0,0,.9);animation:breathe 3s ease-in-out infinite;text-shadow:0 0 10px currentColor}
 .player{position:absolute;width:76px;height:110px;transform:translate(-50%,-88%);z-index:20;pointer-events:none;transition:left .12s linear,top .12s linear;filter:drop-shadow(0 5px 7px rgba(0,0,0,.65))}
 .player-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-.move-pad{position:absolute;left:14px;bottom:76px;z-index:30;width:142px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.move-pad{position:absolute;left:14px;bottom:86px;z-index:30;width:142px;display:flex;flex-direction:column;align-items:center;gap:3px}
 .move-row{display:flex;align-items:center;justify-content:center}
 .move-pad button{width:42px;height:42px;margin:2px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(12,18,14,.78);color:#e8f0e8;font-size:18px;font-weight:700;box-shadow:0 3px 8px rgba(0,0,0,.45),inset 0 0 8px rgba(126,231,135,.08);backdrop-filter:blur(4px)}
 .move-pad button:active{transform:scale(.88);background:rgba(35,55,42,.9)}
@@ -346,7 +346,7 @@ function App() {
   const [valk, setValk] = useState(false);
   const [over, setOver] = useState("");
 const [playerX, setPlayerX] = useState(50);
-const [playerY, setPlayerY] = useState(74);
+  const [playerY, setPlayerY] = useState(82);
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
   useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
   useEffect(() => {
@@ -405,17 +405,52 @@ const [playerY, setPlayerY] = useState(74);
   const nextStep = (id: string) => { if (trialIdx(id) >= 3 || save.artifacts.includes(id)) setScreen({ t: "realm", id }); else setScreen({ t: "trial", id }); };
   const isNav = (id: string) => (id === "tree" ? screen.t === "tree" || screen.t === "realm" : screen.t === id);
   const navScreen = (id: string): Screen => (id === "tree" ? { t: "tree" } : ({ t: id } as Screen));
-  // Мидгард: герой ходит только по нижней поверхности сцены.
-  // Верхняя граница земли слегка меняется по X, чтобы сохранить ощущение перспективы.
-  const groundTop = (x: number) => 66 + Math.abs(x - 50) * 0.10;
-  const clampGroundY = (x: number, y: number) =>
-    Math.max(groundTop(x), Math.min(91, y));
+  // Мидгард: герой ходит по видимой дороге, а не по небу/воде.
+  // Границы дороги зависят от глубины сцены: вдали она узкая,
+  // ближе к игроку становится шире из-за перспективы.
+  const roadBounds = (y: number) => {
+    const points = [
+      { y: 57, left: 46, right: 57 },
+      { y: 63, left: 41, right: 62 },
+      { y: 69, left: 37, right: 67 },
+      { y: 76, left: 33, right: 72 },
+      { y: 84, left: 29, right: 77 },
+      { y: 92, left: 27, right: 81 },
+    ];
+
+    if (y <= points[0].y) return { left: points[0].left, right: points[0].right };
+    if (y >= points[points.length - 1].y) {
+      const last = points[points.length - 1];
+      return { left: last.left, right: last.right };
+    }
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i];
+      const b = points[i + 1];
+      if (y >= a.y && y <= b.y) {
+        const t = (y - a.y) / (b.y - a.y);
+        return {
+          left: a.left + (b.left - a.left) * t,
+          right: a.right + (b.right - a.right) * t,
+        };
+      }
+    }
+
+    return { left: 46, right: 57 };
+  };
+
+  const clampPlayerToRoad = (x: number, y: number) => {
+    const nextY = Math.max(57, Math.min(92, y));
+    const road = roadBounds(nextY);
+    const nextX = Math.max(road.left, Math.min(road.right, x));
+    return { x: nextX, y: nextY };
+  };
 
   const movePlayer = (dx: number, dy: number) => {
     setPlayerX(prevX => {
-      const nextX = Math.max(7, Math.min(93, prevX + dx));
-      setPlayerY(prevY => clampGroundY(nextX, prevY + dy));
-      return nextX;
+      const next = clampPlayerToRoad(prevX + dx, playerY + dy);
+      setPlayerY(next.y);
+      return next.x;
     });
   };
   return (
@@ -534,8 +569,9 @@ const [playerY, setPlayerY] = useState(74);
             <button
               className="move-center"
               onClick={() => {
-                setPlayerX(50);
-                setPlayerY(groundTop(50) + 8);
+                const start = clampPlayerToRoad(50, 82);
+                setPlayerX(start.x);
+                setPlayerY(start.y);
               }}
             >
               ◆
@@ -548,7 +584,7 @@ const [playerY, setPlayerY] = useState(74);
         </div>
 
         <div className="scene-hint">
-          ▲▼ — глубина • ◀▶ — путь по земле
+          ▲▼ — идти по дороге • ◀▶ — шаг в сторону
         </div>
       </div>
     );
