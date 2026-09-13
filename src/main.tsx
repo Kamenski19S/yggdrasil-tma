@@ -345,8 +345,11 @@ function App() {
   const [shield, setShield] = useState(false);
   const [valk, setValk] = useState(false);
   const [over, setOver] = useState("");
-const [playerX, setPlayerX] = useState(50);
-  const [playerY, setPlayerY] = useState(82);
+// Положение героя хранится относительно дороги, а не как свободные координаты экрана.
+  // roadT: 0 — нижний край дороги, 1 — дальняя часть у деревни.
+  // roadSide: небольшой шаг влево/вправо относительно центра дороги.
+  const [roadT, setRoadT] = useState(0.12);
+  const [roadSide, setRoadSide] = useState(0);
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
   useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
   useEffect(() => {
@@ -405,57 +408,63 @@ const [playerX, setPlayerX] = useState(50);
   const nextStep = (id: string) => { if (trialIdx(id) >= 3 || save.artifacts.includes(id)) setScreen({ t: "realm", id }); else setScreen({ t: "trial", id }); };
   const isNav = (id: string) => (id === "tree" ? screen.t === "tree" || screen.t === "realm" : screen.t === id);
   const navScreen = (id: string): Screen => (id === "tree" ? { t: "tree" } : ({ t: id } as Screen));
-  // Мидгард: герой идёт вперёд и назад по дороге.
-  // По бокам есть только небольшое ограничение, чтобы герой не уходил
-  // далеко в лес и воду. Вперёд по сцене ограничение не ставим: игрок
-  // может пройти по дороге от переднего плана к деревне и дальше вверх.
-  const roadBounds = (y: number) => {
-    const points = [
-      { y: 18, left: 40, right: 60 },
-      { y: 28, left: 35, right: 65 },
-      { y: 40, left: 30, right: 70 },
-      { y: 52, left: 24, right: 76 },
-      { y: 66, left: 18, right: 82 },
-      { y: 82, left: 13, right: 87 },
-      { y: 94, left: 10, right: 90 },
-    ];
+  // Мидгард: герой действительно движется ПО НАРИСОВАННОЙ ДОРОГЕ.
+  // Фон — одна неподвижная картинка, поэтому top/left сами по себе не знают,
+  // где находится дорога. Здесь задаём её центральную линию контрольными
+  // точками и переводим положение героя из координат дороги в экранные.
+  type RoadPoint = { t: number; x: number; y: number; width: number };
 
-    if (y <= points[0].y) return { left: points[0].left, right: points[0].right };
-    if (y >= points[points.length - 1].y) {
-      const last = points[points.length - 1];
-      return { left: last.left, right: last.right };
-    }
+  const ROAD: RoadPoint[] = [
+    { t: 0.00, x: 51, y: 94, width: 10 },
+    { t: 0.16, x: 51, y: 86, width: 9 },
+    { t: 0.32, x: 50, y: 78, width: 8 },
+    { t: 0.48, x: 47, y: 70, width: 7 },
+    { t: 0.64, x: 43, y: 63, width: 6 },
+    { t: 0.80, x: 46, y: 57, width: 5 },
+    { t: 1.00, x: 51, y: 52, width: 4 },
+  ];
 
-    for (let i = 0; i < points.length - 1; i++) {
-      const a = points[i];
-      const b = points[i + 1];
-      if (y >= a.y && y <= b.y) {
-        const t = (y - a.y) / (b.y - a.y);
-        return {
-          left: a.left + (b.left - a.left) * t,
-          right: a.right + (b.right - a.right) * t,
-        };
+  const roadPosition = (t: number, side: number) => {
+    const tt = Math.max(0, Math.min(1, t));
+    let a = ROAD[0];
+    let b = ROAD[ROAD.length - 1];
+
+    for (let i = 0; i < ROAD.length - 1; i++) {
+      if (tt >= ROAD[i].t && tt <= ROAD[i + 1].t) {
+        a = ROAD[i];
+        b = ROAD[i + 1];
+        break;
       }
     }
 
-    return { left: 10, right: 90 };
+    const span = b.t - a.t || 1;
+    const k = (tt - a.t) / span;
+    const smooth = k * k * (3 - 2 * k);
+    const x = a.x + (b.x - a.x) * smooth;
+    const y = a.y + (b.y - a.y) * smooth;
+    const width = a.width + (b.width - a.width) * smooth;
+
+    return {
+      x: x + Math.max(-1, Math.min(1, side)) * width,
+      y,
+      scale: 0.62 + tt * 0.48,
+    };
   };
 
-  const clampPlayerToRoad = (x: number, y: number) => {
-    // Вперёд по дороге разрешаем идти почти до верхнего края сцены.
-    const nextY = Math.max(16, Math.min(94, y));
-    const road = roadBounds(nextY);
-    const nextX = Math.max(road.left, Math.min(road.right, x));
-    return { x: nextX, y: nextY };
-  };
+  const playerPos = roadPosition(roadT, roadSide);
 
   const movePlayer = (dx: number, dy: number) => {
-    setPlayerX(prevX => {
-      const next = clampPlayerToRoad(prevX + dx, playerY + dy);
-      setPlayerY(next.y);
-      return next.x;
-    });
+    // ▲▼ = движение вдоль дороги, а не по вертикальной оси экрана.
+    if (dy !== 0) {
+      setRoadT(t => Math.max(0, Math.min(1, t + (-dy / 3) * 0.055)));
+    }
+
+    // ◀▶ = небольшой шаг в сторону от центра дороги.
+    if (dx !== 0) {
+      setRoadSide(s => Math.max(-1, Math.min(1, s + (dx / 3) * 0.22)));
+    }
   };
+
   return (
     <div className="app">
       <style>{CSS}</style>
@@ -555,8 +564,9 @@ const [playerX, setPlayerX] = useState(50);
           <div
             className="player"
             style={{
-              left: `${playerX}%`,
-              top: `${playerY}%`,
+              left: `${playerPos.x}%`,
+              top: `${playerPos.y}%`,
+              transform: `translate(-50%, -88%) scale(${playerPos.scale})`,
             }}
           >
             <BgImg name={heroDef.img} className="player-img" />
@@ -572,9 +582,8 @@ const [playerX, setPlayerX] = useState(50);
             <button
               className="move-center"
               onClick={() => {
-                const start = clampPlayerToRoad(50, 82);
-                setPlayerX(start.x);
-                setPlayerY(start.y);
+                setRoadT(0.12);
+                setRoadSide(0);
               }}
             >
               ◆
