@@ -211,18 +211,16 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .gate-core{width:76px;height:76px;border-radius:50%;border:3px solid;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;box-shadow:0 0 18px currentColor,inset 0 0 14px rgba(0,0,0,.9);animation:breathe 3s ease-in-out infinite;text-shadow:0 0 10px currentColor}
 .player{position:absolute;width:76px;height:110px;transform:translate(-50%,-88%);z-index:20;pointer-events:none;transition:left .12s linear,top .12s linear;filter:drop-shadow(0 5px 7px rgba(0,0,0,.65))}
 .player-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-.midgard-content{position:relative;flex:1;min-height:0;overflow:hidden;background:#09110c}
-.midgard-scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;overscroll-behavior:none}
-.midgard-scroll::-webkit-scrollbar{display:none}
-.midgard-world{position:relative;width:140%;margin-left:-20%;background:#0b130e;line-height:0}
-.midgard-mapimg{display:block;width:100%;height:auto;user-select:none;-webkit-user-drag:none}
-.midgard-road-overlay{position:absolute;inset:0;pointer-events:none}
-.midgard-content .player{z-index:20;width:46px;height:68px;transition:left .18s ease-out,top .18s ease-out}
-.move-pad{position:absolute;left:10px;bottom:18px;z-index:30;width:142px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.midgard-content{position:relative;flex:1;min-height:0;overflow:hidden;background:#09110c;touch-action:none}
+.midgard-world{position:absolute;left:0;top:0;background:#0b130e;line-height:0;will-change:transform;transition:transform .20s cubic-bezier(.22,.75,.25,1)}
+.midgard-mapimg{position:absolute;left:0;top:0;display:block;width:100%;height:100%;object-fit:fill;user-select:none;-webkit-user-drag:none}
+.midgard-shade{position:absolute;inset:0;z-index:5;pointer-events:none;background:linear-gradient(180deg,rgba(3,7,4,.12),transparent 24%,transparent 78%,rgba(3,7,4,.22))}
+.midgard-content .player{z-index:20;width:58px;height:84px;transform:translate(-50%,-82%);transition:left .16s ease-out,top .16s ease-out;filter:drop-shadow(0 7px 5px rgba(0,0,0,.68))}
+.move-pad{position:absolute;left:12px;bottom:16px;z-index:30;width:126px;display:flex;flex-direction:column;align-items:center;gap:3px}
 .move-row{display:flex;align-items:center;justify-content:center}
-.move-pad button{width:42px;height:42px;margin:2px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(12,18,14,.78);color:#e8f0e8;font-size:18px;font-weight:700;box-shadow:0 3px 8px rgba(0,0,0,.45),inset 0 0 8px rgba(126,231,135,.08);backdrop-filter:blur(4px)}
+.move-pad button{width:38px;height:38px;margin:2px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(12,18,14,.78);color:#e8f0e8;font-size:18px;font-weight:700;box-shadow:0 3px 8px rgba(0,0,0,.45),inset 0 0 8px rgba(126,231,135,.08);backdrop-filter:blur(4px)}
 .move-pad button:active{transform:scale(.88);background:rgba(35,55,42,.9)}
-.move-pad .move-center{width:34px;height:34px;font-size:10px;color:#ffd76a;border-color:rgba(255,215,106,.35)}
+.move-pad .move-center{width:32px;height:32px;font-size:10px;color:#ffd76a;border-color:rgba(255,215,106,.35)}
 .scene-hint{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);z-index:25;padding:6px 10px;border-radius:9px;background:rgba(5,9,7,.72);border:1px solid rgba(126,231,135,.2);color:rgba(207,227,210,.72);font-size:10px;white-space:nowrap;pointer-events:none}
 .herobar{display:flex;gap:10px;align-items:center;padding:8px 12px;background:rgba(10,13,11,.96);border-top:1px solid #1e2a20;z-index:6}
 .hbface{position:relative;width:34px;height:34px;flex-shrink:0;border-radius:50%;border:1.5px solid;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;overflow:hidden;background:#0d130f;text-shadow:0 0 5px currentColor}
@@ -324,9 +322,11 @@ function App() {
   const [shield, setShield] = useState(false);
   const [valk, setValk] = useState(false);
   const [over, setOver] = useState("");
-const [playerX, setPlayerX] = useState(0);
-const [playerY, setPlayerY] = useState(88);
-  const midgardScrollRef = useRef<HTMLDivElement>(null);
+const [roadT, setRoadT] = useState(0.06);
+  const [roadSide, setRoadSide] = useState(0);
+  const [midgardSize, setMidgardSize] = useState({ w: 0, h: 0 });
+  const midgardViewportRef = useRef<HTMLDivElement>(null);
+  const moveTimerRef = useRef<number | null>(null);
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
   useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
   useEffect(() => {
@@ -385,54 +385,85 @@ const [playerY, setPlayerY] = useState(88);
   const nextStep = (id: string) => { if (trialIdx(id) >= 3 || save.artifacts.includes(id)) setScreen({ t: "realm", id }); else setScreen({ t: "trial", id }); };
   const isNav = (id: string) => (id === "tree" ? screen.t === "tree" || screen.t === "realm" : screen.t === id);
   const navScreen = (id: string): Screen => (id === "tree" ? { t: "tree" } : ({ t: id } as Screen));
-  const roadX = (y: number) => {
-    // Основная дорога на обзорной карте: от южного порта к деревне.
-    const pts = [
-      { y: 90, x: 47 },
-      { y: 84, x: 46 },
-      { y: 78, x: 45 },
-      { y: 72, x: 45 },
-      { y: 66, x: 48 },
-      { y: 61, x: 51 },
-      { y: 57, x: 54 },
-      { y: 53, x: 55 },
-      { y: 49, x: 54 },
-      { y: 45, x: 52 },
-    ];
-    for (let i = 0; i < pts.length - 1; i++) {
-      const a = pts[i], b = pts[i + 1];
-      if (y <= a.y && y >= b.y) {
-        const t = (a.y - y) / (a.y - b.y);
-        return a.x + (b.x - a.x) * t;
-      }
-    }
-    return y > 90 ? 47 : 52;
+  // Реальная траектория дороги на исходной карте 1024×1536.
+  // Герой всегда находится на этой линии, а камера двигается вместе с ним.
+  const MIDGARD_BASE_W = 1024;
+  const MIDGARD_BASE_H = 1536;
+  const MIDGARD_SCALE = 1.72;
+
+  const ROAD: Array<{ x: number; y: number }> = [
+    { x: 492, y: 1510 }, { x: 470, y: 1450 }, { x: 452, y: 1380 },
+    { x: 458, y: 1310 }, { x: 482, y: 1240 }, { x: 510, y: 1170 },
+    { x: 520, y: 1100 }, { x: 505, y: 1030 }, { x: 475, y: 960 },
+    { x: 438, y: 900 }, { x: 420, y: 840 }, { x: 430, y: 790 },
+    { x: 455, y: 745 }, { x: 485, y: 710 }, { x: 455, y: 675 },
+    { x: 405, y: 650 }, { x: 360, y: 620 }, { x: 325, y: 580 },
+    { x: 315, y: 535 }, { x: 340, y: 490 }, { x: 380, y: 445 },
+    { x: 405, y: 395 }, { x: 385, y: 345 }, { x: 350, y: 300 },
+    { x: 365, y: 255 }, { x: 405, y: 215 }, { x: 440, y: 180 },
+  ];
+
+  const pointOnRoad = (t: number) => {
+    const tt = Math.max(0, Math.min(1, t)) * (ROAD.length - 1);
+    const i = Math.min(ROAD.length - 2, Math.floor(tt));
+    const f = tt - i;
+    const a = ROAD[i], b = ROAD[i + 1];
+    return {
+      x: (a.x + (b.x - a.x) * f) * MIDGARD_SCALE,
+      y: (a.y + (b.y - a.y) * f) * MIDGARD_SCALE,
+    };
   };
+
+  const playerWorld = pointOnRoad(roadT);
+  const worldW = MIDGARD_BASE_W * MIDGARD_SCALE;
+  const worldH = MIDGARD_BASE_H * MIDGARD_SCALE;
 
   useEffect(() => {
-    if (screen.t !== "realm" || screen.id !== "midgard") return;
-    const el = midgardScrollRef.current;
-    if (!el) return;
+    const update = () => {
+      const el = midgardViewportRef.current;
+      if (el) setMidgardSize({ w: el.clientWidth, h: el.clientHeight });
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [screen.t, screen.id]);
 
-    // Камера держит героя примерно в нижней части экрана,
-    // а не прокручивает карту по процентам.
-    const world = el.firstElementChild as HTMLElement | null;
-    if (!world) return;
-    const heroY = (playerY / 100) * world.offsetHeight;
-    const target = heroY - el.clientHeight * 0.62;
-    const max = Math.max(0, el.scrollHeight - el.clientHeight);
-    el.scrollTop = Math.max(0, Math.min(max, target));
-  }, [screen, playerY]);
+  const cameraX = midgardSize.w
+    ? Math.max(midgardSize.w - worldW, Math.min(0, midgardSize.w * 0.5 - playerWorld.x))
+    : 0;
+  const cameraY = midgardSize.h
+    ? Math.max(midgardSize.h - worldH, Math.min(0, midgardSize.h * 0.58 - playerWorld.y))
+    : 0;
 
-  const movePlayer = (dx: number, dy: number) => {
+  const moveRoad = (amount: number) => {
     if (screen.t !== "realm" || screen.id !== "midgard") return;
-    if (dy !== 0) {
-      setPlayerY(y => Math.max(18, Math.min(92, y + dy)));
-    }
-    if (dx !== 0) {
-      setPlayerX(x => Math.max(-10, Math.min(10, x + dx)));
+    setRoadT(v => Math.max(0, Math.min(1, v + amount)));
+  };
+
+  const moveSide = (amount: number) => {
+    if (screen.t !== "realm" || screen.id !== "midgard") return;
+    setRoadSide(v => Math.max(-6, Math.min(6, v + amount)));
+  };
+
+  const startMove = (kind: "forward" | "back" | "left" | "right") => {
+    if (moveTimerRef.current !== null) return;
+    const tick = () => {
+      if (kind === "forward") moveRoad(-0.0018);
+      if (kind === "back") moveRoad(0.0018);
+      if (kind === "left") moveSide(-0.18);
+      if (kind === "right") moveSide(0.18);
+    };
+    tick();
+    moveTimerRef.current = window.setInterval(tick, 65);
+  };
+
+  const stopMove = () => {
+    if (moveTimerRef.current !== null) {
+      window.clearInterval(moveTimerRef.current);
+      moveTimerRef.current = null;
     }
   };
+
   return (
     <div className="app">
       <style>{CSS}</style>
@@ -515,51 +546,58 @@ const [playerY, setPlayerY] = useState(88);
   const realm = REALMS.find(r => r.id === screen.id)!;
 
   if (realm.id === "midgard") {
-    const mapX = roadX(playerY) + playerX;
+    const heroX = playerWorld.x + roadSide * 1.35;
+    const heroY = playerWorld.y;
+
     return (
-      <div className="content midgard-content">
-        <div className="midgard-scroll" ref={midgardScrollRef}>
-          <div className="midgard-world">
-            <img
-              src={`${BASE}img/midgard_map.jpg`}
-              className="midgard-mapimg"
-              alt=""
-              draggable={false}
-            />
-            {save.hero && heroDef && (
-              <div
-                className="player"
-                style={{
-                  left: `${mapX}%`,
-                  top: `${playerY}%`,
-                }}
-              >
-                <BgImg name={heroDef.img} className="player-img" />
-              </div>
-            )}
-          </div>
+      <div className="content midgard-content" ref={midgardViewportRef}>
+        <div
+          className="midgard-world"
+          style={{
+            width: `${worldW}px`,
+            height: `${worldH}px`,
+            transform: `translate3d(${cameraX}px, ${cameraY}px, 0)`,
+          }}
+        >
+          <img src={`${BASE}img/midgard_map.jpg`} className="midgard-mapimg" alt="" draggable={false} />
+          {save.hero && heroDef && (
+            <div className="player" style={{ left: `${heroX}px`, top: `${heroY}px` }}>
+              <BgImg name={heroDef.img} className="player-img" />
+            </div>
+          )}
         </div>
 
-        <div className="veil" />
+        <div className="midgard-shade" />
 
-        <div className="banner">
-          <div className="bname">{realm.name}</div>
-        </div>
+        <div className="banner"><div className="bname">МИДГАРД</div></div>
 
         <div className="move-pad">
-          <button onClick={() => movePlayer(0, -3)}>▲</button>
+          <button
+            onPointerDown={() => startMove("forward")}
+            onPointerUp={stopMove} onPointerCancel={stopMove} onPointerLeave={stopMove}
+            onClick={() => moveRoad(-0.006)}
+          >▲</button>
           <div className="move-row">
-            <button onClick={() => movePlayer(-2, 0)}>◀</button>
             <button
-              className="move-center"
-              onClick={() => { setPlayerX(0); setPlayerY(88); }}
-            >◆</button>
-            <button onClick={() => movePlayer(2, 0)}>▶</button>
+              onPointerDown={() => startMove("left")}
+              onPointerUp={stopMove} onPointerCancel={stopMove} onPointerLeave={stopMove}
+              onClick={() => moveSide(-0.45)}
+            >◀</button>
+            <button className="move-center" onClick={() => { setRoadT(0.06); setRoadSide(0); }}>◆</button>
+            <button
+              onPointerDown={() => startMove("right")}
+              onPointerUp={stopMove} onPointerCancel={stopMove} onPointerLeave={stopMove}
+              onClick={() => moveSide(0.45)}
+            >▶</button>
           </div>
-          <button onClick={() => movePlayer(0, 3)}>▼</button>
+          <button
+            onPointerDown={() => startMove("back")}
+            onPointerUp={stopMove} onPointerCancel={stopMove} onPointerLeave={stopMove}
+            onClick={() => moveRoad(0.006)}
+          >▼</button>
         </div>
 
-        <div className="scene-hint">▲ вперёд по дороге • ▼ назад</div>
+        <div className="scene-hint">▲ путь вперёд • ▼ назад</div>
       </div>
     );
   }
