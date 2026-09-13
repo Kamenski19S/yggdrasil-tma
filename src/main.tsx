@@ -69,35 +69,7 @@ const NAV = [{ id: "tree", ic: "ᚱ", t: "Путь" }, { id: "hero", ic: "ᛗ", 
 type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" } | { t: "hero" } | { t: "gift" } | { t: "hall" } | { t: "trial"; id: string } | { t: "fight"; id: string };
 type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number };
 const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0 };
-const loadSave = (): Save => {
-  try {
-    const raw = JSON.parse(localStorage.getItem("yggdrasil") || "{}");
-    const s: Save = {
-      ...DEF,
-      ...raw,
-      hero: raw?.hero ? { ...raw.hero } : null,
-      done: Array.isArray(raw?.done) ? raw.done : [],
-      trials: Array.isArray(raw?.trials) ? raw.trials : [],
-      artifacts: Array.isArray(raw?.artifacts) ? raw.artifacts : [],
-    };
-
-    // Migration from the previous hero roster:
-    // the old "valkyrie" hero is now the new Viking sprite.
-    if (s.hero?.id === "valkyrie") {
-      s.hero = { ...s.hero, id: "viking" };
-    }
-
-    // If a save contains an unknown hero id, send the player back to hero selection.
-    if (s.hero && !HEROES.some(h => h.id === s.hero!.id)) {
-      s.hero = null;
-    }
-
-    if (!s.watch) s.watch = Date.now();
-    return s;
-  } catch {
-    return { ...DEF, watch: Date.now() };
-  }
-};
+const loadSave = (): Save => { try { const s = { ...DEF, ...JSON.parse(localStorage.getItem("yggdrasil") || "") }; if (!s.watch) s.watch = Date.now(); return s; } catch { return { ...DEF, watch: Date.now() }; } };
 const today = () => new Date().toISOString().slice(0, 10);
 const rank = (n: number) => (n >= 500 ? "Всеотец" : n >= 300 ? "Мудрец Древа" : n >= 150 ? "Хранитель рун" : n >= 50 ? "Странник рун" : "Путник");
 const LADDER = [3, 5, 8, 12, 18, 25, 40];
@@ -228,7 +200,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .fadeT{top:0;background:linear-gradient(180deg,#0b0f0c,transparent)}.fadeB{bottom:0;background:linear-gradient(0deg,#0b0f0c,transparent)}
 .hint{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:11px;color:rgba(207,227,210,.7);z-index:5;pointer-events:none}
 .content{flex:1;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 30%,#182420,#0b0f0c)}
-.midgard-world{position:absolute;inset:0;will-change:transform;transition:transform .18s ease-out}.bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center}
+.bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .veil{position:absolute;inset:0;background:linear-gradient(rgba(5,8,6,.6),transparent 30%,transparent 65%,rgba(5,8,6,.85));pointer-events:none}
 .banner{position:absolute;top:10px;left:12px;right:auto;z-index:4;padding:6px 12px;border-radius:10px;background:linear-gradient(180deg,rgba(20,25,22,.88),rgba(10,12,11,.92));border:1px solid rgba(255,215,106,.45);box-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none}
 .bemoji{display:none}.btag{display:none}
@@ -237,9 +209,16 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .gwrap{position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center}
 .gate-ring{position:absolute;inset:0;border-radius:50%;border:1.5px dashed;opacity:.6;animation:spin 12s linear infinite;pointer-events:none}
 .gate-core{width:76px;height:76px;border-radius:50%;border:3px solid;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;box-shadow:0 0 18px currentColor,inset 0 0 14px rgba(0,0,0,.9);animation:breathe 3s ease-in-out infinite;text-shadow:0 0 10px currentColor}
-.player{position:absolute;width:76px;height:110px;transform:translate(-50%,-88%);z-index:20;pointer-events:none;transition:left .12s linear,top .12s linear,transform .12s linear;filter:drop-shadow(0 5px 7px rgba(0,0,0,.65))}
+.player{position:absolute;width:76px;height:110px;transform:translate(-50%,-88%);z-index:20;pointer-events:none;transition:left .12s linear,top .12s linear;filter:drop-shadow(0 5px 7px rgba(0,0,0,.65))}
 .player-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-.move-pad{position:absolute;left:14px;bottom:86px;z-index:30;width:142px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.midgard-content{position:absolute;inset:0;overflow:hidden;background:#09110c}
+.midgard-scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+.midgard-scroll::-webkit-scrollbar{display:none}
+.midgard-world{position:relative;width:100%;min-height:150%;background:#0b130e}
+.midgard-mapimg{display:block;width:100%;height:auto;user-select:none;-webkit-user-drag:none}
+.midgard-road-overlay{position:absolute;inset:0;pointer-events:none}
+.midgard-content .player{z-index:20;transition:left .18s ease-out,top .18s ease-out}
+.move-pad{position:absolute;left:14px;bottom:76px;z-index:30;width:142px;display:flex;flex-direction:column;align-items:center;gap:3px}
 .move-row{display:flex;align-items:center;justify-content:center}
 .move-pad button{width:42px;height:42px;margin:2px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(12,18,14,.78);color:#e8f0e8;font-size:18px;font-weight:700;box-shadow:0 3px 8px rgba(0,0,0,.45),inset 0 0 8px rgba(126,231,135,.08);backdrop-filter:blur(4px)}
 .move-pad button:active{transform:scale(.88);background:rgba(35,55,42,.9)}
@@ -327,7 +306,6 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 @keyframes breathe{0%,100%{opacity:.3;transform:scale(.9)}50%{opacity:.7;transform:scale(1.1)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes fade{from{opacity:0}}
-@media (max-width:480px){.mid-world{width:1200px;height:2200px}.map-player{width:82px;height:118px}.move-pad{left:12px;bottom:86px}.scene-hint{font-size:9px;max-width:90%;overflow:hidden;text-overflow:ellipsis}}
 `;
 function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
@@ -346,11 +324,9 @@ function App() {
   const [shield, setShield] = useState(false);
   const [valk, setValk] = useState(false);
   const [over, setOver] = useState("");
-// Мидгард — это уже игровая карта, а не одна фотография.
-  // Положение героя хранится в координатах мира.
-  const [roadT, setRoadT] = useState(0.04);
-  const [roadSide, setRoadSide] = useState(0);
-  const [facing, setFacing] = useState<"left" | "right">("right");
+const [playerX, setPlayerX] = useState(50);
+const [playerY, setPlayerY] = useState(88);
+  const midgardScrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
   useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
   useEffect(() => {
@@ -360,7 +336,6 @@ function App() {
     return () => { tg.BackButton?.offClick?.(back); };
   }, [screen, save.hero]);
   useEffect(() => { setRes(null); setRemoved(null); setWhisper(false); setOver(""); setShield(false); }, [screen]);
-  useEffect(() => { if (screen.t === "realm" && screen.id === "midgard") { setRoadT(0.12); setRoadSide(0); } }, [screen]);
 
   const say = (m: string) => { setToast(m); window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(""), 1800); };
   const haptic = (k: "light" | "success" = "light") => { try { if (k === "success") tg?.HapticFeedback?.notificationOccurred?.("success"); else tg?.HapticFeedback?.impactOccurred?.("light"); } catch {} };
@@ -410,255 +385,47 @@ function App() {
   const nextStep = (id: string) => { if (trialIdx(id) >= 3 || save.artifacts.includes(id)) setScreen({ t: "realm", id }); else setScreen({ t: "trial", id }); };
   const isNav = (id: string) => (id === "tree" ? screen.t === "tree" || screen.t === "realm" : screen.t === id);
   const navScreen = (id: string): Screen => (id === "tree" ? { t: "tree" } : ({ t: id } as Screen));
-  // ─────────────────────────────────────────────
-  // МИДГАРД: большая игровая карта с камерой.
-  // ▲▼ двигают героя вдоль дорожного пути.
-  // ◀▶ дают небольшой шаг в сторону дороги.
-  // Камера следует за героем, поэтому мир "оживает",
-  // а не растягивается как одна фотография.
-  // ─────────────────────────────────────────────
-
-  type RoadPoint = { t: number; x: number; y: number; width: number };
-
-  const MIDGARD_W = 1200;
-  const MIDGARD_H = 2200;
-
-  // Путь начинается внизу карты и уходит через лес к деревне.
-  // Эти точки одновременно используются для движения героя и
-  // для прорисовки главной дороги внутри SVG-карты.
-  const ROAD: RoadPoint[] = [
-    { t: 0.00, x: 600, y: 2110, width: 150 },
-    { t: 0.08, x: 585, y: 2010, width: 145 },
-    { t: 0.18, x: 560, y: 1890, width: 130 },
-    { t: 0.30, x: 545, y: 1740, width: 115 },
-    { t: 0.42, x: 575, y: 1590, width: 105 },
-    { t: 0.54, x: 610, y: 1450, width: 95 },
-    { t: 0.66, x: 590, y: 1320, width: 82 },
-    { t: 0.76, x: 545, y: 1200, width: 72 },
-    { t: 0.85, x: 505, y: 1080, width: 62 },
-    { t: 0.92, x: 520, y: 960, width: 54 },
-    { t: 1.00, x: 600, y: 850, width: 46 },
-  ];
-
-  const roadPosition = (t: number, side: number) => {
-    const tt = Math.max(0, Math.min(1, t));
-    let a = ROAD[0];
-    let b = ROAD[ROAD.length - 1];
-
-    for (let i = 0; i < ROAD.length - 1; i++) {
-      if (tt >= ROAD[i].t && tt <= ROAD[i + 1].t) {
-        a = ROAD[i];
-        b = ROAD[i + 1];
-        break;
+  const roadX = (y: number) => {
+    // Центральная дорога на новой карте: от нижнего края она плавно
+    // уходит к деревне, слегка изгибаясь влево/вправо.
+    const pts = [
+      { y: 92, x: 50 },
+      { y: 82, x: 48 },
+      { y: 72, x: 46 },
+      { y: 62, x: 49 },
+      { y: 52, x: 53 },
+      { y: 42, x: 54 },
+      { y: 32, x: 50 },
+      { y: 22, x: 45 },
+    ];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      if (y <= a.y && y >= b.y) {
+        const t = (a.y - y) / (a.y - b.y);
+        return a.x + (b.x - a.x) * t;
       }
     }
-
-    const span = b.t - a.t || 1;
-    const k = (tt - a.t) / span;
-    const smooth = k * k * (3 - 2 * k);
-
-    return {
-      x: a.x + (b.x - a.x) * smooth + Math.max(-1, Math.min(1, side)) * (a.width + (b.width - a.width) * smooth) * 0.34,
-      y: a.y + (b.y - a.y) * smooth,
-      roadWidth: a.width + (b.width - a.width) * smooth,
-      scale: 0.72 + tt * 0.30,
-    };
+    return y > 92 ? 50 : 45;
   };
 
-  const playerWorld = roadPosition(roadT, roadSide);
+  useEffect(() => {
+    if (screen.t !== "realm" || screen.id !== "midgard") return;
+    const el = midgardScrollRef.current;
+    if (!el) return;
+    const max = Math.max(0, el.scrollHeight - el.clientHeight);
+    const target = ((100 - playerY) / 100) * max;
+    el.scrollTo({ top: Math.max(0, Math.min(max, target)), behavior: "auto" });
+  }, [screen, playerY]);
 
   const movePlayer = (dx: number, dy: number) => {
+    if (screen.t !== "realm" || screen.id !== "midgard") return;
     if (dy !== 0) {
-      setRoadT(t => Math.max(0, Math.min(1, t + (-dy / 3) * 0.032)));
+      setPlayerY(y => Math.max(18, Math.min(92, y + dy)));
     }
     if (dx !== 0) {
-      setFacing(dx < 0 ? "left" : "right");
-      setRoadSide(s => Math.max(-1, Math.min(1, s + (dx / 3) * 0.16)));
+      setPlayerX(x => Math.max(-10, Math.min(10, x + dx)));
     }
   };
-
-  const resetMidgard = () => {
-    setRoadT(0.04);
-    setRoadSide(0);
-    setFacing("right");
-  };
-
-  const MidgardScene = () => {
-    const p = playerWorld;
-
-    return (
-      <div className="mid-viewport">
-        <div
-          className="mid-world"
-          style={{
-            transform: `translate3d(calc(50% - ${p.x}px), calc(50% - ${p.y}px), 0)`,
-          }}
-        >
-          <svg className="mid-map" viewBox={`0 0 ${MIDGARD_W} ${MIDGARD_H}`} aria-label="Карта Мидгарда">
-            <defs>
-              <linearGradient id="midSky" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#203c54" />
-                <stop offset="45%" stopColor="#6e8790" />
-                <stop offset="100%" stopColor="#315744" />
-              </linearGradient>
-              <linearGradient id="midGround" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#567260" />
-                <stop offset="100%" stopColor="#17261c" />
-              </linearGradient>
-              <linearGradient id="water" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#173e4b" />
-                <stop offset="55%" stopColor="#2f7080" />
-                <stop offset="100%" stopColor="#8ab7b1" />
-              </linearGradient>
-              <filter id="softShadow">
-                <feDropShadow dx="0" dy="8" stdDeviation="9" floodOpacity=".42" />
-              </filter>
-              <filter id="glowRune">
-                <feGaussianBlur stdDeviation="5" result="b" />
-              </filter>
-            </defs>
-
-            <rect width="1200" height="2200" fill="url(#midGround)" />
-            {/* дальние горы */}
-            <path d="M0 480 L160 180 L280 400 L420 110 L570 390 L720 120 L870 420 L1030 170 L1200 430 L1200 0 L0 0Z" fill="#263b46" />
-            <path d="M0 560 L180 310 L310 500 L455 260 L590 520 L760 300 L910 530 L1060 290 L1200 510 L1200 690 L0 690Z" fill="#38544d" />
-            {/* озеро и берег */}
-            <path d="M790 430 C980 390 1120 440 1200 520 L1200 1540 C1080 1510 980 1430 900 1330 C850 1230 880 1080 820 960 C780 820 820 620 790 430Z" fill="url(#water)" />
-            <path d="M830 650 C960 600 1090 640 1200 710" fill="none" stroke="#9ed5d0" strokeWidth="10" opacity=".35" />
-            <path d="M850 820 C990 770 1100 800 1200 860" fill="none" stroke="#b6e1dc" strokeWidth="7" opacity=".3" />
-            {/* снежные вершины */}
-            <path d="M90 480 L210 250 L285 470 L210 400 L160 450Z" fill="#dce6e3" opacity=".85" />
-            <path d="M390 430 L500 190 L585 450 L500 370 L455 410Z" fill="#e5ece8" opacity=".8" />
-            <path d="M700 440 L805 210 L900 460 L810 370 L760 410Z" fill="#e0e9e5" opacity=".75" />
-            {/* лес */}
-            <g fill="#19372a">
-              {Array.from({ length: 42 }).map((_, i) => {
-                const x = 45 + ((i * 137) % 700);
-                const y = 610 + ((i * 83) % 1060);
-                const s = 0.75 + ((i * 17) % 35) / 100;
-                return <path key={i} d={`M${x} ${y + 72 * s} L${x + 34 * s} ${y} L${x + 68 * s} ${y + 72 * s} Z`} opacity={0.78} />;
-              })}
-            </g>
-            {/* поля и небольшие луга */}
-            <path d="M180 1030 C300 960 430 990 470 1090 C390 1170 260 1200 150 1150Z" fill="#78905d" opacity=".75" />
-            <path d="M170 1440 C300 1350 430 1390 470 1500 C350 1580 250 1600 130 1530Z" fill="#708b57" opacity=".7" />
-            {/* главная дорога */}
-            <polyline
-              points={ROAD.map(r => `${r.x},${r.y}`).join(" ")}
-              fill="none"
-              stroke="#b79b70"
-              strokeWidth="190"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity=".95"
-            />
-            <polyline
-              points={ROAD.map(r => `${r.x},${r.y}`).join(" ")}
-              fill="none"
-              stroke="#d7bd89"
-              strokeWidth="142"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <polyline
-              points={ROAD.map(r => `${r.x},${r.y}`).join(" ")}
-              fill="none"
-              stroke="#e2c99b"
-              strokeWidth="7"
-              strokeDasharray="28 24"
-              opacity=".65"
-            />
-            {/* ответвления */}
-            <path d="M550 1740 C420 1660 310 1630 170 1640" fill="none" stroke="#b79b70" strokeWidth="90" strokeLinecap="round" />
-            <path d="M610 1450 C760 1370 880 1280 1030 1260" fill="none" stroke="#b79b70" strokeWidth="76" strokeLinecap="round" />
-            {/* деревня */}
-            <g filter="url(#softShadow)">
-              <path d="M380 900 H520 V1040 H380Z" fill="#76563e" />
-              <path d="M360 910 L450 820 L540 910Z" fill="#47352d" />
-              <path d="M610 930 H760 V1070 H610Z" fill="#8a6345" />
-              <path d="M590 940 L685 840 L780 940Z" fill="#503a30" />
-              <path d="M745 1080 H900 V1200 H745Z" fill="#76543c" />
-              <path d="M725 1090 L822 990 L920 1090Z" fill="#49342b" />
-              <rect x="438" y="950" width="28" height="44" fill="#d9a65d" />
-              <rect x="678" y="980" width="28" height="44" fill="#d9a65d" />
-              <rect x="808" y="1120" width="28" height="42" fill="#d9a65d" />
-            </g>
-            {/* кузница */}
-            <g>
-              <rect x="300" y="1510" width="190" height="125" rx="10" fill="#4c3b31" />
-              <path d="M280 1518 L395 1430 L510 1518Z" fill="#322824" />
-              <circle cx="405" cy="1535" r="24" fill="#ffb347" opacity=".9" />
-              <circle cx="405" cy="1535" r="52" fill="#ff8c3a" opacity=".2" />
-              <text x="395" y="1675" textAnchor="middle" fill="#ffe1a4" fontSize="28" fontWeight="700">КУЗНИЦА</text>
-            </g>
-            {/* причал */}
-            <g>
-              <path d="M930 1190 L1130 1120 L1200 1190 L1010 1270Z" fill="#6f553b" />
-              <path d="M1000 1180 L1190 1115" stroke="#d0ad76" strokeWidth="22" />
-              <path d="M1030 1220 L1030 1370 M1090 1200 L1090 1350 M1150 1180 L1150 1330" stroke="#4d3a2c" strokeWidth="12" />
-              <path d="M1070 1260 Q1120 1190 1170 1260 L1170 1320 Q1120 1360 1070 1320Z" fill="#8b3f35" />
-              <text x="1080" y="1410" textAnchor="middle" fill="#d8e9e3" fontSize="30" fontWeight="700">ПРИЧАЛ</text>
-            </g>
-            {/* рунический камень */}
-            <g>
-              <path d="M160 1770 L235 1690 L315 1760 L295 1880 L180 1900Z" fill="#4b5b57" />
-              <path d="M185 1780 L235 1725 L285 1770 L270 1850 L195 1860Z" fill="#223c3a" />
-              <text x="235" y="1818" textAnchor="middle" fill="#6ce0d0" fontSize="64" fontWeight="700">ᚠ</text>
-              <text x="235" y="1940" textAnchor="middle" fill="#a8cfc5" fontSize="25">РУНА</text>
-            </g>
-            {/* мост */}
-            <g>
-              <path d="M500 1310 L760 1310 L810 1370 L450 1370Z" fill="#6f5338" />
-              <path d="M470 1325 L790 1325" stroke="#caa56f" strokeWidth="14" />
-              <path d="M480 1350 L500 1410 M540 1350 L560 1410 M700 1350 L680 1410 M760 1350 L740 1410" stroke="#4c392b" strokeWidth="12" />
-            </g>
-            {/* небольшие костры/свет */}
-            <g fill="#ffbb62">
-              <circle cx="555" cy="1010" r="13" />
-              <circle cx="720" cy="1035" r="11" />
-              <circle cx="515" cy="1500" r="10" />
-            </g>
-            {/* северная точка Мидгарда */}
-            <g>
-              <circle cx="600" cy="730" r="56" fill="#132a25" stroke="#8fc7a4" strokeWidth="6" />
-              <text x="600" y="750" textAnchor="middle" fill="#9be7b1" fontSize="54">ᛉ</text>
-              <text x="600" y="650" textAnchor="middle" fill="#e2f0e5" fontSize="30" fontWeight="700">ДЕРЕВНЯ</text>
-            </g>
-          </svg>
-
-          {save.hero && heroDef && (
-            <div
-              className="map-player"
-              style={{
-                left: `${(playerWorld.x / MIDGARD_W) * 100}%`,
-                top: `${(playerWorld.y / MIDGARD_H) * 100}%`,
-                transform: `translate(-50%, -92%) scale(${playerWorld.scale}) scaleX(${facing === "left" ? -1 : 1})`,
-              }}
-            >
-              <BgImg name={heroDef.img} className="player-img" />
-            </div>
-          )}
-        </div>
-
-        <div className="mid-vignette" />
-        <div className="mid-fog" />
-        <div className="banner mid-banner"><div className="bname">МИДГАРД</div><div className="btag">Земля людей</div></div>
-
-        <div className="move-pad">
-          <button onClick={() => movePlayer(0, -3)}>▲</button>
-          <div className="move-row">
-            <button onClick={() => movePlayer(-3, 0)}>◀</button>
-            <button className="move-center" onClick={resetMidgard}>◆</button>
-            <button onClick={() => movePlayer(3, 0)}>▶</button>
-          </div>
-          <button onClick={() => movePlayer(0, 3)}>▼</button>
-        </div>
-
-        <div className="scene-hint">▲▼ — идти по дороге • ◀▶ — шаг в сторону • мир открывается по пути</div>
-      </div>
-    );
-  };
-
   return (
     <div className="app">
       <style>{CSS}</style>
@@ -741,9 +508,54 @@ function App() {
   const realm = REALMS.find(r => r.id === screen.id)!;
 
   if (realm.id === "midgard") {
-    return <MidgardScene />;
-  }
+    const mapX = roadX(playerY) + playerX;
+    return (
+      <div className="content midgard-content">
+        <div className="midgard-scroll" ref={midgardScrollRef}>
+          <div className="midgard-world">
+            <img
+              src={`${BASE}img/midgard_map.jpg`}
+              className="midgard-mapimg"
+              alt=""
+              draggable={false}
+            />
+            {save.hero && heroDef && (
+              <div
+                className="player"
+                style={{
+                  left: `${mapX}%`,
+                  top: `${playerY}%`,
+                }}
+              >
+                <BgImg name={heroDef.img} className="player-img" />
+              </div>
+            )}
+          </div>
+        </div>
 
+        <div className="veil" />
+
+        <div className="banner">
+          <div className="bname">{realm.name}</div>
+        </div>
+
+        <div className="move-pad">
+          <button onClick={() => movePlayer(0, -3)}>▲</button>
+          <div className="move-row">
+            <button onClick={() => movePlayer(-2, 0)}>◀</button>
+            <button
+              className="move-center"
+              onClick={() => { setPlayerX(0); setPlayerY(88); }}
+            >◆</button>
+            <button onClick={() => movePlayer(2, 0)}>▶</button>
+          </div>
+          <button onClick={() => movePlayer(0, 3)}>▼</button>
+        </div>
+
+        <div className="scene-hint">▲ вперёд по дороге • ▼ назад</div>
+      </div>
+    );
+  }
 
   return (
     <div className="content">
