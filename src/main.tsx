@@ -209,6 +209,106 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .gwrap{position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center}
 .gate-ring{position:absolute;inset:0;border-radius:50%;border:1.5px dashed;opacity:.6;animation:spin 12s linear infinite;pointer-events:none}
 .gate-core{width:76px;height:76px;border-radius:50%;border:3px solid;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;box-shadow:0 0 18px currentColor,inset 0 0 14px rgba(0,0,0,.9);animation:breathe 3s ease-in-out infinite;text-shadow:0 0 10px currentColor}
+.player{
+  position:absolute;
+  width:58px;
+  height:82px;
+  transform:translate(-50%,-85%);
+  z-index:20;
+  pointer-events:none;
+  transition:left .12s linear,top .12s linear;
+  filter:drop-shadow(0 5px 7px rgba(0,0,0,.7));
+}
+
+.player-img{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+}
+
+.player-rune{
+  position:absolute;
+  left:50%;
+  bottom:3px;
+  transform:translateX(-50%);
+  width:22px;
+  height:22px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:50%;
+  background:rgba(5,10,7,.78);
+  border:1px solid rgba(255,215,106,.55);
+  color:#ffd76a;
+  font-size:11px;
+  font-weight:700;
+  text-shadow:0 0 6px currentColor;
+}
+
+.move-pad{
+  position:absolute;
+  left:14px;
+  bottom:76px;
+  z-index:30;
+  width:142px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:3px;
+}
+
+.move-row{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.move-pad button{
+  width:42px;
+  height:42px;
+  margin:2px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.3);
+  background:rgba(12,18,14,.78);
+  color:#e8f0e8;
+  font-size:18px;
+  font-weight:700;
+  box-shadow:
+    0 3px 8px rgba(0,0,0,.45),
+    inset 0 0 8px rgba(126,231,135,.08);
+  backdrop-filter:blur(4px);
+}
+
+.move-pad button:active{
+  transform:scale(.88);
+  background:rgba(35,55,42,.9);
+}
+
+.move-pad .move-center{
+  width:34px;
+  height:34px;
+  font-size:10px;
+  color:#ffd76a;
+  border-color:rgba(255,215,106,.35);
+}
+
+.scene-hint{
+  position:absolute;
+  left:50%;
+  bottom:12px;
+  transform:translateX(-50%);
+  z-index:25;
+  padding:6px 10px;
+  border-radius:9px;
+  background:rgba(5,9,7,.72);
+  border:1px solid rgba(126,231,135,.2);
+  color:rgba(207,227,210,.72);
+  font-size:10px;
+  white-space:nowrap;
+  pointer-events:none;
+}
 .herobar{display:flex;gap:10px;align-items:center;padding:8px 12px;background:rgba(10,13,11,.96);border-top:1px solid #1e2a20;z-index:6}
 .hbface{position:relative;width:34px;height:34px;flex-shrink:0;border-radius:50%;border:1.5px solid;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;overflow:hidden;background:#0d130f;text-shadow:0 0 5px currentColor}
 .hbimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -308,7 +408,8 @@ function App() {
   const [shield, setShield] = useState(false);
   const [valk, setValk] = useState(false);
   const [over, setOver] = useState("");
-
+const [playerX, setPlayerX] = useState(50);
+const [playerY, setPlayerY] = useState(78);
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
   useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
   useEffect(() => {
@@ -367,6 +468,10 @@ function App() {
   const nextStep = (id: string) => { if (trialIdx(id) >= 3 || save.artifacts.includes(id)) setScreen({ t: "realm", id }); else setScreen({ t: "trial", id }); };
   const isNav = (id: string) => (id === "tree" ? screen.t === "tree" || screen.t === "realm" : screen.t === id);
   const navScreen = (id: string): Screen => (id === "tree" ? { t: "tree" } : ({ t: id } as Screen));
+  const movePlayer = (dx: number, dy: number) => {
+  setPlayerX(x => Math.max(5, Math.min(95, x + dx)));
+  setPlayerY(y => Math.max(8, Math.min(92, y + dy)));
+};
   return (
     <div className="app">
       <style>{CSS}</style>
@@ -447,24 +552,114 @@ function App() {
       )}
 
       {screen.t === "realm" && (() => {
-        const realm = REALMS.find(r => r.id === screen.id)!;
-        return (
-          <div className="content">
-            <BgImg name={realm.id} className="bgimg" />
-            <div className="veil" />
-            <div className="banner"><span className="bemoji">{realm.emoji}</span><div><div className="bname">{realm.name}</div><div className="btag">{realm.tag}</div></div></div>
-            <button className="gate" onClick={() => openGate(realm)}>
-              <span className="gwrap">
-                <span className="gate-ring" style={{ borderColor: realm.color }} />
-                <span className="gate-core" style={{ borderColor: realm.color, color: realm.color, background: `radial-gradient(circle, ${realm.dark}, #050705 75%)` }}>{realm.runeSym}</span>
-              </span>
-              <span className="mname" style={{ color: realm.color, borderColor: realm.glow }}>{save.artifacts.includes(realm.id) ? "Мир покорён" : "Врата мира"}</span>
-            </button>
-            <div className="hint">Нажми на врата — хозяин мира ждёт загадок</div>
-          </div>
-        );
-      })()}
+  const realm = REALMS.find(r => r.id === screen.id)!;
 
+  if (realm.id === "midgard") {
+    return (
+      <div className="content">
+        <BgImg name={realm.id} className="bgimg" />
+        <div className="veil" />
+
+        <div className="banner">
+          <span className="bemoji">{realm.emoji}</span>
+          <div>
+            <div className="bname">{realm.name}</div>
+            <div className="btag">{realm.tag}</div>
+          </div>
+        </div>
+
+        {save.hero && heroDef && (
+          <div
+            className="player"
+            style={{
+              left: `${playerX}%`,
+              top: `${playerY}%`,
+            }}
+          >
+            <BgImg name={heroDef.img} className="player-img" />
+            <span className="player-rune">{heroDef.sym}</span>
+          </div>
+        )}
+
+        <div className="move-pad">
+          <button onClick={() => movePlayer(0, -3)}>▲</button>
+
+          <div className="move-row">
+            <button onClick={() => movePlayer(-3, 0)}>◀</button>
+
+            <button
+              className="move-center"
+              onClick={() => {
+                setPlayerX(50);
+                setPlayerY(78);
+              }}
+            >
+              ◆
+            </button>
+
+            <button onClick={() => movePlayer(3, 0)}>▶</button>
+          </div>
+
+          <button onClick={() => movePlayer(0, 3)}>▼</button>
+        </div>
+
+        <div className="scene-hint">
+          Двигай героя по Мидгарду
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="content">
+      <BgImg name={realm.id} className="bgimg" />
+      <div className="veil" />
+
+      <div className="banner">
+        <span className="bemoji">{realm.emoji}</span>
+        <div>
+          <div className="bname">{realm.name}</div>
+          <div className="btag">{realm.tag}</div>
+        </div>
+      </div>
+
+      <button className="gate" onClick={() => openGate(realm)}>
+        <span className="gwrap">
+          <span
+            className="gate-ring"
+            style={{ borderColor: realm.color }}
+          />
+          <span
+            className="gate-core"
+            style={{
+              borderColor: realm.color,
+              color: realm.color,
+              background: `radial-gradient(circle, ${realm.dark}, #050705 75%)`,
+            }}
+          >
+            {realm.runeSym}
+          </span>
+        </span>
+
+        <span
+          className="mname"
+          style={{
+            color: realm.color,
+            borderColor: realm.glow,
+          }}
+        >
+          {save.artifacts.includes(realm.id)
+            ? "Мир покорён"
+            : "Врата мира"}
+        </span>
+      </button>
+
+      <div className="hint">
+        Нажми на врата — хозяин мира ждёт загадок
+      </div>
+    </div>
+  );
+})()}
       {screen.t === "trial" && (() => {
         const realm = REALMS.find(r => r.id === screen.id)!;
         const m = MASTERS[realm.id];
