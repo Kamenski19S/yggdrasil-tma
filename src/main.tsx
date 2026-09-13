@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 const tg: any = (window as any).Telegram?.WebApp;
@@ -212,12 +212,12 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .player{position:absolute;width:76px;height:110px;transform:translate(-50%,-88%);z-index:20;pointer-events:none;transition:left .12s linear,top .12s linear;filter:drop-shadow(0 5px 7px rgba(0,0,0,.65))}
 .player-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .midgard-content{position:absolute;inset:0;overflow:hidden;background:#09110c}
-.midgard-scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
-.midgard-scroll::-webkit-scrollbar{display:none}
-.midgard-world{position:relative;width:100%;min-height:150%;background:#0b130e}
-.midgard-mapimg{display:block;width:100%;height:auto;user-select:none;-webkit-user-drag:none}
-.midgard-road-overlay{position:absolute;inset:0;pointer-events:none}
-.midgard-content .player{z-index:20;transition:left .18s ease-out,top .18s ease-out}
+.midgard-viewport{position:absolute;inset:0;overflow:hidden;background:#0b130e;isolation:isolate}
+.midgard-world{position:absolute;left:0;top:0;width:100%;aspect-ratio:2 / 3;background:#0b130e;will-change:transform;transition:transform .28s ease-out}
+.midgard-mapimg{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:fill;user-select:none;-webkit-user-drag:none}
+.midgard-content .player{z-index:20;transition:left .18s ease-out,top .18s ease-out;will-change:left,top}
+.midgard-fog{position:absolute;inset:0;z-index:23;pointer-events:none;background:linear-gradient(180deg,rgba(5,10,7,.16),transparent 20%,transparent 78%,rgba(4,8,5,.52))}
+.midgard-vignette{position:absolute;inset:0;z-index:24;pointer-events:none;background:radial-gradient(ellipse at center,transparent 48%,rgba(3,7,5,.18) 75%,rgba(3,7,5,.62) 100%)}
 .move-pad{position:absolute;left:14px;bottom:76px;z-index:30;width:142px;display:flex;flex-direction:column;align-items:center;gap:3px}
 .move-row{display:flex;align-items:center;justify-content:center}
 .move-pad button{width:42px;height:42px;margin:2px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(12,18,14,.78);color:#e8f0e8;font-size:18px;font-weight:700;box-shadow:0 3px 8px rgba(0,0,0,.45),inset 0 0 8px rgba(126,231,135,.08);backdrop-filter:blur(4px)}
@@ -324,9 +324,10 @@ function App() {
   const [shield, setShield] = useState(false);
   const [valk, setValk] = useState(false);
   const [over, setOver] = useState("");
-const [playerX, setPlayerX] = useState(50);
-const [playerY, setPlayerY] = useState(88);
-  const midgardScrollRef = useRef<HTMLDivElement>(null);
+const [playerX, setPlayerX] = useState(0);
+  const [playerY, setPlayerY] = useState(84);
+  const [midgardCameraY, setMidgardCameraY] = useState(0);
+  const midgardViewportRef = useRef<HTMLDivElement>(null);
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
   useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
   useEffect(() => {
@@ -408,13 +409,35 @@ const [playerY, setPlayerY] = useState(88);
     return y > 92 ? 50 : 45;
   };
 
+  // Камера Мидгарда: мы не "скроллим страницу" и не зумим картинку.
+  // Карта остаётся большим миром, а окно экрана двигается по ней вслед за героем.
+  const updateMidgardCamera = () => {
+    if (screen.t !== "realm" || screen.id !== "midgard") return;
+    const el = midgardViewportRef.current;
+    if (!el) return;
+
+    // midgard_map.jpg имеет пропорцию 2:3.
+    const mapWidth = el.clientWidth;
+    const mapHeight = mapWidth * 1.5;
+    const viewportHeight = el.clientHeight;
+    const maxCamera = Math.max(0, mapHeight - viewportHeight);
+
+    // Герой держится примерно в нижней/средней части экрана.
+    const heroWorldY = (playerY / 100) * mapHeight;
+    const desired = heroWorldY - viewportHeight * 0.62;
+    const next = Math.max(0, Math.min(maxCamera, desired));
+    setMidgardCameraY(next);
+  };
+
+  useLayoutEffect(() => {
+    updateMidgardCamera();
+  }, [screen, playerY]);
+
   useEffect(() => {
     if (screen.t !== "realm" || screen.id !== "midgard") return;
-    const el = midgardScrollRef.current;
-    if (!el) return;
-    const max = Math.max(0, el.scrollHeight - el.clientHeight);
-    const target = ((100 - playerY) / 100) * max;
-    el.scrollTo({ top: Math.max(0, Math.min(max, target)), behavior: "auto" });
+    const onResize = () => updateMidgardCamera();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, [screen, playerY]);
 
   const movePlayer = (dx: number, dy: number) => {
@@ -509,16 +532,21 @@ const [playerY, setPlayerY] = useState(88);
 
   if (realm.id === "midgard") {
     const mapX = roadX(playerY) + playerX;
+
     return (
       <div className="content midgard-content">
-        <div className="midgard-scroll" ref={midgardScrollRef}>
-          <div className="midgard-world">
+        <div ref={midgardViewportRef} className="midgard-viewport">
+          <div
+            className="midgard-world"
+            style={{ transform: `translate3d(0, ${-midgardCameraY}px, 0)` }}
+          >
             <img
               src={`${BASE}img/midgard_map.jpg`}
               className="midgard-mapimg"
-              alt=""
+              alt="Карта Мидгарда"
               draggable={false}
             />
+
             {save.hero && heroDef && (
               <div
                 className="player"
@@ -531,25 +559,27 @@ const [playerY, setPlayerY] = useState(88);
               </div>
             )}
           </div>
-        </div>
 
-        <div className="veil" />
+          <div className="midgard-fog" />
+          <div className="midgard-vignette" />
+        </div>
 
         <div className="banner">
           <div className="bname">{realm.name}</div>
         </div>
 
         <div className="move-pad">
-          <button onClick={() => movePlayer(0, -3)}>▲</button>
+          <button aria-label="Вперёд" onClick={() => movePlayer(0, -2.5)}>▲</button>
           <div className="move-row">
-            <button onClick={() => movePlayer(-2, 0)}>◀</button>
+            <button aria-label="Влево" onClick={() => movePlayer(-1.5, 0)}>◀</button>
             <button
               className="move-center"
-              onClick={() => { setPlayerX(0); setPlayerY(88); }}
+              aria-label="Вернуться на дорогу"
+              onClick={() => setPlayerX(0)}
             >◆</button>
-            <button onClick={() => movePlayer(2, 0)}>▶</button>
+            <button aria-label="Вправо" onClick={() => movePlayer(1.5, 0)}>▶</button>
           </div>
-          <button onClick={() => movePlayer(0, 3)}>▼</button>
+          <button aria-label="Назад" onClick={() => movePlayer(0, 2.5)}>▼</button>
         </div>
 
         <div className="scene-hint">▲ вперёд по дороге • ▼ назад</div>
