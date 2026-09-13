@@ -389,7 +389,7 @@ const [roadT, setRoadT] = useState(0.06);
   // Герой всегда находится на этой линии, а камера двигается вместе с ним.
   const MIDGARD_BASE_W = 1024;
   const MIDGARD_BASE_H = 1536;
-  const MIDGARD_SCALE = 1.72;
+  const MIDGARD_SCALE = 1.35;
 
   const ROAD: Array<{ x: number; y: number }> = [
     { x: 492, y: 1510 }, { x: 470, y: 1450 }, { x: 452, y: 1380 },
@@ -418,15 +418,26 @@ const [roadT, setRoadT] = useState(0.06);
   const worldW = MIDGARD_BASE_W * MIDGARD_SCALE;
   const worldH = MIDGARD_BASE_H * MIDGARD_SCALE;
 
+  const midgardActive = screen.t === "realm" && screen.id === "midgard";
+
   useEffect(() => {
+    if (!midgardActive) {
+      setMidgardSize({ w: 0, h: 0 });
+      return;
+    }
+
+    const el = midgardViewportRef.current;
+    if (!el) return;
+
     const update = () => {
-      const el = midgardViewportRef.current;
-      if (el) setMidgardSize({ w: el.clientWidth, h: el.clientHeight });
+      setMidgardSize({ w: el.clientWidth, h: el.clientHeight });
     };
+
     update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [midgardActive]);
 
   const cameraX = midgardSize.w
     ? Math.max(midgardSize.w - worldW, Math.min(0, midgardSize.w * 0.5 - playerWorld.x))
@@ -448,13 +459,13 @@ const [roadT, setRoadT] = useState(0.06);
   const startMove = (kind: "forward" | "back" | "left" | "right") => {
     if (moveTimerRef.current !== null) return;
     const tick = () => {
-      if (kind === "forward") moveRoad(-0.0018);
-      if (kind === "back") moveRoad(0.0018);
-      if (kind === "left") moveSide(-0.18);
-      if (kind === "right") moveSide(0.18);
+      if (kind === "forward") moveRoad(-0.0012);
+      if (kind === "back") moveRoad(0.0012);
+      if (kind === "left") moveSide(-0.10);
+      if (kind === "right") moveSide(0.10);
     };
     tick();
-    moveTimerRef.current = window.setInterval(tick, 65);
+    moveTimerRef.current = window.setInterval(tick, 90);
   };
 
   const stopMove = () => {
@@ -574,26 +585,22 @@ const [roadT, setRoadT] = useState(0.06);
         <div className="move-pad">
           <button
             onPointerDown={() => startMove("forward")}
-            onPointerUp={stopMove} onPointerCancel={stopMove} onPointerLeave={stopMove}
-            onClick={() => moveRoad(-0.006)}
+            onPointerUp={stopMove} onPointerCancel={stopMove}
           >▲</button>
           <div className="move-row">
             <button
               onPointerDown={() => startMove("left")}
-              onPointerUp={stopMove} onPointerCancel={stopMove} onPointerLeave={stopMove}
-              onClick={() => moveSide(-0.45)}
+              onPointerUp={stopMove} onPointerCancel={stopMove}
             >◀</button>
             <button className="move-center" onClick={() => { setRoadT(0.06); setRoadSide(0); }}>◆</button>
             <button
               onPointerDown={() => startMove("right")}
-              onPointerUp={stopMove} onPointerCancel={stopMove} onPointerLeave={stopMove}
-              onClick={() => moveSide(0.45)}
+              onPointerUp={stopMove} onPointerCancel={stopMove}
             >▶</button>
           </div>
           <button
             onPointerDown={() => startMove("back")}
-            onPointerUp={stopMove} onPointerCancel={stopMove} onPointerLeave={stopMove}
-            onClick={() => moveRoad(0.006)}
+            onPointerUp={stopMove} onPointerCancel={stopMove}
           >▼</button>
         </div>
 
