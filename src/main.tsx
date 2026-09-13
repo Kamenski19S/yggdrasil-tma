@@ -426,7 +426,7 @@ const [roadT, setRoadT] = useState(0.06);
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
-  }, [screen.t, screen.id]);
+  }, []);
 
   const cameraX = midgardSize.w
     ? Math.max(midgardSize.w - worldW, Math.min(0, midgardSize.w * 0.5 - playerWorld.x))
