@@ -228,7 +228,15 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .fadeT{top:0;background:linear-gradient(180deg,#0b0f0c,transparent)}.fadeB{bottom:0;background:linear-gradient(0deg,#0b0f0c,transparent)}
 .hint{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:11px;color:rgba(207,227,210,.7);z-index:5;pointer-events:none}
 .content{flex:1;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 30%,#182420,#0b0f0c)}
-.midgard-world{position:absolute;inset:0;will-change:transform;transition:transform .18s ease-out}.bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center}
+
+.midgard-world{position:absolute;inset:-12%;will-change:transform;transition:transform .22s cubic-bezier(.22,.7,.25,1);transform-origin:50% 82%;overflow:hidden}
+.midgard-world .bgimg{transition:filter .6s ease}
+.sun-glow{position:absolute;inset:-20%;background:radial-gradient(circle at 76% 18%,rgba(255,235,170,.18),transparent 28%);mix-blend-mode:screen;animation:sunmove 9s ease-in-out infinite;pointer-events:none}
+.mist{position:absolute;left:-35%;width:170%;height:24%;border-radius:50%;filter:blur(18px);background:linear-gradient(90deg,transparent,rgba(225,240,232,.10),rgba(225,240,232,.18),transparent);pointer-events:none;mix-blend-mode:screen}
+.mist-a{top:34%;animation:fogdrift 12s ease-in-out infinite}
+.mist-b{top:47%;opacity:.65;animation:fogdrift 17s ease-in-out -5s infinite reverse}
+.water-glint{position:absolute;right:-8%;top:48%;width:42%;height:42%;background:repeating-linear-gradient(172deg,transparent 0 13px,rgba(220,248,255,.11) 14px 16px,transparent 17px 27px);opacity:.28;transform:skewY(-5deg);animation:watermove 5s linear infinite;pointer-events:none;mix-blend-mode:screen}
+.bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center}
 .veil{position:absolute;inset:0;background:linear-gradient(rgba(5,8,6,.6),transparent 30%,transparent 65%,rgba(5,8,6,.85));pointer-events:none}
 .banner{position:absolute;top:10px;left:12px;right:auto;z-index:4;padding:6px 12px;border-radius:10px;background:linear-gradient(180deg,rgba(20,25,22,.88),rgba(10,12,11,.92));border:1px solid rgba(255,215,106,.45);box-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none}
 .bemoji{display:none}.btag{display:none}
@@ -237,7 +245,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .gwrap{position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center}
 .gate-ring{position:absolute;inset:0;border-radius:50%;border:1.5px dashed;opacity:.6;animation:spin 12s linear infinite;pointer-events:none}
 .gate-core{width:76px;height:76px;border-radius:50%;border:3px solid;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;box-shadow:0 0 18px currentColor,inset 0 0 14px rgba(0,0,0,.9);animation:breathe 3s ease-in-out infinite;text-shadow:0 0 10px currentColor}
-.player{position:absolute;width:76px;height:110px;transform:translate(-50%,-88%);z-index:20;pointer-events:none;transition:left .12s linear,top .12s linear,transform .12s linear;filter:drop-shadow(0 5px 7px rgba(0,0,0,.65))}
+.player{position:absolute;width:76px;height:110px;transform:translate(-50%,-88%);z-index:20;pointer-events:none;transition:left .18s cubic-bezier(.22,.7,.25,1),top .18s cubic-bezier(.22,.7,.25,1),transform .18s cubic-bezier(.22,.7,.25,1);filter:drop-shadow(0 6px 8px rgba(0,0,0,.72));transform-origin:50% 88%}.player.walking{animation:heroStep .18s ease-in-out}.player.walk-side{animation:heroSide .18s ease-in-out}.player.walk-back{animation:heroBack .18s ease-in-out}
 .player-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .move-pad{position:absolute;left:14px;bottom:86px;z-index:30;width:142px;display:flex;flex-direction:column;align-items:center;gap:3px}
 .move-row{display:flex;align-items:center;justify-content:center}
@@ -327,6 +335,12 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 @keyframes breathe{0%,100%{opacity:.3;transform:scale(.9)}50%{opacity:.7;transform:scale(1.1)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes fade{from{opacity:0}}
+@keyframes heroStep{0%{margin-top:0;filter:drop-shadow(0 6px 8px rgba(0,0,0,.72))}45%{margin-top:-3px;filter:drop-shadow(0 9px 10px rgba(0,0,0,.52))}100%{margin-top:0}}
+@keyframes heroSide{0%,100%{transform:translate(-50%,-88%) scale(var(--hero-scale,1)) rotate(0)}50%{transform:translate(-50%,-88%) scale(var(--hero-scale,1)) rotate(-2deg)}}
+@keyframes heroBack{0%,100%{margin-top:0}50%{margin-top:-2px}}
+@keyframes fogdrift{0%{transform:translateX(-8%) translateY(0)}50%{transform:translateX(8%) translateY(-4px)}100%{transform:translateX(-8%) translateY(0)}}
+@keyframes watermove{0%{transform:translateX(-8%) skewY(-5deg);opacity:.18}50%{transform:translateX(5%) skewY(-5deg);opacity:.34}100%{transform:translateX(-8%) skewY(-5deg);opacity:.18}}
+@keyframes sunmove{0%,100%{transform:translate3d(-1%,0,0) scale(1)}50%{transform:translate3d(2%,1%,0) scale(1.04)}}
 `;
 function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
@@ -350,6 +364,9 @@ function App() {
   // roadSide: небольшой шаг влево/вправо относительно центра дороги.
   const [roadT, setRoadT] = useState(0.12);
   const [roadSide, setRoadSide] = useState(0);
+  const [walking, setWalking] = useState(false);
+  const [walkDir, setWalkDir] = useState<"forward" | "back" | "side">("forward");
+  const walkTimer = useRef<number>(0);
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
   useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
   useEffect(() => {
@@ -467,16 +484,20 @@ function App() {
   const sceneTransform = `translateY(${cameraY}%) scale(${cameraScale})`;
 
   const movePlayer = (dx: number, dy: number) => {
-    // ▲▼ = идти по дороге. Сам герой остаётся в нижней части экрана,
-    // а камера приближает/отдаляет Мидгард.
     if (dy !== 0) {
       setRoadT(t => Math.max(0, Math.min(1, t + (-dy / 3) * 0.055)));
+      setWalkDir(dy < 0 ? "forward" : "back");
     }
 
-    // ◀▶ = небольшой шаг относительно центра дороги.
     if (dx !== 0) {
       setRoadSide(s => Math.max(-1, Math.min(1, s + (dx / 3) * 0.22)));
+      setWalkDir("side");
     }
+
+    setWalking(true);
+    window.clearTimeout(walkTimer.current);
+    walkTimer.current = window.setTimeout(() => setWalking(false), 180);
+    haptic();
   };
 
   return (
@@ -563,8 +584,12 @@ function App() {
   if (realm.id === "midgard") {
     return (
       <div className="content">
-        <div className="midgard-world" style={{ transform: sceneTransform }}>
+        <div className="midgard-world" style={{ transform: sceneTransform, ["--depth" as any]: roadT, ["--side" as any]: roadSide }}>
           <BgImg name={realm.id} className="bgimg" />
+          <div className="sun-glow" />
+          <div className="mist mist-a" />
+          <div className="mist mist-b" />
+          <div className="water-glint" />
           <div className="veil" />
         </div>
 
@@ -578,11 +603,12 @@ function App() {
 
         {save.hero && heroDef && (
           <div
-            className="player"
+            className={`player ${walking ? "walking" : ""} walk-${walkDir}`}
             style={{
               left: `${playerPos.x}%`,
               top: `${playerPos.y}%`,
               transform: `translate(-50%, -88%) scale(${playerPos.scale})`,
+              ["--hero-scale" as any]: playerPos.scale,
             }}
           >
             <BgImg name={heroDef.img} className="player-img" />
