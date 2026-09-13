@@ -346,7 +346,7 @@ function App() {
   const [valk, setValk] = useState(false);
   const [over, setOver] = useState("");
 const [playerX, setPlayerX] = useState(50);
-const [playerY, setPlayerY] = useState(78);
+const [playerY, setPlayerY] = useState(74);
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
   useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
   useEffect(() => {
@@ -405,10 +405,19 @@ const [playerY, setPlayerY] = useState(78);
   const nextStep = (id: string) => { if (trialIdx(id) >= 3 || save.artifacts.includes(id)) setScreen({ t: "realm", id }); else setScreen({ t: "trial", id }); };
   const isNav = (id: string) => (id === "tree" ? screen.t === "tree" || screen.t === "realm" : screen.t === id);
   const navScreen = (id: string): Screen => (id === "tree" ? { t: "tree" } : ({ t: id } as Screen));
+  // Мидгард: герой ходит только по нижней поверхности сцены.
+  // Верхняя граница земли слегка меняется по X, чтобы сохранить ощущение перспективы.
+  const groundTop = (x: number) => 66 + Math.abs(x - 50) * 0.10;
+  const clampGroundY = (x: number, y: number) =>
+    Math.max(groundTop(x), Math.min(91, y));
+
   const movePlayer = (dx: number, dy: number) => {
-  setPlayerX(x => Math.max(5, Math.min(95, x + dx)));
-  setPlayerY(y => Math.max(8, Math.min(92, y + dy)));
-};
+    setPlayerX(prevX => {
+      const nextX = Math.max(7, Math.min(93, prevX + dx));
+      setPlayerY(prevY => clampGroundY(nextX, prevY + dy));
+      return nextX;
+    });
+  };
   return (
     <div className="app">
       <style>{CSS}</style>
@@ -526,7 +535,7 @@ const [playerY, setPlayerY] = useState(78);
               className="move-center"
               onClick={() => {
                 setPlayerX(50);
-                setPlayerY(78);
+                setPlayerY(groundTop(50) + 8);
               }}
             >
               ◆
@@ -539,7 +548,7 @@ const [playerY, setPlayerY] = useState(78);
         </div>
 
         <div className="scene-hint">
-          Двигай героя по Мидгарду
+          ▲▼ — глубина • ◀▶ — путь по земле
         </div>
       </div>
     );
