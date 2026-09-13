@@ -69,7 +69,35 @@ const NAV = [{ id: "tree", ic: "ᚱ", t: "Путь" }, { id: "hero", ic: "ᛗ", 
 type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" } | { t: "hero" } | { t: "gift" } | { t: "hall" } | { t: "trial"; id: string } | { t: "fight"; id: string };
 type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number };
 const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0 };
-const loadSave = (): Save => { try { const s = { ...DEF, ...JSON.parse(localStorage.getItem("yggdrasil") || "") }; if (!s.watch) s.watch = Date.now(); return s; } catch { return { ...DEF, watch: Date.now() }; } };
+const loadSave = (): Save => {
+  try {
+    const raw = JSON.parse(localStorage.getItem("yggdrasil") || "{}");
+    const s: Save = {
+      ...DEF,
+      ...raw,
+      hero: raw?.hero ? { ...raw.hero } : null,
+      done: Array.isArray(raw?.done) ? raw.done : [],
+      trials: Array.isArray(raw?.trials) ? raw.trials : [],
+      artifacts: Array.isArray(raw?.artifacts) ? raw.artifacts : [],
+    };
+
+    // Migration from the previous hero roster:
+    // the old "valkyrie" hero is now the new Viking sprite.
+    if (s.hero?.id === "valkyrie") {
+      s.hero = { ...s.hero, id: "viking" };
+    }
+
+    // If a save contains an unknown hero id, send the player back to hero selection.
+    if (s.hero && !HEROES.some(h => h.id === s.hero!.id)) {
+      s.hero = null;
+    }
+
+    if (!s.watch) s.watch = Date.now();
+    return s;
+  } catch {
+    return { ...DEF, watch: Date.now() };
+  }
+};
 const today = () => new Date().toISOString().slice(0, 10);
 const rank = (n: number) => (n >= 500 ? "Всеотец" : n >= 300 ? "Мудрец Древа" : n >= 150 ? "Хранитель рун" : n >= 50 ? "Странник рун" : "Путник");
 const LADDER = [3, 5, 8, 12, 18, 25, 40];
@@ -200,7 +228,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .fadeT{top:0;background:linear-gradient(180deg,#0b0f0c,transparent)}.fadeB{bottom:0;background:linear-gradient(0deg,#0b0f0c,transparent)}
 .hint{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:11px;color:rgba(207,227,210,.7);z-index:5;pointer-events:none}
 .content{flex:1;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 30%,#182420,#0b0f0c)}
-.bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center}
 .veil{position:absolute;inset:0;background:linear-gradient(rgba(5,8,6,.6),transparent 30%,transparent 65%,rgba(5,8,6,.85));pointer-events:none}
 .banner{position:absolute;top:10px;left:12px;right:auto;z-index:4;padding:6px 12px;border-radius:10px;background:linear-gradient(180deg,rgba(20,25,22,.88),rgba(10,12,11,.92));border:1px solid rgba(255,215,106,.45);box-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none}
 .bemoji{display:none}.btag{display:none}
@@ -209,7 +237,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .gwrap{position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center}
 .gate-ring{position:absolute;inset:0;border-radius:50%;border:1.5px dashed;opacity:.6;animation:spin 12s linear infinite;pointer-events:none}
 .gate-core{width:76px;height:76px;border-radius:50%;border:3px solid;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;box-shadow:0 0 18px currentColor,inset 0 0 14px rgba(0,0,0,.9);animation:breathe 3s ease-in-out infinite;text-shadow:0 0 10px currentColor}
-.player{position:absolute;width:64px;height:92px;transform:translate(-50%,-88%);z-index:20;pointer-events:none;transition:left .12s linear,top .12s linear;filter:drop-shadow(0 5px 7px rgba(0,0,0,.65))}
+.player{position:absolute;width:76px;height:110px;transform:translate(-50%,-88%);z-index:20;pointer-events:none;transition:left .12s linear,top .12s linear;filter:drop-shadow(0 5px 7px rgba(0,0,0,.65))}
 .player-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .move-pad{position:absolute;left:14px;bottom:76px;z-index:30;width:142px;display:flex;flex-direction:column;align-items:center;gap:3px}
 .move-row{display:flex;align-items:center;justify-content:center}
