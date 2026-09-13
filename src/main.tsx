@@ -78,10 +78,10 @@ const NAMES_F = ["Астрид", "Фрейдис", "Гудрун", "Сигрид
 const NAMES_M = ["Сигурд", "Рагнар", "Эйнар", "Лейф", "Бьорн", "Харальд", "Ульф", "Гудмунд"];
 
 const HEROES: HeroDef[] = [
-  { id: "elf", race: "Эльфийка", gender: "f", sym: "ᛊ", color: "#e8f4ff", str: 6, en: 10, hp: 90, weapon: "Лук Лунного Света", ability: "Шёпот ветров", abilityDesc: "1 раз в мире убирает один неверный ответ загадки.", img: "hero_elf" },
-  { id: "valkyrie", race: "Валькирия", gender: "f", sym: "ᛉ", color: "#ffd76a", str: 9, en: 7, hp: 110, weapon: "Копьё Молний", ability: "Крылья бури", abilityDesc: "1 раз за бой щитом поглощает удар врага.", img: "hero_valkyrie" },
-  { id: "dwarf", race: "Гном", gender: "m", sym: "ᚲ", color: "#ff9d5c", str: 10, en: 5, hp: 130, weapon: "Молот Глубин", ability: "Каменная кожа", abilityDesc: "Получает на 25% меньше урона; сундуки дают +50% искр.", img: "hero_dwarf" },
-  { id: "berserk", race: "Берсерк", gender: "m", sym: "ᚦ", color: "#ff6b4a", str: 12, en: 4, hp: 100, weapon: "Секира «Клык Зверя»", ability: "Медвежья ярость", abilityDesc: "Когда здоровье ниже половины — урон удваивается.", img: "hero_berserk" },
+  { id: "elf", race: "Эльфийка", gender: "f", sym: "ᛊ", color: "#e8f4ff", str: 6, en: 10, hp: 90, weapon: "Лук Лунного Света", ability: "Шёпот ветров", abilityDesc: "1 раз в мире убирает один неверный ответ загадки.", img: "hero_elf.png" },
+  { id: "viking", race: "Викинг", gender: "m", sym: "ᛉ", color: "#ffd76a", str: 9, en: 7, hp: 110, weapon: "Копьё Молний", ability: "Крылья бури", abilityDesc: "1 раз за бой щитом поглощает удар врага.", img: "hero_viking.png" },
+  { id: "dwarf", race: "Гном", gender: "m", sym: "ᚲ", color: "#ff9d5c", str: 10, en: 5, hp: 130, weapon: "Молот Глубин", ability: "Каменная кожа", abilityDesc: "Получает на 25% меньше урона; сундуки дают +50% искр.", img: "hero_dwarf.png" },
+  { id: "berserk", race: "Берсерк", gender: "m", sym: "ᚦ", color: "#ff6b4a", str: 12, en: 4, hp: 100, weapon: "Секира «Клык Зверя»", ability: "Медвежья ярость", abilityDesc: "Когда здоровье ниже половины — урон удваивается.", img: "hero_berserk.png" },
 ];
 
 const MASTERS: Record<string, Master> = {
@@ -168,7 +168,7 @@ const ARTIFACTS: Record<string, string> = {
 function BgImg({ name, className }: { name: string; className: string }) {
   return (
     <img
-      src={`${BASE}img/${name}.jpg`}
+      src={name.includes(".") ? `${BASE}img/${name}` : `${BASE}img/${name}.jpg`}
       className={className}
       alt=""
       draggable={false}
@@ -200,7 +200,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .fadeT{top:0;background:linear-gradient(180deg,#0b0f0c,transparent)}.fadeB{bottom:0;background:linear-gradient(0deg,#0b0f0c,transparent)}
 .hint{position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:11px;color:rgba(207,227,210,.7);z-index:5;pointer-events:none}
 .content{flex:1;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 30%,#182420,#0b0f0c)}
-.bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.bgimg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .veil{position:absolute;inset:0;background:linear-gradient(rgba(5,8,6,.6),transparent 30%,transparent 65%,rgba(5,8,6,.85));pointer-events:none}
 .banner{position:absolute;top:10px;left:12px;right:auto;z-index:4;padding:6px 12px;border-radius:10px;background:linear-gradient(180deg,rgba(20,25,22,.88),rgba(10,12,11,.92));border:1px solid rgba(255,215,106,.45);box-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none}
 .bemoji{display:none}.btag{display:none}
@@ -209,109 +209,17 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .gwrap{position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center}
 .gate-ring{position:absolute;inset:0;border-radius:50%;border:1.5px dashed;opacity:.6;animation:spin 12s linear infinite;pointer-events:none}
 .gate-core{width:76px;height:76px;border-radius:50%;border:3px solid;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;box-shadow:0 0 18px currentColor,inset 0 0 14px rgba(0,0,0,.9);animation:breathe 3s ease-in-out infinite;text-shadow:0 0 10px currentColor}
-.player{
-  position:absolute;
-  width:58px;
-  height:82px;
-  transform:translate(-50%,-85%);
-  z-index:20;
-  pointer-events:none;
-  transition:left .12s linear,top .12s linear;
-  filter:drop-shadow(0 5px 7px rgba(0,0,0,.7));
-}
-
-.player-img{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  object-fit:contain;
-}
-
-.player-rune{
-  position:absolute;
-  left:50%;
-  bottom:3px;
-  transform:translateX(-50%);
-  width:22px;
-  height:22px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  border-radius:50%;
-  background:rgba(5,10,7,.78);
-  border:1px solid rgba(255,215,106,.55);
-  color:#ffd76a;
-  font-size:11px;
-  font-weight:700;
-  text-shadow:0 0 6px currentColor;
-}
-
-.move-pad{
-  position:absolute;
-  left:14px;
-  bottom:76px;
-  z-index:30;
-  width:142px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:3px;
-}
-
-.move-row{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-.move-pad button{
-  width:42px;
-  height:42px;
-  margin:2px;
-  border-radius:50%;
-  border:1px solid rgba(255,255,255,.3);
-  background:rgba(12,18,14,.78);
-  color:#e8f0e8;
-  font-size:18px;
-  font-weight:700;
-  box-shadow:
-    0 3px 8px rgba(0,0,0,.45),
-    inset 0 0 8px rgba(126,231,135,.08);
-  backdrop-filter:blur(4px);
-}
-
-.move-pad button:active{
-  transform:scale(.88);
-  background:rgba(35,55,42,.9);
-}
-
-.move-pad .move-center{
-  width:34px;
-  height:34px;
-  font-size:10px;
-  color:#ffd76a;
-  border-color:rgba(255,215,106,.35);
-}
-
-.scene-hint{
-  position:absolute;
-  left:50%;
-  bottom:12px;
-  transform:translateX(-50%);
-  z-index:25;
-  padding:6px 10px;
-  border-radius:9px;
-  background:rgba(5,9,7,.72);
-  border:1px solid rgba(126,231,135,.2);
-  color:rgba(207,227,210,.72);
-  font-size:10px;
-  white-space:nowrap;
-  pointer-events:none;
-}
+.player{position:absolute;width:64px;height:92px;transform:translate(-50%,-88%);z-index:20;pointer-events:none;transition:left .12s linear,top .12s linear;filter:drop-shadow(0 5px 7px rgba(0,0,0,.65))}
+.player-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.move-pad{position:absolute;left:14px;bottom:76px;z-index:30;width:142px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.move-row{display:flex;align-items:center;justify-content:center}
+.move-pad button{width:42px;height:42px;margin:2px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(12,18,14,.78);color:#e8f0e8;font-size:18px;font-weight:700;box-shadow:0 3px 8px rgba(0,0,0,.45),inset 0 0 8px rgba(126,231,135,.08);backdrop-filter:blur(4px)}
+.move-pad button:active{transform:scale(.88);background:rgba(35,55,42,.9)}
+.move-pad .move-center{width:34px;height:34px;font-size:10px;color:#ffd76a;border-color:rgba(255,215,106,.35)}
+.scene-hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:25;padding:6px 10px;border-radius:9px;background:rgba(5,9,7,.72);border:1px solid rgba(126,231,135,.2);color:rgba(207,227,210,.72);font-size:10px;white-space:nowrap;pointer-events:none}
 .herobar{display:flex;gap:10px;align-items:center;padding:8px 12px;background:rgba(10,13,11,.96);border-top:1px solid #1e2a20;z-index:6}
 .hbface{position:relative;width:34px;height:34px;flex-shrink:0;border-radius:50%;border:1.5px solid;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;overflow:hidden;background:#0d130f;text-shadow:0 0 5px currentColor}
-.hbimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.hbimg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .hbname{flex:1;display:flex;flex-direction:column;align-items:flex-start;font-size:13px;font-weight:700;line-height:1.15}
 .hbname i{font-style:normal;font-size:10px;color:#8fa39a}
 .hbst{font-size:12px;color:#ffb35c;font-weight:700;white-space:nowrap}
@@ -319,11 +227,12 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .scroll{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
 .card{background:#121a15;border:1px solid #223028;border-radius:16px;padding:14px}.center{text-align:center}.big{font-size:44px}
 .qhead2{font-size:16px;font-weight:700;margin:6px 0 4px}.dim{color:#8fa39a;font-size:13px;margin:6px 0 12px}
+.choose-screen{padding:12px 12px 18px;gap:10px}.choose-intro{padding:14px 12px 10px}.choose-intro .big{font-size:34px;color:#ffd76a;text-shadow:0 0 10px rgba(255,215,106,.45)}
 .hcard{display:flex;gap:12px;padding:12px;background:#121a15;border:1px solid #223028;border-radius:16px;text-align:left;align-items:center}
 .hcard.on{border-color:#ffd76a;box-shadow:0 0 12px rgba(255,215,106,.35)}
 .hface{position:relative;width:64px;height:64px;flex-shrink:0;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .hsym{font-size:26px;font-weight:700;text-shadow:0 0 8px currentColor}
-.himg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.himg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .hinfo{flex:1;display:flex;flex-direction:column;gap:3px}
 .hname{font-size:15px;font-weight:700}
 .hab{font-size:11px;color:#a9bfae;line-height:1.35}
@@ -459,7 +368,7 @@ const [playerY, setPlayerY] = useState(78);
     if (nshield) { md = Math.ceil(md * 0.3); mlog = " Щит принял большую часть удара."; }
     if (heroDef!.id === "dwarf") md = Math.ceil(md * 0.75);
     let nh = hhp;
-    if (heroDef!.id === "valkyrie" && !valk && nh - md <= 0) { setValk(true); md = 0; mlog = " Крылья бури поглотили смертельный удар!"; }
+    if (heroDef!.id === "viking" && !valk && nh - md <= 0) { setValk(true); md = 0; mlog = " Крылья бури поглотили смертельный удар!"; }
     nh = nh - md;
     setMhp(nm); setHhp(Math.max(0, nh)); setHen(nhen); setShield(false);
     if (nh <= 0) { setOver("lose"); setSave(s => ({ ...s, sparks: Math.max(0, s.sparks - 10) })); setFlog(log + " " + m.name + " бьёт... Ты пал. Древо возрождает тебя (−10 ✨)."); return; }
@@ -488,13 +397,12 @@ const [playerY, setPlayerY] = useState(78);
       </div>
 
       {screen.t === "choose" && (
-        <div className="scroll">
-          <div className="card center"><div className="big">🌫️</div><div className="qhead2">Выбор судьбы</div><p className="dim">Норны прядут нить. Выбери, кто пройдёт путь девяти миров.</p></div>
+        <div className="scroll choose-screen">
+          <div className="card center choose-intro"><div className="big">ᛉ</div><div className="qhead2">Выбери героя</div><p className="dim">Норны прядут нить. Выбери, кто пройдёт путь девяти миров.</p></div>
           {HEROES.map(h => (
             <button key={h.id} className={"hcard" + (pick === h.id ? " on" : "")} onClick={() => { setPick(h.id); setPickName(""); haptic(); }}>
               <span className="hface" style={{ borderColor: h.color, color: h.color, background: "linear-gradient(160deg,#101613,#0a0a0a)" }}>
                 <BgImg name={h.img} className="himg" />
-                <span className="hsym">{h.sym}</span>
               </span>
               <span className="hinfo">
                 <span className="hname" style={{ color: h.color }}>{h.race}</span>
@@ -577,7 +485,6 @@ const [playerY, setPlayerY] = useState(78);
             }}
           >
             <BgImg name={heroDef.img} className="player-img" />
-            <span className="player-rune">{heroDef.sym}</span>
           </div>
         )}
 
@@ -725,7 +632,7 @@ const [playerY, setPlayerY] = useState(78);
       {screen.t === "hero" && heroDef && save.hero && (
         <div className="scroll">
           <div className="card center">
-            <span className="hface bigface" style={{ borderColor: heroDef.color, color: heroDef.color, background: "linear-gradient(160deg,#101613,#0a0a0a)" }}><BgImg name={heroDef.img} className="himg" /><span className="hsym">{heroDef.sym}</span></span>
+            <span className="hface bigface" style={{ borderColor: heroDef.color, color: heroDef.color, background: "linear-gradient(160deg,#101613,#0a0a0a)" }}><BgImg name={heroDef.img} className="himg" /></span>
             <div className="qhead2" style={{ color: heroDef.color }}>{save.hero.name} • {heroDef.race}</div>
             <div className="stats">
               <div className="stat"><b>⚔ {heroDef.str}</b><span>сила</span></div>
