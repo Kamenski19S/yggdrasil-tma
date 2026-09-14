@@ -832,6 +832,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
   const state = useRef({ x: 0, z: 28, dx: 0, dz: 0 });
   const [near, setNear] = useState("");
   const [moving, setMoving] = useState(false);
+  const cameraDir = useRef({ x: 0, z: 1 });
 
   useEffect(() => {
     const el = mount.current;
@@ -1213,7 +1214,9 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       }
       addMesh(g);
     };
-    woodpile(-23,-12,1.0);woodpile(18,-24,.78);woodpile(34,22,.82);woodpile(-33,15,.82);
+    // Firewood piles are intentionally omitted from the current house fronts.
+    // They will be reintroduced later at verified side/back locations so no logs can
+    // visually intersect an entrance or the camera view of a doorway.
     for(const p0 of [[-17,-11],[-21,-16],[14,-12],[22,-14],[24,17],[-31,15],[-18,41],[34,14]] as Array<[number,number]>) wellMarker(p0[0],p0[1]);
     // Low vegetation and scattered stones fill empty ground without turning it into a particle-heavy scene.
     const bush=(x:number,z:number,s=1)=>{
@@ -1327,10 +1330,24 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       if(l>.05){
         const step=6.2*dt;
         moveWithCollision(q,q.x+(q.dx/l)*step,q.z+(q.dz/l)*step);
-        hero.rotation.y=Math.atan2(q.dx,q.dz);setMoving(true);
+        hero.rotation.y=Math.atan2(q.dx,q.dz);
+        cameraDir.current.x=q.dx/l;
+        cameraDir.current.z=q.dz/l;
+        setMoving(true);
       }else setMoving(false);
-      const hy=groundY(q.x,q.z);hero.position.set(q.x,hy+.04,q.z);
-      const target=new THREE.Vector3(q.x-q.dx*2.0,hy+7.2,q.z+11.8-q.dz*2.0);camera.position.lerp(target,.09);camera.lookAt(q.x+q.dx*1.9,hy+1.2,q.z+q.dz*2.0);
+      const hy=groundY(q.x,q.z);
+      hero.position.set(q.x,hy+.04,q.z);
+      // Keep the camera direction stable when the thumb is released. The old camera
+      // used dx/dz directly, so stopping movement instantly changed its target and
+      // produced the visible screen jump/bounce on mobile.
+      const cd=cameraDir.current;
+      const target=new THREE.Vector3(
+        q.x-cd.x*2.0,
+        hy+7.2,
+        q.z-cd.z*2.0+11.8
+      );
+      camera.position.lerp(target,.055);
+      camera.lookAt(q.x+cd.x*1.9,hy+1.2,q.z+cd.z*1.9);
       let found="",foundId="";for(const d of destinations){if(Math.hypot(q.x-d.x,q.z-d.z)<d.r){found=d.label;foundId=d.id;break;}}setNear(found?`${found}|${foundId}`:"");
       fires.forEach(f=>{f.light.intensity=2.0+Math.sin(now*.012+f.phase)*.5;f.flame.scale.y=.9+Math.sin(now*.009+f.phase)*.12;});
       mist.children.forEach((m,i)=>{m.position.x+=Math.sin(now*.00012+i)*.003;m.position.z+=Math.cos(now*.0001+i)*.002;});
