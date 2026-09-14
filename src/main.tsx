@@ -825,7 +825,7 @@ function midHero3d(h: HeroDef) {
   return markMeshes(g);
 }
 
-function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
+function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void; eventDone: boolean }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -833,6 +833,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
   const [near, setNear] = useState("");
   const [moving, setMoving] = useState(false);
   const [ritualOpen, setRitualOpen] = useState(false);
+  const [forestEventOpen, setForestEventOpen] = useState(false);
   const cameraDir = useRef({ x: 0, z: 1 });
 
   useEffect(() => {
@@ -1488,6 +1489,28 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     const deerRing=new THREE.Mesh(new THREE.TorusGeometry(5.8,.045,7,48),new THREE.MeshStandardMaterial({color:0x7e8b72,emissive:0x303d2a,emissiveIntensity:.8,transparent:true,opacity:.48}));deerRing.rotation.x=Math.PI/2;deerRing.position.set(deerClearingX,groundY(deerClearingX,deerClearingZ)+.035,deerClearingZ);scene.add(deerRing);
     squirrel(ashGroveX+5,ashGroveZ+1);
 
+    // First living forest event: the Three Threads stone.
+    // This is a game-world interpretation: the Edda gives the Norns as powers
+    // that mark the fates of people; the concrete Midgard location is our fiction.
+    const eventX=12, eventZ=49;
+    const eventGroup=new THREE.Group();
+    eventGroup.position.set(eventX,groundY(eventX,eventZ),eventZ);
+    const eventStone=new THREE.Mesh(new THREE.DodecahedronGeometry(1.05,1),mat(0x4e5550,1));
+    eventStone.position.y=.85; eventStone.scale.y=1.55; eventGroup.add(eventStone);
+    const eventRing=new THREE.Mesh(new THREE.TorusGeometry(2.7,.055,7,48),new THREE.MeshStandardMaterial({color:0x9c8cb0,emissive:0x4b365a,emissiveIntensity:1.8,transparent:true,opacity:.78}));
+    eventRing.rotation.x=Math.PI/2; eventRing.position.y=.06; eventGroup.add(eventRing);
+    const eventThreadMat=new THREE.LineBasicMaterial({color:0xd8c9e8,transparent:true,opacity:.72});
+    for(let i=0;i<3;i++){
+      const pts=[new THREE.Vector3((i-1)*.72,.95,.15),new THREE.Vector3((i-1)*1.25,2.9,-.35+Math.sin(i)*.25),new THREE.Vector3((i-1)*1.75,.5,.9)];
+      eventGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),eventThreadMat));
+    }
+    for(let i=0;i<7;i++){
+      const fp=new THREE.Mesh(new THREE.DodecahedronGeometry(.11,0),mat(0x665b52,1));
+      const a=-1.0+i*.32; fp.position.set(-1.7+a*.95,.06,-1.6+i*.46); fp.scale.set(1.6,.35,.8); eventGroup.add(fp);
+    }
+    addMesh(eventGroup,'forestEvent','Камень Трёх Нитей');
+    addCircleCollider(eventX,eventZ,1.15,.08);
+
     // Dense forest ring uses varied, irregular firs.
     for(let i=0;i<95;i++){
       const a=midHash(i,77)*Math.PI*2;const r=58+midHash(i,91)*32;
@@ -1537,7 +1560,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       {id:"house",label:"Дом старейшины",x:13,z:-18,r:5.2},{id:"forge",label:"Кузница",x:-10,z:-5,r:5.4},
       {id:"mimir",label:"Колодец Мимира",x:18,z:15,r:4.8},{id:"norns",label:"Прядильня норн",x:-25,z:43,r:5.4},
       {id:"rune",label:"Древний камень Феху",x:27,z:57,r:4.5},{id:"ritual",label:"Круг Силы",x:-43,z:62,r:6.8},{id:"port",label:"Речной причал",x:-46,z:-15,r:5},
-      {id:"ashgrove",label:"Роща Ясеня",x:-4,z:69,r:7.5},{id:"runefield",label:"Поле Рун",x:39,z:70,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-64,z:36,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:30,z:53,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:61,z:78,r:6.5},
+      {id:"ashgrove",label:"Роща Ясеня",x:-4,z:69,r:7.5},{id:"forestEvent",label:eventDone?"Камень Трёх Нитей — место выбора":"Камень Трёх Нитей",x:eventX,z:eventZ,r:4.8},{id:"runefield",label:"Поле Рун",x:39,z:70,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-64,z:36,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:30,z:53,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:61,z:78,r:6.5},
       {id:"elder",label:"Старейшина",x:9,z:-8,r:3.2},{id:"blacksmith",label:"Кузнец",x:-6,z:-3,r:3.2},
       {id:"gate",label:"Ворота Мидгарда",x:0,z:-31,r:5},{id:"tower",label:"Сторожевая башня",x:29,z:25,r:4}
     ];
@@ -1577,7 +1600,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     raf=requestAnimationFrame(loop);
 
     return()=>{cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);groundTexture.dispose();woodTex.dispose();roofTex.dispose();renderer.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();};
-  },[h.id,on]);
+  },[h.id,on,eventDone]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
   const stopJoy=()=>{if(knob.current)knob.current.style.transform="translate(0,0)";state.current.dx=0;state.current.dz=0;};
@@ -1589,6 +1612,17 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
 
   return <div className="content mid3d-scene" ref={mount} style={{touchAction:"none",userSelect:"none",WebkitUserSelect:"none"}} onPointerDown={startJoyFromZone} onPointerMove={moveJoyFromZone} onPointerUp={endJoyFromZone} onPointerCancel={endJoyFromZone} onContextMenu={e=>e.preventDefault()}>
     <div className="mid3d-ui mid3d-top"><div className="mid3d-pill"><b>МИДГАРД</b><span>Деревня • река • лес • святилища</span></div><div className="mid3d-pill"><b>ᛟ</b><span>Мир живёт вокруг тебя</span></div></div>
+    {forestEventOpen&&!eventDone&&<div className="mid3d-ui mid3d-interact" style={{bottom:"14%",left:"50%",transform:"translateX(-50%)",width:"min(92vw,390px)",zIndex:31}}>
+      <b>ᛟ Камень Трёх Нитей</b>
+      <span>На камне проступают три линии. Одна ведёт назад. Вторая — к тому, что происходит сейчас. Третья исчезает в тумане будущего.</span>
+      <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setForestEventOpen(false);on("forestEvent:past")}}>ᛁ Прошлое — узнать, что здесь произошло</button>
+      <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setForestEventOpen(false);on("forestEvent:present")}}>ᛏ Настоящее — принять знак таким, какой он есть</button>
+      <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setForestEventOpen(false);on("forestEvent:future")}}>ᛉ Будущее — последовать за нитью, которую ещё не видно</button>
+    </div>}
+    {forestEventOpen&&eventDone&&<div className="mid3d-ui mid3d-interact" style={{bottom:"18%",left:"50%",transform:"translateX(-50%)",width:"min(92vw,360px)",zIndex:30}}>
+      <b>Камень Трёх Нитей</b><span>Ты уже выбрал свою нить. Камень помнит этот выбор.</span>
+      <button onPointerDown={e=>e.stopPropagation()} onClick={()=>setForestEventOpen(false)}>Продолжить путь</button>
+    </div>}
     {ritualOpen&&<div className="mid3d-ui mid3d-interact" style={{bottom:"18%",left:"50%",transform:"translateX(-50%)",width:"min(92vw,360px)",zIndex:30}}>
       <b>🜂 Круг Силы</b>
       <span>Древние камни отвечают на твоё присутствие. Выбери один путь.</span>
@@ -1599,7 +1633,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:ice")}}>❄️ Ледяной обет — ослабить первый удар врага</button>
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:ygg")}}>🌳 Зов Иггдрасиля — пережить смертельный удар</button>
     </div>}
-    {near&&!ritualOpen&&(()=>{const [label,id]=near.split("|");return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Ты достаточно близко</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>id==="ritual"?setRitualOpen(true):on(id)}>Взаимодействовать</button></div>;})()}
+    {near&&!ritualOpen&&!forestEventOpen&&(()=>{const [label,id]=near.split("|");return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Ты достаточно близко</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>id==="ritual"?setRitualOpen(true):id==="forestEvent"?setForestEventOpen(true):on(id)}>Взаимодействовать</button></div>;})()}
     <div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-action" onPointerDown={e=>e.stopPropagation()} onClick={()=>on("event")}>ᚠ</button>
     <div className="mid3d-ui mid3d-hint">{moving?"Исследуй Мидгард":"Ворота • площадь • кузница • Мимир • норны • лес"}</div>
@@ -1863,6 +1897,30 @@ const [roadT, setRoadT] = useState(0.06);
         say("Рататоск исчезает среди ветвей. Кажется, он принёс тебе чью-то весть — но решил оставить её при себе.");
         return;
       }
+      if (id === "forestEvent") {
+        if (save.done.includes("forest:choice")) {
+          say("Камень холоден. Твоя нить уже выбрана — теперь последствия будут искать тебя сами.");
+        }
+        return;
+      }
+      if (id === "forestEvent:past") {
+        setSave(s => ({ ...s, sparks: s.sparks + 12, done: [...new Set([...s.done, "forest:choice", "forest:past"])] }));
+        haptic("success");
+        say("Ты видишь старую тропу и следы телеги. Видение ведёт к Старому хутору. Прошлое не исчезло — оно оставило след.");
+        return;
+      }
+      if (id === "forestEvent:present") {
+        setSave(s => ({ ...s, sparks: s.sparks + 12, done: [...new Set([...s.done, "forest:choice", "forest:present"])] }));
+        haptic("success");
+        say("На камне появляется знак Мимира. Ты понимаешь: ответ уже рядом, но увидеть его можно только в настоящем.");
+        return;
+      }
+      if (id === "forestEvent:future") {
+        setSave(s => ({ ...s, sparks: s.sparks + 12, done: [...new Set([...s.done, "forest:choice", "forest:future"])] }));
+        haptic("success");
+        say("Третья нить исчезает в лесу. Где-то впереди слышится смех Рататоска. Ты выбрал то, чего ещё нет.");
+        return;
+      }
       if (id === "event") {
         say("Ты замечаешь следы у северной дороги. Это не зверь. Событие Мидгарда начинается.");
         return;
@@ -1891,7 +1949,7 @@ const [roadT, setRoadT] = useState(0.06);
       }
     };
 
-    return <Midgard3D h={heroDef} on={interact} />;
+    return <Midgard3D h={heroDef} on={interact} eventDone={save.done.includes("forest:choice")} />;
   }
 
   return (
