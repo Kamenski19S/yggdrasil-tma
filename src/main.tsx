@@ -501,23 +501,176 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       const g = new THREE.Group();
       g.userData = { label, id };
 
-      const body = midBox(6, 3.7, 5, 0x79543a);
-      body.position.y = 1.85;
+      const wood = midMat(0x5a3b29, 0.98);
+      const darkWood = midMat(0x35251c, 0.98);
+      const beam = midMat(0x3f2b20, 0.98);
+      const stoneMat = midMat(0x59605a, 0.98);
+      const roofMat = midMat(0x343b2f, 1);
+
+      // Каменный фундамент — дом не выглядит как коробка, а стоит на земле.
+      const foundation = midBox(6.7, 0.65, 5.7, 0x555a53);
+      foundation.position.y = 0.32;
+      g.add(foundation);
+
+      // Деревянный сруб.
+      const body = midBox(6.1, 3.45, 5.15, 0x6b472f);
+      body.position.y = 2.15;
       g.add(body);
 
-      const roof = new THREE.Mesh(
-        new THREE.ConeGeometry(4.5, 2.8, 4),
-        midMat(0x392b27)
-      );
-      roof.rotation.y = Math.PI / 4;
-      roof.position.y = 5.1;
-      g.add(roof);
+      // Горизонтальные венцы брёвен.
+      for (let i = 0; i < 6; i++) {
+        const log = midBox(6.35, 0.16, 5.35, wood);
+        log.position.y = 0.82 + i * 0.58;
+        g.add(log);
+      }
 
-      const door = midBox(1.0, 1.8, 0.18, 0x2c1c13);
-      door.position.set(0, 0.9, 2.52);
+      // Угловые стойки.
+      [[-3.05, -2.52], [3.05, -2.52], [-3.05, 2.52], [3.05, 2.52]].forEach(([px, pz]) => {
+        const post = midBox(0.34, 4.15, 0.34, beam);
+        post.position.set(px, 2.25, pz);
+        g.add(post);
+      });
+
+      // Фронтонный каркас.
+      const gableBeamL = midBox(0.28, 4.6, 0.30, beam);
+      gableBeamL.rotation.z = -0.63;
+      gableBeamL.position.set(-1.62, 5.0, 2.58);
+      g.add(gableBeamL);
+      const gableBeamR = gableBeamL.clone();
+      gableBeamR.rotation.z = 0.63;
+      gableBeamR.position.x = 1.62;
+      g.add(gableBeamR);
+      const ridge = midBox(0.34, 0.34, 5.35, beam);
+      ridge.position.set(0, 6.15, 0);
+      g.add(ridge);
+
+      // Крутая крыша из двух наклонных скатов. Лёгкая, но выглядит объёмно.
+      const roofL = midBox(4.15, 0.30, 5.65, roofMat);
+      roofL.rotation.z = -0.58;
+      roofL.position.set(-1.75, 5.05, 0);
+      g.add(roofL);
+      const roofR = roofL.clone();
+      roofR.rotation.z = 0.58;
+      roofR.position.x = 1.75;
+      g.add(roofR);
+
+      // Дерн/мох поверх крыши — несколько тонких полос вместо тяжёлой текстуры.
+      const moss = midMat(0x4d5a3f, 1);
+      for (let i = -2; i <= 2; i++) {
+        const strip = midBox(0.95, 0.08, 5.15, moss);
+        strip.rotation.z = -0.58;
+        strip.position.set(i * 0.78 - 1.55, 5.20 + Math.abs(i) * 0.15, 0);
+        g.add(strip);
+        const strip2 = strip.clone();
+        strip2.rotation.z = 0.58;
+        strip2.position.x = i * 0.78 + 1.55;
+        g.add(strip2);
+      }
+
+      // Дверь с тяжёлыми рамами.
+      const door = midBox(1.12, 2.05, 0.20, darkWood);
+      door.position.set(0, 1.52, 2.62);
       g.add(door);
+      const doorFrameL = midBox(0.16, 2.25, 0.25, beam);
+      doorFrameL.position.set(-0.68, 1.58, 2.72);
+      g.add(doorFrameL);
+      const doorFrameR = doorFrameL.clone();
+      doorFrameR.position.x = 0.68;
+      g.add(doorFrameR);
+      const doorTop = midBox(1.52, 0.16, 0.25, beam);
+      doorTop.position.set(0, 2.62, 2.72);
+      g.add(doorTop);
 
-      // Детали кузницы: навес, наковальня, очаг и лёгкие искры.
+      // Тёплые окна.
+      const windowMat = new THREE.MeshStandardMaterial({
+        color: 0xd58d3a,
+        emissive: 0x7b3f10,
+        emissiveIntensity: 1.5,
+        roughness: 0.65,
+      });
+      [[-2.05, 2.15, 2.63], [2.05, 2.15, 2.63]].forEach(([wx, wy, wz]) => {
+        const win = midBox(0.95, 0.82, 0.12, 0x6e4a31);
+        win.position.set(wx, wy, wz);
+        g.add(win);
+        const glow = midBox(0.62, 0.52, 0.08, windowMat);
+        glow.position.set(wx, wy, wz + 0.08);
+        g.add(glow);
+        const crossV = midBox(0.08, 0.68, 0.10, beam);
+        crossV.position.set(wx, wy, wz + 0.13);
+        g.add(crossV);
+        const crossH = midBox(0.76, 0.08, 0.10, beam);
+        crossH.position.set(wx, wy, wz + 0.13);
+        g.add(crossH);
+      });
+
+      // Кровельный дымоход и слабый дым.
+      const chimney = midBox(0.82, 1.55, 0.82, 0x504941);
+      chimney.position.set(-1.65, 6.0, -1.0);
+      g.add(chimney);
+      const smoke = new THREE.Mesh(
+        new THREE.SphereGeometry(0.42, 8, 8),
+        new THREE.MeshBasicMaterial({ color: 0x8b8a82, transparent: true, opacity: 0.16 })
+      );
+      smoke.position.set(-1.65, 7.05, -1.0);
+      g.add(smoke);
+
+      // Небольшое крыльцо.
+      const step1 = midBox(2.15, 0.20, 1.0, stoneMat);
+      step1.position.set(0, 0.75, 3.05);
+      g.add(step1);
+      const step2 = midBox(1.65, 0.18, 0.65, stoneMat);
+      step2.position.set(0, 0.48, 3.45);
+      g.add(step2);
+
+      // Камни и валуны вокруг дома — низкополигональные, поэтому дешёвые для телефона.
+      const rockSpots: Array<[number, number, number]> = [
+        [-4.3, 0.55, -2.7], [4.0, 0.7, -2.8], [-4.2, 0.45, 2.8], [4.4, 0.5, 2.4],
+        [-3.7, 0.35, 4.0], [3.6, 0.4, 3.9], [-5.0, 0.5, 0.2], [5.0, 0.45, -0.2],
+      ];
+      rockSpots.forEach(([rx, rs, rz], i) => {
+        const rock = new THREE.Mesh(
+          new THREE.DodecahedronGeometry(0.55 + (i % 3) * 0.12, 0),
+          stoneMat
+        );
+        rock.scale.set(1.2, 0.72, 0.95);
+        rock.position.set(rx, rs, rz);
+        rock.rotation.set(0.1 * i, 0.4 * i, 0.08 * i);
+        g.add(rock);
+      });
+
+      // Бочки и поленница для жизни вокруг дома.
+      const barrelMat = midMat(0x65432c, 1);
+      for (let i = 0; i < 2; i++) {
+        const barrel = midCyl(0.42, 0.85, barrelMat, 10);
+        barrel.position.set(-3.75 + i * 0.75, 0.85, 3.0);
+        g.add(barrel);
+      }
+      for (let i = 0; i < 4; i++) {
+        const log = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.17, 0.17, 1.65, 8),
+          midMat(0x6c482f, 1)
+        );
+        log.rotation.z = Math.PI / 2;
+        log.position.set(3.55, 0.35 + (i % 2) * 0.28, 2.8 + Math.floor(i / 2) * 0.34);
+        g.add(log);
+      }
+
+      // Входная калитка и короткий деревянный забор.
+      const fenceMat = midMat(0x4b3526, 1);
+      const fencePost = (fx: number, fz: number) => {
+        const post = midBox(0.18, 1.25, 0.18, fenceMat);
+        post.position.set(fx, 0.63, fz);
+        g.add(post);
+      };
+      [-4.6, -3.4, 3.4, 4.6].forEach((fx) => fencePost(fx, 3.65));
+      const rail = midBox(1.4, 0.14, 0.14, fenceMat);
+      rail.position.set(-4.0, 0.72, 3.65);
+      g.add(rail);
+      const rail2 = rail.clone();
+      rail2.position.x = 4.0;
+      g.add(rail2);
+
+      // Особая кузница поверх базового дома.
       if (id === "forge") {
         const canopy = midBox(7.2, 0.22, 6.2, 0x4a3326);
         canopy.position.set(0, 5.75, 0.35);
@@ -554,17 +707,16 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
         flame.position.set(1.9, 1.15, 1.0);
         g.add(flame);
 
-        const chimney = midBox(1.25, 2.5, 1.25, 0x493d35);
-        chimney.position.set(1.25, 6.15, -1.25);
-        g.add(chimney);
-        const smoke = new THREE.Mesh(
+        const chimney2 = midBox(1.25, 2.5, 1.25, 0x493d35);
+        chimney2.position.set(1.25, 6.15, -1.25);
+        g.add(chimney2);
+        const smoke2 = new THREE.Mesh(
           new THREE.SphereGeometry(0.55, 8, 8),
           new THREE.MeshBasicMaterial({ color: 0x77746e, transparent: true, opacity: 0.18 })
         );
-        smoke.position.set(1.25, 7.7, -1.25);
-        g.add(smoke);
+        smoke2.position.set(1.25, 7.7, -1.25);
+        g.add(smoke2);
 
-        // Небольшой запас древесины.
         for (let i = 0; i < 4; i++) {
           const log = new THREE.Mesh(
             new THREE.CylinderGeometry(0.16, 0.16, 1.8, 8),
@@ -575,16 +727,13 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
           g.add(log);
         }
 
-        // Простая ограда кузницы с проходом-калиткой.
-        const fenceMat = midMat(0x513826, 1);
-        const fence = (fx: number, fz: number, rot = 0) => {
+        const fenceMat2 = midMat(0x513826, 1);
+        const fence = (fx: number, fz: number) => {
           const post = midBox(0.22, 1.55, 0.22, 0x3f2c20);
           post.position.set(fx, 0.78, fz);
           g.add(post);
-          const rail = midBox(1.7, 0.16, 0.14, 0x513826);
-          rail.rotation.y = rot;
+          const rail = midBox(1.7, 0.16, 0.14, fenceMat2);
           rail.position.set(fx, 0.72, fz);
-          rail.material = fenceMat;
           g.add(rail);
         };
         [-2.9, -1.1, 0.7, 2.5].forEach((fz) => fence(-4.15, fz));
