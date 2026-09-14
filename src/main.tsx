@@ -1087,7 +1087,8 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       const roofA=new THREE.Mesh(new THREE.BoxGeometry(w*.72,.25,d+1.0),roofMat);
       const roofB=roofA.clone();roofA.rotation.z=.62;roofB.rotation.z=-.62;roofA.position.set(-w*.22,4.2,0);roofB.position.set(w*.22,4.2,0);g.add(roofA,roofB);
       const ridge=box(.38,.34,d+1.12,0x2b211b,1);ridge.position.y=5.15;g.add(ridge);
-      for(const px of [-w*.34,w*.34]){const e=box(.22,.32,d+1.05,0x3b2b20,1);e.position.set(px,3.95,0);e.rotation.z=px<0?.62:-.62;g.add(e);}
+      // Roof edge is carried by the roof planes themselves. Do not add long diagonal fascia beams
+      // here: they visually cut across the front facade and doorway from the camera angle.
       // Clean entrance: no tall porch posts in front of the doorway.
       // A shallow threshold remains without blocking the door visually.
       const porch=box(w*.34,.16,1.0,0x62422b,1);porch.position.set(0,.68,d/2+.54);g.add(porch);
@@ -1202,9 +1203,17 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     // Hearths, wood piles and small objects around homes.
     const woodpile=(x:number,z:number,s=1)=>{
       const g=new THREE.Group();g.position.set(x,groundY(x,z),z);
-      for(let i=0;i<7;i++){const log=new THREE.Mesh(new THREE.CylinderGeometry(.14*s,.14*s,1.7*s,8),mat(0x50321f,1));log.rotation.z=Math.PI/2;log.rotation.y=(i%3-.9)*.18;log.position.set((i%3-.9)*.28*s,.16+(Math.floor(i/3)*.22*s),(i%2-.5)*.28*s);g.add(log);}addMesh(g);
+      // Low, horizontal stacked firewood; never placed directly in front of a doorway.
+      for(let i=0;i<8;i++){
+        const log=new THREE.Mesh(new THREE.CylinderGeometry(.13*s,.13*s,1.55*s,8),mat(0x50321f,1));
+        log.rotation.z=Math.PI/2;
+        log.rotation.y=(i%2===0?-.04:.04);
+        log.position.set((i%2-.5)*.38*s,.15+(Math.floor(i/2)*.20*s),(i%4-1.5)*.16*s);
+        g.add(log);
+      }
+      addMesh(g);
     };
-    woodpile(-23,-12,1.15);woodpile(15,-23,1);woodpile(34,22,.9);woodpile(-33,15,.9);
+    woodpile(-23,-12,1.0);woodpile(18,-24,.78);woodpile(34,22,.82);woodpile(-33,15,.82);
     for(const p0 of [[-17,-11],[-21,-16],[14,-12],[22,-14],[24,17],[-31,15],[-18,41],[34,14]] as Array<[number,number]>) wellMarker(p0[0],p0[1]);
     // Low vegetation and scattered stones fill empty ground without turning it into a particle-heavy scene.
     const bush=(x:number,z:number,s=1)=>{
