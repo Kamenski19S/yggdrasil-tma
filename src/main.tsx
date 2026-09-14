@@ -1060,18 +1060,14 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       const darkWood=mat(0x292019,1);
       const stoneBase=box(w+.7,.62,d+.7,0x565852,1);stoneBase.position.y=.31;g.add(stoneBase);
       const wall=new THREE.Mesh(new THREE.BoxGeometry(w,3.55,d),woodMat);wall.position.y=2.05;g.add(wall);
-      // Horizontal log courses give the walls depth instead of a flat box.
-      for(let i=0;i<6;i++){
-        const log=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,w+.18,10),woodMat);
-        log.rotation.x=Math.PI/2;log.position.set(0,.62+i*.58,d/2+.08);g.add(log);
-        const back=log.clone();back.position.z=-d/2-.08;g.add(back);
-      }
+      // Clean timber wall: no cylindrical log courses on the facade.
+      // These were the source of the long beam-like shapes around the entrance.
       for(const px of [-w*.46,w*.46]) for(const pz of [-d*.5,d*.5]){
         const post=box(.34,3.9,.34,0x2a2018,1);post.position.set(px,2.08,pz);g.add(post);
       }
       // Clean front facade: the entrance must remain completely unobstructed.
       // Do not place tall vertical structural beams near the doorway.
-      const cross=box(w*.94,.24,.30,0x30231a,1);cross.position.set(0,2.38,d/2+.16);g.add(cross);
+      // No horizontal beam over the doorway; keep the entrance visually clean.
       const door=box(1.18,2.15,.18,0x241912,1);door.position.set(0,1.35,d/2+.17);g.add(door);
       const doorFrame1=box(.14,2.35,.22,0x3a291d,1),doorFrame2=doorFrame1.clone();doorFrame1.position.set(-.67,1.42,d/2+.2);doorFrame2.position.set(.67,1.42,d/2+.2);g.add(doorFrame1,doorFrame2);
       for(const px of [-w*.27,w*.27]){
@@ -1202,21 +1198,9 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     };
     stall(-5,-7,.12);stall(8,-5,-.18);stall(6,7,.5);
     // Hearths, wood piles and small objects around homes.
-    const woodpile=(x:number,z:number,s=1)=>{
-      const g=new THREE.Group();g.position.set(x,groundY(x,z),z);
-      // Low, horizontal stacked firewood; never placed directly in front of a doorway.
-      for(let i=0;i<8;i++){
-        const log=new THREE.Mesh(new THREE.CylinderGeometry(.13*s,.13*s,1.55*s,8),mat(0x50321f,1));
-        log.rotation.z=Math.PI/2;
-        log.rotation.y=(i%2===0?-.04:.04);
-        log.position.set((i%2-.5)*.38*s,.15+(Math.floor(i/2)*.20*s),(i%4-1.5)*.16*s);
-        g.add(log);
-      }
-      addMesh(g);
-    };
-    // Firewood piles are intentionally omitted from the current house fronts.
-    // They will be reintroduced later at verified side/back locations so no logs can
-    // visually intersect an entrance or the camera view of a doorway.
+    // Firewood piles are disabled completely.
+    // No stacked logs are created anywhere near houses or doorways.
+    const woodpile=(_x:number,_z:number,_s=1)=>{ return; };
     for(const p0 of [[-17,-11],[-21,-16],[14,-12],[22,-14],[24,17],[-31,15],[-18,41],[34,14]] as Array<[number,number]>) wellMarker(p0[0],p0[1]);
     // Low vegetation and scattered stones fill empty ground without turning it into a particle-heavy scene.
     const bush=(x:number,z:number,s=1)=>{
