@@ -68,9 +68,9 @@ const REALMS: Realm[] = [
 
 const NAV = [{ id: "tree", ic: "ᚱ", t: "Путь" }, { id: "hero", ic: "ᛗ", t: "Герой" }, { id: "gift", ic: "ᚷ", t: "Дар" }, { id: "hall", ic: "ᛟ", t: "Чертог" }];
 type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" } | { t: "hero" } | { t: "gift" } | { t: "hall" } | { t: "trial"; id: string } | { t: "fight"; id: string };
-type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number };
-const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0 };
-const loadSave = (): Save => { try { const s = { ...DEF, ...JSON.parse(localStorage.getItem("yggdrasil") || "") }; if (!s.watch) s.watch = Date.now(); return s; } catch { return { ...DEF, watch: Date.now() }; } };
+type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[] };
+const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [] };
+const loadSave = (): Save => { try { const s = { ...DEF, ...JSON.parse(localStorage.getItem("yggdrasil") || "") }; if (!Array.isArray(s.powers)) s.powers = []; if (!s.watch) s.watch = Date.now(); return s; } catch { return { ...DEF, watch: Date.now() }; } };
 const today = () => new Date().toISOString().slice(0, 10);
 const rank = (n: number) => (n >= 500 ? "Всеотец" : n >= 300 ? "Мудрец Древа" : n >= 150 ? "Хранитель рун" : n >= 50 ? "Странник рун" : "Путник");
 const LADDER = [3, 5, 8, 12, 18, 25, 40];
@@ -1467,8 +1467,11 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       <b>🜂 Круг Силы</b>
       <span>Древние камни отвечают на твоё присутствие. Выбери один путь.</span>
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:mimir")}}>🧠 Око Мимира — открыть скрытое</button>
-      <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:norn")}}>🧵 Нить Норн — увидеть последствия</button>
-      <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:ash")}}>🌿 Дыхание Ясеня — восстановить силы</button>
+      <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:norn")}}>🧵 Нить Норн — избежать одной судьбы</button>
+      <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:ash")}}>🌿 Дыхание Ясеня — +25 здоровья в следующем бою</button>
+      <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:fire")}}>🔥 Огненный обет — +5 к следующему удару</button>
+      <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:ice")}}>❄️ Ледяной обет — ослабить первый удар врага</button>
+      <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:ygg")}}>🌳 Зов Иггдрасиля — пережить смертельный удар</button>
     </div>}
     {near&&!ritualOpen&&(()=>{const [label,id]=near.split("|");return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Ты достаточно близко</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>id==="ritual"?setRitualOpen(true):on(id)}>Взаимодействовать</button></div>;})()}
     <div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
@@ -1525,28 +1528,73 @@ const [roadT, setRoadT] = useState(0.06);
   const answer = (id: string, ai: number) => {
     if (res !== null) return;
     const idx = trialIdx(id); const q = QUESTS[id][idx];
-    setRes(ai);
-    if (ai === q.c) { haptic("success"); const add = 12 + idx * 3 + (heroDef?.id === "dwarf" ? 6 : 0); say("Верно! Сундук хозяина: +" + add + " ✨"); finishTrial(id, idx, add); }
-    else { haptic(); setFlog(MASTERS[id].name + " мрачнеет: «Что ж — пусть решит сталь!»"); }
+    if (ai === q.c) {
+      setRes(ai); haptic("success");
+      const add = 12 + idx * 3 + (heroDef?.id === "dwarf" ? 6 : 0);
+      say("Верно! Сундук хозяина: +" + add + " ✨"); finishTrial(id, idx, add);
+      return;
+    }
+    if (save.powers.includes("mimirEye")) {
+      setRes(q.c);
+      setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "mimirEye") }));
+      const add = 8 + idx * 2;
+      haptic("success"); say("Око Мимира раскрыло истину. Ответ исправлен. +" + add + " ✨");
+      finishTrial(id, idx, add);
+      return;
+    }
+    if (save.powers.includes("nornThread")) {
+      setRes(ai);
+      setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "nornThread") }));
+      const add = 6 + idx * 2;
+      haptic("success"); say("Нить Норн изменила исход. Ошибка не приведёт к бою. +" + add + " ✨");
+      finishTrial(id, idx, add);
+      return;
+    }
+    setRes(ai); haptic(); setFlog(MASTERS[id].name + " мрачнеет: «Что ж — пусть решит сталь!»");
   };
   const useWhisper = (id: string) => { const idx = trialIdx(id); const q = QUESTS[id][idx]; const wrong = q.a.findIndex((_, i) => i !== q.c && i !== removed); setRemoved(wrong); setWhisper(true); haptic(); say("Шёпот ветров уносит один ответ..."); };
-  const startFight = (id: string) => { const m = MASTERS[id]; setMhp(m.hp); setHhp(heroDef!.hp); setHen(heroDef!.en); setOver(""); setShield(false); setValk(false); setFlog(m.name + " поднимает оружие!"); setScreen({ t: "fight", id }); };
+  const startFight = (id: string) => {
+    const m = MASTERS[id];
+    const ash = save.powers.includes("ashBreath");
+    setMhp(m.hp);
+    setHhp(heroDef!.hp + (ash ? 25 : 0));
+    setHen(heroDef!.en + (ash ? 2 : 0));
+    setOver(""); setShield(false); setValk(false);
+    setFlog(ash ? "Дыхание Ясеня хранит тебя: +25 здоровья, +2 энергии." : m.name + " поднимает оружие!");
+    if (ash) setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "ashBreath") }));
+    setScreen({ t: "fight", id });
+  };
   const fightAct = (id: string, kind: "hit" | "rune" | "shield") => {
     if (over) return;
     const m = MASTERS[id]; const idx = trialIdx(id);
     let dmg = 0; let log = ""; let nhen = hen; let nshield = shield;
-    if (kind === "hit") { dmg = heroDef!.str + rnd(4); if (heroDef!.id === "berserk" && hhp <= heroDef!.hp / 2) { dmg *= 2; log = "Медвежья ярость! "; } log += "Ты бьёшь: " + heroDef!.weapon + " — −" + dmg + " хозяину."; }
-    if (kind === "rune") { if (hen < 4) { say("Мало энергии для заклинания!"); return; } nhen = hen - 4; dmg = heroDef!.en + 2 + rnd(5); log = "Руническое заклинание вспыхивает: −" + dmg + " хозяину."; }
+    if (kind === "hit") {
+      dmg = heroDef!.str + rnd(4);
+      if (save.powers.includes("fireOath")) { dmg += 5; setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "fireOath") })); log = "Огненный обет! "; }
+      if (heroDef!.id === "berserk" && hhp <= heroDef!.hp / 2) { dmg *= 2; log += "Медвежья ярость! "; }
+      log += "Ты бьёшь: " + heroDef!.weapon + " — −" + dmg + " хозяину.";
+    }
+    if (kind === "rune") {
+      if (hen < 4) { say("Мало энергии для заклинания!"); return; }
+      nhen = hen - 4; dmg = heroDef!.en + 2 + rnd(5);
+      log = "Руническое заклинание вспыхивает: −" + dmg + " хозяину.";
+    }
     if (kind === "shield") { nshield = true; log = "Ты поднимаешь щит — удар ослабнет."; }
     const nm = mhp - dmg;
     if (nm <= 0) { setMhp(0); setHen(nhen); setOver("win"); const add = 8 + idx * 2; setFlog("Хозяин повержен! Награда: +" + add + " ✨"); finishTrial(id, idx, add); return; }
     let md = m.atk + rnd(3); let mlog = "";
     if (nshield) { md = Math.ceil(md * 0.3); mlog = " Щит принял большую часть удара."; }
+    if (save.powers.includes("iceOath")) { md = Math.ceil(md * 0.65); setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "iceOath") })); mlog += " Ледяной обет сковал удар врага."; }
     if (heroDef!.id === "dwarf") md = Math.ceil(md * 0.75);
     let nh = hhp;
     if (heroDef!.id === "viking" && !valk && nh - md <= 0) { setValk(true); md = 0; mlog = " Крылья бури поглотили смертельный удар!"; }
     nh = nh - md;
     setMhp(nm); setHhp(Math.max(0, nh)); setHen(nhen); setShield(false);
+    if (nh <= 0 && save.powers.includes("yggdrasilCall")) {
+      setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "yggdrasilCall") }));
+      setHhp(30); setFlog(log + " Корни Иггдрасиля удержали тебя над смертью. Ты возвращён с 30 здоровья.");
+      return;
+    }
     if (nh <= 0) { setOver("lose"); setSave(s => ({ ...s, sparks: Math.max(0, s.sparks - 10) })); setFlog(log + " " + m.name + " бьёт... Ты пал. Древо возрождает тебя (−10 ✨)."); return; }
     setFlog(log + mlog + " " + m.name + " отвечает: −" + md + ".");
   };
@@ -1650,7 +1698,7 @@ const [roadT, setRoadT] = useState(0.06);
         return;
       }
       if (id === "forge" || id === "blacksmith") {
-        say("Кузнец: «Сталь помнит руку. Принеси руну — и мы узнаем, что можно закалить.");
+        say("Кузнец: «Сталь помнит руку. Принеси руну — и мы узнаем, что можно закалить.»");
         return;
       }
       if (id === "house" || id === "elder") {
@@ -1669,19 +1717,26 @@ const [roadT, setRoadT] = useState(0.06);
         say("Ты замечаешь следы у северной дороги. Это не зверь. Событие Мидгарда начинается.");
         return;
       }
-      if (id === "ritual:mimir") {
-        setSave(s => ({ ...s, sparks: s.sparks + 8, done: [...new Set([...s.done, "ritual:mimir"])] }));
-        say("Око Мимира открыто. +8 Искр. Теперь некоторые тайны мира могут быть замечены тобой.");
-        return;
-      }
-      if (id === "ritual:norn") {
-        setSave(s => ({ ...s, sparks: s.sparks + 5, done: [...new Set([...s.done, "ritual:norn"])] }));
-        say("Нить Норн дрогнула. +5 Искр. Перед важным выбором судьба может предупредить тебя.");
-        return;
-      }
-      if (id === "ritual:ash") {
-        setSave(s => ({ ...s, sparks: s.sparks + 10, done: [...new Set([...s.done, "ritual:ash"])] }));
-        say("Дыхание Ясеня наполнило тебя силой. +10 Искр. Ты готов к дальнейшему пути.");
+      if (id.startsWith("ritual:")) {
+        const ritual = id.slice(7);
+        const names: Record<string,string> = {
+          mimir: "Око Мимира", norn: "Нить Норн", ash: "Дыхание Ясеня",
+          fire: "Огненный обет", ice: "Ледяной обет", ygg: "Зов Иггдрасиля"
+        };
+        const power: Record<string,string> = { mimir: "mimirEye", norn: "nornThread", ash: "ashBreath", fire: "fireOath", ice: "iceOath", ygg: "yggdrasilCall" };
+        const key = power[ritual];
+        if (!key) return;
+        if (save.powers.includes(key)) { say(names[ritual] + " уже пробуждён. Его сила ждёт своего часа."); return; }
+        setSave(s => ({ ...s, powers: [...new Set([...s.powers, key])], done: [...new Set([...s.done, "ritual:" + ritual])] }));
+        const text: Record<string,string> = {
+          mimir: "Око Мимира открыто. Следующая тайна может сама выдать себя тебе.",
+          norn: "Нить Норн натянулась. Один раз ты сможешь избежать последствий ошибочного пути.",
+          ash: "Дыхание Ясеня наполнит тебя перед следующим боем: +25 здоровья и +2 энергии.",
+          fire: "Огненный обет вложен в оружие. Следующий обычный удар нанесёт +5 урона.",
+          ice: "Ледяной обет застыл на тебе. Первый удар врага в следующем бою будет слабее на 35%.",
+          ygg: "Зов Иггдрасиля услышан. Один раз смертельный удар вернёт тебя к жизни с 30 здоровья."
+        };
+        haptic("success"); say(text[ritual]);
         return;
       }
     };
