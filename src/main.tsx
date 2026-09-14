@@ -1088,8 +1088,9 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       const roofB=roofA.clone();roofA.rotation.z=.62;roofB.rotation.z=-.62;roofA.position.set(-w*.22,4.2,0);roofB.position.set(w*.22,4.2,0);g.add(roofA,roofB);
       const ridge=box(.38,.34,d+1.12,0x2b211b,1);ridge.position.y=5.15;g.add(ridge);
       for(const px of [-w*.34,w*.34]){const e=box(.22,.32,d+1.05,0x3b2b20,1);e.position.set(px,3.95,0);e.rotation.z=px<0?.62:-.62;g.add(e);}
-      const porch=box(w*.34,.22,1.35,0x62422b,1);porch.position.set(0,.78,d/2+.68);g.add(porch);
-      const post1=box(.18,1.55,.18,0x2b2119,1),post2=post1.clone();post1.position.set(-w*.17,1.48,d/2+1.18);post2.position.set(w*.17,1.48,d/2+1.18);g.add(post1,post2);
+      // Clean entrance: no tall porch posts in front of the doorway.
+      // A shallow threshold remains without blocking the door visually.
+      const porch=box(w*.34,.16,1.0,0x62422b,1);porch.position.set(0,.68,d/2+.54);g.add(porch);
       const chimney=new THREE.Mesh(new THREE.BoxGeometry(.62,2.0,.62),stoneMat);chimney.position.set(w*.24,5.15,-d*.08);g.add(chimney);
       // Small roof smoke stack cap.
       const cap=box(.82,.12,.82,0x35322e,1);cap.position.set(w*.24,6.17,-d*.08);g.add(cap);
