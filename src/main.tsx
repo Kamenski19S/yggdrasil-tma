@@ -949,6 +949,38 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     const fires: Array<{light:THREE.PointLight; flame:THREE.Object3D; phase:number}> = [];
     const npcs: THREE.Object3D[] = [];
 
+    // Collision layer: separate from visual meshes so future realistic assets can
+    // replace the current models without changing player movement.
+    type Collider =
+      | { kind:"rect"; x:number; z:number; w:number; d:number; rot:number }
+      | { kind:"circle"; x:number; z:number; r:number }
+      | { kind:"segment"; x1:number; z1:number; x2:number; z2:number; r:number };
+    const colliders: Collider[] = [];
+    const HERO_RADIUS = 0.62;
+    const addRectCollider=(x:number,z:number,w:number,d:number,rot=0,pad=0.12)=>colliders.push({kind:"rect",x,z,w:w+pad*2,d:d+pad*2,rot});
+    const addCircleCollider=(x:number,z:number,r:number,pad=0.12)=>colliders.push({kind:"circle",x,z,r:r+pad});
+    const addSegmentCollider=(x1:number,z1:number,x2:number,z2:number,r:number,pad=0.12)=>colliders.push({kind:"segment",x1,z1,x2,z2,r:r+pad});
+    const hits=(x:number,z:number,c:Collider)=>{
+      if(c.kind==="circle") return Math.hypot(x-c.x,z-c.z)<c.r+HERO_RADIUS;
+      if(c.kind==="rect"){
+        const co=Math.cos(c.rot),si=Math.sin(c.rot),dx=x-c.x,dz=z-c.z;
+        const lx=co*dx-si*dz,lz=si*dx+co*dz;
+        const qx=Math.max(-c.w/2,Math.min(c.w/2,lx)),qz=Math.max(-c.d/2,Math.min(c.d/2,lz));
+        return Math.hypot(lx-qx,lz-qz)<HERO_RADIUS;
+      }
+      const vx=c.x2-c.x1,vz=c.z2-c.z1,len2=vx*vx+vz*vz;
+      const t=len2>0?Math.max(0,Math.min(1,((x-c.x1)*vx+(z-c.z1)*vz)/len2)):0;
+      const px=c.x1+vx*t,pz=c.z1+vz*t;
+      return Math.hypot(x-px,z-pz)<c.r+HERO_RADIUS;
+    };
+    const blocked=(x:number,z:number)=>colliders.some(c=>hits(x,z,c));
+    const moveWithCollision=(q:{x:number;z:number},nx:number,nz:number)=>{
+      const x=Math.max(-67,Math.min(67,nx)),z=Math.max(-69,Math.min(69,nz));
+      if(!blocked(x,z)){q.x=x;q.z=z;return;}
+      if(!blocked(x,q.z)) q.x=x;
+      if(!blocked(q.x,z)) q.z=z;
+    };
+
     // Mountains and dark tree line create a real horizon instead of an empty plane.
     const mountainMat = mat(0x34443f,1);
     for(let i=0;i<18;i++){
@@ -983,7 +1015,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(r,1),mat(0x5e625a,1));
       stone.scale.y=.55;
       stone.position.set(x+(midHash(i,16)-.5)*10,groundY(x,z)+.25,z);
-      addMesh(stone);
+      addMesh(stone);addCircleCollider(stone.position.x,stone.position.z,r*.9,.03);
     }
 
     // Roads are deliberately dark and wide, with two wheel ruts and stone edges.
@@ -1038,6 +1070,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       const post1=box(.18,1.5,.18,0x2b2119,1),post2=post1.clone();post1.position.set(-w*.17,1.48,d/2+1.12);post2.position.set(w*.17,1.48,d/2+1.12);g.add(post1,post2);
       const chimney=box(.55,2.1,.55,0x514a43,1);chimney.position.set(w*.25,5.2,-d*.08);g.add(chimney);
       addMesh(g,id,label);objects.push(g);
+      addRectCollider(x,z,w+.8,d+.8,rot,.05);
     };
 
     // Dense village core: buildings frame the roads and central square.
@@ -1058,6 +1091,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     const anvil=box(1.4,.35,.55,0x25282a,.4);anvil.position.set(1.2,1.05,1.15);forge.add(anvil);const stem=box(.5,.9,.5,0x292a2a,.45);stem.position.set(1.2,.62,1.15);forge.add(stem);
     for(let i=0;i<4;i++){const tool=box(.09,1.35,.09,0xaaa9a4,.35);tool.position.set(2.1+i*.18,1.1,1.3);tool.rotation.z=-.3+i*.18;forge.add(tool);}
     addMesh(forge,"forge","Кузница");objects.push(forge);
+    addRectCollider(-10,-5,9.6,6.6,0,.05);
     const forgeLight=new THREE.PointLight(0xff7a32,3.2,13,2);forgeLight.position.set(-12,groundY(-12,-5)+2.2,-4);scene.add(forgeLight);
 
     // Central square: stone edging, market tables, banners and a large bonfire.
@@ -1070,21 +1104,25 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     fire(1,0,1.15);fire(18,-15,.72);
 
     // Palisade and gate: the player enters a settlement, not an isolated field.
-    const palisade=(x1:number,z1:number,x2:number,z2:number)=>{const g=new THREE.Group();const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz),n=Math.floor(len/1.7);for(let i=0;i<=n;i++){const t=i/n;const px=x1+dx*t,pz=z1+dz*t;const p=new THREE.Mesh(new THREE.ConeGeometry(.24,.24+2.8+midHash(i,x1)*.5,6),mat(0x3c2a1c,1));p.position.set(px,groundY(px,pz)+1.45,pz);g.add(p);}const beam=box(.3,.35,len,0x2d2119,1);beam.rotation.y=Math.atan2(dx,dz);beam.position.set((x1+x2)/2,groundY((x1+x2)/2,(z1+z2)/2)+1.25,(z1+z2)/2);g.add(beam);scene.add(g);};
+    const palisade=(x1:number,z1:number,x2:number,z2:number)=>{const g=new THREE.Group();const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz),n=Math.floor(len/1.7);for(let i=0;i<=n;i++){const t=i/n;const px=x1+dx*t,pz=z1+dz*t;const p=new THREE.Mesh(new THREE.ConeGeometry(.24,.24+2.8+midHash(i,x1)*.5,6),mat(0x3c2a1c,1));p.position.set(px,groundY(px,pz)+1.45,pz);g.add(p);}const beam=box(.3,.35,len,0x2d2119,1);beam.rotation.y=Math.atan2(dx,dz);beam.position.set((x1+x2)/2,groundY((x1+x2)/2,(z1+z2)/2)+1.25,(z1+z2)/2);g.add(beam);scene.add(g);addSegmentCollider(x1,z1,x2,z2,.34,.08);};
     palisade(-30,-31,-8,-31);palisade(8,-31,30,-31);palisade(-30,-31,-30,-13);palisade(30,-31,30,16);
     const gate=new THREE.Group();gate.userData={id:"gate",label:"Ворота Мидгарда"};for(const x of [-4.2,4.2]){const p=box(.8,6,.8,0x35251a,1);p.position.set(x,3,-31);gate.add(p);}const top=box(10,.8,1,0x2d2018,1);top.position.set(0,6,-31);gate.add(top);for(let i=-3;i<=3;i++){const bar=box(1.0,4.2,.22,0x5b3a24,1);bar.position.set(i*1.15,2,-30.7);gate.add(bar);}addMesh(gate,"gate","Ворота Мидгарда");objects.push(gate);
+    addCircleCollider(-4.2,-31,.55,.05);addCircleCollider(4.2,-31,.55,.05);
 
     // Mimir's well and Norn shrine are visually distinctive landmarks.
     const mimir=new THREE.Group();mimir.userData={id:"mimir",label:"Колодец Мимира"};mimir.position.set(11,groundY(11,7),7);
     for(let i=0;i<14;i++){const a=i/14*Math.PI*2;const s=box(.7,.48,.5,0x666a63,1);s.position.set(Math.cos(a)*1.45,.24,Math.sin(a)*1.45);s.rotation.y=a+Math.PI/2;mimir.add(s);}const water=new THREE.Mesh(new THREE.CircleGeometry(1.05,28),new THREE.MeshStandardMaterial({color:0x173b43,emissive:0x0b3138,emissiveIntensity:1.8,roughness:.18}));water.rotation.x=-Math.PI/2;water.position.y=.5;mimir.add(water);for(const px of [-1.35,1.35]){const p=box(.22,3,.22,0x4a3020,1);p.position.set(px,1.55,0);mimir.add(p);}const beam=box(3.1,.25,.25,0x382519,1);beam.position.y=2.95;mimir.add(beam);const bucket=box(.55,.5,.55,0x5a3b27,1);bucket.position.set(0,1.65,0);mimir.add(bucket);const halo=new THREE.Mesh(new THREE.TorusGeometry(1.8,.06,8,40),new THREE.MeshStandardMaterial({color:0x76e59c,emissive:0x287c48,emissiveIntensity:3}));halo.rotation.x=Math.PI/2;halo.position.y=.53;mimir.add(halo);addMesh(mimir,"mimir","Колодец Мимира");objects.push(mimir);
+    addCircleCollider(11,7,1.8,.08);
     const ml=new THREE.PointLight(0x72e8a0,1.8,10,2);ml.position.set(11,groundY(11,7)+1.4,7);scene.add(ml);
 
     const shrine=new THREE.Group();shrine.userData={id:"norns",label:"Прядильня норн"};shrine.position.set(-8,groundY(-8,31),31);
     for(let i=0;i<3;i++){const st=new THREE.Mesh(new THREE.CapsuleGeometry(.65,2.3,5,8),mat(0x575d59,1));st.position.set((i-1)*2.2,1.35,0);st.rotation.z=(i-1)*.07;shrine.add(st);const r=new THREE.Mesh(new THREE.TorusGeometry(.42,.055,7,20),new THREE.MeshStandardMaterial({color:[0xc7e5cf,0xc8a4e8,0xe1c274][i],emissive:[0x5d9971,0x724d91,0x8d6c28][i],emissiveIntensity:2.2}));r.rotation.x=Math.PI/2;r.position.set((i-1)*2.2,1.6,-.55);shrine.add(r);}
     const threadMat=new THREE.LineBasicMaterial({color:0xd4c4e7,transparent:true,opacity:.78});for(let i=0;i<2;i++){const p=[new THREE.Vector3((i-1)*2.2,2,.1),new THREE.Vector3((i-.5)*2.2,4.1,-.7),new THREE.Vector3(i*2.2,2,.1)];shrine.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p),threadMat));}const ring=new THREE.Mesh(new THREE.TorusGeometry(4.1,.07,8,48),new THREE.MeshStandardMaterial({color:0xbda8d2,emissive:0x5d4770,emissiveIntensity:1.5}));ring.rotation.x=Math.PI/2;ring.position.y=.05;shrine.add(ring);addMesh(shrine,"norns","Прядильня норн");objects.push(shrine);
+    addCircleCollider(-8,31,3.0,.1);
 
     // Ancient rune altar.
     const rune=new THREE.Group();rune.userData={id:"rune",label:"Древний камень Феху"};rune.position.set(9,groundY(9,39),39);const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(1.45,1),mat(0x4c534f,1));stone.position.y=1.2;rune.add(stone);const rr=new THREE.Mesh(new THREE.TorusGeometry(1.05,.07,8,30),new THREE.MeshStandardMaterial({color:0xffd76a,emissive:0x996313,emissiveIntensity:3}));rr.rotation.x=Math.PI/2;rr.position.y=1.2;rune.add(rr);addMesh(rune,"rune","Древний камень Феху");objects.push(rune);
+    addCircleCollider(9,39,1.7,.1);
 
     // Bridge and dock.
     const bridge=new THREE.Group();bridge.userData={id:"port",label:"Мост к причалу"};for(let i=-5;i<=5;i++){const plank=box(3.6,.28,.82,0x60402a,1);plank.position.set(-38,groundY(-38,i*1.0)+.5,i);bridge.add(plank);}addMesh(bridge,"port","Мост к причалу");objects.push(bridge);
@@ -1092,17 +1130,18 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
 
     // Utility clutter makes the village feel inhabited.
     const barrel=(x:number,z:number)=>{const b=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,1,12),mat(0x65432c,1));b.position.set(x,groundY(x,z)+.5,z);scene.add(b);for(const y of [.25,.76]){const r=new THREE.Mesh(new THREE.TorusGeometry(.51,.045,6,18),mat(0x302824,.7,.1));r.rotation.x=Math.PI/2;r.position.set(x,groundY(x,z)+y,z);scene.add(r);}};
-    const crate=(x:number,z:number)=>{const c=box(1,.75,1,0x704a2e,1);c.position.set(x,groundY(x,z)+.38,z);scene.add(c);const s=box(.08,.82,1.05,0x38261a,1);s.position.set(x,groundY(x,z)+.38,z);scene.add(s);};
+    const crate=(x:number,z:number)=>{const c=box(1,.75,1,0x704a2e,1);c.position.set(x,groundY(x,z)+.38,z);scene.add(c);const s=box(.08,.82,1.05,0x38261a,1);s.position.set(x,groundY(x,z)+.38,z);scene.add(s);addRectCollider(x,z,1,1,0,.03);};
     [[24,-13],[25,-10],[18,-20],[-18,-21],[-24,-4],[-8,-18],[21,2],[14,11]].forEach(([x,z])=>barrel(x,z));
     [[25,-14],[27,-11],[-19,-20],[-21,-5],[18,-19],[-7,-19]].forEach(([x,z])=>crate(x,z));
 
     // Dense forest ring: different sizes + understory, but kept outside the playable core.
-    const tree=(x:number,z:number,s:number)=>{const g=new THREE.Group();const y=groundY(x,z);const trunk=box(.5*s,3.2*s,.5*s,0x493021,1);trunk.position.y=1.6*s;g.add(trunk);for(let i=0;i<4;i++){const r=(1.9-i*.25)*s;const c=new THREE.Mesh(new THREE.ConeGeometry(r,(2.8-i*.15)*s,9),mat([0x29472e,0x345638,0x3f633f,0x28432e][i],1));c.position.y=(2.7+i*.82)*s;g.add(c);}g.position.set(x,y,z);addMesh(g);};
+    const tree=(x:number,z:number,s:number)=>{const g=new THREE.Group();const y=groundY(x,z);const trunk=box(.5*s,3.2*s,.5*s,0x493021,1);trunk.position.y=1.6*s;g.add(trunk);for(let i=0;i<4;i++){const r=(1.9-i*.25)*s;const c=new THREE.Mesh(new THREE.ConeGeometry(r,(2.8-i*.15)*s,9),mat([0x29472e,0x345638,0x3f633f,0x28432e][i],1));c.position.y=(2.7+i*.82)*s;g.add(c);}g.position.set(x,y,z);addMesh(g);if(s>=1.15)addCircleCollider(x,z,.42*s,.04);};
     for(let i=0;i<95;i++){const a=midHash(i,77)*Math.PI*2;const r=43+midHash(i,91)*31;const x=Math.cos(a)*r,z=Math.sin(a)*r+2;if(Math.abs(x+43)>8)tree(x,z,.75+midHash(i,13)*.8);}
     for(let i=0;i<80;i++){const x=-68+midHash(i,101)*136,z=-68+midHash(i,111)*136;if(Math.hypot(x,z+2)>30){const grass=new THREE.Mesh(new THREE.ConeGeometry(.08,.55+midHash(i,121)*.7,5),mat(0x4b6840,1));grass.position.set(x,groundY(x,z)+.3,z);scene.add(grass);}}
 
     // A small watchtower gives vertical scale and a visible landmark.
     const tower=new THREE.Group();tower.position.set(29,groundY(29,25),25);tower.userData={id:"tower",label:"Сторожевая башня"};for(const px of [-2,2])for(const pz of [-2,2]){const p=box(.35,7,.35,0x3c291d,1);p.position.set(px,3.5,pz);tower.add(p);}const deck=box(5,.35,5,0x68472d,1);deck.position.y=5.8;tower.add(deck);const roofT=new THREE.Mesh(new THREE.ConeGeometry(3.8,2.7,4),mat(0x292522,1));roofT.position.y=8;tower.add(roofT);addMesh(tower,"tower","Сторожевая башня");objects.push(tower);
+    addRectCollider(29,25,4.8,4.8,0,.08);
 
     // NPCs with simple wandering paths.
     const npc=(x:number,z:number,id:string,label:string,color:number,phase:number)=>{const g=new THREE.Group();g.userData={id,label,phase,baseX:x,baseZ:z};const body=new THREE.Mesh(new THREE.CapsuleGeometry(.32,.78,4,8),mat(color,.9));body.position.y=.85;g.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.25,12,8),mat(0xc99470,.9));head.position.y=1.58;g.add(head);const cloak=box(.7,.9,.15,0x27251f,1);cloak.position.set(0,.82,-.27);g.add(cloak);g.position.set(x,groundY(x,z),z);addMesh(g,id,label);objects.push(g);npcs.push(g);};
@@ -1126,7 +1165,11 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     let raf=0,last=performance.now();
     const loop=(now:number)=>{
       const dt=Math.min(.05,(now-last)/1000);last=now;const q=state.current;const l=Math.hypot(q.dx,q.dz);
-      if(l>.05){q.x+=(q.dx/l)*6.2*dt;q.z+=(q.dz/l)*6.2*dt;q.x=Math.max(-67,Math.min(67,q.x));q.z=Math.max(-69,Math.min(69,q.z));hero.rotation.y=Math.atan2(q.dx,q.dz);setMoving(true);}else setMoving(false);
+      if(l>.05){
+        const step=6.2*dt;
+        moveWithCollision(q,q.x+(q.dx/l)*step,q.z+(q.dz/l)*step);
+        hero.rotation.y=Math.atan2(q.dx,q.dz);setMoving(true);
+      }else setMoving(false);
       const hy=groundY(q.x,q.z);hero.position.set(q.x,hy+.04,q.z);
       const target=new THREE.Vector3(q.x-q.dx*2.0,hy+7.2,q.z+11.8-q.dz*2.0);camera.position.lerp(target,.09);camera.lookAt(q.x+q.dx*1.9,hy+1.2,q.z+q.dz*2.0);
       let found="",foundId="";for(const d of destinations){if(Math.hypot(q.x-d.x,q.z-d.z)<d.r){found=d.label;foundId=d.id;break;}}setNear(found?`${found}|${foundId}`:"");
