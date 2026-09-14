@@ -1,816 +1,272 @@
 import * as THREE from "three";
 
+type Emitter = {
+  root: THREE.Group;
+  particles: THREE.Mesh[];
+  phase: number;
+  speed: number;
+  spread: number;
+  life: number;
+  kind: "fire" | "smoke" | "magic";
+  baseY: number;
+};
+
 /**
- * Yggdrasil Runes — VFX Engine
- *
- * Лёгкий движок визуальных эффектов для Three.js.
- * Рассчитан на Telegram Mini App и мобильные устройства.
+ * Lightweight visual-effects engine for Yggdrasil Runes.
+ * Designed for mobile/WebGL: small particle counts, shared materials,
+ * no post-processing pipeline, and one update loop for all effects.
  */
-
-export type VFXKind =
-  | "fire"
-  | "spark"
-  | "magic"
-  | "rune"
-  | "portal"
-  | "fog"
-  | "ice"
-  | "lightning"
-  | "heal";
-
-type Particle = {
-  mesh: THREE.Mesh;
-  velocity: THREE.Vector3;
-  life: number;
-  maxLife: number;
-  gravity: number;
-  spin: number;
-  startScale: number;
-};
-
-type RingEffect = {
-  mesh: THREE.Mesh;
-  life: number;
-  maxLife: number;
-  startScale: number;
-  endScale: number;
-  rotationSpeed: number;
-};
-
-type LightEffect = {
-  light: THREE.PointLight;
-  life: number;
-  maxLife: number;
-  startIntensity: number;
-};
-
 export class VFXEngine {
-  private readonly scene: THREE.Scene;
-
-  private readonly particles: Particle[] = [];
-  private readonly rings: RingEffect[] = [];
-  private readonly lights: LightEffect[] = [];
-
-  private readonly maxParticles = 180;
-  private readonly maxRings = 24;
-  private readonly maxLights = 10;
-
-  private readonly particleGeometry =
-    new THREE.SphereGeometry(0.055, 6, 6);
-
-  private readonly sparkGeometry =
-    new THREE.BoxGeometry(0.045, 0.045, 0.045);
-
-  private readonly ringGeometry =
-    new THREE.RingGeometry(0.72, 0.82, 24);
-
-  private readonly materials =
-    new Map<string, THREE.MeshBasicMaterial>();
+  readonly root = new THREE.Group();
+  private emitters: Emitter[] = [];
+  private pulseObjects: Array<{
+    object: THREE.Object3D;
+    base: number;
+    speed: number;
+    amount: number;
+  }> = [];
+  private shared: Record<string, THREE.Material> = {};
 
   constructor(scene: THREE.Scene) {
-    this.scene = scene;
-  }
+    this.root.name = "YggdrasilVFX";
+    scene.add(this.root);
 
-  private material(
-    key: string,
-    color: number,
-    opacity = 1,
-    blending = THREE.AdditiveBlending
-  ): THREE.MeshBasicMaterial {
-    const cached = this.materials.get(key);
-
-    if (cached) {
-      return cached;
-    }
-
-    const mat = new THREE.MeshBasicMaterial({
-      color,
-      transparent: opacity < 1,
-      opacity,
+    this.shared.fire = new THREE.MeshBasicMaterial({
+      color: 0xff8a2b,
+      transparent: true,
+      opacity: 0.82,
       depthWrite: false,
-      blending
     });
 
-    this.materials.set(key, mat);
+    this.shared.fireHot = new THREE.MeshBasicMaterial({
+      color: 0xffd36a,
+      transparent: true,
+      opacity: 0.78,
+      depthWrite: false,
+    });
 
-    return mat;
-  }
+    this.shared.smoke = new THREE.MeshBasicMaterial({
+      color: 0x9b9a93,
+      transparent: true,
+      opacity: 0.16,
+      depthWrite: false,
+    });
 
-  private addParticle(
-    position: THREE.Vector3,
-    color: number,
-    velocity: THREE.Vector3,
-    life: number,
-    size: number,
-    gravity = 0,
-    kind: "round" | "spark" = "round"
-  ) {
-    if (this.particles.length >= this.maxParticles) {
-      this.removeParticle(0);
-    }
+    this.shared.magic = new THREE.MeshBasicMaterial({
+      color: 0x78e6a2,
+      transparent: true,
+      opacity: 0.72,
+      depthWrite: false,
+    });
 
-    const geometry =
-      kind === "spark"
-        ? this.sparkGeometry
-        : this.particleGeometry;
-
-    const material = this.material(
-      `particle-${color.toString(16)}`,
-      color,
-      0.95
-    );
-
-    const mesh = new THREE.Mesh(
-      geometry,
-      material
-    );
-
-    mesh.position.copy(position);
-
-    mesh.scale.setScalar(size);
-
-    mesh.rotation.set(
-      Math.random() * Math.PI,
-      Math.random() * Math.PI,
-      Math.random() * Math.PI
-    );
-
-    this.scene.add(mesh);
-
-    this.particles.push({
-      mesh,
-      velocity: velocity.clone(),
-      life,
-      maxLife: life,
-      gravity,
-      spin: (Math.random() - 0.5) * 8,
-      startScale: size
+    this.shared.magicGold = new THREE.MeshBasicMaterial({
+      color: 0xffd76a,
+      transparent: true,
+      opacity: 0.68,
+      depthWrite: false,
     });
   }
 
-  private removeParticle(index: number) {
-    const particle = this.particles[index];
+  addFire(position: THREE.Vector3, scale = 1) {
+    const root = new THREE.Group();
+    root.position.copy(position);
+    root.name = "FireEmitter";
 
-    if (!particle) {
-      return;
-    }
+    const core = new THREE.Mesh(
+      new THREE.SphereGeometry(0.34 * scale, 8, 6),
+      this.shared.fireHot
+    );
+    core.scale.set(0.85, 1.55, 0.75);
+    root.add(core);
 
-    this.scene.remove(particle.mesh);
+    const outer = new THREE.Mesh(
+      new THREE.SphereGeometry(0.48 * scale, 8, 6),
+      this.shared.fire
+    );
+    outer.scale.set(0.85, 1.35, 0.72);
+    root.add(outer);
 
-    this.particles.splice(index, 1);
+    const light = new THREE.PointLight(0xff8a32, 1.7, 7 * scale);
+    light.position.y = 0.15 * scale;
+    root.add(light);
+
+    this.root.add(root);
+    this.pulseObjects.push({ object: core, base: 1, speed: 5.2, amount: 0.12 });
+    this.pulseObjects.push({ object: outer, base: 1, speed: 4.1, amount: 0.16 });
+
+    this.addEmitter(root, "fire", 7, 1.8, 0.45, 1.2, scale);
+    return root;
   }
 
-  private addRing(
-    position: THREE.Vector3,
-    color: number,
-    scale = 1,
-    life = 0.8
-  ) {
-    if (this.rings.length >= this.maxRings) {
-      const old = this.rings.shift();
+  addSmoke(position: THREE.Vector3, scale = 1) {
+    const root = new THREE.Group();
+    root.position.copy(position);
+    root.name = "SmokeEmitter";
+    this.root.add(root);
 
-      if (old) {
-        this.scene.remove(old.mesh);
-      }
-    }
-
-    const mesh = new THREE.Mesh(
-      this.ringGeometry,
-      this.material(
-        `ring-${color.toString(16)}`,
-        color,
-        0.85
-      )
-    );
-
-    mesh.position.copy(position);
-
-    mesh.rotation.x = -Math.PI / 2;
-
-    mesh.scale.setScalar(scale * 0.2);
-
-    this.scene.add(mesh);
-
-    this.rings.push({
-      mesh,
-      life,
-      maxLife: life,
-      startScale: scale * 0.2,
-      endScale: scale,
-      rotationSpeed:
-        (Math.random() - 0.5) * 2
-    });
+    this.addEmitter(root, "smoke", 7, 0.55, 0.55, 3.0, scale);
+    return root;
   }
 
-  private addLight(
+  addMagicAura(
     position: THREE.Vector3,
-    color: number,
-    intensity: number,
-    distance: number,
-    life: number
+    color: "green" | "gold" = "green",
+    scale = 1
   ) {
-    if (this.lights.length >= this.maxLights) {
-      const old = this.lights.shift();
-
-      if (old) {
-        this.scene.remove(old.light);
-      }
-    }
-
-    const light = new THREE.PointLight(
-      color,
-      intensity,
-      distance,
-      2
-    );
-
-    light.position.copy(position);
-
-    this.scene.add(light);
-
-    this.lights.push({
-      light,
-      life,
-      maxLife: life,
-      startIntensity: intensity
-    });
-  }
-
-  fire(
-    position: THREE.Vector3,
-    power = 1
-  ) {
-    const count = Math.min(
-      14,
-      Math.round(8 * power)
-    );
-
-    for (let i = 0; i < count; i++) {
-      const p = position.clone().add(
-        new THREE.Vector3(
-          (Math.random() - 0.5) * 0.25,
-          Math.random() * 0.18,
-          (Math.random() - 0.5) * 0.25
-        )
-      );
-
-      const velocity =
-        new THREE.Vector3(
-          (Math.random() - 0.5) * 0.45,
-          0.8 + Math.random() * 0.9,
-          (Math.random() - 0.5) * 0.45
-        ).multiplyScalar(power);
-
-      const color =
-        Math.random() > 0.45
-          ? 0xff7a18
-          : 0xffd34e;
-
-      this.addParticle(
-        p,
-        color,
-        velocity,
-        0.45 + Math.random() * 0.35,
-        0.7,
-        -0.45
-      );
-    }
-
-    this.addLight(
-      position,
-      0xff8a24,
-      1.2 * power,
-      3.5,
-      0.28
-    );
-  }
-
-  sparks(
-    position: THREE.Vector3,
-    power = 1
-  ) {
-    const count = Math.min(
-      20,
-      Math.round(12 * power)
-    );
-
-    for (let i = 0; i < count; i++) {
-      const velocity =
-        new THREE.Vector3(
-          (Math.random() - 0.5) * 2.2,
-          0.5 + Math.random() * 2.2,
-          (Math.random() - 0.5) * 2.2
-        ).multiplyScalar(power);
-
-      this.addParticle(
-        position,
-        0xffd36a,
-        velocity,
-        0.25 + Math.random() * 0.3,
-        0.65,
-        -2.8,
-        "spark"
-      );
-    }
-  }
-
-  magic(
-    position: THREE.Vector3,
-    power = 1
-  ) {
-    const count = Math.min(
-      24,
-      Math.round(16 * power)
-    );
-
-    for (let i = 0; i < count; i++) {
-      const a =
-        Math.random() * Math.PI * 2;
-
-      const r =
-        Math.random() * 0.5;
-
-      const p =
-        position.clone().add(
-          new THREE.Vector3(
-            Math.cos(a) * r,
-            Math.random() * 0.7,
-            Math.sin(a) * r
-          )
-        );
-
-      const velocity =
-        new THREE.Vector3(
-          (Math.random() - 0.5) * 0.7,
-          0.6 + Math.random() * 1.2,
-          (Math.random() - 0.5) * 0.7
-        ).multiplyScalar(power);
-
-      this.addParticle(
-        p,
-        Math.random() > 0.5
-          ? 0x55c8ff
-          : 0x9a6cff,
-        velocity,
-        0.55 + Math.random() * 0.5,
-        0.8,
-        -0.35
-      );
-    }
-
-    this.addRing(
-      position,
-      0x65cfff,
-      1.5 * power,
-      0.7
-    );
-
-    this.addLight(
-      position,
-      0x4da9ff,
-      1.1 * power,
-      4,
-      0.35
-    );
-  }
-
-  rune(
-    position: THREE.Vector3,
-    power = 1
-  ) {
-    this.addRing(
-      position,
-      0x4fd7ff,
-      1.7 * power,
-      1.1
-    );
-
-    const count = Math.min(
-      28,
-      Math.round(18 * power)
-    );
-
-    for (let i = 0; i < count; i++) {
-      const a =
-        (i / count) * Math.PI * 2;
-
-      const radius =
-        0.55 + Math.random() * 0.25;
-
-      const p =
-        position.clone().add(
-          new THREE.Vector3(
-            Math.cos(a) * radius,
-            0.05 + Math.random() * 0.35,
-            Math.sin(a) * radius
-          )
-        );
-
-      const outward =
-        new THREE.Vector3(
-          Math.cos(a),
-          0.5 + Math.random() * 0.8,
-          Math.sin(a)
-        );
-
-      this.addParticle(
-        p,
-        0x8eeaff,
-        outward.multiplyScalar(
-          0.7 * power
-        ),
-        0.7 + Math.random() * 0.45,
-        0.7
-      );
-    }
-
-    this.addLight(
-      position,
-      0x5ecbff,
-      1.5 * power,
-      5,
-      0.8
-    );
-  }
-
-  portal(
-    position: THREE.Vector3,
-    power = 1
-  ) {
-    this.addRing(
-      position,
-      0x7c62ff,
-      2.1 * power,
-      1.3
-    );
-
-    for (let i = 0; i < 22; i++) {
-      const a =
-        Math.random() * Math.PI * 2;
-
-      const radius =
-        1.2 + Math.random() * 0.7;
-
-      const p =
-        position.clone().add(
-          new THREE.Vector3(
-            Math.cos(a) * radius,
-            Math.random() * 1.2,
-            Math.sin(a) * radius
-          )
-        );
-
-      const target =
-        position.clone()
-          .sub(p)
-          .normalize();
-
-      this.addParticle(
-        p,
-        0xa78bff,
-        target.multiplyScalar(
-          0.9 * power
-        ),
-        0.7 + Math.random() * 0.5,
-        0.75
-      );
-    }
-
-    this.addLight(
-      position,
-      0x7658ff,
-      2 * power,
-      6,
-      1
-    );
-  }
-
-  ice(
-    position: THREE.Vector3,
-    power = 1
-  ) {
-    const count = Math.min(
-      18,
-      Math.round(10 * power)
-    );
-
-    for (let i = 0; i < count; i++) {
-      const velocity =
-        new THREE.Vector3(
-          (Math.random() - 0.5) * 0.5,
-          0.15 + Math.random() * 0.7,
-          (Math.random() - 0.5) * 0.5
-        );
-
-      this.addParticle(
-        position.clone().add(
-          new THREE.Vector3(
-            (Math.random() - 0.5) * 0.8,
-            Math.random() * 0.5,
-            (Math.random() - 0.5) * 0.8
-          )
-        ),
-        0xbfefff,
-        velocity,
-        0.8 + Math.random() * 0.7,
-        0.6,
-        -0.15
-      );
-    }
-
-    this.addRing(
-      position,
-      0x9edfff,
-      1.4 * power,
-      0.9
-    );
-  }
-
-  heal(
-    position: THREE.Vector3,
-    power = 1
-  ) {
-    for (
-      let i = 0;
-      i < Math.min(18, Math.round(12 * power));
-      i++
-    ) {
-      const a =
-        Math.random() * Math.PI * 2;
-
-      this.addParticle(
-        position.clone().add(
-          new THREE.Vector3(
-            Math.cos(a) *
-              Math.random() *
-              0.6,
-            Math.random() * 0.3,
-            Math.sin(a) *
-              Math.random() *
-              0.6
-          )
-        ),
-        0x72ffb0,
-        new THREE.Vector3(
-          0,
-          0.6 + Math.random() * 0.8,
-          0
-        ),
-        0.8 + Math.random() * 0.5,
-        0.7
-      );
-    }
-
-    this.addRing(
-      position,
-      0x6dffb0,
-      1.2 * power,
-      0.75
-    );
-  }
-
-  lightning(
-    position: THREE.Vector3,
-    power = 1
-  ) {
-    const points: THREE.Vector3[] = [
-      position.clone()
-    ];
-
-    let current =
-      position.clone();
-
-    for (let i = 0; i < 5; i++) {
-      current =
-        current.clone().add(
-          new THREE.Vector3(
-            (Math.random() - 0.5) * 0.7,
-            0.4 + Math.random() * 0.5,
-            (Math.random() - 0.5) * 0.7
-          )
-        );
-
-      points.push(current);
-    }
-
-    const geometry =
-      new THREE.BufferGeometry()
-        .setFromPoints(points);
+    const root = new THREE.Group();
+    root.position.copy(position);
+    root.name = "MagicAura";
 
     const material =
-      new THREE.LineBasicMaterial({
-        color: 0xd9f6ff,
-        transparent: true,
-        opacity: 0.95
+      color === "gold" ? this.shared.magicGold : this.shared.magic;
+
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(0.78 * scale, 0.045 * scale, 6, 24),
+      material
+    );
+    ring.rotation.x = Math.PI / 2;
+    root.add(ring);
+
+    const orb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.11 * scale, 8, 6),
+      material
+    );
+    orb.position.y = 0.16 * scale;
+    root.add(orb);
+
+    this.root.add(root);
+    this.pulseObjects.push({ object: ring, base: 1, speed: 1.8, amount: 0.12 });
+    this.pulseObjects.push({ object: orb, base: 1, speed: 3.0, amount: 0.22 });
+
+    this.addEmitter(root, "magic", 6, 0.75, 0.8, 1.8, scale);
+    return root;
+  }
+
+  update(timeSeconds: number) {
+    for (const pulse of this.pulseObjects) {
+      const s =
+        pulse.base +
+        Math.sin(timeSeconds * pulse.speed) * pulse.amount;
+      pulse.object.scale.setScalar(s);
+    }
+
+    for (const emitter of this.emitters) {
+      emitter.phase += 0.016 * emitter.speed;
+
+      emitter.particles.forEach((p, i) => {
+        const seed = emitter.phase + i * 1.71;
+        const age =
+          (seed * 0.37 + i * 0.17) % emitter.life;
+        const t = age / emitter.life;
+
+        if (emitter.kind === "fire") {
+          p.position.x =
+            Math.sin(seed * 1.7) *
+            emitter.spread *
+            (0.35 + t);
+          p.position.z =
+            Math.cos(seed * 1.3) *
+            emitter.spread *
+            (0.35 + t);
+          p.position.y =
+            emitter.baseY + t * 1.65;
+
+          const s = (1 - t) * 0.22 + 0.035;
+          p.scale.setScalar(s);
+          (p.material as THREE.MeshBasicMaterial).opacity =
+            Math.max(0, 0.78 * (1 - t));
+        } else if (emitter.kind === "smoke") {
+          p.position.x =
+            Math.sin(seed * 0.8) *
+            emitter.spread *
+            (0.4 + t);
+          p.position.z =
+            Math.cos(seed * 0.65) *
+            emitter.spread *
+            (0.4 + t);
+          p.position.y =
+            emitter.baseY + t * 2.8;
+
+          const s = 0.12 + t * 0.34;
+          p.scale.setScalar(s);
+          (p.material as THREE.MeshBasicMaterial).opacity =
+            0.15 * (1 - t);
+        } else {
+          const angle = seed * 1.7;
+          const radius =
+            emitter.spread * (0.35 + t * 0.65);
+
+          p.position.x = Math.cos(angle) * radius;
+          p.position.z = Math.sin(angle) * radius;
+          p.position.y =
+            emitter.baseY +
+            Math.sin(seed * 1.2) * 0.18 +
+            t * 0.55;
+
+          const s = 0.035 + (1 - t) * 0.06;
+          p.scale.setScalar(s);
+          (p.material as THREE.MeshBasicMaterial).opacity =
+            0.65 * (1 - t);
+        }
       });
-
-    const line =
-      new THREE.Line(
-        geometry,
-        material
-      );
-
-    this.scene.add(line);
-
-    window.setTimeout(() => {
-      this.scene.remove(line);
-
-      geometry.dispose();
-      material.dispose();
-    }, Math.max(
-      70,
-      Math.round(
-        110 /
-          Math.max(power, 0.2)
-      )
-    ));
-  }
-
-  fog(
-    position: THREE.Vector3,
-    radius = 2
-  ) {
-    for (let i = 0; i < 8; i++) {
-      const p =
-        position.clone().add(
-          new THREE.Vector3(
-            (Math.random() - 0.5) *
-              radius,
-            Math.random() * 1.2,
-            (Math.random() - 0.5) *
-              radius
-          )
-        );
-
-      this.addParticle(
-        p,
-        0xc8d5df,
-        new THREE.Vector3(
-          (Math.random() - 0.5) * 0.12,
-          0.04,
-          (Math.random() - 0.5) * 0.12
-        ),
-        1.5 + Math.random(),
-        1.8
-      );
     }
-  }
-
-  update(delta: number) {
-    const dt =
-      Math.min(delta, 0.05);
-
-    for (
-      let i = this.particles.length - 1;
-      i >= 0;
-      i--
-    ) {
-      const p =
-        this.particles[i];
-
-      p.life -= dt;
-
-      if (p.life <= 0) {
-        this.removeParticle(i);
-        continue;
-      }
-
-      p.velocity.y +=
-        p.gravity * dt;
-
-      p.mesh.position
-        .addScaledVector(
-          p.velocity,
-          dt
-        );
-
-      p.mesh.rotation.x +=
-        p.spin * dt;
-
-      p.mesh.rotation.y +=
-        p.spin * 0.7 * dt;
-
-      const lifeRatio =
-        Math.max(
-          0,
-          p.life / p.maxLife
-        );
-
-      const scale =
-        p.startScale *
-        (0.35 + lifeRatio * 0.65);
-
-      p.mesh.scale
-        .setScalar(scale);
-    }
-
-    for (
-      let i = this.rings.length - 1;
-      i >= 0;
-      i--
-    ) {
-      const r =
-        this.rings[i];
-
-      r.life -= dt;
-
-      if (r.life <= 0) {
-        this.scene.remove(
-          r.mesh
-        );
-
-        this.rings.splice(i, 1);
-
-        continue;
-      }
-
-      const t =
-        1 -
-        r.life / r.maxLife;
-
-      const scale =
-        THREE.MathUtils.lerp(
-          r.startScale,
-          r.endScale,
-          t
-        );
-
-      r.mesh.scale
-        .setScalar(scale);
-
-      r.mesh.rotation.z +=
-        r.rotationSpeed * dt;
-
-      const material =
-        r.mesh.material as
-          THREE.MeshBasicMaterial;
-
-      material.opacity =
-        Math.max(
-          0,
-          0.85 * (1 - t)
-        );
-    }
-
-    for (
-      let i = this.lights.length - 1;
-      i >= 0;
-      i--
-    ) {
-      const l =
-        this.lights[i];
-
-      l.life -= dt;
-
-      if (l.life <= 0) {
-        this.scene.remove(
-          l.light
-        );
-
-        this.lights.splice(i, 1);
-
-        continue;
-      }
-
-      const t =
-        l.life / l.maxLife;
-
-      l.light.intensity =
-        l.startIntensity * t;
-    }
-  }
-
-  clear() {
-    for (const p of this.particles) {
-      this.scene.remove(p.mesh);
-    }
-
-    for (const r of this.rings) {
-      this.scene.remove(r.mesh);
-    }
-
-    for (const l of this.lights) {
-      this.scene.remove(l.light);
-    }
-
-    this.particles.length = 0;
-    this.rings.length = 0;
-    this.lights.length = 0;
   }
 
   dispose() {
-    this.clear();
+    this.emitters = [];
+    this.pulseObjects = [];
 
-    this.particleGeometry.dispose();
-    this.sparkGeometry.dispose();
-    this.ringGeometry.dispose();
+    this.root.traverse((o: any) => {
+      if (o.geometry) o.geometry.dispose();
+    });
 
-    for (const material of this.materials.values()) {
-      material.dispose();
+    Object.values(this.shared).forEach((m) => m.dispose());
+    this.root.removeFromParent();
+  }
+
+  private addEmitter(
+    root: THREE.Group,
+    kind: Emitter["kind"],
+    count: number,
+    speed: number,
+    spread: number,
+    life: number,
+    scale: number
+  ) {
+    const particles: THREE.Mesh[] = [];
+
+    const material =
+      kind === "fire"
+        ? this.shared.fire
+        : kind === "smoke"
+          ? this.shared.smoke
+          : this.shared.magic;
+
+    const geometry =
+      kind === "smoke"
+        ? new THREE.SphereGeometry(0.18 * scale, 6, 5)
+        : new THREE.SphereGeometry(0.10 * scale, 6, 5);
+
+    for (let i = 0; i < count; i++) {
+      const p = new THREE.Mesh(geometry, material);
+      p.position.set(
+        (i - count / 2) * 0.03,
+        0.1 + i * 0.02,
+        0
+      );
+      root.add(p);
+      particles.push(p);
     }
 
-    this.materials.clear();
+    this.emitters.push({
+      root,
+      particles,
+      phase: Math.random() * 10,
+      speed,
+      spread,
+      life,
+      kind,
+      baseY: 0.18 * scale,
+    });
   }
 }
-
-export default VFXEngine;
