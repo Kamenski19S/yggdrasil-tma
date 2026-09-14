@@ -1249,25 +1249,98 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     [[24,-13],[25,-10],[18,-20],[-18,-21],[-24,-4],[-8,-18],[21,2],[14,11]].forEach(([x,z])=>barrel(x,z));
     [[25,-14],[27,-11],[-19,-20],[-21,-5],[18,-19],[-7,-19]].forEach(([x,z])=>crate(x,z));
 
-    // Dense forest ring: different sizes + understory, but kept outside the playable core.
-    const tree=(x:number,z:number,s:number)=>{
+    // Realistic fantasy trees: firs for the forest + sacred ash trees around Midgard.
+    // The ash is a deliberate visual echo of Yggdrasil rather than a generic oak.
+    const firTree=(x:number,z:number,s:number)=>{
       const g=new THREE.Group();const y=groundY(x,z);
-      const bark=mat(0x3d2a20,1);
-      const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.24*s,.38*s,3.7*s,9),bark);trunk.position.y=1.85*s;trunk.rotation.z=(midHash(x,z)-.5)*.12;g.add(trunk);
-      for(let b=0;b<3;b++){
-        const branch=new THREE.Mesh(new THREE.CylinderGeometry(.07*s,.13*s,1.7*s,7),bark);
-        branch.position.set((b-1)*.48*s,1.55*s+b*.48*s,.05);branch.rotation.z=(b-1)*.65;branch.rotation.y=.3+b*.7;g.add(branch);
+      const bark=mat(0x38281f,1);
+      const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18*s,.34*s,4.6*s,10),bark);
+      trunk.position.y=2.3*s;trunk.rotation.z=(midHash(x,z)-.5)*.045;g.add(trunk);
+
+      // Irregular horizontal branches give the fir a more natural silhouette.
+      for(let b=0;b<5;b++){
+        const branch=new THREE.Mesh(new THREE.CylinderGeometry(.045*s,.095*s,(1.15+b*.16)*s,7),bark);
+        branch.position.set((midHash(b,x)-.5)*.45*s,(1.25+b*.58)*s,(midHash(b,z)-.5)*.38*s);
+        branch.rotation.z=(midHash(b+10,x)-.5)*.45;
+        branch.rotation.y=midHash(b+20,z)*Math.PI*2;
+        g.add(branch);
       }
-      const greens=[0x263d2d,0x2d4932,0x35543a,0x20382a];
-      for(let i=0;i<5;i++){
-        const r=(1.55-i*.16)*s;
-        const crown=new THREE.Mesh(new THREE.DodecahedronGeometry(r,1),mat(greens[i%greens.length],1));
-        crown.scale.set(1,.85+midHash(i,x)*.22,.9);crown.position.set((midHash(i*4,x)-.5)*.55*s,(2.65+i*.62)*s,(midHash(i*5,z)-.5)*.45*s);g.add(crown);
+
+      const greens=[0x1e3428,0x274431,0x2d4d36,0x34583d,0x233c2d];
+      // Layered, slightly asymmetric foliage instead of perfect cones.
+      for(let i=0;i<6;i++){
+        const t=i/5;
+        const r=(1.55-.72*t)*s;
+        const crown=new THREE.Mesh(new THREE.ConeGeometry(r,.95*s,9,1),mat(greens[i%greens.length],1));
+        crown.scale.x=.88+midHash(i,x)*.18;
+        crown.scale.z=.84+midHash(i,z)*.2;
+        crown.position.set((midHash(i*4,x)-.5)*.28*s,(2.05+i*.62)*s,(midHash(i*5,z)-.5)*.28*s);
+        crown.rotation.y=midHash(i+40,x)*Math.PI*2;
+        g.add(crown);
       }
-      // Sparse lower branches prevent the forest from looking like identical cones.
-      if(s>1.1){for(let i=0;i<3;i++){const c=new THREE.Mesh(new THREE.DodecahedronGeometry(.52*s,1),mat(0x304b32,1));c.position.set((i-1)*.48*s,.95*s,(midHash(i,z)-.5)*.5*s);g.add(c);}}
-      g.position.set(x,y,z);addMesh(g);if(s>=1.15)addCircleCollider(x,z,.48*s,.04);
+      // A few low boughs make large trees feel grown rather than assembled.
+      if(s>1.15){
+        for(let i=0;i<3;i++){
+          const low=new THREE.Mesh(new THREE.ConeGeometry(.62*s,.7*s,8),mat(greens[(i+2)%greens.length],1));
+          low.position.set((i-1)*.38*s,.72*s,(midHash(i,z)-.5)*.3*s);
+          low.rotation.y=midHash(i+70,x)*Math.PI*2;g.add(low);
+        }
+      }
+      g.position.set(x,y,z);addMesh(g);
+      if(s>=1.15)addCircleCollider(x,z,.42*s,.04);
     };
+
+    const ashTree=(x:number,z:number,s:number,ancient=false)=>{
+      const g=new THREE.Group();const y=groundY(x,z);
+      const bark=mat(ancient?0x403229:0x4a3427,1);
+      const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.32*s,.52*s,5.8*s,11),bark);
+      trunk.position.y=2.9*s;trunk.rotation.z=(midHash(x,z)-.5)*.035;g.add(trunk);
+
+      // Forked ash branches: broad crown, not a conifer silhouette.
+      const branchCount=ancient?8:6;
+      for(let i=0;i<branchCount;i++){
+        const a=(i/branchCount)*Math.PI*2+midHash(i,x)*.25;
+        const len=(1.65+midHash(i+30,z)*1.35)*s;
+        const branch=new THREE.Mesh(new THREE.CylinderGeometry(.075*s,.16*s,len,8),bark);
+        branch.position.set(Math.cos(a)*len*.34,(3.35+midHash(i+40,x)*1.25)*s,Math.sin(a)*len*.34);
+        branch.rotation.z=Math.cos(a)*.78;
+        branch.rotation.x=Math.sin(a)*.78;
+        branch.rotation.y=-a;
+        g.add(branch);
+
+        // Small leaf clusters at branch ends.
+        for(let k=0;k<3;k++){
+          const leaf=new THREE.Mesh(new THREE.SphereGeometry((.42+midHash(k+i,90)*.22)*s,8,6),mat(k%2?0x496044:0x3b573b,1));
+          const f=.55+k*.18;
+          leaf.position.set(Math.cos(a)*len*.62+(midHash(k, i)-.5)*.35*s,(3.55+midHash(i,k)*1.15+f)*s,Math.sin(a)*len*.62+(midHash(k+4,i)-.5)*.35*s);
+          leaf.scale.y=.72;g.add(leaf);
+        }
+      }
+
+      // A few hanging twigs give the sacred ash a slightly mythical silhouette.
+      for(let i=0;i<(ancient?7:4);i++){
+        const a=midHash(i+100,x)*Math.PI*2;
+        const twig=new THREE.Mesh(new THREE.CylinderGeometry(.025*s,.055*s,(.9+midHash(i,z)*.7)*s,6),bark);
+        twig.position.set(Math.cos(a)*1.05*s,(3.15+midHash(i+5,x)*1.5)*s,Math.sin(a)*1.05*s);
+        twig.rotation.z=(midHash(i+8,z)-.5)*.35;g.add(twig);
+      }
+      g.position.set(x,y,z);addMesh(g);
+      if(s>=1.2)addCircleCollider(x,z,.62*s,.04);
+    };
+
+    // Dense forest ring uses varied, irregular firs.
+    for(let i=0;i<95;i++){
+      const a=midHash(i,77)*Math.PI*2;const r=43+midHash(i,91)*31;
+      const x=Math.cos(a)*r,z=Math.sin(a)*r+2;
+      if(Math.abs(x+43)>8)firTree(x,z,.78+midHash(i,13)*.82);
+    }
+
+    // Three ash trees mark important places in Midgard; the largest is the village's
+    // symbolic "ash of memory", a visual hint toward Yggdrasil.
+    ashTree(-10,18,1.55,false);
+    ashTree(13,24,1.7,false);
+    ashTree(-31,-12,2.15,true);
+
     // Small grass clumps and ferns break up the flat ground while staying cheap on mobile.
     for(let i=0;i<110;i++){
       const a=midHash(i,701)*Math.PI*2,r=15+midHash(i,702)*50,x=Math.cos(a)*r,z=Math.sin(a)*r+3;
@@ -1277,7 +1350,6 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       scene.add(g);
     }
 
-    for(let i=0;i<95;i++){const a=midHash(i,77)*Math.PI*2;const r=43+midHash(i,91)*31;const x=Math.cos(a)*r,z=Math.sin(a)*r+2;if(Math.abs(x+43)>8)tree(x,z,.75+midHash(i,13)*.8);}
     for(let i=0;i<80;i++){const x=-68+midHash(i,101)*136,z=-68+midHash(i,111)*136;if(Math.hypot(x,z+2)>30){const grass=new THREE.Mesh(new THREE.ConeGeometry(.08,.55+midHash(i,121)*.7,5),mat(0x4b6840,1));grass.position.set(x,groundY(x,z)+.3,z);scene.add(grass);}}
 
     // A small watchtower gives vertical scale and a visible landmark.
