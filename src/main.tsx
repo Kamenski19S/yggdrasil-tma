@@ -330,8 +330,18 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 const midMat = (c: number, roughness = 0.88) =>
   new THREE.MeshStandardMaterial({ color: c, roughness });
 
-const midBox = (w: number, h: number, d: number, c: number) =>
-  new THREE.Mesh(new THREE.BoxGeometry(w, h, d), midMat(c));
+const midBox = (
+  w: number,
+  h: number,
+  d: number,
+  materialOrColor: number | THREE.Material
+) =>
+  new THREE.Mesh(
+    new THREE.BoxGeometry(w, h, d),
+    typeof materialOrColor === "number"
+      ? midMat(materialOrColor)
+      : materialOrColor
+  );
 
 const midCyl = (r: number, h: number, c: number, segments = 10) =>
   new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, segments), midMat(c));
