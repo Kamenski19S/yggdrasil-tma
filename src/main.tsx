@@ -832,6 +832,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
   const state = useRef({ x: 0, z: 28, dx: 0, dz: 0 });
   const [near, setNear] = useState("");
   const [moving, setMoving] = useState(false);
+  const [ritualOpen, setRitualOpen] = useState(false);
   const cameraDir = useRef({ x: 0, z: 1 });
 
   useEffect(() => {
@@ -1235,6 +1236,43 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     const threadMat=new THREE.LineBasicMaterial({color:0xd4c4e7,transparent:true,opacity:.78});for(let i=0;i<2;i++){const p=[new THREE.Vector3((i-1)*2.2,2,.1),new THREE.Vector3((i-.5)*2.2,4.1,-.7),new THREE.Vector3(i*2.2,2,.1)];shrine.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p),threadMat));}const ring=new THREE.Mesh(new THREE.TorusGeometry(4.1,.07,8,48),new THREE.MeshStandardMaterial({color:0xbda8d2,emissive:0x5d4770,emissiveIntensity:1.5}));ring.rotation.x=Math.PI/2;ring.position.y=.05;shrine.add(ring);addMesh(shrine,"norns","Прядильня норн");objects.push(shrine);
     addCircleCollider(-8,31,3.0,.1);
 
+    // Ritual Place of Power — an ancient stone circle where the hero can invoke different paths of power.
+    const ritualX=-22, ritualZ=45;
+    const ritual=new THREE.Group();
+    ritual.userData={id:"ritual",label:"Круг Силы"};
+    ritual.position.set(ritualX,groundY(ritualX,ritualZ),ritualZ);
+    const outerStoneMat=mat(0x666963,1);
+    const innerStoneMat=mat(0x555a55,1);
+    for(let ring=0;ring<2;ring++){
+      const count=ring===0?18:12;
+      const radius=ring===0?6.2:3.65;
+      for(let i=0;i<count;i++){
+        const a=i/count*Math.PI*2+ring*.12;
+        const rr=radius+(midHash(i,930+ring)*.5-.25);
+        const h=.42+midHash(i,940+ring)*.48;
+        const st=new THREE.Mesh(new THREE.DodecahedronGeometry(.55+midHash(i,950+ring)*.28,1),ring===0?outerStoneMat:innerStoneMat);
+        st.scale.y=.65+h*.35;
+        st.position.set(Math.cos(a)*rr,h*.45,Math.sin(a)*rr);
+        st.rotation.set(midHash(i,960+ring),a+midHash(i,970+ring),midHash(i,980+ring));
+        ritual.add(st);
+      }
+    }
+    const altar=new THREE.Mesh(new THREE.DodecahedronGeometry(1.05,1),mat(0x555954,1));
+    altar.scale.set(1.25,.62,1.05);altar.position.y=.5;ritual.add(altar);
+    for(const r of [2.1,3.15,5.15]){
+      const rm=new THREE.Mesh(new THREE.TorusGeometry(r,.045,7,64),new THREE.MeshStandardMaterial({color:0x8cae9b,emissive:0x355b49,emissiveIntensity:1.4,transparent:true,opacity:.72}));
+      rm.rotation.x=Math.PI/2;rm.position.y=.055;ritual.add(rm);
+    }
+    const ritualRuneMat=new THREE.MeshStandardMaterial({color:0xc9a85e,emissive:0x8c5f18,emissiveIntensity:2.2,roughness:.5});
+    for(let i=0;i<8;i++){
+      const a=i/8*Math.PI*2;
+      const runeMark=new THREE.Mesh(new THREE.BoxGeometry(.13,.025,.65),ritualRuneMat);
+      runeMark.position.set(Math.cos(a)*4.55,.075,Math.sin(a)*4.55);runeMark.rotation.y=-a;ritual.add(runeMark);
+    }
+    addMesh(ritual,"ritual","Круг Силы");objects.push(ritual);
+    addCircleCollider(ritualX,ritualZ,1.25,.06);
+    const ritualLight=new THREE.PointLight(0x8cc7a8,1.15,11,2);ritualLight.position.set(ritualX,groundY(ritualX,ritualZ)+1.6,ritualZ);scene.add(ritualLight);
+
     // Ancient rune altar.
     const rune=new THREE.Group();rune.userData={id:"rune",label:"Древний камень Феху"};rune.position.set(9,groundY(9,39),39);const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(1.45,1),mat(0x4c534f,1));stone.position.y=1.2;rune.add(stone);const rr=new THREE.Mesh(new THREE.TorusGeometry(1.05,.07,8,30),new THREE.MeshStandardMaterial({color:0xffd76a,emissive:0x996313,emissiveIntensity:3}));rr.rotation.x=Math.PI/2;rr.position.y=1.2;rune.add(rr);addMesh(rune,"rune","Древний камень Феху");objects.push(rune);
     addCircleCollider(9,39,1.7,.1);
@@ -1374,7 +1412,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     const destinations=[
       {id:"house",label:"Дом старейшины",x:13,z:-18,r:5.2},{id:"forge",label:"Кузница",x:-10,z:-5,r:5.4},
       {id:"mimir",label:"Колодец Мимира",x:11,z:7,r:4.8},{id:"norns",label:"Прядильня норн",x:-8,z:31,r:5.4},
-      {id:"rune",label:"Древний камень Феху",x:9,z:39,r:4.5},{id:"port",label:"Речной причал",x:-30,z:-8,r:5},
+      {id:"rune",label:"Древний камень Феху",x:9,z:39,r:4.5},{id:"ritual",label:"Круг Силы",x:-22,z:45,r:6.8},{id:"port",label:"Речной причал",x:-30,z:-8,r:5},
       {id:"elder",label:"Старейшина",x:9,z:-8,r:3.2},{id:"blacksmith",label:"Кузнец",x:-6,z:-3,r:3.2},
       {id:"gate",label:"Ворота Мидгарда",x:0,z:-31,r:5},{id:"tower",label:"Сторожевая башня",x:29,z:25,r:4}
     ];
@@ -1425,7 +1463,14 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
 
   return <div className="content mid3d-scene" ref={mount} style={{touchAction:"none",userSelect:"none",WebkitUserSelect:"none"}} onPointerDown={startJoyFromZone} onPointerMove={moveJoyFromZone} onPointerUp={endJoyFromZone} onPointerCancel={endJoyFromZone} onContextMenu={e=>e.preventDefault()}>
     <div className="mid3d-ui mid3d-top"><div className="mid3d-pill"><b>МИДГАРД</b><span>Деревня • река • лес • святилища</span></div><div className="mid3d-pill"><b>ᛟ</b><span>Мир живёт вокруг тебя</span></div></div>
-    {near&&(()=>{const [label,id]=near.split("|");return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Ты достаточно близко</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id)}>Взаимодействовать</button></div>;})()}
+    {ritualOpen&&<div className="mid3d-ui mid3d-interact" style={{bottom:"18%",left:"50%",transform:"translateX(-50%)",width:"min(92vw,360px)",zIndex:30}}>
+      <b>🜂 Круг Силы</b>
+      <span>Древние камни отвечают на твоё присутствие. Выбери один путь.</span>
+      <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:mimir")}}>🧠 Око Мимира — открыть скрытое</button>
+      <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:norn")}}>🧵 Нить Норн — увидеть последствия</button>
+      <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:ash")}}>🌿 Дыхание Ясеня — восстановить силы</button>
+    </div>}
+    {near&&!ritualOpen&&(()=>{const [label,id]=near.split("|");return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Ты достаточно близко</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>id==="ritual"?setRitualOpen(true):on(id)}>Взаимодействовать</button></div>;})()}
     <div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-action" onPointerDown={e=>e.stopPropagation()} onClick={()=>on("event")}>ᚠ</button>
     <div className="mid3d-ui mid3d-hint">{moving?"Исследуй Мидгард":"Ворота • площадь • кузница • Мимир • норны • лес"}</div>
@@ -1622,6 +1667,22 @@ const [roadT, setRoadT] = useState(0.06);
       }
       if (id === "event") {
         say("Ты замечаешь следы у северной дороги. Это не зверь. Событие Мидгарда начинается.");
+        return;
+      }
+      if (id === "ritual:mimir") {
+        setSave(s => ({ ...s, sparks: s.sparks + 8, done: [...new Set([...s.done, "ritual:mimir"])] }));
+        say("Око Мимира открыто. +8 Искр. Теперь некоторые тайны мира могут быть замечены тобой.");
+        return;
+      }
+      if (id === "ritual:norn") {
+        setSave(s => ({ ...s, sparks: s.sparks + 5, done: [...new Set([...s.done, "ritual:norn"])] }));
+        say("Нить Норн дрогнула. +5 Искр. Перед важным выбором судьба может предупредить тебя.");
+        return;
+      }
+      if (id === "ritual:ash") {
+        setSave(s => ({ ...s, sparks: s.sparks + 10, done: [...new Set([...s.done, "ritual:ash"])] }));
+        say("Дыхание Ясеня наполнило тебя силой. +10 Искр. Ты готов к дальнейшему пути.");
+        return;
       }
     };
 
