@@ -1103,6 +1103,101 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     const fire=(x:number,z:number,scale:number)=>{const g=new THREE.Group();g.position.set(x,groundY(x,z),z);for(let i=0;i<7;i++){const a=i/7*Math.PI*2;const s=new THREE.Mesh(new THREE.DodecahedronGeometry(.32*scale,1),mat(0x5d5a52,1));s.position.set(Math.cos(a)*.7*scale,.25*scale,Math.sin(a)*.7*scale);g.add(s);}const log1=box(.2*scale,.2*scale,1.5*scale,0x4a2d1b,1),log2=log1.clone();log1.rotation.y=.55;log2.rotation.y=-.55;log1.position.y=log2.position.y=.38*scale;g.add(log1,log2);const fm=new THREE.MeshStandardMaterial({color:0xff8128,emissive:0xff4d0a,emissiveIntensity:4});const flame=new THREE.Mesh(new THREE.ConeGeometry(.5*scale,1.35*scale,8),fm);flame.position.y=1.02*scale;g.add(flame);scene.add(g);const light=new THREE.PointLight(0xff8a3c,2.4*scale,12*scale,2);light.position.set(x,groundY(x,z)+2*scale,z);scene.add(light);fires.push({light,flame,phase:midHash(x,z)*8});};
     fire(1,0,1.15);fire(18,-15,.72);
 
+    // Outer settlement: farms, workshops and service yards make the village read as a place,
+    // not a handful of buildings. These are deliberately lightweight so the scene remains mobile-friendly.
+    const fenceRun=(x1:number,z1:number,x2:number,z2:number,h=1.25)=>{
+      const g=new THREE.Group(); const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz),n=Math.max(1,Math.floor(len/1.55));
+      for(let i=0;i<=n;i++){
+        const t=i/n,px=x1+dx*t,pz=z1+dz*t;
+        const post=box(.18,h,.18,0x49301f,1); post.position.set(px,groundY(px,pz)+h/2,pz); g.add(post);
+      }
+      for(const off of [-.28,.38]){
+        const rail=box(.14,.14,len,0x5b3b25,1); rail.rotation.y=Math.atan2(dx,dz);
+        rail.position.set((x1+x2)/2,groundY((x1+x2)/2,(z1+z2)/2)+h*off,(z1+z2)/2); g.add(rail);
+      }
+      scene.add(g); addSegmentCollider(x1,z1,x2,z2,.12,.02);
+    };
+    const shed=(x:number,z:number,w:number,d:number,rot:number,label:string,id:string)=>{
+      const g=new THREE.Group(); g.position.set(x,groundY(x,z),z); g.rotation.y=rot; g.userData={id,label};
+      const base=box(w+.25,.35,d+.25,0x555148,1);base.position.y=.18;g.add(base);
+      const wall=new THREE.Mesh(new THREE.BoxGeometry(w,2.5,d),new THREE.MeshStandardMaterial({map:woodTex,color:0x62442f,roughness:1}));wall.position.y=1.45;g.add(wall);
+      const roof=new THREE.Mesh(new THREE.BoxGeometry(w+.6,.18,d+.65),new THREE.MeshStandardMaterial({map:roofTex,color:0x292724,roughness:1}));roof.rotation.z=.55;roof.position.set(-.16,3.0,0);g.add(roof);
+      const roof2=roof.clone();roof2.rotation.z=-.55;roof2.position.x=.16;g.add(roof2);
+      const door=box(1.05,1.75,.12,0x2a1c14,1);door.position.set(0,1.05,d/2+.07);g.add(door);
+      addMesh(g,id,label);objects.push(g);addRectCollider(x,z,w+.55,d+.55,rot,.04);
+    };
+    const hay=(x:number,z:number,s=1)=>{
+      const g=new THREE.Group();g.position.set(x,groundY(x,z),z);
+      const bale=new THREE.Mesh(new THREE.CylinderGeometry(.65*s,.65*s,1.2*s,10),mat(0x8a7441,1));bale.rotation.z=Math.PI/2;bale.position.y=.62*s;g.add(bale);
+      for(let i=0;i<3;i++){const rope=new THREE.Mesh(new THREE.TorusGeometry(.66*s,.025*s,5,18),mat(0x594a2d,1));rope.rotation.y=Math.PI/2;rope.position.y=(.28+i*.34)*s;g.add(rope);}
+      addMesh(g);
+    };
+    const cart=(x:number,z:number,rot:number)=>{
+      const g=new THREE.Group();g.position.set(x,groundY(x,z),z);g.rotation.y=rot;
+      const bed=box(2.8,.28,1.45,0x65432b,1);bed.position.y=1.0;g.add(bed);
+      for(const px of [-1.15,1.15])for(const pz of [-.55,.55]){const p=box(.16,1.15,.16,0x432b1e,1);p.position.set(px,.55,pz);g.add(p);}
+      for(const px of [-1.15,1.15]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,.18,14),mat(0x292622,1));w.rotation.z=Math.PI/2;w.position.set(px,.52,-.92);g.add(w);}
+      const shaft=box(.16,.16,2.4,0x49301f,1);shaft.rotation.x=Math.PI/2;shaft.position.set(0,.72,-2.0);g.add(shaft);addMesh(g);
+    };
+    const bench=(x:number,z:number,rot=0)=>{
+      const g=new THREE.Group();g.position.set(x,groundY(x,z),z);g.rotation.y=rot;
+      const top=box(2.2,.16,.5,0x704a2d,1);top.position.y=.85;g.add(top);
+      for(const px of [-.78,.78]){const l=box(.12,.8,.12,0x3f2a1d,1);l.position.set(px,.4,0);g.add(l);}
+      addMesh(g);
+    };
+    const wellMarker=(x:number,z:number)=>{
+      const g=new THREE.Group();g.position.set(x,groundY(x,z),z);
+      for(let i=0;i<10;i++){const a=i/10*Math.PI*2,s=box(.45,.38,.38,0x66655d,1);s.position.set(Math.cos(a)*.95,.19,Math.sin(a)*.95);s.rotation.y=a;g.add(s);}
+      const post1=box(.16,2.2,.16,0x4a3020,1),post2=post1.clone();post1.position.set(-.9,1.2,0);post2.position.set(.9,1.2,0);g.add(post1,post2);
+      const beam=box(2.0,.16,.16,0x3b281b,1);beam.position.y=2.25;g.add(beam);
+      addMesh(g);
+    };
+    // Northern farm quarter.
+    shed(-19,31,8,5,.08,"Амбар","barn");
+    shed(17,34,7,5,-.2,"Сарай","shed");
+    shed(27,13,6,4,.45,"Склад рыбака","fishshed");
+    fenceRun(-25,27,-13,27); fenceRun(-25,27,-25,38); fenceRun(-25,38,-14,38);
+    fenceRun(12,29,25,29); fenceRun(25,29,25,40); fenceRun(25,40,12,40);
+    fenceRun(29,-1,39,-1); fenceRun(39,-1,39,10); fenceRun(39,10,30,10);
+    for(const p0 of [[-20,29,1.0],[-16,34,.85],[-20,35,.8],[18,31,.9],[21,37,.72],[31,5,.9]] as Array<[number,number,number]>) hay(p0[0],p0[1],p0[2]);
+    cart(-17,24,.18); cart(29,-5,-.55); bench(-20,23,.18); bench(25,31,-.2);
+    // A second line of modest homes creates a believable village edge.
+    house(-31,8,7,5,.1,"Дом рыбака","fisher2",0x694832,0x2d2b29);
+    house(-27,20,7,5,-.25,"Дом плотника","carpenter",0x765039,0x302b27);
+    house(31,18,7,5,.32,"Дом охотницы","hunter2",0x63432f,0x292724);
+    house(20,24,7,5,-.12,"Дом семьи","family",0x79543a,0x2d2927);
+    addRectCollider(-31,8,7.8,5.8,.1,.04);addRectCollider(-27,20,7.8,5.8,-.25,.04);addRectCollider(31,18,7.8,5.8,.32,.04);addRectCollider(20,24,7.8,5.8,-.12,.04);
+    // Small market corner near the square.
+    const stall=(x:number,z:number,rot:number)=>{
+      const g=new THREE.Group();g.position.set(x,groundY(x,z),z);g.rotation.y=rot;
+      const top=box(3.0,.18,1.25,0x70462a,1);top.position.y=1.45;g.add(top);
+      for(const px of [-1.25,1.25])for(const pz of [-.48,.48]){const p=box(.13,1.45,.13,0x412b1d,1);p.position.set(px,.72,pz);g.add(p);}
+      const canopy=new THREE.Mesh(new THREE.ConeGeometry(1.65,2.5,4,1,false,Math.PI/4),mat(0x49382e,1));canopy.scale.z=.55;canopy.position.y=2.15;g.add(canopy);addMesh(g);
+    };
+    stall(-5,-7,.12);stall(8,-5,-.18);stall(6,7,.5);
+    // Hearths, wood piles and small objects around homes.
+    const woodpile=(x:number,z:number,s=1)=>{
+      const g=new THREE.Group();g.position.set(x,groundY(x,z),z);
+      for(let i=0;i<7;i++){const log=new THREE.Mesh(new THREE.CylinderGeometry(.14*s,.14*s,1.7*s,8),mat(0x50321f,1));log.rotation.z=Math.PI/2;log.rotation.y=(i%3-.9)*.18;log.position.set((i%3-.9)*.28*s,.16+(Math.floor(i/3)*.22*s),(i%2-.5)*.28*s);g.add(log);}addMesh(g);
+    };
+    woodpile(-23,-12,1.15);woodpile(15,-23,1);woodpile(34,22,.9);woodpile(-33,15,.9);
+    for(const p0 of [[-17,-11],[-21,-16],[14,-12],[22,-14],[24,17],[-31,15],[-18,41],[34,14]] as Array<[number,number]>) wellMarker(p0[0],p0[1]);
+    // Low vegetation and scattered stones fill empty ground without turning it into a particle-heavy scene.
+    const bush=(x:number,z:number,s=1)=>{
+      const g=new THREE.Group();const y=groundY(x,z);
+      for(let i=0;i<5;i++){const c=new THREE.Mesh(new THREE.SphereGeometry((.28+midHash(i,x)*.18)*s,8,6),mat(i%2?0x355239:0x415f3f,1));c.position.set((midHash(i,2)-.5)*.7*s,.28*s,(midHash(i,3)-.5)*.7*s);g.add(c);}g.position.set(x,y,z);addMesh(g);
+    };
+    for(let i=0;i<48;i++){
+      const a=midHash(i,501)*Math.PI*2,r=18+midHash(i,502)*39,x=Math.cos(a)*r,z=Math.sin(a)*r+4;
+      if(Math.abs(x)<9 && Math.abs(z)<14) continue;
+      bush(x,z,.65+midHash(i,503)*.75);
+    }
+    for(let i=0;i<34;i++){
+      const x=-58+midHash(i,610)*116,z=-55+midHash(i,611)*108;
+      if(Math.hypot(x,z-2)<24) continue;
+      const s=.25+midHash(i,612)*.55;const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(s,1),mat(0x575b55,1));rock.scale.y=.55;rock.position.set(x,groundY(x,z)+s*.28,z);rock.rotation.set(midHash(i,613),midHash(i,614),midHash(i,615));addMesh(rock);addCircleCollider(x,z,s*.8,.03);
+    }
+
     // Palisade and gate: the player enters a settlement, not an isolated field.
     const palisade=(x1:number,z1:number,x2:number,z2:number)=>{const g=new THREE.Group();const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz),n=Math.floor(len/1.7);for(let i=0;i<=n;i++){const t=i/n;const px=x1+dx*t,pz=z1+dz*t;const p=new THREE.Mesh(new THREE.ConeGeometry(.24,.24+2.8+midHash(i,x1)*.5,6),mat(0x3c2a1c,1));p.position.set(px,groundY(px,pz)+1.45,pz);g.add(p);}const beam=box(.3,.35,len,0x2d2119,1);beam.rotation.y=Math.atan2(dx,dz);beam.position.set((x1+x2)/2,groundY((x1+x2)/2,(z1+z2)/2)+1.25,(z1+z2)/2);g.add(beam);scene.add(g);addSegmentCollider(x1,z1,x2,z2,.34,.08);};
     palisade(-30,-31,-8,-31);palisade(8,-31,30,-31);palisade(-30,-31,-30,-13);palisade(30,-31,30,16);
