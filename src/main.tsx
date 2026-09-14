@@ -843,8 +843,8 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     if (!el) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x3e4a46);
-    scene.fog = new THREE.FogExp2(0x43514c, 0.0068);
+    scene.background = new THREE.Color(0x8fa8a1);
+    scene.fog = new THREE.FogExp2(0x7b8d86, 0.0058);
 
     const camera = new THREE.PerspectiveCamera(54, 1, 0.1, 220);
     camera.position.set(0, 8.5, 17);
@@ -855,12 +855,12 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.86;
+    renderer.toneMappingExposure = 1.08;
     el.appendChild(renderer.domElement);
 
-    const hemi = new THREE.HemisphereLight(0xc9d4cf, 0x171714, 1.05);
+    const hemi = new THREE.HemisphereLight(0xdce9e5, 0x3d4038, 1.38);
     scene.add(hemi);
-    const sun = new THREE.DirectionalLight(0xffd9b2, 2.65);
+    const sun = new THREE.DirectionalLight(0xfff1cf, 3.15);
     sun.position.set(-42, 58, 34);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
@@ -870,7 +870,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     sun.shadow.camera.bottom = -70;
     sun.shadow.bias = -0.0005;
     scene.add(sun);
-    const horizonLight=new THREE.DirectionalLight(0x9fb7ad,.42);horizonLight.position.set(55,18,-60);scene.add(horizonLight);
+    const horizonLight=new THREE.DirectionalLight(0xb8cbc5,.58);horizonLight.position.set(55,18,-60);scene.add(horizonLight);
 
     const groundY = (x: number, z: number) => {
       const broad = Math.sin(x * 0.075) * 0.7 + Math.cos(z * 0.062) * 0.55 + Math.sin((x - z) * 0.045) * 0.35;
@@ -1073,7 +1073,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       for(const px of [-w*.46,w*.46]) for(const pz of [-d*.5,d*.5]){
         const post=box(.34,3.9,.34,0x2a2018,1);post.position.set(px,2.08,pz);g.add(post);
       }
-      [-w*.28,0,w*.28].forEach(px=>{const b=box(.22,3.8,.32,0x30231a,1);b.position.set(px,2.05,d/2+.15);g.add(b);});
+      [-w*.30,w*.30].forEach(px=>{const b=box(.22,3.8,.32,0x30231a,1);b.position.set(px,2.05,d/2+.15);g.add(b);});
       const cross=box(w*.94,.24,.34,0x30231a,1);cross.position.set(0,2.38,d/2+.16);g.add(cross);
       const door=box(1.18,2.15,.18,0x241912,1);door.position.set(0,1.35,d/2+.17);g.add(door);
       const doorFrame1=box(.14,2.35,.22,0x3a291d,1),doorFrame2=doorFrame1.clone();doorFrame1.position.set(-.67,1.42,d/2+.2);doorFrame2.position.set(.67,1.42,d/2+.2);g.add(doorFrame1,doorFrame2);
@@ -1332,13 +1332,18 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     return()=>{cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);groundTexture.dispose();woodTex.dispose();roofTex.dispose();renderer.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();};
   },[h.id,on]);
 
-  const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=42;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
+  const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
   const stopJoy=()=>{if(knob.current)knob.current.style.transform="translate(0,0)";state.current.dx=0;state.current.dz=0;};
+  // Keep the visible joystick compact, but give it a much larger invisible touch zone.
+  // This makes it comfortable to start steering with a thumb slightly above the circle.
+  const startJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{const a=joy.current;if(!a)return;const target=e.target as HTMLElement;if(target.closest?.(".mid3d-action")||target.closest?.(".mid3d-interact"))return;const r=a.getBoundingClientRect();const pad=26,up=78,down=26;const inside=e.clientX>=r.left-pad&&e.clientX<=r.right+pad&&e.clientY>=r.top-up&&e.clientY<=r.bottom+down;if(!inside)return;e.currentTarget.setPointerCapture(e.pointerId);joyMove(e);};
+  const moveJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{if(e.currentTarget.hasPointerCapture(e.pointerId))joyMove(e);};
+  const endJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);stopJoy();};
 
-  return <div className="content mid3d-scene" ref={mount} style={{touchAction:"none",userSelect:"none",WebkitUserSelect:"none"}} onContextMenu={e=>e.preventDefault()}>
+  return <div className="content mid3d-scene" ref={mount} style={{touchAction:"none",userSelect:"none",WebkitUserSelect:"none"}} onPointerDown={startJoyFromZone} onPointerMove={moveJoyFromZone} onPointerUp={endJoyFromZone} onPointerCancel={endJoyFromZone} onContextMenu={e=>e.preventDefault()}>
     <div className="mid3d-ui mid3d-top"><div className="mid3d-pill"><b>МИДГАРД</b><span>Деревня • река • лес • святилища</span></div><div className="mid3d-pill"><b>ᛟ</b><span>Мир живёт вокруг тебя</span></div></div>
     {near&&(()=>{const [label,id]=near.split("|");return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Ты достаточно близко</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id)}>Взаимодействовать</button></div>;})()}
-    <div className="mid3d-ui mid3d-joy" ref={joy} onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);joyMove(e);}} onPointerMove={e=>{if(e.currentTarget.hasPointerCapture(e.pointerId))joyMove(e);}} onPointerUp={stopJoy} onPointerCancel={stopJoy}><div className="mid3d-knob" ref={knob}/></div>
+    <div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-action" onPointerDown={e=>e.stopPropagation()} onClick={()=>on("event")}>ᚠ</button>
     <div className="mid3d-ui mid3d-hint">{moving?"Исследуй Мидгард":"Ворота • площадь • кузница • Мимир • норны • лес"}</div>
   </div>;
