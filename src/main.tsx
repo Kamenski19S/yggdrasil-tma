@@ -1419,13 +1419,13 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     // They are game-world manifestations in Midgard, not claims that the literal cosmic animals live here.
     const deer = (x:number,z:number,s:number,phase:number) => {
       const g=new THREE.Group();
-      const fur=mat(0x6b5944,1), dark=mat(0x3a3027,1), ant=mat(0x8a806d,1);
-      const body=new THREE.Mesh(new THREE.CapsuleGeometry(.42*s,.9*s,5,8),fur); body.rotation.z=Math.PI/2; body.position.y=.9*s; g.add(body);
-      const neck=new THREE.Mesh(new THREE.CylinderGeometry(.22*s,.3*s,.78*s,8),fur); neck.position.set(.48*s,1.25*s,0); neck.rotation.z=-.35; g.add(neck);
-      const head=new THREE.Mesh(new THREE.SphereGeometry(.28*s,8,6),fur); head.scale.set(1.25,.9,1); head.position.set(.77*s,1.58*s,0); g.add(head);
-      const snout=new THREE.Mesh(new THREE.SphereGeometry(.13*s,7,5),dark); snout.scale.z=.72; snout.position.set(1.0*s,1.53*s,0); g.add(snout);
+      const fur=mat(0x8a6d4d,1), dark=mat(0x342b24,1), ant=mat(0xb0a58e,1);
+      const body=new THREE.Mesh(new THREE.CapsuleGeometry(.46*s,1.0*s,6,10),fur); body.rotation.z=Math.PI/2; body.position.y=.9*s; g.add(body);
+      const neck=new THREE.Mesh(new THREE.CylinderGeometry(.24*s,.32*s,.84*s,8),fur); neck.position.set(.48*s,1.25*s,0); neck.rotation.z=-.35; g.add(neck);
+      const head=new THREE.Mesh(new THREE.SphereGeometry(.31*s,10,7),fur); head.scale.set(1.25,.9,1); head.position.set(.77*s,1.58*s,0); g.add(head);
+      const snout=new THREE.Mesh(new THREE.SphereGeometry(.14*s,8,5),dark); snout.scale.z=.72; snout.position.set(1.0*s,1.53*s,0); g.add(snout);
       for(const pz of [-.25,.25]) for(const px of [-.27,.34]) { const leg=new THREE.Mesh(new THREE.CylinderGeometry(.065*s,.09*s,.72*s,6),dark); leg.position.set(px*s,.48*s,pz*s); leg.rotation.z=(px<0?.08:-.06); g.add(leg); }
-      for(const side of [-1,1]) for(let k=0;k<3;k++){ const a=new THREE.Mesh(new THREE.CylinderGeometry(.025*s,.045*s,.34*s,5),ant); a.position.set(.7*s,(1.82+k*.13)*s,side*(.11+k*.055)*s); a.rotation.z=side*(.45-k*.08); g.add(a); }
+      for(const side of [-1,1]) for(let k=0;k<4;k++){ const a=new THREE.Mesh(new THREE.CylinderGeometry(.028*s,.05*s,.38*s,5),ant); a.position.set(.7*s,(1.82+k*.13)*s,side*(.11+k*.055)*s); a.rotation.z=side*(.45-k*.08); g.add(a); }
       const tail=new THREE.Mesh(new THREE.SphereGeometry(.13*s,7,5),fur); tail.position.set(-.52*s,1.05*s,0); tail.scale.set(.7,1.2,.7); g.add(tail);
       g.position.set(x,groundY(x,z),z); g.userData={phase}; addMesh(g); wildlife.push({g,x,z,r:4+midHash(phase,41)*3,speed:.25+midHash(phase,42)*.18,phase,kind:'deer'});
     };
@@ -1482,8 +1482,8 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     addMesh(shelter,'hoddmimir','Лес Ходдмимира'); objects.push(shelter); addCircleCollider(hoddX,hoddZ,1.1,.08);
 
     // The four deer are a deliberate Yggdrasil reference: they roam a separate clearing.
-    const deerClearingX=62, deerClearingZ=48;
-    for(let i=0;i<4;i++) deer(deerClearingX+(i-1.5)*2.4,deerClearingZ+(i%2?2:-2),.9+midHash(i,1440)*.18,10+i);
+    const deerClearingX=30, deerClearingZ=53;
+    for(let i=0;i<4;i++) deer(deerClearingX+(i-1.5)*2.6,deerClearingZ+(i%2?2.6:-2.6),1.12+midHash(i,1440)*.16,10+i);
     const deerStone=new THREE.Mesh(new THREE.DodecahedronGeometry(.72,1),mat(0x575d56,1));deerStone.position.set(deerClearingX,groundY(deerClearingX,deerClearingZ)+.5,deerClearingZ);scene.add(deerStone);
     const deerRing=new THREE.Mesh(new THREE.TorusGeometry(5.8,.045,7,48),new THREE.MeshStandardMaterial({color:0x7e8b72,emissive:0x303d2a,emissiveIntensity:.8,transparent:true,opacity:.48}));deerRing.rotation.x=Math.PI/2;deerRing.position.set(deerClearingX,groundY(deerClearingX,deerClearingZ)+.035,deerClearingZ);scene.add(deerRing);
     squirrel(ashGroveX+5,ashGroveZ+1);
@@ -1492,7 +1492,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     for(let i=0;i<95;i++){
       const a=midHash(i,77)*Math.PI*2;const r=58+midHash(i,91)*32;
       const x=Math.cos(a)*r,z=Math.sin(a)*r+2;
-      const reserved=[[ashGroveX,ashGroveZ,11],[39,70,13],[-64,36,11],[-43,62,10],[62,48,10],[61,78,10]];
+      const reserved=[[ashGroveX,ashGroveZ,11],[39,70,13],[-64,36,11],[-43,62,10],[30,53,12],[61,78,10]];
       const reservedHit=reserved.some(([rx,rz,rr])=>Math.hypot(x-rx,z-rz)<rr);
       if(Math.abs(x+57)>9 && !reservedHit)firTree(x,z,.78+midHash(i,13)*.82);
     }
@@ -1537,7 +1537,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       {id:"house",label:"Дом старейшины",x:13,z:-18,r:5.2},{id:"forge",label:"Кузница",x:-10,z:-5,r:5.4},
       {id:"mimir",label:"Колодец Мимира",x:18,z:15,r:4.8},{id:"norns",label:"Прядильня норн",x:-25,z:43,r:5.4},
       {id:"rune",label:"Древний камень Феху",x:27,z:57,r:4.5},{id:"ritual",label:"Круг Силы",x:-43,z:62,r:6.8},{id:"port",label:"Речной причал",x:-46,z:-15,r:5},
-      {id:"ashgrove",label:"Роща Ясеня",x:-4,z:69,r:7.5},{id:"runefield",label:"Поле Рун",x:39,z:70,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-64,z:36,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:62,z:48,r:6.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:61,z:78,r:6.5},
+      {id:"ashgrove",label:"Роща Ясеня",x:-4,z:69,r:7.5},{id:"runefield",label:"Поле Рун",x:39,z:70,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-64,z:36,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:30,z:53,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:61,z:78,r:6.5},
       {id:"elder",label:"Старейшина",x:9,z:-8,r:3.2},{id:"blacksmith",label:"Кузнец",x:-6,z:-3,r:3.2},
       {id:"gate",label:"Ворота Мидгарда",x:0,z:-31,r:5},{id:"tower",label:"Сторожевая башня",x:29,z:25,r:4}
     ];
