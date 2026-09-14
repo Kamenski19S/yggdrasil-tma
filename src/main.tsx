@@ -843,8 +843,8 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     if (!el) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x52675d);
-    scene.fog = new THREE.FogExp2(0x52675d, 0.0082);
+    scene.background = new THREE.Color(0x3e4a46);
+    scene.fog = new THREE.FogExp2(0x43514c, 0.0068);
 
     const camera = new THREE.PerspectiveCamera(54, 1, 0.1, 220);
     camera.position.set(0, 8.5, 17);
@@ -855,21 +855,22 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.92;
+    renderer.toneMappingExposure = 0.86;
     el.appendChild(renderer.domElement);
 
-    const hemi = new THREE.HemisphereLight(0xcbd8d0, 0x1c1916, 1.25);
+    const hemi = new THREE.HemisphereLight(0xc9d4cf, 0x171714, 1.05);
     scene.add(hemi);
-    const sun = new THREE.DirectionalLight(0xffdfbd, 2.25);
+    const sun = new THREE.DirectionalLight(0xffd9b2, 2.65);
     sun.position.set(-42, 58, 34);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(768, 768);
+    sun.shadow.mapSize.set(1024, 1024);
     sun.shadow.camera.left = -70;
     sun.shadow.camera.right = 70;
     sun.shadow.camera.top = 70;
     sun.shadow.camera.bottom = -70;
     sun.shadow.bias = -0.0005;
     scene.add(sun);
+    const horizonLight=new THREE.DirectionalLight(0x9fb7ad,.42);horizonLight.position.set(55,18,-60);scene.add(horizonLight);
 
     const groundY = (x: number, z: number) => {
       const broad = Math.sin(x * 0.075) * 0.7 + Math.cos(z * 0.062) * 0.55 + Math.sin((x - z) * 0.045) * 0.35;
@@ -880,43 +881,50 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
 
     const canvasTex = (type: "ground" | "wood" | "roof" | "road") => {
       const c = document.createElement("canvas");
-      c.width = c.height = 256;
+      c.width = c.height = 512;
       const ctx = c.getContext("2d")!;
+      const rand = (n:number) => Math.abs(Math.sin(n * 12.9898) * 43758.5453) % 1;
       if (type === "ground") {
-        ctx.fillStyle = "#526044";
-        ctx.fillRect(0, 0, 256, 256);
-        for (let i = 0; i < 900; i++) {
-          const x = Math.random() * 256, y = Math.random() * 256;
-          const g = 55 + Math.random() * 35;
-          ctx.fillStyle = `rgba(${35 + Math.random()*25},${g},${35 + Math.random()*20},${0.12 + Math.random()*0.2})`;
-          ctx.fillRect(x, y, 1 + Math.random()*2, 1 + Math.random()*2);
+        ctx.fillStyle = "#3f4d38";
+        ctx.fillRect(0,0,512,512);
+        for(let i=0;i<1800;i++){
+          const x=rand(i*1.17)*512,y=rand(i*2.31)*512;
+          const r=10+rand(i*3.71)*28;
+          const grass=rand(i*4.13);
+          ctx.fillStyle=grass>.72?`rgba(96,108,63,${.08+rand(i)*.12})`:`rgba(30,36,25,${.05+rand(i)*.12})`;
+          ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+        }
+        for(let i=0;i<650;i++){
+          const x=rand(i*7.1)*512,y=rand(i*8.2)*512;
+          ctx.strokeStyle=`rgba(118,126,78,${.16+rand(i*2)*.16})`;ctx.lineWidth=1+rand(i*4)*1.5;
+          ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(rand(i*5)-.5)*5,y-3-rand(i*6)*5);ctx.stroke();
         }
       } else if (type === "wood") {
-        ctx.fillStyle = "#5b3b27";
-        ctx.fillRect(0,0,256,256);
-        for (let y=0;y<256;y+=18) {
-          ctx.fillStyle = `rgba(25,15,10,${0.18+Math.random()*0.12})`;
-          ctx.fillRect(0,y,256,3);
-          for (let x=0;x<256;x+=55+Math.random()*25) ctx.fillRect(x,y-4,3,22);
+        ctx.fillStyle="#5a3d29";ctx.fillRect(0,0,512,512);
+        for(let y=0;y<512;y+=22){
+          ctx.fillStyle=`rgba(25,15,9,${.18+rand(y)*.13})`;ctx.fillRect(0,y,512,3);
+          ctx.strokeStyle=`rgba(154,111,69,${.08+rand(y*2)*.08})`;ctx.lineWidth=2;
+          ctx.beginPath();ctx.moveTo(0,y+7);ctx.bezierCurveTo(150,y+2,340,y+13,512,y+5);ctx.stroke();
         }
+        for(let i=0;i<65;i++){const x=rand(i*2.1)*512;ctx.fillStyle=`rgba(20,12,8,${.12+rand(i*3)*.16})`;ctx.fillRect(x,0,2+rand(i*4)*3,512);}
       } else if (type === "roof") {
-        ctx.fillStyle = "#252522";
-        ctx.fillRect(0,0,256,256);
-        for (let y=-20;y<280;y+=17) {
-          ctx.strokeStyle = "rgba(130,115,96,.22)";
-          ctx.lineWidth=2;
-          ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(256,y+45); ctx.stroke();
+        ctx.fillStyle="#252522";ctx.fillRect(0,0,512,512);
+        for(let y=-30;y<550;y+=25){
+          ctx.fillStyle=`rgba(105,94,77,${.12+rand(y)*.08})`;ctx.fillRect(0,y,512,2);
+          ctx.strokeStyle="rgba(12,12,11,.48)";ctx.lineWidth=3;
+          for(let x=-40;x<560;x+=38){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-18,y+28);ctx.stroke();}
         }
+        for(let i=0;i<180;i++){ctx.fillStyle=`rgba(170,154,123,${.03+rand(i)*.07})`;ctx.fillRect(rand(i*2)*512,rand(i*3)*512,2+rand(i*4)*7,2);}
       } else {
-        ctx.fillStyle="#5a4937"; ctx.fillRect(0,0,256,256);
-        for(let i=0;i<500;i++){
-          ctx.fillStyle=`rgba(${35+Math.random()*30},${28+Math.random()*20},${18+Math.random()*15},${.15+Math.random()*.22})`;
-          ctx.fillRect(Math.random()*256,Math.random()*256,1+Math.random()*5,1+Math.random()*3);
+        ctx.fillStyle="#514333";ctx.fillRect(0,0,512,512);
+        for(let i=0;i<1300;i++){
+          const x=rand(i*1.3)*512,y=rand(i*2.7)*512;
+          ctx.fillStyle=`rgba(${45+rand(i*3)*38},${35+rand(i*4)*28},${23+rand(i*5)*20},${.08+rand(i*6)*.18})`;
+          ctx.fillRect(x,y,2+rand(i*7)*7,1+rand(i*8)*4);
         }
       }
-      const t = new THREE.CanvasTexture(c);
-      t.wrapS = t.wrapT = THREE.RepeatWrapping;
-      t.colorSpace = THREE.SRGBColorSpace;
+      const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;
+      t.anisotropy=4;
       return t;
     };
 
@@ -1051,26 +1059,41 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     // Detailed Nordic longhouse.
     const house=(x:number,z:number,w:number,d:number,rot:number,label:string,id:string,wallColor:number,roofColor:number)=>{
       const g=new THREE.Group();g.rotation.y=rot;g.position.set(x,groundY(x,z),z);g.userData={id,label};
-      const stoneBase=box(w+.5,.55,d+.5,0x5b5b52,1);stoneBase.position.y=.28;g.add(stoneBase);
-      const wall=new THREE.Mesh(new THREE.BoxGeometry(w,3.6,d),new THREE.MeshStandardMaterial({map:woodTex,color:wallColor,roughness:.96}));wall.position.y=2.05;g.add(wall);
-      // exposed timber frame
-      [-w*.4,0,w*.4].forEach(px=>{const b=box(.28,3.8,.34,0x2b2119,1);b.position.set(px,2.05,d/2+.05);g.add(b);});
-      const cross=box(w*.92,.28,.35,0x2b2119,1);cross.position.set(0,2.35,d/2+.06);g.add(cross);
-      const door=box(1.18,2.15,.16,0x201711,1);door.position.set(0,1.35,d/2+.12);g.add(door);
-      for(const px of [-w*.26,w*.26]){
-        const win=box(1.0,.82,.1,0xc98e43,.45);win.position.set(px,2.15,d/2+.13);g.add(win);
-        const v=box(.07,.9,.12,0x33241a,1);v.position.set(px,2.15,d/2+.2);g.add(v);
-        const hh=box(1.08,.07,.12,0x33241a,1);hh.position.set(px,2.15,d/2+.2);g.add(hh);
+      const stoneMat=new THREE.MeshStandardMaterial({color:0x595b55,roughness:1});
+      const woodMat=new THREE.MeshStandardMaterial({map:woodTex,color:wallColor,roughness:.92});
+      const darkWood=mat(0x292019,1);
+      const stoneBase=box(w+.7,.62,d+.7,0x565852,1);stoneBase.position.y=.31;g.add(stoneBase);
+      const wall=new THREE.Mesh(new THREE.BoxGeometry(w,3.55,d),woodMat);wall.position.y=2.05;g.add(wall);
+      // Horizontal log courses give the walls depth instead of a flat box.
+      for(let i=0;i<6;i++){
+        const log=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,w+.18,10),woodMat);
+        log.rotation.x=Math.PI/2;log.position.set(0,.62+i*.58,d/2+.08);g.add(log);
+        const back=log.clone();back.position.z=-d/2-.08;g.add(back);
       }
-      // steep roof + ridge
-      const roofA=new THREE.Mesh(new THREE.BoxGeometry(w*.62,.22,d+.8),new THREE.MeshStandardMaterial({map:roofTex,color:roofColor,roughness:1}));
+      for(const px of [-w*.46,w*.46]) for(const pz of [-d*.5,d*.5]){
+        const post=box(.34,3.9,.34,0x2a2018,1);post.position.set(px,2.08,pz);g.add(post);
+      }
+      [-w*.28,0,w*.28].forEach(px=>{const b=box(.22,3.8,.32,0x30231a,1);b.position.set(px,2.05,d/2+.15);g.add(b);});
+      const cross=box(w*.94,.24,.34,0x30231a,1);cross.position.set(0,2.38,d/2+.16);g.add(cross);
+      const door=box(1.18,2.15,.18,0x241912,1);door.position.set(0,1.35,d/2+.17);g.add(door);
+      const doorFrame1=box(.14,2.35,.22,0x3a291d,1),doorFrame2=doorFrame1.clone();doorFrame1.position.set(-.67,1.42,d/2+.2);doorFrame2.position.set(.67,1.42,d/2+.2);g.add(doorFrame1,doorFrame2);
+      for(const px of [-w*.27,w*.27]){
+        const winFrame=box(1.15,.95,.14,0x2a211b,1);winFrame.position.set(px,2.18,d/2+.18);g.add(winFrame);
+        const win=new THREE.Mesh(new THREE.BoxGeometry(.88,.68,.06),new THREE.MeshStandardMaterial({color:0xf0b85d,emissive:0xd87922,emissiveIntensity:1.8,roughness:.35}));win.position.set(px,2.18,d/2+.255);g.add(win);
+        const v=box(.07,.76,.12,0x2a211b,1);v.position.set(px,2.18,d/2+.3);g.add(v);const hh=box(1.0,.07,.12,0x2a211b,1);hh.position.set(px,2.18,d/2+.3);g.add(hh);
+      }
+      // Roof made from two broad shingle planes with heavy wooden fascia.
+      const roofMat=new THREE.MeshStandardMaterial({map:roofTex,color:roofColor,roughness:.98});
+      const roofA=new THREE.Mesh(new THREE.BoxGeometry(w*.72,.25,d+1.0),roofMat);
       const roofB=roofA.clone();roofA.rotation.z=.62;roofB.rotation.z=-.62;roofA.position.set(-w*.22,4.2,0);roofB.position.set(w*.22,4.2,0);g.add(roofA,roofB);
-      const ridge=box(.32,.28,d+.95,0x332a25,1);ridge.position.y=5.15;g.add(ridge);
-      const porch=box(w*.34,.22,1.25,0x5b3a25,1);porch.position.set(0,.78,d/2+.62);g.add(porch);
-      const post1=box(.18,1.5,.18,0x2b2119,1),post2=post1.clone();post1.position.set(-w*.17,1.48,d/2+1.12);post2.position.set(w*.17,1.48,d/2+1.12);g.add(post1,post2);
-      const chimney=box(.55,2.1,.55,0x514a43,1);chimney.position.set(w*.25,5.2,-d*.08);g.add(chimney);
-      addMesh(g,id,label);objects.push(g);
-      addRectCollider(x,z,w+.8,d+.8,rot,.05);
+      const ridge=box(.38,.34,d+1.12,0x2b211b,1);ridge.position.y=5.15;g.add(ridge);
+      for(const px of [-w*.34,w*.34]){const e=box(.22,.32,d+1.05,0x3b2b20,1);e.position.set(px,3.95,0);e.rotation.z=px<0?.62:-.62;g.add(e);}
+      const porch=box(w*.34,.22,1.35,0x62422b,1);porch.position.set(0,.78,d/2+.68);g.add(porch);
+      const post1=box(.18,1.55,.18,0x2b2119,1),post2=post1.clone();post1.position.set(-w*.17,1.48,d/2+1.18);post2.position.set(w*.17,1.48,d/2+1.18);g.add(post1,post2);
+      const chimney=new THREE.Mesh(new THREE.BoxGeometry(.62,2.0,.62),stoneMat);chimney.position.set(w*.24,5.15,-d*.08);g.add(chimney);
+      // Small roof smoke stack cap.
+      const cap=box(.82,.12,.82,0x35322e,1);cap.position.set(w*.24,6.17,-d*.08);g.add(cap);
+      addMesh(g,id,label);objects.push(g);addRectCollider(x,z,w+.85,d+.85,rot,.05);
     };
 
     // Dense village core: buildings frame the roads and central square.
@@ -1230,7 +1253,33 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     [[25,-14],[27,-11],[-19,-20],[-21,-5],[18,-19],[-7,-19]].forEach(([x,z])=>crate(x,z));
 
     // Dense forest ring: different sizes + understory, but kept outside the playable core.
-    const tree=(x:number,z:number,s:number)=>{const g=new THREE.Group();const y=groundY(x,z);const trunk=box(.5*s,3.2*s,.5*s,0x493021,1);trunk.position.y=1.6*s;g.add(trunk);for(let i=0;i<4;i++){const r=(1.9-i*.25)*s;const c=new THREE.Mesh(new THREE.ConeGeometry(r,(2.8-i*.15)*s,9),mat([0x29472e,0x345638,0x3f633f,0x28432e][i],1));c.position.y=(2.7+i*.82)*s;g.add(c);}g.position.set(x,y,z);addMesh(g);if(s>=1.15)addCircleCollider(x,z,.42*s,.04);};
+    const tree=(x:number,z:number,s:number)=>{
+      const g=new THREE.Group();const y=groundY(x,z);
+      const bark=mat(0x3d2a20,1);
+      const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.24*s,.38*s,3.7*s,9),bark);trunk.position.y=1.85*s;trunk.rotation.z=(midHash(x,z)-.5)*.12;g.add(trunk);
+      for(let b=0;b<3;b++){
+        const branch=new THREE.Mesh(new THREE.CylinderGeometry(.07*s,.13*s,1.7*s,7),bark);
+        branch.position.set((b-1)*.48*s,1.55*s+b*.48*s,.05);branch.rotation.z=(b-1)*.65;branch.rotation.y=.3+b*.7;g.add(branch);
+      }
+      const greens=[0x263d2d,0x2d4932,0x35543a,0x20382a];
+      for(let i=0;i<5;i++){
+        const r=(1.55-i*.16)*s;
+        const crown=new THREE.Mesh(new THREE.DodecahedronGeometry(r,1),mat(greens[i%greens.length],1));
+        crown.scale.set(1,.85+midHash(i,x)*.22,.9);crown.position.set((midHash(i*4,x)-.5)*.55*s,(2.65+i*.62)*s,(midHash(i*5,z)-.5)*.45*s);g.add(crown);
+      }
+      // Sparse lower branches prevent the forest from looking like identical cones.
+      if(s>1.1){for(let i=0;i<3;i++){const c=new THREE.Mesh(new THREE.DodecahedronGeometry(.52*s,1),mat(0x304b32,1));c.position.set((i-1)*.48*s,.95*s,(midHash(i,z)-.5)*.5*s);g.add(c);}}
+      g.position.set(x,y,z);addMesh(g);if(s>=1.15)addCircleCollider(x,z,.48*s,.04);
+    };
+    // Small grass clumps and ferns break up the flat ground while staying cheap on mobile.
+    for(let i=0;i<110;i++){
+      const a=midHash(i,701)*Math.PI*2,r=15+midHash(i,702)*50,x=Math.cos(a)*r,z=Math.sin(a)*r+3;
+      if(Math.abs(x)<10&&Math.abs(z)<16) continue;
+      const g=new THREE.Group();g.position.set(x,groundY(x,z),z);
+      for(let k=0;k<3;k++){const blade=new THREE.Mesh(new THREE.ConeGeometry(.025,.38+midHash(k,i)*.28,4),mat(k===1?0x53683f:0x415a37,1));blade.position.set((k-1)*.09,.18,(midHash(k*3,i)-.5)*.12);blade.rotation.z=(k-1)*.22;g.add(blade);}
+      scene.add(g);
+    }
+
     for(let i=0;i<95;i++){const a=midHash(i,77)*Math.PI*2;const r=43+midHash(i,91)*31;const x=Math.cos(a)*r,z=Math.sin(a)*r+2;if(Math.abs(x+43)>8)tree(x,z,.75+midHash(i,13)*.8);}
     for(let i=0;i<80;i++){const x=-68+midHash(i,101)*136,z=-68+midHash(i,111)*136;if(Math.hypot(x,z+2)>30){const grass=new THREE.Mesh(new THREE.ConeGeometry(.08,.55+midHash(i,121)*.7,5),mat(0x4b6840,1));grass.position.set(x,groundY(x,z)+.3,z);scene.add(grass);}}
 
@@ -1241,6 +1290,11 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     // NPCs with simple wandering paths.
     const npc=(x:number,z:number,id:string,label:string,color:number,phase:number)=>{const g=new THREE.Group();g.userData={id,label,phase,baseX:x,baseZ:z};const body=new THREE.Mesh(new THREE.CapsuleGeometry(.32,.78,4,8),mat(color,.9));body.position.y=.85;g.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.25,12,8),mat(0xc99470,.9));head.position.y=1.58;g.add(head);const cloak=box(.7,.9,.15,0x27251f,1);cloak.position.set(0,.82,-.27);g.add(cloak);g.position.set(x,groundY(x,z),z);addMesh(g,id,label);objects.push(g);npcs.push(g);};
     npc(9,-8,"elder","Старейшина",0x73563f,.4);npc(-6,-3,"blacksmith","Кузнец",0x5c3b2b,1.5);npc(21,1,"hunter","Охотник",0x40523f,2.4);npc(5,10,"villager","Житель Мидгарда",0x59634d,3.4);npc(-16,4,"villager2","Житель деревни",0x654b3a,4.2);
+
+    const mistMat=new THREE.MeshBasicMaterial({color:0xc7d4cf,transparent:true,opacity:.045,depthWrite:false});
+    const mist=new THREE.Group();
+    for(let i=0;i<24;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(.9+midHash(i,810)*1.8,8,6),mistMat);m.position.set(-60+midHash(i,811)*120,1.8+midHash(i,812)*2.2,-45+midHash(i,813)*75);mist.add(m);}
+    scene.add(mist);
 
     const hero=midHero3d(h);scene.add(hero);
 
@@ -1269,6 +1323,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       const target=new THREE.Vector3(q.x-q.dx*2.0,hy+7.2,q.z+11.8-q.dz*2.0);camera.position.lerp(target,.09);camera.lookAt(q.x+q.dx*1.9,hy+1.2,q.z+q.dz*2.0);
       let found="",foundId="";for(const d of destinations){if(Math.hypot(q.x-d.x,q.z-d.z)<d.r){found=d.label;foundId=d.id;break;}}setNear(found?`${found}|${foundId}`:"");
       fires.forEach(f=>{f.light.intensity=2.0+Math.sin(now*.012+f.phase)*.5;f.flame.scale.y=.9+Math.sin(now*.009+f.phase)*.12;});
+      mist.children.forEach((m,i)=>{m.position.x+=Math.sin(now*.00012+i)*.003;m.position.z+=Math.cos(now*.0001+i)*.002;});
       npcs.forEach((n,i)=>{const phase=n.userData.phase||0;const bx=n.userData.baseX,bz=n.userData.baseZ;const nx=bx+Math.sin(now*.00028+phase)*1.6,nz=bz+Math.cos(now*.00022+phase)*1.1;n.position.set(nx,groundY(nx,nz),nz);n.rotation.y=Math.sin(now*.0004+phase)*.5;});
       renderer.render(scene,camera);raf=requestAnimationFrame(loop);
     };
