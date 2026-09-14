@@ -834,7 +834,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
-  const state = useRef({ x: 0, z: 34, dx: 0, dz: 0 });
+  const state = useRef({ x: 0, z: 28, dx: 0, dz: 0 });
   const [near, setNear] = useState("");
   const [moving, setMoving] = useState(false);
 
@@ -843,299 +843,313 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     if (!el) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x7e9284);
-    scene.fog = new THREE.Fog(0x7e9284, 48, 118);
+    scene.background = new THREE.Color(0x52675d);
+    scene.fog = new THREE.FogExp2(0x52675d, 0.0082);
 
-    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 180);
-    camera.position.set(0, 11, 15);
+    const camera = new THREE.PerspectiveCamera(54, 1, 0.1, 220);
+    camera.position.set(0, 8.5, 17);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.35));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.92;
     el.appendChild(renderer.domElement);
 
-    scene.add(new THREE.HemisphereLight(0xdfe9df, 0x30271f, 1.65));
-    const sun = new THREE.DirectionalLight(0xffe8c7, 2.15);
-    sun.position.set(-30, 42, 20);
+    const hemi = new THREE.HemisphereLight(0xcbd8d0, 0x1c1916, 1.25);
+    scene.add(hemi);
+    const sun = new THREE.DirectionalLight(0xffdfbd, 2.25);
+    sun.position.set(-42, 58, 34);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
-    sun.shadow.camera.left = -55;
-    sun.shadow.camera.right = 55;
-    sun.shadow.camera.top = 60;
-    sun.shadow.camera.bottom = -60;
+    sun.shadow.mapSize.set(768, 768);
+    sun.shadow.camera.left = -70;
+    sun.shadow.camera.right = 70;
+    sun.shadow.camera.top = 70;
+    sun.shadow.camera.bottom = -70;
+    sun.shadow.bias = -0.0005;
     scene.add(sun);
 
-    // Большой рельефный участок Мидгарда с мягкими перепадами высот.
-    const terrainGeo = new THREE.PlaneGeometry(112, 132, 36, 42);
-    const pos = terrainGeo.attributes.position as THREE.BufferAttribute;
-    const colors = new Float32Array(pos.count * 3);
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i);
-      const z = -pos.getY(i);
-      const y = midHeight(x, z);
-      pos.setZ(i, y);
-      const moisture = Math.max(0, Math.min(1, 0.5 + Math.sin(x * 0.07) * 0.16 + Math.cos(z * 0.05) * 0.13));
-      const c = new THREE.Color().setHSL(0.28 + moisture * 0.035, 0.18 + moisture * 0.12, 0.24 + moisture * 0.07);
-      colors[i * 3] = c.r;
-      colors[i * 3 + 1] = c.g;
-      colors[i * 3 + 2] = c.b;
+    const groundY = (x: number, z: number) => {
+      const broad = Math.sin(x * 0.075) * 0.7 + Math.cos(z * 0.062) * 0.55 + Math.sin((x - z) * 0.045) * 0.35;
+      const village = Math.exp(-((x * x) / 850 + ((z + 2) * (z + 2)) / 1050));
+      const road = Math.exp(-((x * x) / 150 + ((z - 12) * (z - 12)) / 2200));
+      return broad * (1 - village * 0.88) - road * 0.18;
+    };
+
+    const canvasTex = (type: "ground" | "wood" | "roof" | "road") => {
+      const c = document.createElement("canvas");
+      c.width = c.height = 256;
+      const ctx = c.getContext("2d")!;
+      if (type === "ground") {
+        ctx.fillStyle = "#526044";
+        ctx.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < 900; i++) {
+          const x = Math.random() * 256, y = Math.random() * 256;
+          const g = 55 + Math.random() * 35;
+          ctx.fillStyle = `rgba(${35 + Math.random()*25},${g},${35 + Math.random()*20},${0.12 + Math.random()*0.2})`;
+          ctx.fillRect(x, y, 1 + Math.random()*2, 1 + Math.random()*2);
+        }
+      } else if (type === "wood") {
+        ctx.fillStyle = "#5b3b27";
+        ctx.fillRect(0,0,256,256);
+        for (let y=0;y<256;y+=18) {
+          ctx.fillStyle = `rgba(25,15,10,${0.18+Math.random()*0.12})`;
+          ctx.fillRect(0,y,256,3);
+          for (let x=0;x<256;x+=55+Math.random()*25) ctx.fillRect(x,y-4,3,22);
+        }
+      } else if (type === "roof") {
+        ctx.fillStyle = "#252522";
+        ctx.fillRect(0,0,256,256);
+        for (let y=-20;y<280;y+=17) {
+          ctx.strokeStyle = "rgba(130,115,96,.22)";
+          ctx.lineWidth=2;
+          ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(256,y+45); ctx.stroke();
+        }
+      } else {
+        ctx.fillStyle="#5a4937"; ctx.fillRect(0,0,256,256);
+        for(let i=0;i<500;i++){
+          ctx.fillStyle=`rgba(${35+Math.random()*30},${28+Math.random()*20},${18+Math.random()*15},${.15+Math.random()*.22})`;
+          ctx.fillRect(Math.random()*256,Math.random()*256,1+Math.random()*5,1+Math.random()*3);
+        }
+      }
+      const t = new THREE.CanvasTexture(c);
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.colorSpace = THREE.SRGBColorSpace;
+      return t;
+    };
+
+    const groundTexture = canvasTex("ground");
+    groundTexture.repeat.set(5, 6);
+    const groundGeo = new THREE.PlaneGeometry(150, 150, 50, 50);
+    const gp = groundGeo.attributes.position as THREE.BufferAttribute;
+    for (let i=0;i<gp.count;i++) {
+      const x=gp.getX(i), z=-gp.getY(i);
+      gp.setZ(i, groundY(x,z));
     }
-    terrainGeo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-    terrainGeo.rotateX(-Math.PI / 2);
-    const terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 });
-    const terrain = new THREE.Mesh(terrainGeo, terrainMat);
+    groundGeo.rotateX(-Math.PI/2);
+    groundGeo.computeVertexNormals();
+    const terrain = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: groundTexture, roughness: 1 }));
     terrain.receiveShadow = true;
     scene.add(terrain);
 
-    // Каменистые берега и река.
-    const river = new THREE.Mesh(
-      new THREE.PlaneGeometry(13, 126, 1, 8),
-      new THREE.MeshStandardMaterial({ color: 0x285a67, roughness: 0.18, metalness: 0.04, transparent: true, opacity: 0.9 })
-    );
-    river.rotation.x = -Math.PI / 2;
-    river.position.set(-37, 0.04, 0);
-    scene.add(river);
-    for (let z = -57; z <= 57; z += 4) {
-      scene.add(midRock(-29 + midHash(z, 3) * 2.0, z, 0.35 + midHash(z, 7) * 0.35));
-    }
+    const addMesh = (g: THREE.Object3D, interactive?: string, label?: string) => {
+      if (interactive) g.userData = { id: interactive, label: label || interactive };
+      g.traverse((o:any)=>{ if(o.isMesh){o.castShadow=true;o.receiveShadow=true;} });
+      scene.add(g);
+      if(interactive) objects.push(g);
+      return g;
+    };
 
-    // Дороги: центральная магистраль, площадь, лесная и речная.
-    addRibbonRoad(scene, [[-3, 52],[-2,42],[-1,31],[0,20],[1,10],[0,0],[-2,-10],[-1,-20],[2,-31],[5,-43]], 6.2, 0x765b3f);
-    addRibbonRoad(scene, [[-1,-2],[9,-4],[18,-6],[28,-5]], 5.0, 0x73583d);
-    addRibbonRoad(scene, [[0,8],[-8,12],[-16,18],[-23,25],[-27,34]], 4.2, 0x70553b);
-    addRibbonRoad(scene, [[7,-3],[14,-13],[21,-22],[27,-30]], 4.0, 0x6c5239);
-    addRibbonRoad(scene, [[-1,14],[-12,8],[-22,4],[-31,1]], 4.0, 0x6f563b);
+    const mat = (color:number, rough=.9, metal=0) => new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal});
+    const box=(w:number,h:number,d:number,c:number,rough=.9)=>new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c,rough));
 
     const objects: THREE.Object3D[] = [];
-    const fires: Array<{ light: THREE.PointLight; phase: number }> = [];
+    const fires: Array<{light:THREE.PointLight; flame:THREE.Object3D; phase:number}> = [];
     const npcs: THREE.Object3D[] = [];
 
-    // Деревня вокруг площади.
-    placeHouse(scene, objects, 12, -17, "Дом старейшины", "house", 1.08);
-    placeHouse(scene, objects, 22, -5, "Дом рыбака", "fisher", 0.9);
-    placeHouse(scene, objects, 17, 9, "Дом охотника", "hunter", 0.86);
-    placeHouse(scene, objects, 2, -21, "Дом травницы", "herbalist", 0.82);
-    placeHouse(scene, objects, -14, -16, "Дом дружинника", "guardhouse", 0.95);
-    placeHouse(scene, objects, -22, -4, "Дом ремесленника", "craftsman", 0.82);
-    addForge(scene, objects, -11, -7);
-
-    // Ограждения и хозяйственные зоны.
-    addFence(scene, 7, -23, 22, -23);
-    addFence(scene, 7, -23, 7, -13);
-    addFence(scene, 18, -15, 28, -15);
-    addFence(scene, 28, -15, 28, -2);
-    addFence(scene, -19, -20, -7, -20);
-    addFence(scene, -19, -20, -19, -10);
-
-    [[24,-17],[25,-13],[18,-13],[-17,-18],[-14,-20],[8,-20],[21,0],[14,12],[-7,-13]].forEach(([x,z],i)=>addBarrel(scene,x,z,0.75+(i%3)*0.08));
-    [[25,-18],[27,-14],[-15,-19],[-12,-21],[5,-18],[-20,-8],[19,12]].forEach(([x,z],i)=>addCrate(scene,x,z,0.7+(i%2)*0.15));
-
-    // Площадь и костры.
-    addFire(scene, fires, 4, -3, 1.05);
-    addFire(scene, fires, 19, -18, 0.72);
-    addFire(scene, fires, -18, -5, 0.7);
-
-    // Мимир и норны — постоянные силы Мидгарда.
-    addMimirWell(scene, objects, 12, 6);
-    addNornShrine(scene, objects, -5, 19);
-    const runeStone = new THREE.Group();
-    runeStone.userData = { label: "Древний камень Феху", id: "rune" };
-    const rs = new THREE.Mesh(new THREE.DodecahedronGeometry(1.35, 1), midMat(0x4b514c, 0.99));
-    rs.position.y = 1.15;
-    runeStone.add(rs);
-    const runeRing = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.07, 8, 28), new THREE.MeshStandardMaterial({ color: 0xffd76a, emissive: 0x8a5d12, emissiveIntensity: 2.4, roughness: 0.5 }));
-    runeRing.rotation.x = Math.PI / 2;
-    runeRing.position.y = 1.2;
-    runeStone.add(runeRing);
-    runeStone.position.set(8, midHeight(8, 23), 23);
-    scene.add(markMeshes(runeStone));
-    objects.push(runeStone);
-
-    // Речной причал и мост — граница следующей части мира.
-    addDock(scene, objects, -24, -1);
-    const bridge = new THREE.Group();
-    for (let i = -4; i <= 4; i++) {
-      const plank = midBox(2.2, 0.28, 0.8, 0x60432c, 0.98);
-      plank.position.set(-30, midHeight(-30, i * 0.9) + 0.35, i * 0.9);
-      bridge.add(plank);
+    // Mountains and dark tree line create a real horizon instead of an empty plane.
+    const mountainMat = mat(0x34443f,1);
+    for(let i=0;i<18;i++){
+      const g=new THREE.Group();
+      const x=-85+i*10;
+      const r=8+midHash(i,7)*9;
+      const m=new THREE.Mesh(new THREE.ConeGeometry(r,18+midHash(i,8)*16,7),mountainMat);
+      m.position.y=8;
+      g.add(m);
+      g.position.set(x, -1, -73+midHash(i,9)*9);
+      addMesh(g);
     }
-    bridge.position.y = 0.25;
-    scene.add(markMeshes(bridge));
 
-    // Лес — плотный фон и несколько одиночных деревьев у дорог.
-    const forestSpots: Array<[number,number,number]> = [
-      [-42,-49,1.25],[-31,-45,0.9],[-20,-50,1.2],[-8,-52,0.85],[5,-51,1.1],[18,-50,1.3],[31,-46,0.95],[42,-40,1.25],
-      [-46,-30,1.1],[-39,-20,0.85],[36,-26,1.25],[45,-17,1.0],[-45,10,1.15],[-37,20,0.9],[37,20,1.2],[45,31,1.0],
-      [-45,42,1.2],[-33,47,0.95],[-22,42,1.1],[28,43,1.2],[40,50,0.95],[-12,50,0.8]
+    // Curved river on the western side.
+    const riverPts:THREE.Vector3[]=[];
+    for(let i=0;i<=18;i++){
+      const z=-72+i*8;
+      const x=-43 + Math.sin(i*.55)*3.2;
+      riverPts.push(new THREE.Vector3(x, groundY(x,z)-0.05, z));
+    }
+    const riverCurve=new THREE.CatmullRomCurve3(riverPts);
+    const riverGeo=new THREE.TubeGeometry(riverCurve,48,5.6,8,false);
+    const river=new THREE.Mesh(riverGeo,new THREE.MeshStandardMaterial({color:0x274f5a,roughness:.2,metalness:.05,transparent:true,opacity:.9}));
+    river.scale.y=.025;
+    river.position.y=.05;
+    river.receiveShadow=true;
+    scene.add(river);
+    // River banks.
+    for(let i=0;i<38;i++){
+      const z=-70+i*3.7, x=-43+Math.sin(i*.55)*3.2;
+      const r=.35+midHash(i,15)*.6;
+      const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(r,1),mat(0x5e625a,1));
+      stone.scale.y=.55;
+      stone.position.set(x+(midHash(i,16)-.5)*10,groundY(x,z)+.25,z);
+      addMesh(stone);
+    }
+
+    // Roads are deliberately dark and wide, with two wheel ruts and stone edges.
+    const road = (points:Array<[number,number]>, width:number) => {
+      const pts=points.map(([x,z])=>new THREE.Vector3(x,groundY(x,z)+.035,z));
+      const verts:number[]=[]; const idx:number[]=[];
+      for(let i=0;i<pts.length;i++){
+        const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];
+        const dx=b.x-a.x,dz=b.z-a.z,l=Math.max(.001,Math.hypot(dx,dz));
+        const px=-dz/l,pz=dx/l;
+        verts.push(pts[i].x+px*width/2,pts[i].y,pts[i].z+pz*width/2,pts[i].x-px*width/2,pts[i].y+.01,pts[i].z-pz*width/2);
+        if(i<pts.length-1){const k=i*2;idx.push(k,k+1,k+2,k+1,k+3,k+2);}
+      }
+      const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));geo.setIndex(idx);geo.computeVertexNormals();
+      const mesh=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map:canvasTex("road"),roughness:1}));mesh.receiveShadow=true;scene.add(mesh);
+      // wheel ruts
+      [-width*.22,width*.22].forEach(off=>{
+        const rutPts=pts.map((p,i)=>{const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];const dx=b.x-a.x,dz=b.z-a.z,l=Math.max(.001,Math.hypot(dx,dz));return new THREE.Vector3(p.x+(-dz/l)*off,p.y+.045,p.z+(dx/l)*off);});
+        const rg=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rutPts),Math.max(12,pts.length*4),.055,5,false);
+        const rm=new THREE.Mesh(rg,mat(0x33291f,1));rm.scale.y=.12;scene.add(rm);
+      });
+    };
+    road([[0,72],[0,58],[1,44],[0,31],[1,19],[2,8],[0,-3],[-1,-16],[-2,-29],[-5,-44]],7.4);
+    road([[-2,7],[8,5],[19,2],[31,-1],[42,-5]],5.7);
+    road([[0,8],[-9,13],[-19,20],[-27,31],[-31,44]],4.6);
+    road([[1,-3],[10,-10],[20,-18],[29,-28]],4.5);
+    road([[-1,2],[-12,-4],[-22,-10],[-32,-12],[-39,-8]],4.4);
+    road([[4,14],[-3,22],[-7,31],[-8,42]],3.8);
+
+    const woodTex=canvasTex("wood");woodTex.repeat.set(2,1);
+    const roofTex=canvasTex("roof");roofTex.repeat.set(2,2);
+
+    // Detailed Nordic longhouse.
+    const house=(x:number,z:number,w:number,d:number,rot:number,label:string,id:string,wallColor:number,roofColor:number)=>{
+      const g=new THREE.Group();g.rotation.y=rot;g.position.set(x,groundY(x,z),z);g.userData={id,label};
+      const stoneBase=box(w+.5,.55,d+.5,0x5b5b52,1);stoneBase.position.y=.28;g.add(stoneBase);
+      const wall=new THREE.Mesh(new THREE.BoxGeometry(w,3.6,d),new THREE.MeshStandardMaterial({map:woodTex,color:wallColor,roughness:.96}));wall.position.y=2.05;g.add(wall);
+      // exposed timber frame
+      [-w*.4,0,w*.4].forEach(px=>{const b=box(.28,3.8,.34,0x2b2119,1);b.position.set(px,2.05,d/2+.05);g.add(b);});
+      const cross=box(w*.92,.28,.35,0x2b2119,1);cross.position.set(0,2.35,d/2+.06);g.add(cross);
+      const door=box(1.18,2.15,.16,0x201711,1);door.position.set(0,1.35,d/2+.12);g.add(door);
+      for(const px of [-w*.26,w*.26]){
+        const win=box(1.0,.82,.1,0xc98e43,.45);win.position.set(px,2.15,d/2+.13);g.add(win);
+        const v=box(.07,.9,.12,0x33241a,1);v.position.set(px,2.15,d/2+.2);g.add(v);
+        const hh=box(1.08,.07,.12,0x33241a,1);hh.position.set(px,2.15,d/2+.2);g.add(hh);
+      }
+      // steep roof + ridge
+      const roofA=new THREE.Mesh(new THREE.BoxGeometry(w*.62,.22,d+.8),new THREE.MeshStandardMaterial({map:roofTex,color:roofColor,roughness:1}));
+      const roofB=roofA.clone();roofA.rotation.z=.62;roofB.rotation.z=-.62;roofA.position.set(-w*.22,4.2,0);roofB.position.set(w*.22,4.2,0);g.add(roofA,roofB);
+      const ridge=box(.32,.28,d+.95,0x332a25,1);ridge.position.y=5.15;g.add(ridge);
+      const porch=box(w*.34,.22,1.25,0x5b3a25,1);porch.position.set(0,.78,d/2+.62);g.add(porch);
+      const post1=box(.18,1.5,.18,0x2b2119,1),post2=post1.clone();post1.position.set(-w*.17,1.48,d/2+1.12);post2.position.set(w*.17,1.48,d/2+1.12);g.add(post1,post2);
+      const chimney=box(.55,2.1,.55,0x514a43,1);chimney.position.set(w*.25,5.2,-d*.08);g.add(chimney);
+      addMesh(g,id,label);objects.push(g);
+    };
+
+    // Dense village core: buildings frame the roads and central square.
+    house(-15,-18,9,7,.18,"Дом дружинника","house",0x80583a,0x2c2927);
+    house(13,-18,10,7,-.08,"Дом старейшины","house",0x765036,0x292725);
+    house(23,-6,8,6,.72,"Дом рыбака","fisher",0x6e5039,0x30302d);
+    house(17,9,8,6,-.35,"Дом охотника","hunter",0x6b4a32,0x292725);
+    house(3,-25,8,6,.05,"Дом травницы","herbalist",0x755238,0x312b28);
+    house(-22,-7,8,6,-.65,"Дом ремесленника","craftsman",0x704b32,0x282624);
+
+    // Blacksmith workshop is open on one side so it reads as a forge, not another house.
+    const forge=new THREE.Group();forge.position.set(-10,groundY(-10,-5),-5);forge.userData={id:"forge",label:"Кузница"};
+    const fw=box(9,3.8,6,0x4e3a2d,1);fw.position.y=1.9;forge.add(fw);
+    const fr1=box(2.8,3.6,.28,0x2a211a,1);fr1.position.set(-3.1,1.9,3.05);forge.add(fr1);
+    const roofF=new THREE.Mesh(new THREE.BoxGeometry(5.5,.24,6.7),new THREE.MeshStandardMaterial({map:roofTex,color:0x252322,roughness:1}));roofF.rotation.z=.58;roofF.position.set(-2.0,4.2,0);forge.add(roofF);const roofF2=roofF.clone();roofF2.rotation.z=-.58;roofF2.position.x=2.0;forge.add(roofF2);
+    const furnace=box(2.2,1.8,1.7,0x353330,1);furnace.position.set(-2,1,1.15);forge.add(furnace);
+    const glow=new THREE.Mesh(new THREE.CircleGeometry(.55,16),new THREE.MeshStandardMaterial({color:0xff6c24,emissive:0xff3b0b,emissiveIntensity:5}));glow.rotation.y=Math.PI;glow.position.set(-2,1.05,2.02);forge.add(glow);
+    const anvil=box(1.4,.35,.55,0x25282a,.4);anvil.position.set(1.2,1.05,1.15);forge.add(anvil);const stem=box(.5,.9,.5,0x292a2a,.45);stem.position.set(1.2,.62,1.15);forge.add(stem);
+    for(let i=0;i<4;i++){const tool=box(.09,1.35,.09,0xaaa9a4,.35);tool.position.set(2.1+i*.18,1.1,1.3);tool.rotation.z=-.3+i*.18;forge.add(tool);}
+    addMesh(forge,"forge","Кузница");objects.push(forge);
+    const forgeLight=new THREE.PointLight(0xff7a32,3.2,13,2);forgeLight.position.set(-12,groundY(-12,-5)+2.2,-4);scene.add(forgeLight);
+
+    // Central square: stone edging, market tables, banners and a large bonfire.
+    const square=new THREE.Mesh(new THREE.CircleGeometry(8.5,32),new THREE.MeshStandardMaterial({color:0x6b5a47,roughness:1}));square.rotation.x=-Math.PI/2;square.position.set(1,groundY(1,0)+.05,0);square.receiveShadow=true;scene.add(square);
+    for(let i=0;i<18;i++){const a=i/18*Math.PI*2;const s=new THREE.Mesh(new THREE.DodecahedronGeometry(.38,1),mat(0x6b6b63,1));s.position.set(1+Math.cos(a)*8.8,groundY(1+Math.cos(a)*8.8,Math.sin(a)*8.8)+.22,Math.sin(a)*8.8);scene.add(s);}
+    const table=(x:number,z:number)=>{const g=new THREE.Group();const top=box(2.8,.22,1.0,0x684329,1);top.position.y=1.05;g.add(top);for(const px of [-1.05,1.05]){const l=box(.16,1,.16,0x3b291d,1);l.position.set(px,.5,-.32);g.add(l);const r=l.clone();r.position.z=.32;g.add(r);}g.position.set(x,groundY(x,z),z);scene.add(g);};
+    table(-4,2);table(7,3);
+
+    const fire=(x:number,z:number,scale:number)=>{const g=new THREE.Group();g.position.set(x,groundY(x,z),z);for(let i=0;i<7;i++){const a=i/7*Math.PI*2;const s=new THREE.Mesh(new THREE.DodecahedronGeometry(.32*scale,1),mat(0x5d5a52,1));s.position.set(Math.cos(a)*.7*scale,.25*scale,Math.sin(a)*.7*scale);g.add(s);}const log1=box(.2*scale,.2*scale,1.5*scale,0x4a2d1b,1),log2=log1.clone();log1.rotation.y=.55;log2.rotation.y=-.55;log1.position.y=log2.position.y=.38*scale;g.add(log1,log2);const fm=new THREE.MeshStandardMaterial({color:0xff8128,emissive:0xff4d0a,emissiveIntensity:4});const flame=new THREE.Mesh(new THREE.ConeGeometry(.5*scale,1.35*scale,8),fm);flame.position.y=1.02*scale;g.add(flame);scene.add(g);const light=new THREE.PointLight(0xff8a3c,2.4*scale,12*scale,2);light.position.set(x,groundY(x,z)+2*scale,z);scene.add(light);fires.push({light,flame,phase:midHash(x,z)*8});};
+    fire(1,0,1.15);fire(18,-15,.72);
+
+    // Palisade and gate: the player enters a settlement, not an isolated field.
+    const palisade=(x1:number,z1:number,x2:number,z2:number)=>{const g=new THREE.Group();const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz),n=Math.floor(len/1.7);for(let i=0;i<=n;i++){const t=i/n;const px=x1+dx*t,pz=z1+dz*t;const p=new THREE.Mesh(new THREE.ConeGeometry(.24,.24+2.8+midHash(i,x1)*.5,6),mat(0x3c2a1c,1));p.position.set(px,groundY(px,pz)+1.45,pz);g.add(p);}const beam=box(.3,.35,len,0x2d2119,1);beam.rotation.y=Math.atan2(dx,dz);beam.position.set((x1+x2)/2,groundY((x1+x2)/2,(z1+z2)/2)+1.25,(z1+z2)/2);g.add(beam);scene.add(g);};
+    palisade(-30,-31,-8,-31);palisade(8,-31,30,-31);palisade(-30,-31,-30,-13);palisade(30,-31,30,16);
+    const gate=new THREE.Group();gate.userData={id:"gate",label:"Ворота Мидгарда"};for(const x of [-4.2,4.2]){const p=box(.8,6,.8,0x35251a,1);p.position.set(x,3,-31);gate.add(p);}const top=box(10,.8,1,0x2d2018,1);top.position.set(0,6,-31);gate.add(top);for(let i=-3;i<=3;i++){const bar=box(1.0,4.2,.22,0x5b3a24,1);bar.position.set(i*1.15,2,-30.7);gate.add(bar);}addMesh(gate,"gate","Ворота Мидгарда");objects.push(gate);
+
+    // Mimir's well and Norn shrine are visually distinctive landmarks.
+    const mimir=new THREE.Group();mimir.userData={id:"mimir",label:"Колодец Мимира"};mimir.position.set(11,groundY(11,7),7);
+    for(let i=0;i<14;i++){const a=i/14*Math.PI*2;const s=box(.7,.48,.5,0x666a63,1);s.position.set(Math.cos(a)*1.45,.24,Math.sin(a)*1.45);s.rotation.y=a+Math.PI/2;mimir.add(s);}const water=new THREE.Mesh(new THREE.CircleGeometry(1.05,28),new THREE.MeshStandardMaterial({color:0x173b43,emissive:0x0b3138,emissiveIntensity:1.8,roughness:.18}));water.rotation.x=-Math.PI/2;water.position.y=.5;mimir.add(water);for(const px of [-1.35,1.35]){const p=box(.22,3,.22,0x4a3020,1);p.position.set(px,1.55,0);mimir.add(p);}const beam=box(3.1,.25,.25,0x382519,1);beam.position.y=2.95;mimir.add(beam);const bucket=box(.55,.5,.55,0x5a3b27,1);bucket.position.set(0,1.65,0);mimir.add(bucket);const halo=new THREE.Mesh(new THREE.TorusGeometry(1.8,.06,8,40),new THREE.MeshStandardMaterial({color:0x76e59c,emissive:0x287c48,emissiveIntensity:3}));halo.rotation.x=Math.PI/2;halo.position.y=.53;mimir.add(halo);addMesh(mimir,"mimir","Колодец Мимира");objects.push(mimir);
+    const ml=new THREE.PointLight(0x72e8a0,1.8,10,2);ml.position.set(11,groundY(11,7)+1.4,7);scene.add(ml);
+
+    const shrine=new THREE.Group();shrine.userData={id:"norns",label:"Прядильня норн"};shrine.position.set(-8,groundY(-8,31),31);
+    for(let i=0;i<3;i++){const st=new THREE.Mesh(new THREE.CapsuleGeometry(.65,2.3,5,8),mat(0x575d59,1));st.position.set((i-1)*2.2,1.35,0);st.rotation.z=(i-1)*.07;shrine.add(st);const r=new THREE.Mesh(new THREE.TorusGeometry(.42,.055,7,20),new THREE.MeshStandardMaterial({color:[0xc7e5cf,0xc8a4e8,0xe1c274][i],emissive:[0x5d9971,0x724d91,0x8d6c28][i],emissiveIntensity:2.2}));r.rotation.x=Math.PI/2;r.position.set((i-1)*2.2,1.6,-.55);shrine.add(r);}
+    const threadMat=new THREE.LineBasicMaterial({color:0xd4c4e7,transparent:true,opacity:.78});for(let i=0;i<2;i++){const p=[new THREE.Vector3((i-1)*2.2,2,.1),new THREE.Vector3((i-.5)*2.2,4.1,-.7),new THREE.Vector3(i*2.2,2,.1)];shrine.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p),threadMat));}const ring=new THREE.Mesh(new THREE.TorusGeometry(4.1,.07,8,48),new THREE.MeshStandardMaterial({color:0xbda8d2,emissive:0x5d4770,emissiveIntensity:1.5}));ring.rotation.x=Math.PI/2;ring.position.y=.05;shrine.add(ring);addMesh(shrine,"norns","Прядильня норн");objects.push(shrine);
+
+    // Ancient rune altar.
+    const rune=new THREE.Group();rune.userData={id:"rune",label:"Древний камень Феху"};rune.position.set(9,groundY(9,39),39);const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(1.45,1),mat(0x4c534f,1));stone.position.y=1.2;rune.add(stone);const rr=new THREE.Mesh(new THREE.TorusGeometry(1.05,.07,8,30),new THREE.MeshStandardMaterial({color:0xffd76a,emissive:0x996313,emissiveIntensity:3}));rr.rotation.x=Math.PI/2;rr.position.y=1.2;rune.add(rr);addMesh(rune,"rune","Древний камень Феху");objects.push(rune);
+
+    // Bridge and dock.
+    const bridge=new THREE.Group();bridge.userData={id:"port",label:"Мост к причалу"};for(let i=-5;i<=5;i++){const plank=box(3.6,.28,.82,0x60402a,1);plank.position.set(-38,groundY(-38,i*1.0)+.5,i);bridge.add(plank);}addMesh(bridge,"port","Мост к причалу");objects.push(bridge);
+    const dock=new THREE.Group();dock.position.set(-30,groundY(-30,-8),-8);for(let i=0;i<7;i++){const p=box(2.8,.24,.72,0x6b472d,1);p.position.set(0,.3,i*.85);dock.add(p);}for(const px of [-1.2,1.2])for(let i=0;i<3;i++){const p=box(.22,1.5,.22,0x3f291c,1);p.position.set(px,-.2,i*2.5);dock.add(p);}const hull=box(2.2,.55,4.8,0x4b2c1d,1);hull.position.set(3,-.15,2.5);dock.add(hull);addMesh(dock,"port","Речной причал");objects.push(dock);
+
+    // Utility clutter makes the village feel inhabited.
+    const barrel=(x:number,z:number)=>{const b=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,1,12),mat(0x65432c,1));b.position.set(x,groundY(x,z)+.5,z);scene.add(b);for(const y of [.25,.76]){const r=new THREE.Mesh(new THREE.TorusGeometry(.51,.045,6,18),mat(0x302824,.7,.1));r.rotation.x=Math.PI/2;r.position.set(x,groundY(x,z)+y,z);scene.add(r);}};
+    const crate=(x:number,z:number)=>{const c=box(1,.75,1,0x704a2e,1);c.position.set(x,groundY(x,z)+.38,z);scene.add(c);const s=box(.08,.82,1.05,0x38261a,1);s.position.set(x,groundY(x,z)+.38,z);scene.add(s);};
+    [[24,-13],[25,-10],[18,-20],[-18,-21],[-24,-4],[-8,-18],[21,2],[14,11]].forEach(([x,z])=>barrel(x,z));
+    [[25,-14],[27,-11],[-19,-20],[-21,-5],[18,-19],[-7,-19]].forEach(([x,z])=>crate(x,z));
+
+    // Dense forest ring: different sizes + understory, but kept outside the playable core.
+    const tree=(x:number,z:number,s:number)=>{const g=new THREE.Group();const y=groundY(x,z);const trunk=box(.5*s,3.2*s,.5*s,0x493021,1);trunk.position.y=1.6*s;g.add(trunk);for(let i=0;i<4;i++){const r=(1.9-i*.25)*s;const c=new THREE.Mesh(new THREE.ConeGeometry(r,(2.8-i*.15)*s,9),mat([0x29472e,0x345638,0x3f633f,0x28432e][i],1));c.position.y=(2.7+i*.82)*s;g.add(c);}g.position.set(x,y,z);addMesh(g);};
+    for(let i=0;i<95;i++){const a=midHash(i,77)*Math.PI*2;const r=43+midHash(i,91)*31;const x=Math.cos(a)*r,z=Math.sin(a)*r+2;if(Math.abs(x+43)>8)tree(x,z,.75+midHash(i,13)*.8);}
+    for(let i=0;i<80;i++){const x=-68+midHash(i,101)*136,z=-68+midHash(i,111)*136;if(Math.hypot(x,z+2)>30){const grass=new THREE.Mesh(new THREE.ConeGeometry(.08,.55+midHash(i,121)*.7,5),mat(0x4b6840,1));grass.position.set(x,groundY(x,z)+.3,z);scene.add(grass);}}
+
+    // A small watchtower gives vertical scale and a visible landmark.
+    const tower=new THREE.Group();tower.position.set(29,groundY(29,25),25);tower.userData={id:"tower",label:"Сторожевая башня"};for(const px of [-2,2])for(const pz of [-2,2]){const p=box(.35,7,.35,0x3c291d,1);p.position.set(px,3.5,pz);tower.add(p);}const deck=box(5,.35,5,0x68472d,1);deck.position.y=5.8;tower.add(deck);const roofT=new THREE.Mesh(new THREE.ConeGeometry(3.8,2.7,4),mat(0x292522,1));roofT.position.y=8;tower.add(roofT);addMesh(tower,"tower","Сторожевая башня");objects.push(tower);
+
+    // NPCs with simple wandering paths.
+    const npc=(x:number,z:number,id:string,label:string,color:number,phase:number)=>{const g=new THREE.Group();g.userData={id,label,phase,baseX:x,baseZ:z};const body=new THREE.Mesh(new THREE.CapsuleGeometry(.32,.78,4,8),mat(color,.9));body.position.y=.85;g.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.25,12,8),mat(0xc99470,.9));head.position.y=1.58;g.add(head);const cloak=box(.7,.9,.15,0x27251f,1);cloak.position.set(0,.82,-.27);g.add(cloak);g.position.set(x,groundY(x,z),z);addMesh(g,id,label);objects.push(g);npcs.push(g);};
+    npc(9,-8,"elder","Старейшина",0x73563f,.4);npc(-6,-3,"blacksmith","Кузнец",0x5c3b2b,1.5);npc(21,1,"hunter","Охотник",0x40523f,2.4);npc(5,10,"villager","Житель Мидгарда",0x59634d,3.4);npc(-16,4,"villager2","Житель деревни",0x654b3a,4.2);
+
+    const hero=midHero3d(h);scene.add(hero);
+
+    const ray=new THREE.Raycaster();const pointer=new THREE.Vector2();
+    const click=(e:PointerEvent)=>{if((e.target as HTMLElement)?.closest?.(".mid3d-ui"))return;const r=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-r.left)/r.width)*2-1;pointer.y=-((e.clientY-r.top)/r.height)*2+1;ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects(objects,true)[0];if(hit){let o:any=hit.object;while(o.parent&&!o.userData?.id)o=o.parent;if(o.userData?.id)on(o.userData.id);}};
+    renderer.domElement.addEventListener("pointerup",click);
+
+    const destinations=[
+      {id:"house",label:"Дом старейшины",x:13,z:-18,r:5.2},{id:"forge",label:"Кузница",x:-10,z:-5,r:5.4},
+      {id:"mimir",label:"Колодец Мимира",x:11,z:7,r:4.8},{id:"norns",label:"Прядильня норн",x:-8,z:31,r:5.4},
+      {id:"rune",label:"Древний камень Феху",x:9,z:39,r:4.5},{id:"port",label:"Речной причал",x:-30,z:-8,r:5},
+      {id:"elder",label:"Старейшина",x:9,z:-8,r:3.2},{id:"blacksmith",label:"Кузнец",x:-6,z:-3,r:3.2},
+      {id:"gate",label:"Ворота Мидгарда",x:0,z:-31,r:5},{id:"tower",label:"Сторожевая башня",x:29,z:25,r:4}
     ];
-    forestSpots.forEach(([x,z,s])=>scene.add(midTree(x,z,s)));
-    for (let i = 0; i < 26; i++) {
-      const x = -46 + midHash(i, 2) * 92;
-      const z = -52 + midHash(i, 9) * 104;
-      if (Math.hypot(x, z + 5) > 30) scene.add(midTree(x,z,0.65+midHash(i,5)*0.45));
-    }
-    for (let i = 0; i < 55; i++) {
-      const x = -48 + midHash(i, 21) * 96;
-      const z = -52 + midHash(i, 31) * 104;
-      if (Math.hypot(x, z + 5) > 20) addGrassTuft(scene, x, z, 0.55 + midHash(i, 41) * 0.65);
-    }
-    [[-28,-35,1.0],[-35,8,0.7],[34,-34,0.9],[31,31,1.1],[-27,30,0.8],[27,37,0.65],[5,35,0.7]].forEach(([x,z,s])=>scene.add(midRock(x,z,s)));
 
-    // Живые жители.
-    npcs.push(addNPC(scene, objects, 10, -9, "elder", "Старейшина", 0x6a5440, 0.4));
-    npcs.push(addNPC(scene, objects, -7, -4, "blacksmith", "Кузнец", 0x63412e, 1.2));
-    npcs.push(addNPC(scene, objects, 20, 3, "hunter", "Охотник", 0x3d503d, 2.1));
-    npcs.push(addNPC(scene, objects, 3, 8, "villager", "Житель Мидгарда", 0x53624f, 3.3));
-
-    const hero = midHero3d(h);
-    scene.add(hero);
-
-    const ray = new THREE.Raycaster();
-    const pointer = new THREE.Vector2();
-    const click = (e: PointerEvent) => {
-      if ((e.target as HTMLElement)?.closest?.(".mid3d-ui")) return;
-      const rect = renderer.domElement.getBoundingClientRect();
-      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-      ray.setFromCamera(pointer, camera);
-      const hit = ray.intersectObjects(objects, true)[0];
-      if (hit) {
-        let o: any = hit.object;
-        while (o.parent && !o.userData?.id) o = o.parent;
-        if (o.userData?.id) on(o.userData.id);
-      }
+    const resize=()=>{const w=Math.max(1,el.clientWidth),hh=Math.max(1,el.clientHeight);camera.aspect=w/hh;camera.updateProjectionMatrix();renderer.setSize(w,hh,false);};resize();const observer=new ResizeObserver(resize);observer.observe(el);
+    let raf=0,last=performance.now();
+    const loop=(now:number)=>{
+      const dt=Math.min(.05,(now-last)/1000);last=now;const q=state.current;const l=Math.hypot(q.dx,q.dz);
+      if(l>.05){q.x+=(q.dx/l)*6.2*dt;q.z+=(q.dz/l)*6.2*dt;q.x=Math.max(-67,Math.min(67,q.x));q.z=Math.max(-69,Math.min(69,q.z));hero.rotation.y=Math.atan2(q.dx,q.dz);setMoving(true);}else setMoving(false);
+      const hy=groundY(q.x,q.z);hero.position.set(q.x,hy+.04,q.z);
+      const target=new THREE.Vector3(q.x-q.dx*2.0,hy+7.2,q.z+11.8-q.dz*2.0);camera.position.lerp(target,.09);camera.lookAt(q.x+q.dx*1.9,hy+1.2,q.z+q.dz*2.0);
+      let found="",foundId="";for(const d of destinations){if(Math.hypot(q.x-d.x,q.z-d.z)<d.r){found=d.label;foundId=d.id;break;}}setNear(found?`${found}|${foundId}`:"");
+      fires.forEach(f=>{f.light.intensity=2.0+Math.sin(now*.012+f.phase)*.5;f.flame.scale.y=.9+Math.sin(now*.009+f.phase)*.12;});
+      npcs.forEach((n,i)=>{const phase=n.userData.phase||0;const bx=n.userData.baseX,bz=n.userData.baseZ;const nx=bx+Math.sin(now*.00028+phase)*1.6,nz=bz+Math.cos(now*.00022+phase)*1.1;n.position.set(nx,groundY(nx,nz),nz);n.rotation.y=Math.sin(now*.0004+phase)*.5;});
+      renderer.render(scene,camera);raf=requestAnimationFrame(loop);
     };
-    renderer.domElement.addEventListener("pointerup", click);
+    raf=requestAnimationFrame(loop);
 
-    const resize = () => {
-      const w = Math.max(1, el.clientWidth);
-      const hh = Math.max(1, el.clientHeight);
-      camera.aspect = w / hh;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, hh, false);
-    };
-    resize();
-    const observer = new ResizeObserver(resize);
-    observer.observe(el);
+    return()=>{cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);groundTexture.dispose();woodTex.dispose();roofTex.dispose();renderer.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();};
+  },[h.id,on]);
 
-    let raf = 0;
-    let last = performance.now();
-    const destinations = [
-      { id: "house", label: "Дом старейшины", x: 12, z: -17, r: 5.4 },
-      { id: "forge", label: "Кузница", x: -11, z: -7, r: 5.5 },
-      { id: "mimir", label: "Колодец Мимира", x: 12, z: 6, r: 4.8 },
-      { id: "norns", label: "Прядильня норн", x: -5, z: 19, r: 5.0 },
-      { id: "rune", label: "Древний камень Феху", x: 8, z: 23, r: 4.5 },
-      { id: "port", label: "Речной причал", x: -24, z: -1, r: 5.0 },
-      { id: "elder", label: "Старейшина", x: 10, z: -9, r: 3.4 },
-      { id: "blacksmith", label: "Кузнец", x: -7, z: -4, r: 3.4 },
-    ];
+  const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=42;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
+  const stopJoy=()=>{if(knob.current)knob.current.style.transform="translate(0,0)";state.current.dx=0;state.current.dz=0;};
 
-    const loop = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
-      const q = state.current;
-      const len = Math.hypot(q.dx, q.dz);
-      if (len > 0.05) {
-        q.x += (q.dx / len) * 6.6 * dt;
-        q.z += (q.dz / len) * 6.6 * dt;
-        q.x = Math.max(-51, Math.min(51, q.x));
-        q.z = Math.max(-59, Math.min(59, q.z));
-        hero.rotation.y = Math.atan2(q.dx, q.dz);
-        setMoving(true);
-      } else {
-        setMoving(false);
-      }
-      const hy = midHeight(q.x, q.z);
-      hero.position.set(q.x, hy + 0.03, q.z);
-      const targetCam = new THREE.Vector3(q.x - q.dx * 2.4, hy + 9.7, q.z + 13.8 - q.dz * 2.4);
-      camera.position.lerp(targetCam, 0.075);
-      camera.lookAt(q.x + q.dx * 2.2, hy + 1.0, q.z + q.dz * 2.2);
-
-      let found = "";
-      let foundId = "";
-      for (const d of destinations) {
-        if (Math.hypot(q.x - d.x, q.z - d.z) < d.r) {
-          found = d.label;
-          foundId = d.id;
-          break;
-        }
-      }
-      setNear(found ? `${found}|${foundId}` : "");
-
-      fires.forEach(f => {
-        f.light.intensity = 1.7 + Math.sin(now * 0.012 + f.phase) * 0.45;
-      });
-      npcs.forEach((npc, i) => {
-        npc.position.y = midHeight(npc.position.x, npc.position.z);
-        npc.rotation.y = Math.sin(now * 0.00045 + i) * 0.18;
-      });
-
-      renderer.render(scene, camera);
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      observer.disconnect();
-      renderer.domElement.removeEventListener("pointerup", click);
-      renderer.dispose();
-      scene.traverse((o: any) => {
-        if (o.isMesh) {
-          o.geometry?.dispose?.();
-          if (Array.isArray(o.material)) o.material.forEach((m: any) => m.dispose?.());
-          else o.material?.dispose?.();
-        }
-      });
-      renderer.domElement.remove();
-    };
-  }, [h.id, on]);
-
-  const joyMove = (e: React.PointerEvent) => {
-    const a = joy.current;
-    const b = knob.current;
-    if (!a || !b) return;
-    const r = a.getBoundingClientRect();
-    const cx = r.left + r.width / 2;
-    const cy = r.top + r.height / 2;
-    const max = 42;
-    let x = e.clientX - cx;
-    let y = e.clientY - cy;
-    const len = Math.hypot(x, y);
-    if (len > max) { x = (x / len) * max; y = (y / len) * max; }
-    b.style.transform = `translate(${x}px, ${y}px)`;
-    state.current.dx = x / max;
-    state.current.dz = y / max;
-  };
-
-  const stopJoy = () => {
-    if (knob.current) knob.current.style.transform = "translate(0,0)";
-    state.current.dx = 0;
-    state.current.dz = 0;
-  };
-
-  return (
-    <div className="content mid3d-scene" ref={mount} style={{ touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }} onContextMenu={(e) => e.preventDefault()}>
-      <div className="mid3d-ui mid3d-top">
-        <div className="mid3d-pill"><b>МИДГАРД</b><span>Земля людей • деревня у реки</span></div>
-        <div className="mid3d-pill"><b>ᚠ</b><span>Ищи следы Мимира и норн</span></div>
-      </div>
-      {near && (() => {
-        const [label, id] = near.split("|");
-        return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Ты достаточно близко</span><button onPointerDown={(e) => e.stopPropagation()} onClick={() => on(id)}>Взаимодействовать</button></div>;
-      })()}
-      <div className="mid3d-ui mid3d-joy" ref={joy} onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); joyMove(e); }} onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) joyMove(e); }} onPointerUp={stopJoy} onPointerCancel={stopJoy}>
-        <div className="mid3d-knob" ref={knob} />
-      </div>
-      <button className="mid3d-ui mid3d-action" onPointerDown={(e) => e.stopPropagation()} onClick={() => on("event")}>ᚠ</button>
-      <div className="mid3d-ui mid3d-hint">{moving ? "Герой идёт по Мидгарду" : "Исследуй деревню • лес • реку • святилища"}</div>
-    </div>
-  );
+  return <div className="content mid3d-scene" ref={mount} style={{touchAction:"none",userSelect:"none",WebkitUserSelect:"none"}} onContextMenu={e=>e.preventDefault()}>
+    <div className="mid3d-ui mid3d-top"><div className="mid3d-pill"><b>МИДГАРД</b><span>Деревня • река • лес • святилища</span></div><div className="mid3d-pill"><b>ᛟ</b><span>Мир живёт вокруг тебя</span></div></div>
+    {near&&(()=>{const [label,id]=near.split("|");return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Ты достаточно близко</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id)}>Взаимодействовать</button></div>;})()}
+    <div className="mid3d-ui mid3d-joy" ref={joy} onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);joyMove(e);}} onPointerMove={e=>{if(e.currentTarget.hasPointerCapture(e.pointerId))joyMove(e);}} onPointerUp={stopJoy} onPointerCancel={stopJoy}><div className="mid3d-knob" ref={knob}/></div>
+    <button className="mid3d-ui mid3d-action" onPointerDown={e=>e.stopPropagation()} onClick={()=>on("event")}>ᚠ</button>
+    <div className="mid3d-ui mid3d-hint">{moving?"Исследуй Мидгард":"Ворота • площадь • кузница • Мимир • норны • лес"}</div>
+  </div>;
 }
-
 
 function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
