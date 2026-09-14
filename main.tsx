@@ -1060,24 +1060,14 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       const darkWood=mat(0x292019,1);
       const stoneBase=box(w+.7,.62,d+.7,0x565852,1);stoneBase.position.y=.31;g.add(stoneBase);
       const wall=new THREE.Mesh(new THREE.BoxGeometry(w,3.55,d),woodMat);wall.position.y=2.05;g.add(wall);
-      // Horizontal log courses run ALONG the wall. The cylinder axis is local X,
-      // so no logs project outward through the doorway or facade.
-      for(let i=0;i<6;i++){
-        const yLog=.62+i*.58;
-        const front=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,w+.18,10),woodMat);
-        front.rotation.z=Math.PI/2;
-        front.position.set(0,yLog,d/2+.035);
-        g.add(front);
-        const back=front.clone();
-        back.position.z=-d/2-.035;
-        g.add(back);
-      }
+      // Clean timber wall: no cylindrical log courses on the facade.
+      // These were the source of the long beam-like shapes around the entrance.
       for(const px of [-w*.46,w*.46]) for(const pz of [-d*.5,d*.5]){
         const post=box(.34,3.9,.34,0x2a2018,1);post.position.set(px,2.08,pz);g.add(post);
       }
       // Clean front facade: the entrance must remain completely unobstructed.
       // Do not place tall vertical structural beams near the doorway.
-      const cross=box(w*.94,.24,.30,0x30231a,1);cross.position.set(0,2.38,d/2+.16);g.add(cross);
+      // No horizontal beam over the doorway; keep the entrance visually clean.
       const door=box(1.18,2.15,.18,0x241912,1);door.position.set(0,1.35,d/2+.17);g.add(door);
       const doorFrame1=box(.14,2.35,.22,0x3a291d,1),doorFrame2=doorFrame1.clone();doorFrame1.position.set(-.67,1.42,d/2+.2);doorFrame2.position.set(.67,1.42,d/2+.2);g.add(doorFrame1,doorFrame2);
       for(const px of [-w*.27,w*.27]){
