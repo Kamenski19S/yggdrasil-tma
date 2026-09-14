@@ -485,13 +485,8 @@ function placeHouse(scene: THREE.Scene, objects: THREE.Object3D[], x: number, z:
   roof.position.y = 4.0 * scale;
   g.add(roof);
 
-  // Силовой деревянный каркас.
+  // Clean front facade: no tall beams in front of the entrance.
   const beamMat = 0x38261b;
-  [-w * 0.42, w * 0.42].forEach(px => {
-    const beam = midBox(0.28 * scale, 3.55 * scale, 0.3 * scale, beamMat, 0.98);
-    beam.position.set(px, 1.78 * scale, d / 2 + 0.04 * scale);
-    g.add(beam);
-  });
   const cross = midBox(w * 0.95, 0.28 * scale, 0.3 * scale, beamMat, 0.98);
   cross.position.set(0, 2.35 * scale, d / 2 + 0.05 * scale);
   g.add(cross);
@@ -1073,8 +1068,9 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       for(const px of [-w*.46,w*.46]) for(const pz of [-d*.5,d*.5]){
         const post=box(.34,3.9,.34,0x2a2018,1);post.position.set(px,2.08,pz);g.add(post);
       }
-      [-w*.30,w*.30].forEach(px=>{const b=box(.22,3.8,.32,0x30231a,1);b.position.set(px,2.05,d/2+.15);g.add(b);});
-      const cross=box(w*.94,.24,.34,0x30231a,1);cross.position.set(0,2.38,d/2+.16);g.add(cross);
+      // Clean front facade: the entrance must remain completely unobstructed.
+      // Do not place tall vertical structural beams near the doorway.
+      const cross=box(w*.94,.24,.30,0x30231a,1);cross.position.set(0,2.38,d/2+.16);g.add(cross);
       const door=box(1.18,2.15,.18,0x241912,1);door.position.set(0,1.35,d/2+.17);g.add(door);
       const doorFrame1=box(.14,2.35,.22,0x3a291d,1),doorFrame2=doorFrame1.clone();doorFrame1.position.set(-.67,1.42,d/2+.2);doorFrame2.position.set(.67,1.42,d/2+.2);g.add(doorFrame1,doorFrame2);
       for(const px of [-w*.27,w*.27]){
@@ -1082,13 +1078,17 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
         const win=new THREE.Mesh(new THREE.BoxGeometry(.88,.68,.06),new THREE.MeshStandardMaterial({color:0xf0b85d,emissive:0xd87922,emissiveIntensity:1.8,roughness:.35}));win.position.set(px,2.18,d/2+.255);g.add(win);
         const v=box(.07,.76,.12,0x2a211b,1);v.position.set(px,2.18,d/2+.3);g.add(v);const hh=box(1.0,.07,.12,0x2a211b,1);hh.position.set(px,2.18,d/2+.3);g.add(hh);
       }
-      // Roof made from two broad shingle planes with heavy wooden fascia.
-      const roofMat=new THREE.MeshStandardMaterial({map:roofTex,color:roofColor,roughness:.98});
-      const roofA=new THREE.Mesh(new THREE.BoxGeometry(w*.72,.25,d+1.0),roofMat);
-      const roofB=roofA.clone();roofA.rotation.z=.62;roofB.rotation.z=-.62;roofA.position.set(-w*.22,4.2,0);roofB.position.set(w*.22,4.2,0);g.add(roofA,roofB);
-      const ridge=box(.38,.34,d+1.12,0x2b211b,1);ridge.position.y=5.15;g.add(ridge);
-      // Roof edge is carried by the roof planes themselves. Do not add long diagonal fascia beams
-      // here: they visually cut across the front facade and doorway from the camera angle.
+      // Roof: thin shingle planes, without thick diagonal fascia beams.
+      // The old BoxGeometry roof edges looked like giant logs crossing the doorway.
+      const roofMat=new THREE.MeshStandardMaterial({map:roofTex,color:roofColor,roughness:.98,side:THREE.DoubleSide});
+      const roofA=new THREE.Mesh(new THREE.PlaneGeometry(w*.82,d+1.0),roofMat);
+      const roofB=new THREE.Mesh(new THREE.PlaneGeometry(w*.82,d+1.0),roofMat);
+      roofA.rotation.x=Math.PI/2; roofB.rotation.x=Math.PI/2;
+      roofA.rotation.z=.62; roofB.rotation.z=-.62;
+      roofA.position.set(-w*.22,4.22,0); roofB.position.set(w*.22,4.22,0);
+      g.add(roofA,roofB);
+      const ridge=box(.30,.28,d+1.08,0x2b211b,1);ridge.position.y=5.08;g.add(ridge);
+      // No long diagonal beams on the front slope: the entrance stays visually clear.
       // Clean entrance: no tall porch posts in front of the doorway.
       // A shallow threshold remains without blocking the door visually.
       const porch=box(w*.34,.16,1.0,0x62422b,1);porch.position.set(0,.68,d/2+.54);g.add(porch);
