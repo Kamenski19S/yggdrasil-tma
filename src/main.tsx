@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as THREE from "three";
+import { VFXEngine } from "./game/vfx/VFXEngine";
 
 const tg: any = (window as any).Telegram?.WebApp;
 const BASE: string = (import.meta as any).env?.BASE_URL || "/";
@@ -437,6 +438,8 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     scene.background = new THREE.Color(0x8da894);
     scene.fog = new THREE.Fog(0x8da894, 38, 105);
 
+    const vfx = new VFXEngine(scene);
+
     const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 180);
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -696,16 +699,6 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
         const anvilTop = midBox(1.75, 0.24, 0.92, 0x383a38);
         anvilTop.position.set(-2.0, 0.83, 1.0);
         g.add(anvilTop);
-        const fire = new THREE.Mesh(
-          new THREE.SphereGeometry(0.50, 8, 6),
-          new THREE.MeshBasicMaterial({ color: 0xff7a22, transparent: true, opacity: 0.85 })
-        );
-        fire.scale.set(1, 1.5, 0.8);
-        fire.position.set(1.9, 1.0, 1.0);
-        g.add(fire);
-        const fireLight = new THREE.PointLight(0xff8a32, 2.2, 8);
-        fireLight.position.set(1.9, 1.25, 1.0);
-        g.add(fireLight);
       }
 
       g.position.set(x, 0, z);
@@ -721,6 +714,10 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
 
     placeHouse(12, -18, "Дом старейшины", "house");
     placeHouse(-11, -9, "Кузница", "forge");
+
+    // Лёгкие VFX: огонь кузницы и дым дома. Всё обновляется одной системой.
+    vfx.addFire(new THREE.Vector3(-9.1, 0.95, -8.0), 0.95);
+    vfx.addSmoke(new THREE.Vector3(10.35, 7.05, -19.0), 1.0);
 
     // Колодец Мимира.
     const mimir = new THREE.Group();
@@ -757,6 +754,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     mimir.position.set(13, 0, 6);
     scene.add(mimir);
     objects.push(mimir);
+    vfx.addMagicAura(new THREE.Vector3(13, 1.28, 6), "green", 1.0);
 
     // Камень с руной.
     const runeStone = new THREE.Group();
@@ -781,6 +779,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
     runeStone.position.set(8, 0, 18);
     scene.add(runeStone);
     objects.push(runeStone);
+    vfx.addMagicAura(new THREE.Vector3(8, 1.16, 18), "gold", 0.82);
 
     const hero = midHero3d(h);
     scene.add(hero);
@@ -861,6 +860,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
         }
       }
       setNear(found ? `${found}|${foundId}` : "");
+      vfx.update(now / 1000);
 
       renderer.render(scene, camera);
       raf = requestAnimationFrame(loop);
@@ -872,6 +872,7 @@ function Midgard3D({ h, on }: { h: HeroDef; on: (id: string) => void }) {
       cancelAnimationFrame(raf);
       observer.disconnect();
       renderer.domElement.removeEventListener("pointerup", click);
+      vfx.dispose();
       renderer.dispose();
       renderer.domElement.remove();
     };
