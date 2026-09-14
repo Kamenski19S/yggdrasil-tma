@@ -343,8 +343,11 @@ const midBox = (
       : materialOrColor
   );
 
-const midCyl = (r: number, h: number, c: number, segments = 10) =>
-  new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, segments), midMat(c));
+const midCyl = (r: number, h: number, materialOrColor: THREE.Material | number, segments = 10) =>
+  new THREE.Mesh(
+    new THREE.CylinderGeometry(r, r, h, segments),
+    typeof materialOrColor === 'number' ? midMat(materialOrColor) : materialOrColor
+  );
 
 function midTree(x: number, z: number, s = 1) {
   const g = new THREE.Group();
