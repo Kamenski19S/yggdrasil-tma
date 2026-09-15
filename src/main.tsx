@@ -1072,13 +1072,13 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         }
       } else if (type === "foliage") {
         // Soft, matte needle/leaf color breakup. No painted highlights.
-        ctx.fillStyle="#6f8966";ctx.fillRect(0,0,512,512);
+        ctx.fillStyle="#536b4b";ctx.fillRect(0,0,512,512);
         for(let i=0;i<1900;i++){
           const x=rand(i*1.17)*512,y=rand(i*2.31)*512;
           const light=rand(i*3.7);
-          const r=light>.72?98:light>.36?82:67;
-          const g=light>.72?126:light>.36?105:88;
-          const b=light>.72?78:light>.36?63:52;
+          const r=light>.72?76:light>.36?63:51;
+          const g=light>.72?104:light>.36?87:70;
+          const b=light>.72?59:light>.36?49:40;
           ctx.fillStyle=`rgba(${r},${g},${b},${.16+rand(i*4)*.28})`;
           ctx.beginPath();ctx.arc(x,y,1.5+rand(i*5)*4.5,0,Math.PI*2);ctx.fill();
         }
@@ -1589,7 +1589,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
         // Small leaf clusters at branch ends.
         for(let k=0;k<3;k++){
-          const leaf=new THREE.Mesh(new THREE.SphereGeometry((.42+midHash(k+i,90)*.22)*s,8,6),new THREE.MeshLambertMaterial({map:foliageTexture,color:k%2?0xffffff:0xf4fff0}));
+          const leaf=new THREE.Mesh(new THREE.SphereGeometry((.42+midHash(k+i,90)*.22)*s,8,6),new THREE.MeshLambertMaterial({map:foliageTexture,color:k%2?0xd4e0c8:0xc5d5b8}));
           const f=.55+k*.18;
           leaf.position.set(Math.cos(a)*len*.62+(midHash(k, i)-.5)*.35*s,(3.55+midHash(i,k)*1.15+f)*s,Math.sin(a)*len*.62+(midHash(k+4,i)-.5)*.35*s);
           leaf.scale.y=.72;g.add(leaf);
