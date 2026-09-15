@@ -961,15 +961,7 @@ function midHero3d(h: HeroDef) {
   shadow.position.y = 0.02;
   g.add(shadow);
 
-  g.userData.anim = {
-    armL, armR, legL, legR, weapon,
-    torso, chest, pelvis, head, neck, cape,
-    phase: h.id === "elf" ? 1.2 : h.id === "dwarf" ? 2.4 : 0,
-    speed: 0,
-    stride: 0,
-    idle: 0,
-    run: 0,
-  };
+  g.userData.anim = { armL, armR, legL, legR, weapon, phase: h.id === "elf" ? 1.2 : h.id === "dwarf" ? 2.4 : 0 };
   return markMeshes(g);
 }
 
@@ -1875,111 +1867,40 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     ];
 
     const resize=()=>{const w=Math.max(1,el.clientWidth),hh=Math.max(1,el.clientHeight);camera.aspect=w/hh;camera.updateProjectionMatrix();renderer.setSize(w,hh,false);};resize();const observer=new ResizeObserver(resize);observer.observe(el);
-    let raf=0,last=performance.now(),animLast=last;
-    let facing=hero.rotation.y;
-
-    // Third-person camera with a real dead zone: the hero can travel across
-    // the screen before the camera begins to follow.
-    const cameraAnchor = new THREE.Vector3(state.current.x, 0, state.current.z);
-    const cameraLook = new THREE.Vector3(state.current.x, 1.2, state.current.z);
-    const cameraDeadZone = 4.2;
-
+    let raf=0,last=performance.now();
     const loop=(now:number)=>{
-      const dt=Math.min(.05,(now-last)/1000);last=now;
-      const animDt=Math.min(.05,(now-animLast)/1000);animLast=now;
-      const q=state.current;
-      const l=Math.hypot(q.dx,q.dz);
-      const movingNow=l>.045;
-      if(movingNow){
-        // Variable speed makes a light thumb input a walk and a full input a run.
-        const runAmount=Math.max(0,(l-.58)/.42);
-        const speed=4.0+3.4*l+1.2*runAmount;
-        const step=speed*dt;
+      const dt=Math.min(.05,(now-last)/1000);last=now;const q=state.current;const l=Math.hypot(q.dx,q.dz);
+      if(l>.05){
+        const step=6.2*dt;
         moveWithCollision(q,q.x+(q.dx/l)*step,q.z+(q.dz/l)*step);
-        const wanted=Math.atan2(q.dx,q.dz);
-        let turn=wanted-facing;
-        while(turn>Math.PI)turn-=Math.PI*2;
-        while(turn<-Math.PI)turn+=Math.PI*2;
-        facing+=turn*Math.min(1,dt*10.5);
-        hero.rotation.y=facing;
+        hero.rotation.y=Math.atan2(q.dx,q.dz);
         cameraDir.current.x=q.dx/l;
         cameraDir.current.z=q.dz/l;
         setMoving(true);
-      }else{
-        setMoving(false);
-        // Settle the body rather than snapping the pose when the thumb is released.
-        hero.rotation.y=facing;
-      }
+      }else setMoving(false);
       const hy=groundY(q.x,q.z);
+      hero.position.set(q.x,hy+.04,q.z);
       if(heroAnim){
-        const targetSpeed=movingNow?(l>.72?1:0.58):0;
-        heroAnim.speed += (targetSpeed-heroAnim.speed)*Math.min(1,animDt*9);
-        heroAnim.run += ((movingNow&&l>.72?1:0)-heroAnim.run)*Math.min(1,animDt*7);
-        heroAnim.idle += ((movingNow?0:1)-heroAnim.idle)*Math.min(1,animDt*7);
-        const walkT=now*.0125*heroAnim.speed+heroAnim.phase;
-        const stride=Math.sin(walkT)*(.34+.32*heroAnim.run)*heroAnim.speed;
-        const armSwing=Math.sin(walkT+Math.PI)*(.23+.25*heroAnim.run)*heroAnim.speed;
-        const bounce=Math.abs(Math.sin(walkT))*(.025+.035*heroAnim.run)*heroAnim.speed;
-        const idleBreath=Math.sin(now*.0022+heroAnim.phase)*.012*heroAnim.idle;
-
+        const walkT=now*.011+heroAnim.phase;
+        const stride=l>.05?Math.sin(walkT)*0.58:0;
+        const armSwing=l>.05?Math.sin(walkT+Math.PI)*0.42:0;
         heroAnim.legL.rotation.x=stride;
         heroAnim.legR.rotation.x=-stride;
-        heroAnim.legL.rotation.z=heroAnim.run*.025;
-        heroAnim.legR.rotation.z=-heroAnim.run*.025;
         heroAnim.armL.upper.rotation.x=armSwing;
         heroAnim.armR.upper.rotation.x=-armSwing;
-        heroAnim.armL.elbow.rotation.x=-Math.abs(armSwing)*(.25+.20*heroAnim.run);
-        heroAnim.armR.elbow.rotation.x=-Math.abs(armSwing)*(.25+.20*heroAnim.run);
-        heroAnim.weapon.rotation.z=-0.12+(movingNow?Math.sin(walkT)*(.025+.035*heroAnim.run):0);
-
-        // Subtle weight shift and breathing keep the hero alive while standing still.
-        heroAnim.torso.rotation.z=idleBreath+Math.sin(walkT)*.018*heroAnim.speed;
-        heroAnim.chest.rotation.z=idleBreath*.7+Math.sin(walkT+Math.PI)*.012*heroAnim.speed;
-        heroAnim.head.rotation.z=idleBreath*.45;
-        heroAnim.neck.rotation.z=idleBreath*.35;
-        heroAnim.pelvis.rotation.z=-Math.sin(walkT)*.025*heroAnim.speed;
-        heroAnim.cape.rotation.x=-.035-Math.sin(walkT)*.035*heroAnim.speed;
-        heroAnim.weapon.position.y=.32+Math.sin(walkT+Math.PI)*.025*heroAnim.speed;
-        hero.position.y=hy+.04+bounce+Math.max(0,idleBreath);
-      }else hero.position.y=hy+.04;
-      
-      // Do NOT lock the hero to the centre of the screen.
-      // A dead-zone camera lets the hero visibly walk through the world.
-      // IMPORTANT: the camera is intentionally independent from the hero's
-      // movement direction. The previous camera used cameraDir here, which
-      // rotated the whole view whenever the hero moved and made him look
-      // visually nailed to one place. Keep a stable third-person angle.
-      if(insideHomeRef.current){
-        cameraAnchor.x += (q.x-cameraAnchor.x)*.12;
-        cameraAnchor.z += (q.z-cameraAnchor.z)*.12;
-      }else{
-        const ax=q.x-cameraAnchor.x;
-        const az=q.z-cameraAnchor.z;
-        const dist=Math.hypot(ax,az);
-        if(dist>cameraDeadZone){
-          const excess=dist-cameraDeadZone;
-          const k=Math.min(1,excess*.18);
-          cameraAnchor.x += ax*k;
-          cameraAnchor.z += az*k;
-        }
+        heroAnim.armL.elbow.rotation.x=-Math.abs(armSwing)*.35;
+        heroAnim.armR.elbow.rotation.x=-Math.abs(armSwing)*.35;
+        heroAnim.weapon.rotation.z=-0.12+(l>.05?Math.sin(walkT)*.035:0);
       }
-
-      // Stable world-space camera: it no longer swings around behind the hero.
-      // This makes lateral/forward movement visibly obvious on a phone.
-      const cameraTarget=new THREE.Vector3(
-        cameraAnchor.x,
-        insideHomeRef.current ? hy+3.65 : hy+7.2,
-        cameraAnchor.z+(insideHomeRef.current?7.2:11.8)
-      );
-      camera.position.lerp(cameraTarget,insideHomeRef.current?.10:.10);
-
-      const lookTarget=new THREE.Vector3(
-        cameraAnchor.x,
-        hy+(insideHomeRef.current?1.25:1.15),
-        cameraAnchor.z
-      );
-      cameraLook.lerp(lookTarget,insideHomeRef.current?.14:.10);
-      camera.lookAt(cameraLook);
+      // Keep the camera direction stable when the thumb is released. The old camera
+      // used dx/dz directly, so stopping movement instantly changed its target and
+      // produced the visible screen jump/bounce on mobile.
+      const cd=cameraDir.current;
+      const target=insideHomeRef.current
+        ? new THREE.Vector3(q.x-cd.x*1.0,hy+3.65,q.z-cd.z*1.0)
+        : new THREE.Vector3(q.x-cd.x*2.0,hy+7.2,q.z-cd.z*2.0+11.8);
+      camera.position.lerp(target,insideHomeRef.current?.09:.055);
+      camera.lookAt(q.x+(insideHomeRef.current?cd.x*.9:cd.x*1.9),hy+(insideHomeRef.current?1.25:1.2),q.z+(insideHomeRef.current?cd.z*.9:cd.z*1.9));
       let found="",foundId="";
       if(insideHomeRef.current){
         if(q.z>heroHomeZ+1.72){found="Дверь — выйти из дома";foundId="heroHomeExit";}
@@ -2013,14 +1934,15 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     return()=>{cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);groundTexture.dispose();woodTex.dispose();roofTex.dispose();renderer.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
   },[h.id,on,eventDone]);
 
-  const joyActive=useRef(false);
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
-  const stopJoy=()=>{joyActive.current=false;if(knob.current)knob.current.style.transform="translate(0,0)";state.current.dx=0;state.current.dz=0;};
-  const startJoy=(e:React.PointerEvent<HTMLDivElement>)=>{if(e.button!==0)return;e.preventDefault();e.stopPropagation();joyActive.current=true;e.currentTarget.setPointerCapture(e.pointerId);joyMove(e);};
-  const moveJoy=(e:React.PointerEvent<HTMLDivElement>)=>{if(!joyActive.current)return;e.preventDefault();joyMove(e);};
-  const endJoy=(e:React.PointerEvent<HTMLDivElement>)=>{e.preventDefault();if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);stopJoy();};
+  const stopJoy=()=>{if(knob.current)knob.current.style.transform="translate(0,0)";state.current.dx=0;state.current.dz=0;};
+  // Keep the visible joystick compact, but give it a much larger invisible touch zone.
+  // This makes it comfortable to start steering with a thumb slightly above the circle.
+  const startJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{const a=joy.current;if(!a)return;const target=e.target as HTMLElement;if(target.closest?.(".mid3d-action")||target.closest?.(".mid3d-interact"))return;const r=a.getBoundingClientRect();const pad=26,up=78,down=26;const inside=e.clientX>=r.left-pad&&e.clientX<=r.right+pad&&e.clientY>=r.top-up&&e.clientY<=r.bottom+down;if(!inside)return;e.currentTarget.setPointerCapture(e.pointerId);joyMove(e);};
+  const moveJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{if(e.currentTarget.hasPointerCapture(e.pointerId))joyMove(e);};
+  const endJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);stopJoy();};
 
-  return <div className="content mid3d-scene" ref={mount} style={{touchAction:"none",userSelect:"none",WebkitUserSelect:"none"}} onContextMenu={e=>e.preventDefault()}>
+  return <div className="content mid3d-scene" ref={mount} style={{touchAction:"none",userSelect:"none",WebkitUserSelect:"none"}} onPointerDown={startJoyFromZone} onPointerMove={moveJoyFromZone} onPointerUp={endJoyFromZone} onPointerCancel={endJoyFromZone} onContextMenu={e=>e.preventDefault()}>
     <div className="mid3d-ui mid3d-top"><div className="mid3d-pill"><b>МИДГАРД</b><span>Деревня • река • лес • святилища</span></div><div className="mid3d-pill"><b>ᛟ</b><span>Мир живёт вокруг тебя</span></div></div>
     {forestEventOpen&&!eventDone&&<div className="mid3d-ui mid3d-interact" style={{bottom:"14%",left:"50%",transform:"translateX(-50%)",width:"min(92vw,390px)",zIndex:31}}>
       <b>ᛟ Камень Трёх Нитей</b>
@@ -2044,7 +1966,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:ygg")}}>🌳 Зов Иггдрасиля — пережить смертельный удар</button>
     </div>}
     {near&&!ritualOpen&&!forestEventOpen&&(()=>{const [label,id]=near.split("|");const home=id==="heroHome"||id==="heroHomeExit";return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода") : "Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="ritual")setRitualOpen(true);else if(id==="forestEvent")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else on(id);}}>{home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):"Взаимодействовать"}</button></div>;})()}
-    <div className="mid3d-ui mid3d-joy" ref={joy} onPointerDown={startJoy} onPointerMove={moveJoy} onPointerUp={endJoy} onPointerCancel={endJoy} onLostPointerCapture={stopJoy}><div className="mid3d-knob" ref={knob}/></div>
+    <div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-action" onPointerDown={e=>e.stopPropagation()} onClick={()=>on("event")}>ᚠ</button>
     <div className="mid3d-ui mid3d-hint">{insideHome?(moving?"Ты внутри дома":"Дом героя • отдых • сундук • выход"):moving?"Исследуй Мидгард":"Ворота • площадь • кузница • Мимир • норны • лес"}</div>
   </div>;
