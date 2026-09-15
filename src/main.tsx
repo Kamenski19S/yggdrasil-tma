@@ -1428,7 +1428,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       for(const pz of [-.25,.25]) for(const px of [-.27,.34]) { const leg=new THREE.Mesh(new THREE.CylinderGeometry(.065*s,.09*s,.72*s,6),dark); leg.position.set(px*s,.48*s,pz*s); leg.rotation.z=(px<0?.08:-.06); g.add(leg); }
       for(const side of [-1,1]) for(let k=0;k<4;k++){ const a=new THREE.Mesh(new THREE.CylinderGeometry(.028*s,.05*s,.38*s,5),ant); a.position.set(.7*s,(1.82+k*.13)*s,side*(.11+k*.055)*s); a.rotation.z=side*(.45-k*.08); g.add(a); }
       const tail=new THREE.Mesh(new THREE.SphereGeometry(.13*s,7,5),fur); tail.position.set(-.52*s,1.05*s,0); tail.scale.set(.7,1.2,.7); g.add(tail);
-      g.position.set(x,groundY(x,z),z); g.userData={phase}; addMesh(g); wildlife.push({g,x,z,r:4+midHash(phase,41)*3,speed:.25+midHash(phase,42)*.18,phase,kind:'deer'});
+      g.position.set(x,groundY(x,z),z); g.userData={phase}; addMesh(g); wildlife.push({g,x,z,r:4+midHash(phase,41)*3,speed:1.25+midHash(phase,42)*.8,phase,kind:'deer'});
     };
     const squirrel=(x:number,z:number) => {
       const g=new THREE.Group(); const fur=mat(0x6a4930,1),dark=mat(0x2f241c,1);
@@ -1511,11 +1511,30 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     addMesh(eventGroup,'forestEvent','Камень Трёх Нитей');
     addCircleCollider(eventX,eventZ,1.15,.08);
 
+    // Additional living forest events. These are small, reusable encounters rather than decoration.
+    // Their exact locations and outcomes are game fiction inspired by the Edda's themes of fate,
+    // wisdom and the living ecosystem around Yggdrasil.
+    const makeForestEvent = (x:number,z:number,id:string,label:string,ringColor:number,stoneColor:number,detail:number) => {
+      const g=new THREE.Group(); g.position.set(x,groundY(x,z),z);
+      const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(.78+detail*.08,1),mat(stoneColor,1));
+      stone.position.y=.58+detail*.08; stone.scale.y=1.35; g.add(stone);
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(2.0+detail*.18,.045,7,40),new THREE.MeshStandardMaterial({color:ringColor,emissive:ringColor,emissiveIntensity:1.25,transparent:true,opacity:.62}));
+      ring.rotation.x=Math.PI/2; ring.position.y=.045; g.add(ring);
+      for(let i=0;i<3+detail;i++){
+        const mark=new THREE.Mesh(new THREE.DodecahedronGeometry(.12,.0),mat(0x777066,1));
+        const a=i/(3+detail)*Math.PI*2; mark.position.set(Math.cos(a)*(1.15+detail*.12),.08,Math.sin(a)*(1.15+detail*.12)); mark.scale.y=.45; g.add(mark);
+      }
+      addMesh(g,id,label); objects.push(g); addCircleCollider(x,z,.9,.08);
+    };
+    makeForestEvent(-15,58,'forestCache','Забытый тайник',0xb28b52,0x4b4035,2);
+    makeForestEvent(46,43,'forestWhisper','Камень Шёпота',0x7895a5,0x454d4d,3);
+    makeForestEvent(-48,72,'forestThread','Разорванная нить',0x9c7190,0x51484d,2);
+
     // Dense forest ring uses varied, irregular firs.
     for(let i=0;i<95;i++){
       const a=midHash(i,77)*Math.PI*2;const r=58+midHash(i,91)*32;
       const x=Math.cos(a)*r,z=Math.sin(a)*r+2;
-      const reserved=[[ashGroveX,ashGroveZ,11],[39,70,13],[-64,36,11],[-43,62,10],[30,53,12],[61,78,10]];
+      const reserved=[[ashGroveX,ashGroveZ,11],[39,70,13],[-64,36,11],[-43,62,10],[30,53,12],[61,78,10],[-15,58,7],[46,43,7],[-48,72,7]];
       const reservedHit=reserved.some(([rx,rz,rr])=>Math.hypot(x-rx,z-rz)<rr);
       if(Math.abs(x+57)>9 && !reservedHit)firTree(x,z,.78+midHash(i,13)*.82);
     }
@@ -1560,7 +1579,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       {id:"house",label:"Дом старейшины",x:13,z:-18,r:5.2},{id:"forge",label:"Кузница",x:-10,z:-5,r:5.4},
       {id:"mimir",label:"Колодец Мимира",x:18,z:15,r:4.8},{id:"norns",label:"Прядильня норн",x:-25,z:43,r:5.4},
       {id:"rune",label:"Древний камень Феху",x:27,z:57,r:4.5},{id:"ritual",label:"Круг Силы",x:-43,z:62,r:6.8},{id:"port",label:"Речной причал",x:-46,z:-15,r:5},
-      {id:"ashgrove",label:"Роща Ясеня",x:-4,z:69,r:7.5},{id:"forestEvent",label:eventDone?"Камень Трёх Нитей — место выбора":"Камень Трёх Нитей",x:eventX,z:eventZ,r:4.8},{id:"runefield",label:"Поле Рун",x:39,z:70,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-64,z:36,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:30,z:53,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:61,z:78,r:6.5},
+      {id:"ashgrove",label:"Роща Ясеня",x:-4,z:69,r:7.5},{id:"forestEvent",label:eventDone?"Камень Трёх Нитей — место выбора":"Камень Трёх Нитей",x:eventX,z:eventZ,r:4.8},{id:"forestCache",label:"Забытый тайник",x:-15,z:58,r:4.2},{id:"forestWhisper",label:"Камень Шёпота",x:46,z:43,r:4.2},{id:"forestThread",label:"Разорванная нить",x:-48,z:72,r:4.2},{id:"runefield",label:"Поле Рун",x:39,z:70,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-64,z:36,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:30,z:53,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:61,z:78,r:6.5},
       {id:"elder",label:"Старейшина",x:9,z:-8,r:3.2},{id:"blacksmith",label:"Кузнец",x:-6,z:-3,r:3.2},
       {id:"gate",label:"Ворота Мидгарда",x:0,z:-31,r:5},{id:"tower",label:"Сторожевая башня",x:29,z:25,r:4}
     ];
@@ -1593,7 +1612,22 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       let found="",foundId="";for(const d of destinations){if(Math.hypot(q.x-d.x,q.z-d.z)<d.r){found=d.label;foundId=d.id;break;}}setNear(found?`${found}|${foundId}`:"");
       fires.forEach(f=>{f.light.intensity=2.0+Math.sin(now*.012+f.phase)*.5;f.flame.scale.y=.9+Math.sin(now*.009+f.phase)*.12;});
       mist.children.forEach((m,i)=>{m.position.x+=Math.sin(now*.00012+i)*.003;m.position.z+=Math.cos(now*.0001+i)*.002;});
-      wildlife.forEach((w,i)=>{const ang=now*.00025*w.speed+w.phase;const nx=w.x+Math.cos(ang)*w.r,nz=w.z+Math.sin(ang*.83)*w.r*.62;w.g.position.set(nx,groundY(nx,nz),nz);w.g.rotation.y=Math.atan2(Math.cos(ang*.83),-Math.sin(ang)); if(w.kind==='deer') w.g.position.y+=Math.sin(now*.006+i)*.025;});
+      wildlife.forEach((w,i)=>{
+        if(w.kind==='deer'){
+          const dx=w.g.position.x-hero.position.x, dz=w.g.position.z-hero.position.z, dist=Math.hypot(dx,dz);
+          if(dist<11){
+            const len=Math.max(.001,dist);
+            const step=dist<5.5?.115:.075;
+            const nx=w.g.position.x+(dx/len)*step, nz=w.g.position.z+(dz/len)*step;
+            const bx=nx-30,bz=nz-53,br=Math.hypot(bx,bz);
+            if(br<17){w.g.position.set(nx,groundY(nx,nz),nz);} else {
+              const ang=Math.atan2(bz,bx); const rx=30+Math.cos(ang)*16, rz=53+Math.sin(ang)*10; w.g.position.set(rx,groundY(rx,rz),rz);
+            }
+            w.g.rotation.y=Math.atan2(dz,dx); w.g.position.y+=Math.sin(now*.008+i)*.025; return;
+          }
+        }
+        const ang=now*.00105*w.speed+w.phase;const nx=w.x+Math.cos(ang)*w.r,nz=w.z+Math.sin(ang*.83)*w.r*.62;w.g.position.set(nx,groundY(nx,nz),nz);w.g.rotation.y=Math.atan2(Math.cos(ang*.83),-Math.sin(ang)); if(w.kind==='deer') w.g.position.y+=Math.sin(now*.006+i)*.025;
+      });
       npcs.forEach((n,i)=>{const phase=n.userData.phase||0;const bx=n.userData.baseX,bz=n.userData.baseZ;const nx=bx+Math.sin(now*.00028+phase)*1.6,nz=bz+Math.cos(now*.00022+phase)*1.1;n.position.set(nx,groundY(nx,nz),nz);n.rotation.y=Math.sin(now*.0004+phase)*.5;});
       renderer.render(scene,camera);raf=requestAnimationFrame(loop);
     };
@@ -1850,7 +1884,17 @@ const [roadT, setRoadT] = useState(0.06);
     const interact = (id: string) => {
       haptic();
       if (id === "mimir") {
-        say('Мимир: «Знание имеет цену. Слушай внимательно. Под деревней спит память о первых путниках.»');
+        if (save.done.includes("forest:present")) {
+          if (!save.done.includes("forest:present:reward")) {
+            setSave(s => ({ ...s, sparks: s.sparks + 20, done: [...new Set([...s.done, "forest:present:reward"])] }));
+            haptic("success");
+            say("Знак Мимира совпал с твоим выбором. В воде колодца всплывает руна: +20 ✨");
+          } else {
+            say("Мимир молчит. Но теперь ты знаешь, куда смотреть, когда вода снова заговорит.");
+          }
+        } else {
+          say('Мимир: «Знание имеет цену. Слушай внимательно. Под деревней спит память о первых путниках.»');
+        }
         return;
       }
       if (id === "norns") {
@@ -1882,11 +1926,45 @@ const [roadT, setRoadT] = useState(0.06);
         return;
       }
       if (id === "oldfarm") {
-        say("Старый хутор давно пуст. В доме ещё виден очаг, а возле амбара — следы телеги. Здесь когда-то жили люди.");
+        if (save.done.includes("forest:past")) {
+          if (!save.done.includes("forest:past:reward")) {
+            setSave(s => ({ ...s, sparks: s.sparks + 20, done: [...new Set([...s.done, "forest:past:reward"])] }));
+            haptic("success");
+            say("След из видения привёл тебя сюда. Под старой телегой найден тайник: +20 ✨");
+          } else {
+            say("Старый хутор уже отдал тебе свой секрет. В пыли остался лишь след колеса.");
+          }
+        } else {
+          say("Старый хутор давно пуст. В доме ещё виден очаг, а возле амбара — следы телеги. Здесь когда-то жили люди.");
+        }
+        return;
+      }
+      if (id === "forestCache") {
+        if (!save.done.includes("forest:cache")) {
+          setSave(s => ({ ...s, sparks: s.sparks + 18, done: [...new Set([...s.done, "forest:cache"])] }));
+          haptic("success");
+          say("Под плоским камнем спрятан старый охотничий мешок. Внутри руна и 18 ✨. Кто-то оставил это не случайно.");
+        } else say("Тайник пуст. На камне осталась лишь вырезанная руна.");
+        return;
+      }
+      if (id === "forestWhisper") {
+        if (!save.done.includes("forest:whisper")) {
+          setSave(s => ({ ...s, sparks: s.sparks + 16, done: [...new Set([...s.done, "forest:whisper"])] }));
+          haptic("success");
+          say("Камень шепчет: «Не всякая весть должна быть услышана сразу». Внутри трещины мерцает руна. +16 ✨");
+        } else say("Шёпот стих. Но теперь ты знаешь, что этот камень когда-нибудь может заговорить снова.");
+        return;
+      }
+      if (id === "forestThread") {
+        if (!save.done.includes("forest:thread")) {
+          setSave(s => ({ ...s, sparks: s.sparks + 22, done: [...new Set([...s.done, "forest:thread"])] }));
+          haptic("success");
+          say("На ветке висит оборванная нить. Ты не знаешь, кому она принадлежала, но рядом лежит руна судьбы. +22 ✨");
+        } else say("Оборванная нить всё ещё висит на ветке. Второго знака она не даёт.");
         return;
       }
       if (id === "deer") {
-        say("Четыре оленя поднимают головы. На миг кажется, что лес смотрит на тебя их глазами.");
+        say("Четыре оленя поднимают головы. Если подойти слишком близко, они мгновенно сорвутся с места и убегут в лес.");
         return;
       }
       if (id === "hoddmimir") {
@@ -1894,7 +1972,17 @@ const [roadT, setRoadT] = useState(0.06);
         return;
       }
       if (id === "ratatosk") {
-        say("Рататоск исчезает среди ветвей. Кажется, он принёс тебе чью-то весть — но решил оставить её при себе.");
+        if (save.done.includes("forest:future")) {
+          if (!save.done.includes("forest:future:reward")) {
+            setSave(s => ({ ...s, sparks: s.sparks + 20, done: [...new Set([...s.done, "forest:future:reward"])] }));
+            haptic("success");
+            say("Рататоск возвращается к тебе. На этот раз он оставляет знак будущего: +20 ✨");
+          } else {
+            say("Рататоск уже передал тебе свой знак. Теперь он следит, куда приведёт твой выбор.");
+          }
+        } else {
+          say("Рататоск исчезает среди ветвей. Кажется, он принёс тебе чью-то весть — но решил оставить её при себе.");
+        }
         return;
       }
       if (id === "forestEvent") {
