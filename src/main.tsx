@@ -1945,8 +1945,10 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       
       // Do NOT lock the hero to the centre of the screen.
       // A dead-zone camera lets the hero visibly walk through the world.
-      const cd=cameraDir.current;
-
+      // IMPORTANT: the camera is intentionally independent from the hero's
+      // movement direction. The previous camera used cameraDir here, which
+      // rotated the whole view whenever the hero moved and made him look
+      // visually nailed to one place. Keep a stable third-person angle.
       if(insideHomeRef.current){
         cameraAnchor.x += (q.x-cameraAnchor.x)*.12;
         cameraAnchor.z += (q.z-cameraAnchor.z)*.12;
@@ -1962,21 +1964,21 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         }
       }
 
-      const camY=insideHomeRef.current ? hy+3.65 : hy+7.2;
-      const camZOffset=insideHomeRef.current ? 7.2 : 11.8;
+      // Stable world-space camera: it no longer swings around behind the hero.
+      // This makes lateral/forward movement visibly obvious on a phone.
       const cameraTarget=new THREE.Vector3(
-        cameraAnchor.x-cd.x*(insideHomeRef.current?1.0:2.0),
-        camY,
-        cameraAnchor.z-cd.z*(insideHomeRef.current?1.0:2.0)+camZOffset
+        cameraAnchor.x,
+        insideHomeRef.current ? hy+3.65 : hy+7.2,
+        cameraAnchor.z+(insideHomeRef.current?7.2:11.8)
       );
-      camera.position.lerp(cameraTarget,insideHomeRef.current?.10:.16);
+      camera.position.lerp(cameraTarget,insideHomeRef.current?.10:.10);
 
       const lookTarget=new THREE.Vector3(
-        cameraAnchor.x+(insideHomeRef.current?cd.x*.55:cd.x*.8),
+        cameraAnchor.x,
         hy+(insideHomeRef.current?1.25:1.15),
-        cameraAnchor.z+(insideHomeRef.current?cd.z*.55:cd.z*.8)
+        cameraAnchor.z
       );
-      cameraLook.lerp(lookTarget,insideHomeRef.current?.14:.12);
+      cameraLook.lerp(lookTarget,insideHomeRef.current?.14:.10);
       camera.lookAt(cameraLook);
       let found="",foundId="";
       if(insideHomeRef.current){
