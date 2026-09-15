@@ -1069,56 +1069,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       return t;
     };
 
-    // Lightweight Stylized PBR maps generated once from the same small 512px
-    // surface textures. This adds believable micro-lighting and roughness
-    // variation without increasing geometry or loading heavy external assets.
-    const surfaceMaps = (source: THREE.CanvasTexture, roughness = 0.88) => {
-      const src = source.image as HTMLCanvasElement;
-      const normalCanvas = document.createElement("canvas");
-      const roughCanvas = document.createElement("canvas");
-      normalCanvas.width = normalCanvas.height = roughCanvas.width = roughCanvas.height = 512;
-      const nctx = normalCanvas.getContext("2d")!;
-      const rctx = roughCanvas.getContext("2d")!;
-      nctx.drawImage(src,0,0,512,512);
-      rctx.drawImage(src,0,0,512,512);
-      const img = nctx.getImageData(0,0,512,512);
-      const rimg = rctx.getImageData(0,0,512,512);
-      const data = img.data;
-      const rdata = rimg.data;
-      for(let y=0;y<512;y++){
-        for(let x=0;x<512;x++){
-          const i=(y*512+x)*4;
-          const l=(data[i]*.299+data[i+1]*.587+data[i+2]*.114)/255;
-          const lL=((data[(y*512+Math.max(0,x-2))*4]*.299+data[(y*512+Math.max(0,x-2))*4+1]*.587+data[(y*512+Math.max(0,x-2))*4+2]*.114)/255);
-          const lR=((data[(y*512+Math.min(511,x+2))*4]*.299+data[(y*512+Math.min(511,x+2))*4+1]*.587+data[(y*512+Math.min(511,x+2))*4+2]*.114)/255);
-          const lU=((data[(Math.max(0,y-2)*512+x)*4]*.299+data[(Math.max(0,y-2)*512+x)*4+1]*.587+data[(Math.max(0,y-2)*512+x)*4+2]*.114)/255);
-          const lD=((data[(Math.min(511,y+2)*512+x)*4]*.299+data[(Math.min(511,y+2)*512+x)*4+1]*.587+data[(Math.min(511,y+2)*512+x)*4+2]*.114)/255);
-          const nx=128+(lL-lR)*120;
-          const ny=128+(lU-lD)*120;
-          data[i]=Math.max(0,Math.min(255,nx));
-          data[i+1]=Math.max(0,Math.min(255,ny));
-          data[i+2]=255;
-          data[i+3]=255;
-          // Roughness is mostly matte, with subtle variation from the base texture.
-          const rv=Math.max(0,Math.min(255,(roughness+(0.5-l)*.18)*255));
-          rdata[i]=rdata[i+1]=rdata[i+2]=rv;rdata[i+3]=255;
-        }
-      }
-      nctx.putImageData(img,0,0);
-      rctx.putImageData(rimg,0,0);
-      const normalMap=new THREE.CanvasTexture(normalCanvas);
-      const roughnessMap=new THREE.CanvasTexture(roughCanvas);
-      for(const map of [normalMap,roughnessMap]){map.wrapS=map.wrapT=THREE.RepeatWrapping;map.anisotropy=4;}
-      normalMap.colorSpace=THREE.NoColorSpace;
-      roughnessMap.colorSpace=THREE.NoColorSpace;
-      return {normalMap,roughnessMap};
-    };
-
     const groundTexture = canvasTex("ground");
-    const groundMaps = surfaceMaps(groundTexture, .94);
     groundTexture.repeat.set(5, 6);
-    groundMaps.normalMap.repeat.set(5,6);
-    groundMaps.roughnessMap.repeat.set(5,6);
     const groundGeo = new THREE.PlaneGeometry(190, 190, 62, 62);
     const gp = groundGeo.attributes.position as THREE.BufferAttribute;
     for (let i=0;i<gp.count;i++) {
@@ -1127,7 +1079,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     }
     groundGeo.rotateX(-Math.PI/2);
     groundGeo.computeVertexNormals();
-    const terrain = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: groundTexture, normalMap: groundMaps.normalMap, normalScale: new THREE.Vector2(.18,.18), roughnessMap: groundMaps.roughnessMap, roughness: .96 }));
+    const terrain = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: groundTexture, roughness: 1, metalness: 0 }));
     terrain.receiveShadow = true;
     scene.add(terrain);
 
@@ -1227,10 +1179,6 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       addMesh(stone);addCircleCollider(stone.position.x,stone.position.z,r*.9,.03);
     }
 
-    // One shared road texture/map set keeps startup cost low even though several roads use it.
-    const roadTexture=canvasTex("road");
-    const roadMaps=surfaceMaps(roadTexture,.96);
-
     // Roads are deliberately dark and wide, with two wheel ruts and stone edges.
     const road = (points:Array<[number,number]>, width:number) => {
       const pts=points.map(([x,z])=>new THREE.Vector3(x,groundY(x,z)+.035,z));
@@ -1243,7 +1191,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         if(i<pts.length-1){const k=i*2;idx.push(k,k+1,k+2,k+1,k+3,k+2);}
       }
       const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));geo.setIndex(idx);geo.computeVertexNormals();
-      const mesh=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map:roadTexture,normalMap:roadMaps.normalMap,normalScale:new THREE.Vector2(.12,.12),roughnessMap:roadMaps.roughnessMap,roughness:.96}));mesh.receiveShadow=true;scene.add(mesh);
+      const mesh=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map:canvasTex("road"),roughness:1}));mesh.receiveShadow=true;scene.add(mesh);
       // wheel ruts
       [-width*.22,width*.22].forEach(off=>{
         const rutPts=pts.map((p,i)=>{const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];const dx=b.x-a.x,dz=b.z-a.z,l=Math.max(.001,Math.hypot(dx,dz));return new THREE.Vector3(p.x+(-dz/l)*off,p.y+.045,p.z+(dx/l)*off);});
@@ -1264,15 +1212,13 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     road([[-39,-8],[-47,-12],[-53,-15]],3.4);
 
     const woodTex=canvasTex("wood");woodTex.repeat.set(2,1);
-    const woodMaps=surfaceMaps(woodTex,.88);woodMaps.normalMap.repeat.set(2,1);woodMaps.roughnessMap.repeat.set(2,1);
     const roofTex=canvasTex("roof");roofTex.repeat.set(2,2);
-    const roofMaps=surfaceMaps(roofTex,.94);roofMaps.normalMap.repeat.set(2,2);roofMaps.roughnessMap.repeat.set(2,2);
 
     // Detailed Nordic longhouse.
     const house=(x:number,z:number,w:number,d:number,rot:number,label:string,id:string,wallColor:number,roofColor:number)=>{
       const g=new THREE.Group();g.rotation.y=rot;g.position.set(x,groundY(x,z),z);g.userData={id,label};
       const stoneMat=new THREE.MeshStandardMaterial({color:0x595b55,roughness:1});
-      const woodMat=new THREE.MeshStandardMaterial({map:woodTex,normalMap:woodMaps.normalMap,normalScale:new THREE.Vector2(.22,.22),roughnessMap:woodMaps.roughnessMap,color:wallColor,roughness:.9});
+      const woodMat=new THREE.MeshStandardMaterial({map:woodTex,color:wallColor,roughness:.92});
       const darkWood=mat(0x292019,1);
       const stoneBase=box(w+.7,.62,d+.7,0x565852,1);stoneBase.position.y=.31;g.add(stoneBase);
       const wall=new THREE.Mesh(new THREE.BoxGeometry(w,3.55,d),woodMat);wall.position.y=2.05;g.add(wall);
@@ -1293,7 +1239,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       }
       // Roof: thin shingle planes, without thick diagonal fascia beams.
       // The old BoxGeometry roof edges looked like giant logs crossing the doorway.
-      const roofMat=new THREE.MeshStandardMaterial({map:roofTex,normalMap:roofMaps.normalMap,normalScale:new THREE.Vector2(.16,.16),roughnessMap:roofMaps.roughnessMap,color:roofColor,roughness:.95,side:THREE.DoubleSide});
+      const roofMat=new THREE.MeshStandardMaterial({map:roofTex,color:roofColor,roughness:.98,side:THREE.DoubleSide});
       const roofA=new THREE.Mesh(new THREE.PlaneGeometry(w*.82,d+1.0),roofMat);
       const roofB=new THREE.Mesh(new THREE.PlaneGeometry(w*.82,d+1.0),roofMat);
       roofA.rotation.x=Math.PI/2; roofB.rotation.x=Math.PI/2;
@@ -1358,8 +1304,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const shed=(x:number,z:number,w:number,d:number,rot:number,label:string,id:string)=>{
       const g=new THREE.Group(); g.position.set(x,groundY(x,z),z); g.rotation.y=rot; g.userData={id,label};
       const base=box(w+.25,.35,d+.25,0x555148,1);base.position.y=.18;g.add(base);
-      const wall=new THREE.Mesh(new THREE.BoxGeometry(w,2.5,d),new THREE.MeshStandardMaterial({map:woodTex,normalMap:woodMaps.normalMap,normalScale:new THREE.Vector2(.22,.22),roughnessMap:woodMaps.roughnessMap,color:0x62442f,roughness:.94}));wall.position.y=1.45;g.add(wall);
-      const roof=new THREE.Mesh(new THREE.BoxGeometry(w+.6,.18,d+.65),new THREE.MeshStandardMaterial({map:roofTex,normalMap:roofMaps.normalMap,normalScale:new THREE.Vector2(.16,.16),roughnessMap:roofMaps.roughnessMap,color:0x292724,roughness:.95}));roof.rotation.z=.55;roof.position.set(-.16,3.0,0);g.add(roof);
+      const wall=new THREE.Mesh(new THREE.BoxGeometry(w,2.5,d),new THREE.MeshStandardMaterial({map:woodTex,color:0x62442f,roughness:1}));wall.position.y=1.45;g.add(wall);
+      const roof=new THREE.Mesh(new THREE.BoxGeometry(w+.6,.18,d+.65),new THREE.MeshStandardMaterial({map:roofTex,color:0x292724,roughness:1}));roof.rotation.z=.55;roof.position.set(-.16,3.0,0);g.add(roof);
       const roof2=roof.clone();roof2.rotation.z=-.55;roof2.position.x=.16;g.add(roof2);
       const door=box(1.05,1.75,.12,0x2a1c14,1);door.position.set(0,1.05,d/2+.07);g.add(door);
       addMesh(g,id,label);objects.push(g);addRectCollider(x,z,w+.55,d+.55,rot,.04);
@@ -1867,11 +1813,11 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       const a=midHash(i,701)*Math.PI*2,r=15+midHash(i,702)*50,x=Math.cos(a)*r,z=Math.sin(a)*r+3;
       if(Math.abs(x)<10&&Math.abs(z)<16) continue;
       const g=new THREE.Group();g.position.set(x,groundY(x,z),z);
-      for(let k=0;k<3;k++){const blade=new THREE.Mesh(new THREE.ConeGeometry(.025,.38+midHash(k,i)*.28,4),mat(k===1?0x53683f:0x415a37,1));blade.position.set((k-1)*.09,.18,(midHash(k*3,i)-.5)*.12);blade.rotation.z=(k-1)*.22;g.add(blade);}
+      for(let k=0;k<3;k++){const blade=new THREE.Mesh(new THREE.ConeGeometry(.025,.38+midHash(k,i)*.28,4),new THREE.MeshStandardMaterial({color:k===1?0x50613c:0x3e5635,roughness:1,metalness:0,flatShading:true}));blade.position.set((k-1)*.09,.18,(midHash(k*3,i)-.5)*.12);blade.rotation.z=(k-1)*.22;g.add(blade);}
       scene.add(g);
     }
 
-    for(let i=0;i<80;i++){const x=-88+midHash(i,101)*176,z=-88+midHash(i,111)*176;if(Math.hypot(x,z+2)>30){const grass=new THREE.Mesh(new THREE.ConeGeometry(.08,.55+midHash(i,121)*.7,5),mat(0x4b6840,1));grass.position.set(x,groundY(x,z)+.3,z);scene.add(grass);}}
+    for(let i=0;i<80;i++){const x=-88+midHash(i,101)*176,z=-88+midHash(i,111)*176;if(Math.hypot(x,z+2)>30){const grass=new THREE.Mesh(new THREE.ConeGeometry(.08,.55+midHash(i,121)*.7,5),new THREE.MeshStandardMaterial({color:i%3===0?0x50633d:(i%3===1?0x455a38:0x3e5434),roughness:1,metalness:0,flatShading:true}));grass.position.set(x,groundY(x,z)+.3,z);scene.add(grass);}}
 
     // A small watchtower gives vertical scale and a visible landmark.
     const tower=new THREE.Group();tower.position.set(29,groundY(29,25),25);tower.userData={id:"tower",label:"Сторожевая башня"};for(const px of [-2,2])for(const pz of [-2,2]){const p=box(.35,7,.35,0x3c291d,1);p.position.set(px,3.5,pz);tower.add(p);}const deck=box(5,.35,5,0x68472d,1);deck.position.y=5.8;tower.add(deck);const roofT=new THREE.Mesh(new THREE.ConeGeometry(3.8,2.7,4),mat(0x292522,1));roofT.position.y=8;tower.add(roofT);addMesh(tower,"tower","Сторожевая башня");objects.push(tower);
