@@ -1940,11 +1940,23 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       // used dx/dz directly, so stopping movement instantly changed its target and
       // produced the visible screen jump/bounce on mobile.
       const cd=cameraDir.current;
+      // The old camera was locked too tightly to the hero: as soon as the hero
+      // moved, the camera followed by almost the same amount, making the hero
+      // look nailed to one point on the screen. Keep a real third-person follow
+      // offset with noticeable lag so the hero visibly travels through the world.
+      const followX = q.x-cd.x*2.0;
+      const followZ = q.z-cd.z*2.0+11.8;
       const target=insideHomeRef.current
         ? new THREE.Vector3(q.x-cd.x*1.0,hy+3.65,q.z-cd.z*1.0)
-        : new THREE.Vector3(q.x-cd.x*2.0,hy+7.2,q.z-cd.z*2.0+11.8);
-      camera.position.lerp(target,insideHomeRef.current?.09:.055);
-      camera.lookAt(q.x+(insideHomeRef.current?cd.x*.9:cd.x*1.9),hy+(insideHomeRef.current?1.25:1.2),q.z+(insideHomeRef.current?cd.z*.9:cd.z*1.9));
+        : new THREE.Vector3(followX,hy+7.2,followZ);
+      const followLerp=insideHomeRef.current?.085:.028;
+      camera.position.lerp(target,followLerp);
+      const lookLerp=insideHomeRef.current?.14:.055;
+      const lookX=q.x+(insideHomeRef.current?cd.x*.9:cd.x*1.9);
+      const lookZ=q.z+(insideHomeRef.current?cd.z*.9:cd.z*1.9);
+      const currentLook=(camera.userData.followLook ||= new THREE.Vector3(q.x,hy+1.2,q.z));
+      currentLook.lerp(new THREE.Vector3(lookX,hy+(insideHomeRef.current?1.25:1.2),lookZ),lookLerp);
+      camera.lookAt(currentLook);
       let found="",foundId="";
       if(insideHomeRef.current){
         if(q.z>heroHomeZ+1.72){found="Дверь — выйти из дома";foundId="heroHomeExit";}
