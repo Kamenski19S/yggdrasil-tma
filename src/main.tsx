@@ -1547,25 +1547,60 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     makeForestClearing(67,49,9.5,'deepGrove','Глубокая роща',1);
     makeForestClearing(52,7,7.5,'fallenAsh','Поверженный ясень',2);
 
-    // The hero's home stands beyond the hunter camp, so the eastern forest has a
-    // meaningful destination instead of becoming empty space. It is a permanent
-    // personal landmark and a natural place to return to between expeditions.
-    house(77,29,10.5,7.6,-.12,'Дом героя','heroHome',0x735039,0x292725);
-    const heroYard=new THREE.Group();
-    heroYard.position.set(77,groundY(77,29),29);
-    const yardRing=new THREE.Mesh(new THREE.TorusGeometry(6.7,.055,7,48),new THREE.MeshStandardMaterial({color:0x76624c,emissive:0x211b15,emissiveIntensity:.25,transparent:true,opacity:.5}));
-    yardRing.rotation.x=Math.PI/2; yardRing.position.y=.035; heroYard.add(yardRing);
-    // Low fence around the yard: no heavy log piles or beams.
-    for(const [fx,fz,rot] of [[-5.3,-2.5,0],[5.3,-2.5,0],[-5.3,2.7,0],[5.3,2.7,0]]){
-      const post=box(.18,1.05,.18,0x493527,1); post.position.set(fx,.53,fz); heroYard.add(post);
+    // The hero's home is deliberately a SMALL personal cabin just beyond the hunter camp.
+    // It is visually distinct from the larger village houses: lower walls, a compact turf roof,
+    // a short porch and a modest fenced yard. This is the hero's own dwelling, not another NPC house.
+    const heroHomeX=75, heroHomeZ=30;
+    const heroCabin=new THREE.Group();
+    heroCabin.position.set(heroHomeX,groundY(heroHomeX,heroHomeZ),heroHomeZ);
+    const cabinStoneMat=mat(0x5b5a53,1);
+    const cabinWall=box(7.4,2.8,5.4,0x62432f,1);
+    cabinWall.position.y=1.4; heroCabin.add(cabinWall);
+    const foundation=box(7.8,.42,5.8,0x55534d,1);
+    foundation.position.y=.22; heroCabin.add(foundation);
+    // Simple front door and small windows — no beams crossing the doorway.
+    const cabinDoor=box(1.15,2.05,.12,0x302219,1);
+    cabinDoor.position.set(0,1.28,2.78); heroCabin.add(cabinDoor);
+    const doorHandle=new THREE.Mesh(new THREE.SphereGeometry(.08,8,6),mat(0xb48a4b,1));
+    doorHandle.position.set(.28,1.25,2.88); heroCabin.add(doorHandle);
+    for(const px of [-2.35,2.35]){
+      const winFrame=box(1.25,1.0,.12,0x2b211b,1); winFrame.position.set(px,1.72,2.77); heroCabin.add(winFrame);
+      const win=new THREE.Mesh(new THREE.BoxGeometry(.98,.72,.06),new THREE.MeshStandardMaterial({color:0xd39b4f,emissive:0x9a5c20,emissiveIntensity:1.25,roughness:.45}));
+      win.position.set(px,1.72,2.86); heroCabin.add(win);
+      const v=box(.07,.78,.1,0x2b211b,1); v.position.set(px,1.72,2.91); heroCabin.add(v);
+      const h=box(1.08,.07,.1,0x2b211b,1); h.position.set(px,1.72,2.91); heroCabin.add(h);
     }
-    for(const fz of [-2.5,2.7]){const rail=box(10.6,.12,.12,0x60412b,1);rail.position.set(0,.62,fz);heroYard.add(rail);}
+    // Compact pitched turf/shingle roof.
+    const cabinRoofMat=new THREE.MeshStandardMaterial({map:roofTex,color:0x292a27,roughness:.98,side:THREE.DoubleSide});
+    const roofL=new THREE.Mesh(new THREE.PlaneGeometry(4.25,6.25),cabinRoofMat);
+    const roofR=new THREE.Mesh(new THREE.PlaneGeometry(4.25,6.25),cabinRoofMat);
+    roofL.rotation.x=Math.PI/2; roofR.rotation.x=Math.PI/2;
+    roofL.rotation.z=.62; roofR.rotation.z=-.62;
+    roofL.position.set(-1.02,3.95,0); roofR.position.set(1.02,3.95,0);
+    heroCabin.add(roofL,roofR);
+    const cabinRidge=box(.22,.22,6.45,0x29231d,1); cabinRidge.position.y=4.75; heroCabin.add(cabinRidge);
+    const chimney=new THREE.Mesh(new THREE.BoxGeometry(.48,1.35,.48),cabinStoneMat);
+    chimney.position.set(1.55,4.8,-.65); heroCabin.add(chimney);
+    const chimneyCap=box(.62,.10,.62,0x34312d,1); chimneyCap.position.set(1.55,5.48,-.65); heroCabin.add(chimneyCap);
+    // Small front porch.
+    const porch=box(2.35,.18,1.0,0x65452d,1); porch.position.set(0,.62,3.15); heroCabin.add(porch);
+    const porchStep=box(1.55,.16,.48,0x59402b,1); porchStep.position.set(0,.30,3.58); heroCabin.add(porchStep);
+    addMesh(heroCabin,'heroHome','Домик героя'); objects.push(heroCabin);
+    addRectCollider(heroHomeX,heroHomeZ,8.0,5.9,0,.05);
+
+    const heroYard=new THREE.Group();
+    heroYard.position.set(heroHomeX,groundY(heroHomeX,heroHomeZ),heroHomeZ);
+    const yardRing=new THREE.Mesh(new THREE.TorusGeometry(6.2,.055,7,48),new THREE.MeshStandardMaterial({color:0x76624c,emissive:0x211b15,emissiveIntensity:.25,transparent:true,opacity:.5}));
+    yardRing.rotation.x=Math.PI/2; yardRing.position.y=.035; heroYard.add(yardRing);
+    // Low fence leaves the cabin visually open and avoids the heavy log-pile look.
+    for(const [fx,fz] of [[-5.1,-2.4],[5.1,-2.4],[-5.1,2.9],[5.1,2.9]]){
+      const post=box(.18,1.0,.18,0x493527,1); post.position.set(fx,.50,fz); heroYard.add(post);
+    }
+    for(const fz of [-2.4,2.9]){const rail=box(10.2,.12,.12,0x60412b,1);rail.position.set(0,.59,fz);heroYard.add(rail);}
     const pathStoneMat=mat(0x69645c,1);
-    for(let i=0;i<7;i++){const st=new THREE.Mesh(new THREE.CylinderGeometry(.34,.42,.12,7),pathStoneMat);st.position.set(0,.08,5.5+i*.72);st.rotation.y=i*.4;heroYard.add(st);}
-    // A small personal hearth in the yard makes the house read as inhabited.
-    const homeHearth=fire(72.8,34.2,.5); homeHearth.scale.setScalar(.72);
-    addMesh(heroYard,'heroHomeYard','Двор дома героя'); objects.push(heroYard);
-    addCircleCollider(77,29,.9,.08);
+    for(let i=0;i<7;i++){const st=new THREE.Mesh(new THREE.CylinderGeometry(.32,.40,.12,7),pathStoneMat);st.position.set(0,.08,4.1+i*.72);st.rotation.y=i*.4;heroYard.add(st);}
+    const homeHearth=fire(heroHomeX-2.4,heroHomeZ+4.8,.48); homeHearth.scale.setScalar(.72);
+    addMesh(heroYard,'heroHomeYard','Двор домика героя'); objects.push(heroYard);
 
     // Small landmarks inside the clearings.
     const campFire=fire(70,18,.75); campFire.scale.setScalar(.72);
@@ -1578,7 +1613,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     for(let i=0;i<95;i++){
       const a=midHash(i,77)*Math.PI*2;const r=58+midHash(i,91)*32;
       const x=Math.cos(a)*r,z=Math.sin(a)*r+2;
-      const reserved=[[ashGroveX,ashGroveZ,11],[39,70,13],[-64,36,11],[-43,62,10],[30,53,12],[61,78,10],[-15,58,7],[46,43,7],[-48,72,7],[70,18,11],[77,29,11],[67,49,12],[52,7,10]];
+      const reserved=[[ashGroveX,ashGroveZ,11],[39,70,13],[-64,36,11],[-43,62,10],[30,53,12],[61,78,10],[-15,58,7],[46,43,7],[-48,72,7],[70,18,11],[75,30,13],[67,49,12],[52,7,10]];
       const reservedHit=reserved.some(([rx,rz,rr])=>Math.hypot(x-rx,z-rz)<rr);
       if(Math.abs(x+57)>9 && !reservedHit)firTree(x,z,.78+midHash(i,13)*.82);
     }
@@ -1623,7 +1658,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       {id:"house",label:"Дом старейшины",x:13,z:-18,r:5.2},{id:"forge",label:"Кузница",x:-10,z:-5,r:5.4},
       {id:"mimir",label:"Колодец Мимира",x:18,z:15,r:4.8},{id:"norns",label:"Прядильня норн",x:-25,z:43,r:5.4},
       {id:"rune",label:"Древний камень Феху",x:27,z:57,r:4.5},{id:"ritual",label:"Круг Силы",x:-43,z:62,r:6.8},{id:"port",label:"Речной причал",x:-46,z:-15,r:5},
-      {id:"ashgrove",label:"Роща Ясеня",x:-4,z:69,r:7.5},{id:"forestEvent",label:eventDone?"Камень Трёх Нитей — место выбора":"Камень Трёх Нитей",x:eventX,z:eventZ,r:4.8},{id:"forestCache",label:"Забытый тайник",x:-15,z:58,r:4.2},{id:"forestWhisper",label:"Камень Шёпота",x:46,z:43,r:4.2},{id:"forestThread",label:"Разорванная нить",x:-48,z:72,r:4.2},{id:"runefield",label:"Поле Рун",x:39,z:70,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-64,z:36,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:30,z:53,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:61,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:70,z:18,r:8.5},{id:"heroHome",label:"Дом героя",x:77,z:29,r:7.5},{id:"deepGrove",label:"Глубокая роща",x:67,z:49,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:52,z:7,r:7.5},
+      {id:"ashgrove",label:"Роща Ясеня",x:-4,z:69,r:7.5},{id:"forestEvent",label:eventDone?"Камень Трёх Нитей — место выбора":"Камень Трёх Нитей",x:eventX,z:eventZ,r:4.8},{id:"forestCache",label:"Забытый тайник",x:-15,z:58,r:4.2},{id:"forestWhisper",label:"Камень Шёпота",x:46,z:43,r:4.2},{id:"forestThread",label:"Разорванная нить",x:-48,z:72,r:4.2},{id:"runefield",label:"Поле Рун",x:39,z:70,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-64,z:36,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:30,z:53,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:61,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:70,z:18,r:8.5},{id:"heroHome",label:"Домик героя",x:75,z:30,r:7.0},{id:"deepGrove",label:"Глубокая роща",x:67,z:49,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:52,z:7,r:7.5},
       {id:"elder",label:"Старейшина",x:9,z:-8,r:3.2},{id:"blacksmith",label:"Кузнец",x:-6,z:-3,r:3.2},
       {id:"gate",label:"Ворота Мидгарда",x:0,z:-31,r:5},{id:"tower",label:"Сторожевая башня",x:29,z:25,r:4}
     ];
@@ -2008,7 +2043,7 @@ const [roadT, setRoadT] = useState(0.06);
         return;
       }
       if (id === "heroHome") {
-        say("Дом героя. Здесь начинается и заканчивается твой путь по Мидгарду. Можно возвращаться сюда после дальних походов — позже этот дом станет настоящей базой для хранения найденного и новых приключений.");
+        say("Домик героя. Здесь начинается и заканчивается твой путь по Мидгарду. Можно возвращаться сюда после дальних походов — позже этот дом станет настоящей базой для хранения найденного и новых приключений.");
         return;
       }
       if (id === "hunterCamp") {
