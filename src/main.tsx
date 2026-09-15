@@ -1547,6 +1547,26 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     makeForestClearing(67,49,9.5,'deepGrove','Глубокая роща',1);
     makeForestClearing(52,7,7.5,'fallenAsh','Поверженный ясень',2);
 
+    // The hero's home stands beyond the hunter camp, so the eastern forest has a
+    // meaningful destination instead of becoming empty space. It is a permanent
+    // personal landmark and a natural place to return to between expeditions.
+    house(77,29,10.5,7.6,-.12,'Дом героя','heroHome',0x735039,0x292725);
+    const heroYard=new THREE.Group();
+    heroYard.position.set(77,groundY(77,29),29);
+    const yardRing=new THREE.Mesh(new THREE.TorusGeometry(6.7,.055,7,48),new THREE.MeshStandardMaterial({color:0x76624c,emissive:0x211b15,emissiveIntensity:.25,transparent:true,opacity:.5}));
+    yardRing.rotation.x=Math.PI/2; yardRing.position.y=.035; heroYard.add(yardRing);
+    // Low fence around the yard: no heavy log piles or beams.
+    for(const [fx,fz,rot] of [[-5.3,-2.5,0],[5.3,-2.5,0],[-5.3,2.7,0],[5.3,2.7,0]]){
+      const post=box(.18,1.05,.18,0x493527,1); post.position.set(fx,.53,fz); heroYard.add(post);
+    }
+    for(const fz of [-2.5,2.7]){const rail=box(10.6,.12,.12,0x60412b,1);rail.position.set(0,.62,fz);heroYard.add(rail);}
+    const pathStoneMat=mat(0x69645c,1);
+    for(let i=0;i<7;i++){const st=new THREE.Mesh(new THREE.CylinderGeometry(.34,.42,.12,7),pathStoneMat);st.position.set(0,.08,5.5+i*.72);st.rotation.y=i*.4;heroYard.add(st);}
+    // A small personal hearth in the yard makes the house read as inhabited.
+    const homeHearth=fire(72.8,34.2,.5); homeHearth.scale.setScalar(.72);
+    addMesh(heroYard,'heroHomeYard','Двор дома героя'); objects.push(heroYard);
+    addCircleCollider(77,29,.9,.08);
+
     // Small landmarks inside the clearings.
     const campFire=fire(70,18,.75); campFire.scale.setScalar(.72);
     const campStone=new THREE.Mesh(new THREE.CylinderGeometry(.65,.8,.7,7),mat(0x514a42,1)); campStone.position.set(70,groundY(70,18)+.35,16.5); scene.add(campStone);
@@ -1558,7 +1578,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     for(let i=0;i<95;i++){
       const a=midHash(i,77)*Math.PI*2;const r=58+midHash(i,91)*32;
       const x=Math.cos(a)*r,z=Math.sin(a)*r+2;
-      const reserved=[[ashGroveX,ashGroveZ,11],[39,70,13],[-64,36,11],[-43,62,10],[30,53,12],[61,78,10],[-15,58,7],[46,43,7],[-48,72,7],[70,18,11],[67,49,12],[52,7,10]];
+      const reserved=[[ashGroveX,ashGroveZ,11],[39,70,13],[-64,36,11],[-43,62,10],[30,53,12],[61,78,10],[-15,58,7],[46,43,7],[-48,72,7],[70,18,11],[77,29,11],[67,49,12],[52,7,10]];
       const reservedHit=reserved.some(([rx,rz,rr])=>Math.hypot(x-rx,z-rz)<rr);
       if(Math.abs(x+57)>9 && !reservedHit)firTree(x,z,.78+midHash(i,13)*.82);
     }
@@ -1603,7 +1623,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       {id:"house",label:"Дом старейшины",x:13,z:-18,r:5.2},{id:"forge",label:"Кузница",x:-10,z:-5,r:5.4},
       {id:"mimir",label:"Колодец Мимира",x:18,z:15,r:4.8},{id:"norns",label:"Прядильня норн",x:-25,z:43,r:5.4},
       {id:"rune",label:"Древний камень Феху",x:27,z:57,r:4.5},{id:"ritual",label:"Круг Силы",x:-43,z:62,r:6.8},{id:"port",label:"Речной причал",x:-46,z:-15,r:5},
-      {id:"ashgrove",label:"Роща Ясеня",x:-4,z:69,r:7.5},{id:"forestEvent",label:eventDone?"Камень Трёх Нитей — место выбора":"Камень Трёх Нитей",x:eventX,z:eventZ,r:4.8},{id:"forestCache",label:"Забытый тайник",x:-15,z:58,r:4.2},{id:"forestWhisper",label:"Камень Шёпота",x:46,z:43,r:4.2},{id:"forestThread",label:"Разорванная нить",x:-48,z:72,r:4.2},{id:"runefield",label:"Поле Рун",x:39,z:70,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-64,z:36,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:30,z:53,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:61,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:70,z:18,r:8.5},{id:"deepGrove",label:"Глубокая роща",x:67,z:49,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:52,z:7,r:7.5},
+      {id:"ashgrove",label:"Роща Ясеня",x:-4,z:69,r:7.5},{id:"forestEvent",label:eventDone?"Камень Трёх Нитей — место выбора":"Камень Трёх Нитей",x:eventX,z:eventZ,r:4.8},{id:"forestCache",label:"Забытый тайник",x:-15,z:58,r:4.2},{id:"forestWhisper",label:"Камень Шёпота",x:46,z:43,r:4.2},{id:"forestThread",label:"Разорванная нить",x:-48,z:72,r:4.2},{id:"runefield",label:"Поле Рун",x:39,z:70,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-64,z:36,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:30,z:53,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:61,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:70,z:18,r:8.5},{id:"heroHome",label:"Дом героя",x:77,z:29,r:7.5},{id:"deepGrove",label:"Глубокая роща",x:67,z:49,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:52,z:7,r:7.5},
       {id:"elder",label:"Старейшина",x:9,z:-8,r:3.2},{id:"blacksmith",label:"Кузнец",x:-6,z:-3,r:3.2},
       {id:"gate",label:"Ворота Мидгарда",x:0,z:-31,r:5},{id:"tower",label:"Сторожевая башня",x:29,z:25,r:4}
     ];
@@ -1985,6 +2005,10 @@ const [roadT, setRoadT] = useState(0.06);
           haptic("success");
           say("На ветке висит оборванная нить. Ты не знаешь, кому она принадлежала, но рядом лежит руна судьбы. +22 ✨");
         } else say("Оборванная нить всё ещё висит на ветке. Второго знака она не даёт.");
+        return;
+      }
+      if (id === "heroHome") {
+        say("Дом героя. Здесь начинается и заканчивается твой путь по Мидгарду. Можно возвращаться сюда после дальних походов — позже этот дом станет настоящей базой для хранения найденного и новых приключений.");
         return;
       }
       if (id === "hunterCamp") {
