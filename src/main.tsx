@@ -398,9 +398,9 @@ function midRock(x: number, z: number, s = 1) {
 
 function addGrassTuft(scene: THREE.Scene, x: number, z: number, s = 1) {
   const g = new THREE.Group();
-  const mat = midMat(0x3d653e, 1);
+  const mat = new THREE.MeshLambertMaterial({ color: 0x3d653e });
   for (let i = 0; i < 4; i++) {
-    const blade = midBox(0.035 * s, 0.45 * s, 0.035 * s, 0x3d653e, 1);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.035 * s, 0.45 * s, 0.035 * s), mat);
     blade.position.set((i - 1.5) * 0.08 * s, 0.22 * s, (i % 2) * 0.07 * s);
     blade.rotation.z = (i - 1.5) * 0.18;
     blade.material = mat;
@@ -1020,7 +1020,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       return broad * (1 - village * 0.88) - road * 0.18;
     };
 
-    const canvasTex = (type: "ground" | "wood" | "roof" | "road") => {
+    const canvasTex = (type: "ground" | "wood" | "roof" | "road" | "bark" | "foliage") => {
       const c = document.createElement("canvas");
       c.width = c.height = 512;
       const ctx = c.getContext("2d")!;
@@ -1056,6 +1056,37 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
           for(let x=-40;x<560;x+=38){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-18,y+28);ctx.stroke();}
         }
         for(let i=0;i<180;i++){ctx.fillStyle=`rgba(170,154,123,${.03+rand(i)*.07})`;ctx.fillRect(rand(i*2)*512,rand(i*3)*512,2+rand(i*4)*7,2);}
+      } else if (type === "bark") {
+        // Matte bark: vertical fibers and broken patches, intentionally no glossy bands.
+        ctx.fillStyle="#4b3526";ctx.fillRect(0,0,512,512);
+        for(let i=0;i<95;i++){
+          const x=rand(i*2.1)*512;
+          const w=2+rand(i*3.7)*7;
+          ctx.fillStyle=`rgba(${24+rand(i)*24},${16+rand(i*4)*18},${10+rand(i*5)*14},${.18+rand(i*6)*.22})`;
+          ctx.fillRect(x,0,w,512);
+        }
+        for(let i=0;i<80;i++){
+          const x=rand(i*7.1)*512,y=rand(i*8.2)*512;
+          ctx.strokeStyle=`rgba(126,91,60,${.07+rand(i*2)*.09})`;ctx.lineWidth=1+rand(i*3)*2;
+          ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(rand(i*4)-.5)*12,y+18+rand(i*5)*45);ctx.stroke();
+        }
+      } else if (type === "foliage") {
+        // Soft, matte needle/leaf color breakup. No painted highlights.
+        ctx.fillStyle="#2d4d35";ctx.fillRect(0,0,512,512);
+        for(let i=0;i<1900;i++){
+          const x=rand(i*1.17)*512,y=rand(i*2.31)*512;
+          const light=rand(i*3.7);
+          const r=light>.72?72:light>.36?54:38;
+          const g=light>.72?92:light>.36?76:60;
+          const b=light>.72?58:light>.36?48:40;
+          ctx.fillStyle=`rgba(${r},${g},${b},${.16+rand(i*4)*.28})`;
+          ctx.beginPath();ctx.arc(x,y,1.5+rand(i*5)*4.5,0,Math.PI*2);ctx.fill();
+        }
+        for(let i=0;i<260;i++){
+          const x=rand(i*9.1)*512,y=rand(i*10.2)*512;
+          ctx.strokeStyle=`rgba(18,31,22,${.08+rand(i*3)*.12})`;ctx.lineWidth=1;
+          ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(rand(i*2)-.5)*10,y+(rand(i*4)-.5)*10);ctx.stroke();
+        }
       } else {
         ctx.fillStyle="#514333";ctx.fillRect(0,0,512,512);
         for(let i=0;i<1300;i++){
@@ -1071,6 +1102,12 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     const groundTexture = canvasTex("ground");
     groundTexture.repeat.set(5, 6);
+    const barkTexture = canvasTex("bark");
+    barkTexture.wrapS = barkTexture.wrapT = THREE.RepeatWrapping;
+    barkTexture.repeat.set(1.2, 1.8);
+    const foliageTexture = canvasTex("foliage");
+    foliageTexture.wrapS = foliageTexture.wrapT = THREE.RepeatWrapping;
+    foliageTexture.repeat.set(1.35, 1.35);
     const groundGeo = new THREE.PlaneGeometry(190, 190, 62, 62);
     const gp = groundGeo.attributes.position as THREE.BufferAttribute;
     for (let i=0;i<gp.count;i++) {
@@ -1092,7 +1129,6 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
 
     const mat = (color:number, rough=.9, metal=0) => new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal});
-    const matte = (color:number) => new THREE.MeshLambertMaterial({color});
     const box=(w:number,h:number,d:number,c:number,rough=.9)=>new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c,rough));
 
     const objects: THREE.Object3D[] = [];
@@ -1496,7 +1532,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     // The ash is a deliberate visual echo of Yggdrasil rather than a generic oak.
     const firTree=(x:number,z:number,s:number)=>{
       const g=new THREE.Group();const y=groundY(x,z);
-      const bark=matte(0x38281f);
+      const bark=new THREE.MeshLambertMaterial({map:barkTexture,color:0x5a3d29});
       const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18*s,.34*s,4.6*s,10),bark);
       trunk.position.y=2.3*s;trunk.rotation.z=(midHash(x,z)-.5)*.045;g.add(trunk);
 
@@ -1514,7 +1550,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       for(let i=0;i<6;i++){
         const t=i/5;
         const r=(1.55-.72*t)*s;
-        const crown=new THREE.Mesh(new THREE.ConeGeometry(r,.95*s,9,1),matte(greens[i%greens.length]));
+        const crown=new THREE.Mesh(new THREE.ConeGeometry(r,.95*s,9,1),new THREE.MeshLambertMaterial({map:foliageTexture,color:greens[i%greens.length]}));
         crown.scale.x=.88+midHash(i,x)*.18;
         crown.scale.z=.84+midHash(i,z)*.2;
         crown.position.set((midHash(i*4,x)-.5)*.28*s,(2.05+i*.62)*s,(midHash(i*5,z)-.5)*.28*s);
@@ -1524,7 +1560,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       // A few low boughs make large trees feel grown rather than assembled.
       if(s>1.15){
         for(let i=0;i<3;i++){
-          const low=new THREE.Mesh(new THREE.ConeGeometry(.62*s,.7*s,8),matte(greens[(i+2)%greens.length]));
+          const low=new THREE.Mesh(new THREE.ConeGeometry(.62*s,.7*s,8),new THREE.MeshLambertMaterial({map:foliageTexture,color:greens[(i+2)%greens.length]}));
           low.position.set((i-1)*.38*s,.72*s,(midHash(i,z)-.5)*.3*s);
           low.rotation.y=midHash(i+70,x)*Math.PI*2;g.add(low);
         }
@@ -1535,7 +1571,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     const ashTree=(x:number,z:number,s:number,ancient=false)=>{
       const g=new THREE.Group();const y=groundY(x,z);
-      const bark=matte(ancient?0x403229:0x4a3427);
+      const bark=new THREE.MeshLambertMaterial({map:barkTexture,color:ancient?0x4f3a2d:0x5a4030});
       const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.32*s,.52*s,5.8*s,11),bark);
       trunk.position.y=2.9*s;trunk.rotation.z=(midHash(x,z)-.5)*.035;g.add(trunk);
 
@@ -1553,7 +1589,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
         // Small leaf clusters at branch ends.
         for(let k=0;k<3;k++){
-          const leaf=new THREE.Mesh(new THREE.SphereGeometry((.42+midHash(k+i,90)*.22)*s,8,6),matte(k%2?0x496044:0x3b573b));
+          const leaf=new THREE.Mesh(new THREE.SphereGeometry((.42+midHash(k+i,90)*.22)*s,8,6),new THREE.MeshLambertMaterial({map:foliageTexture,color:k%2?0x496044:0x3b573b}));
           const f=.55+k*.18;
           leaf.position.set(Math.cos(a)*len*.62+(midHash(k, i)-.5)*.35*s,(3.55+midHash(i,k)*1.15+f)*s,Math.sin(a)*len*.62+(midHash(k+4,i)-.5)*.35*s);
           leaf.scale.y=.72;g.add(leaf);
@@ -1791,7 +1827,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const campFire=fire(70,18,.75); campFire.scale.setScalar(.72);
     const campStone=new THREE.Mesh(new THREE.CylinderGeometry(.65,.8,.7,7),mat(0x514a42,1)); campStone.position.set(70,groundY(70,18)+.35,16.5); scene.add(campStone);
     for(const [x,z] of [[68,20],[72,20],[68,16],[72,16]]){const post=box(.16,1.15,.16,0x493527,1);post.position.set(x,groundY(x,z)+.57,z);scene.add(post);}
-    const fallen=new THREE.Group(); fallen.position.set(52,groundY(52,7),7); const trunk= new THREE.Mesh(new THREE.CylinderGeometry(.5,.62,7,8),mat(0x4c392b,1)); trunk.rotation.z=Math.PI/2; trunk.position.y=.5; fallen.add(trunk); const cut=new THREE.Mesh(new THREE.CylinderGeometry(.53,.53,.12,12),mat(0x75644d,1)); cut.rotation.z=Math.PI/2; cut.position.set(3.5,.5,0); fallen.add(cut); scene.add(fallen);
+    const fallen=new THREE.Group(); fallen.position.set(52,groundY(52,7),7); const trunk= new THREE.Mesh(new THREE.CylinderGeometry(.5,.62,7,8),new THREE.MeshLambertMaterial({map:barkTexture,color:0x4c392b})); trunk.rotation.z=Math.PI/2; trunk.position.y=.5; fallen.add(trunk); const cut=new THREE.Mesh(new THREE.CylinderGeometry(.53,.53,.12,12),mat(0x75644d,1)); cut.rotation.z=Math.PI/2; cut.position.set(3.5,.5,0); fallen.add(cut); scene.add(fallen);
     for(let i=0;i<7;i++){const rune=new THREE.Mesh(new THREE.DodecahedronGeometry(.14,0),mat(0x697d72,1));const a=i/7*Math.PI*2;rune.position.set(67+Math.cos(a)*4,.12+groundY(67+Math.cos(a)*4,49+Math.sin(a)*4),49+Math.sin(a)*4);scene.add(rune);}
 
     // Dense forest ring uses varied, irregular firs.
@@ -1814,11 +1850,11 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       const a=midHash(i,701)*Math.PI*2,r=15+midHash(i,702)*50,x=Math.cos(a)*r,z=Math.sin(a)*r+3;
       if(Math.abs(x)<10&&Math.abs(z)<16) continue;
       const g=new THREE.Group();g.position.set(x,groundY(x,z),z);
-      for(let k=0;k<3;k++){const blade=new THREE.Mesh(new THREE.ConeGeometry(.032,.38+midHash(k,i)*.28,5),matte(k===1?0x53683f:0x415a37));blade.position.set((k-1)*.09,.18,(midHash(k*3,i)-.5)*.12);blade.rotation.z=(k-1)*.22;g.add(blade);}
+      for(let k=0;k<3;k++){const blade=new THREE.Mesh(new THREE.ConeGeometry(.025,.38+midHash(k,i)*.28,4),new THREE.MeshLambertMaterial({color:k===1?0x53683f:0x415a37}));blade.position.set((k-1)*.09,.18,(midHash(k*3,i)-.5)*.12);blade.rotation.z=(k-1)*.22;g.add(blade);}
       scene.add(g);
     }
 
-    for(let i=0;i<80;i++){const x=-88+midHash(i,101)*176,z=-88+midHash(i,111)*176;if(Math.hypot(x,z+2)>30){const grass=new THREE.Mesh(new THREE.ConeGeometry(.085,.55+midHash(i,121)*.7,5),matte(0x4b6840));grass.position.set(x,groundY(x,z)+.3,z);scene.add(grass);}}
+    for(let i=0;i<80;i++){const x=-88+midHash(i,101)*176,z=-88+midHash(i,111)*176;if(Math.hypot(x,z+2)>30){const grass=new THREE.Mesh(new THREE.ConeGeometry(.08,.55+midHash(i,121)*.7,5),new THREE.MeshLambertMaterial({color:0x4b6840}));grass.position.set(x,groundY(x,z)+.3,z);scene.add(grass);}}
 
     // A small watchtower gives vertical scale and a visible landmark.
     const tower=new THREE.Group();tower.position.set(29,groundY(29,25),25);tower.userData={id:"tower",label:"Сторожевая башня"};for(const px of [-2,2])for(const pz of [-2,2]){const p=box(.35,7,.35,0x3c291d,1);p.position.set(px,3.5,pz);tower.add(p);}const deck=box(5,.35,5,0x68472d,1);deck.position.y=5.8;tower.add(deck);const roofT=new THREE.Mesh(new THREE.ConeGeometry(3.8,2.7,4),mat(0x292522,1));roofT.position.y=8;tower.add(roofT);addMesh(tower,"tower","Сторожевая башня");objects.push(tower);
