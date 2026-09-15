@@ -787,41 +787,181 @@ function addNPC(scene: THREE.Scene, objects: THREE.Object3D[], x: number, z: num
 }
 
 function midHero3d(h: HeroDef) {
+  // Human-scale hero built from articulated parts.  The silhouette is intentionally
+  // closer to a real person than the old capsule figure, while staying lightweight
+  // enough for mobile Three.js rendering.
   const g = new THREE.Group();
+  const male = h.gender === "m";
+  const skinColor = male ? 0xc9936f : 0xd9ad8a;
+  const hairColor = h.id === "elf" ? 0xb8c8d1 : (h.id === "dwarf" ? 0x6f4a32 : 0x2a211d);
   const clothColor = h.id === "berserk" ? 0x5a2020 : h.id === "dwarf" ? 0x71482f : h.id === "viking" ? 0x5b4b2b : 0x263b4d;
-  const skinColor = h.gender === "f" ? 0xd9ad8a : 0xc9936f;
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 0.72, 4, 8), midMat(clothColor, 0.88));
-  body.position.y = 0.9;
-  g.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 12), midMat(skinColor, 0.9));
-  head.position.y = 1.62;
+  const leatherColor = h.id === "dwarf" ? 0x4b2d1c : 0x3a281c;
+  const metalColor = h.id === "berserk" ? 0x9b9fa3 : 0x737a7e;
+
+  const matSkin = midMat(skinColor, 0.92);
+  const matCloth = midMat(clothColor, 0.9);
+  const matLeather = midMat(leatherColor, 0.96);
+  const matHair = midMat(hairColor, 0.95);
+  const matMetal = midMat(metalColor, 0.78);
+  const matDark = midMat(0x202326, 0.98);
+
+  // Pelvis and torso: separate forms give the body a waist and shoulders.
+  const pelvis = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.24, 5, 8), matLeather);
+  pelvis.position.y = 0.72;
+  g.add(pelvis);
+
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(male ? 0.37 : 0.32, 0.56, 6, 10), matCloth);
+  torso.position.y = 1.15;
+  g.add(torso);
+
+  const chest = new THREE.Mesh(new THREE.CapsuleGeometry(male ? 0.40 : 0.34, 0.34, 5, 8), matCloth);
+  chest.scale.z = 0.82;
+  chest.position.y = 1.28;
+  g.add(chest);
+
+  const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.38, 0.09, 12), matLeather);
+  belt.position.y = 0.93;
+  g.add(belt);
+  const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.055), matMetal);
+  buckle.position.set(0, 0.93, 0.38);
+  g.add(buckle);
+
+  // Neck and head.
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.18, 10), matSkin);
+  neck.position.y = 1.63;
+  g.add(neck);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.31, 16, 12), matSkin);
+  head.scale.set(0.92, 1.06, 0.92);
+  head.position.y = 1.91;
   g.add(head);
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.36, 12, 8), midMat(h.id === "elf" ? 0xb8c8d1 : 0x2a211d, 0.95));
-  hair.scale.y = 0.55;
-  hair.position.y = 1.82;
+
+  // Hair cap + back hair.  The elf keeps a lighter tone; the others are dark-haired.
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.325, 14, 10), matHair);
+  hair.scale.set(0.98, 0.72, 0.98);
+  hair.position.set(0, 2.08, -0.025);
   g.add(hair);
-  const leg1 = midBox(0.2, 0.72, 0.22, 0x202326, 0.96);
-  const leg2 = leg1.clone();
-  leg1.position.set(-0.15, 0.36, 0);
-  leg2.position.set(0.15, 0.36, 0);
-  g.add(leg1, leg2);
-  const shoulder = midBox(0.9, 0.22, 0.5, clothColor, 0.88);
-  shoulder.position.y = 1.23;
-  g.add(shoulder);
-  const cape = midBox(0.68, 0.95, 0.09, h.id === "berserk" ? 0x2b0c0c : 0x18272e, 0.98);
-  cape.position.set(0, 0.95, -0.34);
+  const hairBack = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.30, 5, 8), matHair);
+  hairBack.position.set(0, 1.93, -0.25);
+  hairBack.rotation.x = 0.15;
+  g.add(hairBack);
+
+  // Face details are tiny, but make the head read as a human rather than a sphere.
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.13, 5), matSkin);
+  nose.rotation.x = Math.PI / 2;
+  nose.position.set(0, 1.92, 0.30);
+  g.add(nose);
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x17191a, roughness: 0.55 });
+  for (const sx of [-0.105, 0.105]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 7, 5), eyeMat);
+    eye.position.set(sx, 1.98, 0.285);
+    g.add(eye);
+  }
+
+  if (male) {
+    const beard = new THREE.Mesh(new THREE.SphereGeometry(0.19, 10, 7), matHair);
+    beard.scale.set(0.82, 1.0, 0.72);
+    beard.position.set(0, 1.80, 0.24);
+    g.add(beard);
+  } else {
+    const braid = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.42, 4, 7), matHair);
+    braid.position.set(-0.27, 1.78, -0.08);
+    braid.rotation.z = -0.22;
+    g.add(braid);
+  }
+
+  // Articulated arms.
+  const makeArm = (side:number) => {
+    const upper = new THREE.Group();
+    upper.position.set(side * (male ? 0.43 : 0.39), 1.43, 0);
+    upper.rotation.z = side * 0.07;
+    const upperArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.105, 0.42, 5, 7), matCloth);
+    upperArm.position.y = -0.23;
+    upper.add(upperArm);
+    const elbow = new THREE.Group();
+    elbow.position.y = -0.46;
+    upper.add(elbow);
+    const forearm = new THREE.Mesh(new THREE.CapsuleGeometry(0.085, 0.34, 5, 7), matLeather);
+    forearm.position.y = -0.20;
+    elbow.add(forearm);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.105, 9, 7), matSkin);
+    hand.position.y = -0.43;
+    elbow.add(hand);
+    g.add(upper);
+    return { upper, elbow };
+  };
+  const armL = makeArm(-1), armR = makeArm(1);
+
+  // Legs are also articulated so the walking cycle can be seen clearly.
+  const makeLeg = (side:number) => {
+    const thigh = new THREE.Group();
+    thigh.position.set(side * 0.15, 0.68, 0);
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.42, 5, 7), matDark);
+    upper.position.y = -0.23;
+    thigh.add(upper);
+    const knee = new THREE.Group();
+    knee.position.y = -0.48;
+    thigh.add(knee);
+    const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.095, 0.40, 5, 7), matDark);
+    shin.position.y = -0.22;
+    knee.add(shin);
+    const boot = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.24, 5, 7), matLeather);
+    boot.scale.z = 1.25;
+    boot.position.set(0, -0.47, 0.075);
+    knee.add(boot);
+    g.add(thigh);
+    return thigh;
+  };
+  const legL = makeLeg(-1), legR = makeLeg(1);
+
+  // Shoulder mantle and simple weatherproof cloak.
+  const mantle = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 0.10, 5, 8), matLeather);
+  mantle.scale.z = 0.72;
+  mantle.position.y = 1.48;
+  g.add(mantle);
+  const cape = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.92, 0.075), midMat(h.id === "berserk" ? 0x2b0c0c : 0x18272e, 0.98));
+  cape.position.set(0, 1.05, -0.28);
+  cape.rotation.x = -0.035;
   g.add(cape);
-  const weapon = midBox(0.08, 1.35, 0.08, 0xc3c8ca, 0.38);
-  weapon.position.set(0.58, 1.08, 0);
-  weapon.rotation.z = -0.35;
+
+  // Weapon silhouette depends on the chosen hero, but remains attached to the body.
+  const weapon = new THREE.Group();
+  if (h.id === "berserk" || h.id === "dwarf") {
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.72, 7), matLeather);
+    handle.position.y = 0.36;
+    weapon.add(handle);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.34, 0.055), matMetal);
+    blade.position.set(0, 0.88, 0);
+    blade.rotation.z = h.id === "dwarf" ? -0.22 : 0.22;
+    weapon.add(blade);
+  } else {
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.04, 1.10, 7), matLeather);
+    shaft.position.y = 0.52;
+    weapon.add(shaft);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.25, 6), matMetal);
+    tip.position.y = 1.18;
+    weapon.add(tip);
+  }
+  weapon.position.set(0.43, 0.32, 0.03);
+  weapon.rotation.z = -0.12;
   g.add(weapon);
-  const grip = midBox(0.1, 0.38, 0.1, 0x51321e, 0.95);
-  grip.position.set(0.54, 0.45, 0);
-  g.add(grip);
-  const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.65, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.32 }));
+
+  // A small shield on the back gives the silhouette depth without becoming oversized.
+  if (h.id === "viking" || h.id === "berserk") {
+    const shield = new THREE.Mesh(new THREE.CylinderGeometry(0.30, 0.30, 0.10, 16), matLeather);
+    shield.rotation.x = Math.PI / 2;
+    shield.position.set(0, 1.12, -0.37);
+    g.add(shield);
+    const boss = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 6), matMetal);
+    boss.position.set(0, 1.12, -0.43);
+    g.add(boss);
+  }
+
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.62, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.32 }));
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.y = 0.02;
   g.add(shadow);
+
+  g.userData.anim = { armL, armR, legL, legR, weapon, phase: h.id === "elf" ? 1.2 : h.id === "dwarf" ? 2.4 : 0 };
   return markMeshes(g);
 }
 
@@ -1693,6 +1833,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     scene.add(mist);
 
     const hero=midHero3d(h);scene.add(hero);
+    const heroAnim:any=hero.userData.anim;
 
     const ray=new THREE.Raycaster();const pointer=new THREE.Vector2();
     const click=(e:PointerEvent)=>{if((e.target as HTMLElement)?.closest?.(".mid3d-ui"))return;const r=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-r.left)/r.width)*2-1;pointer.y=-((e.clientY-r.top)/r.height)*2+1;ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects(objects,true)[0];if(hit){let o:any=hit.object;while(o.parent&&!o.userData?.id)o=o.parent;if(o.userData?.id)on(o.userData.id);}};
@@ -1739,6 +1880,18 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       }else setMoving(false);
       const hy=groundY(q.x,q.z);
       hero.position.set(q.x,hy+.04,q.z);
+      if(heroAnim){
+        const walkT=now*.011+heroAnim.phase;
+        const stride=l>.05?Math.sin(walkT)*0.58:0;
+        const armSwing=l>.05?Math.sin(walkT+Math.PI)*0.42:0;
+        heroAnim.legL.rotation.x=stride;
+        heroAnim.legR.rotation.x=-stride;
+        heroAnim.armL.upper.rotation.x=armSwing;
+        heroAnim.armR.upper.rotation.x=-armSwing;
+        heroAnim.armL.elbow.rotation.x=-Math.abs(armSwing)*.35;
+        heroAnim.armR.elbow.rotation.x=-Math.abs(armSwing)*.35;
+        heroAnim.weapon.rotation.z=-0.12+(l>.05?Math.sin(walkT)*.035:0);
+      }
       // Keep the camera direction stable when the thumb is released. The old camera
       // used dx/dz directly, so stopping movement instantly changed its target and
       // produced the visible screen jump/bounce on mobile.
