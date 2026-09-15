@@ -1877,6 +1877,13 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const resize=()=>{const w=Math.max(1,el.clientWidth),hh=Math.max(1,el.clientHeight);camera.aspect=w/hh;camera.updateProjectionMatrix();renderer.setSize(w,hh,false);};resize();const observer=new ResizeObserver(resize);observer.observe(el);
     let raf=0,last=performance.now(),animLast=last;
     let facing=hero.rotation.y;
+
+    // Third-person camera with a real dead zone: the hero can travel across
+    // the screen before the camera begins to follow.
+    const cameraAnchor = new THREE.Vector3(state.current.x, 0, state.current.z);
+    const cameraLook = new THREE.Vector3(state.current.x, 1.2, state.current.z);
+    const cameraDeadZone = 4.2;
+
     const loop=(now:number)=>{
       const dt=Math.min(.05,(now-last)/1000);last=now;
       const animDt=Math.min(.05,(now-animLast)/1000);animLast=now;
@@ -1936,27 +1943,41 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         hero.position.y=hy+.04+bounce+Math.max(0,idleBreath);
       }else hero.position.y=hy+.04;
       
-      // Keep the camera direction stable when the thumb is released. The old camera
-      // used dx/dz directly, so stopping movement instantly changed its target and
-      // produced the visible screen jump/bounce on mobile.
+      // Do NOT lock the hero to the centre of the screen.
+      // A dead-zone camera lets the hero visibly walk through the world.
       const cd=cameraDir.current;
-      // The old camera was locked too tightly to the hero: as soon as the hero
-      // moved, the camera followed by almost the same amount, making the hero
-      // look nailed to one point on the screen. Keep a real third-person follow
-      // offset with noticeable lag so the hero visibly travels through the world.
-      const followX = q.x-cd.x*2.0;
-      const followZ = q.z-cd.z*2.0+11.8;
-      const target=insideHomeRef.current
-        ? new THREE.Vector3(q.x-cd.x*1.0,hy+3.65,q.z-cd.z*1.0)
-        : new THREE.Vector3(followX,hy+7.2,followZ);
-      const followLerp=insideHomeRef.current?.085:.028;
-      camera.position.lerp(target,followLerp);
-      const lookLerp=insideHomeRef.current?.14:.055;
-      const lookX=q.x+(insideHomeRef.current?cd.x*.9:cd.x*1.9);
-      const lookZ=q.z+(insideHomeRef.current?cd.z*.9:cd.z*1.9);
-      const currentLook=(camera.userData.followLook ||= new THREE.Vector3(q.x,hy+1.2,q.z));
-      currentLook.lerp(new THREE.Vector3(lookX,hy+(insideHomeRef.current?1.25:1.2),lookZ),lookLerp);
-      camera.lookAt(currentLook);
+
+      if(insideHomeRef.current){
+        cameraAnchor.x += (q.x-cameraAnchor.x)*.12;
+        cameraAnchor.z += (q.z-cameraAnchor.z)*.12;
+      }else{
+        const ax=q.x-cameraAnchor.x;
+        const az=q.z-cameraAnchor.z;
+        const dist=Math.hypot(ax,az);
+        if(dist>cameraDeadZone){
+          const excess=dist-cameraDeadZone;
+          const k=Math.min(1,excess*.18);
+          cameraAnchor.x += ax*k;
+          cameraAnchor.z += az*k;
+        }
+      }
+
+      const camY=insideHomeRef.current ? hy+3.65 : hy+7.2;
+      const camZOffset=insideHomeRef.current ? 7.2 : 11.8;
+      const cameraTarget=new THREE.Vector3(
+        cameraAnchor.x-cd.x*(insideHomeRef.current?1.0:2.0),
+        camY,
+        cameraAnchor.z-cd.z*(insideHomeRef.current?1.0:2.0)+camZOffset
+      );
+      camera.position.lerp(cameraTarget,insideHomeRef.current?.10:.16);
+
+      const lookTarget=new THREE.Vector3(
+        cameraAnchor.x+(insideHomeRef.current?cd.x*.55:cd.x*.8),
+        hy+(insideHomeRef.current?1.25:1.15),
+        cameraAnchor.z+(insideHomeRef.current?cd.z*.55:cd.z*.8)
+      );
+      cameraLook.lerp(lookTarget,insideHomeRef.current?.14:.12);
+      camera.lookAt(cameraLook);
       let found="",foundId="";
       if(insideHomeRef.current){
         if(q.z>heroHomeZ+1.72){found="Дверь — выйти из дома";foundId="heroHomeExit";}
