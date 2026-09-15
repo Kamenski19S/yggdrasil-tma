@@ -961,7 +961,15 @@ function midHero3d(h: HeroDef) {
   shadow.position.y = 0.02;
   g.add(shadow);
 
-  g.userData.anim = { armL, armR, legL, legR, weapon, phase: h.id === "elf" ? 1.2 : h.id === "dwarf" ? 2.4 : 0 };
+  g.userData.anim = {
+    armL, armR, legL, legR, weapon,
+    torso, chest, pelvis, head, neck, cape,
+    phase: h.id === "elf" ? 1.2 : h.id === "dwarf" ? 2.4 : 0,
+    speed: 0,
+    stride: 0,
+    idle: 0,
+    run: 0,
+  };
   return markMeshes(g);
 }
 
@@ -1867,31 +1875,67 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     ];
 
     const resize=()=>{const w=Math.max(1,el.clientWidth),hh=Math.max(1,el.clientHeight);camera.aspect=w/hh;camera.updateProjectionMatrix();renderer.setSize(w,hh,false);};resize();const observer=new ResizeObserver(resize);observer.observe(el);
-    let raf=0,last=performance.now();
+    let raf=0,last=performance.now(),animLast=last;
+    let facing=hero.rotation.y;
     const loop=(now:number)=>{
-      const dt=Math.min(.05,(now-last)/1000);last=now;const q=state.current;const l=Math.hypot(q.dx,q.dz);
-      if(l>.05){
-        const step=6.2*dt;
+      const dt=Math.min(.05,(now-last)/1000);last=now;
+      const animDt=Math.min(.05,(now-animLast)/1000);animLast=now;
+      const q=state.current;
+      const l=Math.hypot(q.dx,q.dz);
+      const movingNow=l>.045;
+      if(movingNow){
+        // Variable speed makes a light thumb input a walk and a full input a run.
+        const runAmount=Math.max(0,(l-.58)/.42);
+        const speed=4.0+3.4*l+1.2*runAmount;
+        const step=speed*dt;
         moveWithCollision(q,q.x+(q.dx/l)*step,q.z+(q.dz/l)*step);
-        hero.rotation.y=Math.atan2(q.dx,q.dz);
+        const wanted=Math.atan2(q.dx,q.dz);
+        let turn=wanted-facing;
+        while(turn>Math.PI)turn-=Math.PI*2;
+        while(turn<-Math.PI)turn+=Math.PI*2;
+        facing+=turn*Math.min(1,dt*10.5);
+        hero.rotation.y=facing;
         cameraDir.current.x=q.dx/l;
         cameraDir.current.z=q.dz/l;
         setMoving(true);
-      }else setMoving(false);
+      }else{
+        setMoving(false);
+        // Settle the body rather than snapping the pose when the thumb is released.
+        hero.rotation.y=facing;
+      }
       const hy=groundY(q.x,q.z);
-      hero.position.set(q.x,hy+.04,q.z);
       if(heroAnim){
-        const walkT=now*.011+heroAnim.phase;
-        const stride=l>.05?Math.sin(walkT)*0.58:0;
-        const armSwing=l>.05?Math.sin(walkT+Math.PI)*0.42:0;
+        const targetSpeed=movingNow?(l>.72?1:0.58):0;
+        heroAnim.speed += (targetSpeed-heroAnim.speed)*Math.min(1,animDt*9);
+        heroAnim.run += ((movingNow&&l>.72?1:0)-heroAnim.run)*Math.min(1,animDt*7);
+        heroAnim.idle += ((movingNow?0:1)-heroAnim.idle)*Math.min(1,animDt*7);
+        const walkT=now*.0125*heroAnim.speed+heroAnim.phase;
+        const stride=Math.sin(walkT)*(.34+.32*heroAnim.run)*heroAnim.speed;
+        const armSwing=Math.sin(walkT+Math.PI)*(.23+.25*heroAnim.run)*heroAnim.speed;
+        const bounce=Math.abs(Math.sin(walkT))*(.025+.035*heroAnim.run)*heroAnim.speed;
+        const idleBreath=Math.sin(now*.0022+heroAnim.phase)*.012*heroAnim.idle;
+
         heroAnim.legL.rotation.x=stride;
         heroAnim.legR.rotation.x=-stride;
+        heroAnim.legL.rotation.z=heroAnim.run*.025;
+        heroAnim.legR.rotation.z=-heroAnim.run*.025;
         heroAnim.armL.upper.rotation.x=armSwing;
         heroAnim.armR.upper.rotation.x=-armSwing;
-        heroAnim.armL.elbow.rotation.x=-Math.abs(armSwing)*.35;
-        heroAnim.armR.elbow.rotation.x=-Math.abs(armSwing)*.35;
-        heroAnim.weapon.rotation.z=-0.12+(l>.05?Math.sin(walkT)*.035:0);
-      }
+        heroAnim.armL.elbow.rotation.x=-Math.abs(armSwing)*(.25+.20*heroAnim.run);
+        heroAnim.armR.elbow.rotation.x=-Math.abs(armSwing)*(.25+.20*heroAnim.run);
+        heroAnim.weapon.rotation.z=-0.12+(movingNow?Math.sin(walkT)*(.025+.035*heroAnim.run):0);
+
+        // Subtle weight shift and breathing keep the hero alive while standing still.
+        heroAnim.torso.rotation.z=idleBreath+Math.sin(walkT)*.018*heroAnim.speed;
+        heroAnim.chest.rotation.z=idleBreath*.7+Math.sin(walkT+Math.PI)*.012*heroAnim.speed;
+        heroAnim.head.rotation.z=idleBreath*.45;
+        heroAnim.neck.rotation.z=idleBreath*.35;
+        heroAnim.pelvis.rotation.z=-Math.sin(walkT)*.025*heroAnim.speed;
+        heroAnim.cape.rotation.x=-.035-Math.sin(walkT)*.035*heroAnim.speed;
+        heroAnim.weapon.position.y=.32+Math.sin(walkT+Math.PI)*.025*heroAnim.speed;
+        hero.position.y=hy+.04+bounce+Math.max(0,idleBreath);
+      }else hero.position.y=hy+.04;
+      
       // Keep the camera direction stable when the thumb is released. The old camera
       // used dx/dz directly, so stopping movement instantly changed its target and
       // produced the visible screen jump/bounce on mobile.
