@@ -1058,7 +1058,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         for(let i=0;i<180;i++){ctx.fillStyle=`rgba(170,154,123,${.03+rand(i)*.07})`;ctx.fillRect(rand(i*2)*512,rand(i*3)*512,2+rand(i*4)*7,2);}
       } else if (type === "bark") {
         // Matte bark: vertical fibers and broken patches, intentionally no glossy bands.
-        ctx.fillStyle="#4b3526";ctx.fillRect(0,0,512,512);
+        ctx.fillStyle="#7b5a3f";ctx.fillRect(0,0,512,512);
         for(let i=0;i<95;i++){
           const x=rand(i*2.1)*512;
           const w=2+rand(i*3.7)*7;
@@ -1072,13 +1072,13 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         }
       } else if (type === "foliage") {
         // Soft, matte needle/leaf color breakup. No painted highlights.
-        ctx.fillStyle="#2d4d35";ctx.fillRect(0,0,512,512);
+        ctx.fillStyle="#6f8966";ctx.fillRect(0,0,512,512);
         for(let i=0;i<1900;i++){
           const x=rand(i*1.17)*512,y=rand(i*2.31)*512;
           const light=rand(i*3.7);
-          const r=light>.72?72:light>.36?54:38;
-          const g=light>.72?92:light>.36?76:60;
-          const b=light>.72?58:light>.36?48:40;
+          const r=light>.72?98:light>.36?82:67;
+          const g=light>.72?126:light>.36?105:88;
+          const b=light>.72?78:light>.36?63:52;
           ctx.fillStyle=`rgba(${r},${g},${b},${.16+rand(i*4)*.28})`;
           ctx.beginPath();ctx.arc(x,y,1.5+rand(i*5)*4.5,0,Math.PI*2);ctx.fill();
         }
@@ -1532,7 +1532,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     // The ash is a deliberate visual echo of Yggdrasil rather than a generic oak.
     const firTree=(x:number,z:number,s:number)=>{
       const g=new THREE.Group();const y=groundY(x,z);
-      const bark=new THREE.MeshLambertMaterial({map:barkTexture,color:0x5a3d29});
+      const bark=new THREE.MeshLambertMaterial({map:barkTexture,color:0xffffff});
       const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18*s,.34*s,4.6*s,10),bark);
       trunk.position.y=2.3*s;trunk.rotation.z=(midHash(x,z)-.5)*.045;g.add(trunk);
 
@@ -1550,7 +1550,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       for(let i=0;i<6;i++){
         const t=i/5;
         const r=(1.55-.72*t)*s;
-        const crown=new THREE.Mesh(new THREE.ConeGeometry(r,.95*s,9,1),new THREE.MeshLambertMaterial({map:foliageTexture,color:greens[i%greens.length]}));
+        const crown=new THREE.Mesh(new THREE.ConeGeometry(r,.95*s,9,1),new THREE.MeshLambertMaterial({map:foliageTexture,color:0xffffff}));
         crown.scale.x=.88+midHash(i,x)*.18;
         crown.scale.z=.84+midHash(i,z)*.2;
         crown.position.set((midHash(i*4,x)-.5)*.28*s,(2.05+i*.62)*s,(midHash(i*5,z)-.5)*.28*s);
@@ -1560,7 +1560,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       // A few low boughs make large trees feel grown rather than assembled.
       if(s>1.15){
         for(let i=0;i<3;i++){
-          const low=new THREE.Mesh(new THREE.ConeGeometry(.62*s,.7*s,8),new THREE.MeshLambertMaterial({map:foliageTexture,color:greens[(i+2)%greens.length]}));
+          const low=new THREE.Mesh(new THREE.ConeGeometry(.62*s,.7*s,8),new THREE.MeshLambertMaterial({map:foliageTexture,color:0xffffff}));
           low.position.set((i-1)*.38*s,.72*s,(midHash(i,z)-.5)*.3*s);
           low.rotation.y=midHash(i+70,x)*Math.PI*2;g.add(low);
         }
@@ -1571,7 +1571,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     const ashTree=(x:number,z:number,s:number,ancient=false)=>{
       const g=new THREE.Group();const y=groundY(x,z);
-      const bark=new THREE.MeshLambertMaterial({map:barkTexture,color:ancient?0x4f3a2d:0x5a4030});
+      const bark=new THREE.MeshLambertMaterial({map:barkTexture,color:0xffffff});
       const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.32*s,.52*s,5.8*s,11),bark);
       trunk.position.y=2.9*s;trunk.rotation.z=(midHash(x,z)-.5)*.035;g.add(trunk);
 
@@ -1589,7 +1589,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
         // Small leaf clusters at branch ends.
         for(let k=0;k<3;k++){
-          const leaf=new THREE.Mesh(new THREE.SphereGeometry((.42+midHash(k+i,90)*.22)*s,8,6),new THREE.MeshLambertMaterial({map:foliageTexture,color:k%2?0x496044:0x3b573b}));
+          const leaf=new THREE.Mesh(new THREE.SphereGeometry((.42+midHash(k+i,90)*.22)*s,8,6),new THREE.MeshLambertMaterial({map:foliageTexture,color:k%2?0xffffff:0xf4fff0}));
           const f=.55+k*.18;
           leaf.position.set(Math.cos(a)*len*.62+(midHash(k, i)-.5)*.35*s,(3.55+midHash(i,k)*1.15+f)*s,Math.sin(a)*len*.62+(midHash(k+4,i)-.5)*.35*s);
           leaf.scale.y=.72;g.add(leaf);
