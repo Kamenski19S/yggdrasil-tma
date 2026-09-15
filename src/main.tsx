@@ -1530,11 +1530,35 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     makeForestEvent(46,43,'forestWhisper','Камень Шёпота',0x7895a5,0x454d4d,3);
     makeForestEvent(-48,72,'forestThread','Разорванная нить',0x9c7190,0x51484d,2);
 
+    // Right forest expansion: three larger areas so the eastern side feels like a
+    // place to explore, not an empty ring of trees. These are game interpretations.
+    const makeForestClearing=(x:number,z:number,r:number,id:string,label:string,kind:number)=>{
+      const g=new THREE.Group(); g.position.set(x,groundY(x,z),z);
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(r,.07,8,56),new THREE.MeshStandardMaterial({color:kind===1?0x667b63:kind===2?0x6f7780:0x7d6955,emissive:kind===1?0x263b29:0x252b30,emissiveIntensity:.7,transparent:true,opacity:.48}));
+      ring.rotation.x=Math.PI/2; ring.position.y=.045; g.add(ring);
+      for(let i=0;i<Math.floor(r/2);i++){
+        const a=midHash(i,x*11+z)*Math.PI*2, rr=r*.35+midHash(i,z*17)*r*.45;
+        const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(.28+midHash(i,33)*.22,1),mat(kind===1?0x555d54:kind===2?0x51565a:0x5a4a3c,1));
+        stone.position.set(Math.cos(a)*rr,.22,Math.sin(a)*rr); stone.scale.y=.65; g.add(stone);
+      }
+      addMesh(g,id,label); objects.push(g);
+    };
+    makeForestClearing(70,18,8.5,'hunterCamp','Забытая стоянка',3);
+    makeForestClearing(67,49,9.5,'deepGrove','Глубокая роща',1);
+    makeForestClearing(52,7,7.5,'fallenAsh','Поверженный ясень',2);
+
+    // Small landmarks inside the clearings.
+    const campFire=fire(70,18,.75); campFire.scale.setScalar(.72);
+    const campStone=new THREE.Mesh(new THREE.CylinderGeometry(.65,.8,.7,7),mat(0x514a42,1)); campStone.position.set(70,groundY(70,18)+.35,16.5); scene.add(campStone);
+    for(const [x,z] of [[68,20],[72,20],[68,16],[72,16]]){const post=box(.16,1.15,.16,0x493527,1);post.position.set(x,groundY(x,z)+.57,z);scene.add(post);}
+    const fallen=new THREE.Group(); fallen.position.set(52,groundY(52,7),7); const trunk= new THREE.Mesh(new THREE.CylinderGeometry(.5,.62,7,8),mat(0x4c392b,1)); trunk.rotation.z=Math.PI/2; trunk.position.y=.5; fallen.add(trunk); const cut=new THREE.Mesh(new THREE.CylinderGeometry(.53,.53,.12,12),mat(0x75644d,1)); cut.rotation.z=Math.PI/2; cut.position.set(3.5,.5,0); fallen.add(cut); scene.add(fallen);
+    for(let i=0;i<7;i++){const rune=new THREE.Mesh(new THREE.DodecahedronGeometry(.14,0),mat(0x697d72,1));const a=i/7*Math.PI*2;rune.position.set(67+Math.cos(a)*4,.12+groundY(67+Math.cos(a)*4,49+Math.sin(a)*4),49+Math.sin(a)*4);scene.add(rune);}
+
     // Dense forest ring uses varied, irregular firs.
     for(let i=0;i<95;i++){
       const a=midHash(i,77)*Math.PI*2;const r=58+midHash(i,91)*32;
       const x=Math.cos(a)*r,z=Math.sin(a)*r+2;
-      const reserved=[[ashGroveX,ashGroveZ,11],[39,70,13],[-64,36,11],[-43,62,10],[30,53,12],[61,78,10],[-15,58,7],[46,43,7],[-48,72,7]];
+      const reserved=[[ashGroveX,ashGroveZ,11],[39,70,13],[-64,36,11],[-43,62,10],[30,53,12],[61,78,10],[-15,58,7],[46,43,7],[-48,72,7],[70,18,11],[67,49,12],[52,7,10]];
       const reservedHit=reserved.some(([rx,rz,rr])=>Math.hypot(x-rx,z-rz)<rr);
       if(Math.abs(x+57)>9 && !reservedHit)firTree(x,z,.78+midHash(i,13)*.82);
     }
@@ -1579,7 +1603,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       {id:"house",label:"Дом старейшины",x:13,z:-18,r:5.2},{id:"forge",label:"Кузница",x:-10,z:-5,r:5.4},
       {id:"mimir",label:"Колодец Мимира",x:18,z:15,r:4.8},{id:"norns",label:"Прядильня норн",x:-25,z:43,r:5.4},
       {id:"rune",label:"Древний камень Феху",x:27,z:57,r:4.5},{id:"ritual",label:"Круг Силы",x:-43,z:62,r:6.8},{id:"port",label:"Речной причал",x:-46,z:-15,r:5},
-      {id:"ashgrove",label:"Роща Ясеня",x:-4,z:69,r:7.5},{id:"forestEvent",label:eventDone?"Камень Трёх Нитей — место выбора":"Камень Трёх Нитей",x:eventX,z:eventZ,r:4.8},{id:"forestCache",label:"Забытый тайник",x:-15,z:58,r:4.2},{id:"forestWhisper",label:"Камень Шёпота",x:46,z:43,r:4.2},{id:"forestThread",label:"Разорванная нить",x:-48,z:72,r:4.2},{id:"runefield",label:"Поле Рун",x:39,z:70,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-64,z:36,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:30,z:53,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:61,z:78,r:6.5},
+      {id:"ashgrove",label:"Роща Ясеня",x:-4,z:69,r:7.5},{id:"forestEvent",label:eventDone?"Камень Трёх Нитей — место выбора":"Камень Трёх Нитей",x:eventX,z:eventZ,r:4.8},{id:"forestCache",label:"Забытый тайник",x:-15,z:58,r:4.2},{id:"forestWhisper",label:"Камень Шёпота",x:46,z:43,r:4.2},{id:"forestThread",label:"Разорванная нить",x:-48,z:72,r:4.2},{id:"runefield",label:"Поле Рун",x:39,z:70,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-64,z:36,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:30,z:53,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:61,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:70,z:18,r:8.5},{id:"deepGrove",label:"Глубокая роща",x:67,z:49,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:52,z:7,r:7.5},
       {id:"elder",label:"Старейшина",x:9,z:-8,r:3.2},{id:"blacksmith",label:"Кузнец",x:-6,z:-3,r:3.2},
       {id:"gate",label:"Ворота Мидгарда",x:0,z:-31,r:5},{id:"tower",label:"Сторожевая башня",x:29,z:25,r:4}
     ];
@@ -1961,6 +1985,30 @@ const [roadT, setRoadT] = useState(0.06);
           haptic("success");
           say("На ветке висит оборванная нить. Ты не знаешь, кому она принадлежала, но рядом лежит руна судьбы. +22 ✨");
         } else say("Оборванная нить всё ещё висит на ветке. Второго знака она не даёт.");
+        return;
+      }
+      if (id === "hunterCamp") {
+        if (!save.done.includes("forest:camp")) {
+          setSave(s => ({ ...s, sparks: s.sparks + 14, done: [...new Set([...s.done, "forest:camp"])] }));
+          haptic("success");
+          say("Старая стоянка охотника. У костра лежит обломок ножа и свежие следы — кто-то бывает здесь до сих пор. +14 ✨");
+        } else say("Костёр давно погас, но следы вокруг стоянки всё ещё ведут глубже в лес.");
+        return;
+      }
+      if (id === "deepGrove") {
+        if (!save.done.includes("forest:grove")) {
+          setSave(s => ({ ...s, sparks: s.sparks + 17, done: [...new Set([...s.done, "forest:grove"])] }));
+          haptic("success");
+          say("В глубокой роще почти не слышно ветра. На камнях проступают старые знаки. Кажется, лес что-то помнит. +17 ✨");
+        } else say("Роща молчит. Но теперь ты знаешь дорогу сюда — и можешь вернуться позже.");
+        return;
+      }
+      if (id === "fallenAsh") {
+        if (!save.done.includes("forest:ash")) {
+          setSave(s => ({ ...s, sparks: s.sparks + 21, done: [...new Set([...s.done, "forest:ash"])] }));
+          haptic("success");
+          say("Поверженный ясень. На срезе видна почти стёртая руна. Это не случайное дерево — здесь когда-то проводили обряд. +21 ✨");
+        } else say("Старый ясень неподвижен. Под корой всё ещё виден след руны.");
         return;
       }
       if (id === "deer") {
