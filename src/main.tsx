@@ -1079,7 +1079,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     }
     groundGeo.rotateX(-Math.PI/2);
     groundGeo.computeVertexNormals();
-    const terrain = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: groundTexture, roughness: 1, metalness: 0 }));
+    const terrain = new THREE.Mesh(groundGeo, new THREE.MeshLambertMaterial({ map: groundTexture }));
     terrain.receiveShadow = true;
     scene.add(terrain);
 
@@ -1092,6 +1092,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
 
     const mat = (color:number, rough=.9, metal=0) => new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal});
+    const matte = (color:number) => new THREE.MeshLambertMaterial({color});
     const box=(w:number,h:number,d:number,c:number,rough=.9)=>new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c,rough));
 
     const objects: THREE.Object3D[] = [];
@@ -1495,7 +1496,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     // The ash is a deliberate visual echo of Yggdrasil rather than a generic oak.
     const firTree=(x:number,z:number,s:number)=>{
       const g=new THREE.Group();const y=groundY(x,z);
-      const bark=mat(0x38281f,1);
+      const bark=matte(0x38281f);
       const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18*s,.34*s,4.6*s,10),bark);
       trunk.position.y=2.3*s;trunk.rotation.z=(midHash(x,z)-.5)*.045;g.add(trunk);
 
@@ -1513,7 +1514,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       for(let i=0;i<6;i++){
         const t=i/5;
         const r=(1.55-.72*t)*s;
-        const crown=new THREE.Mesh(new THREE.ConeGeometry(r,.95*s,9,1),mat(greens[i%greens.length],1));
+        const crown=new THREE.Mesh(new THREE.ConeGeometry(r,.95*s,9,1),matte(greens[i%greens.length]));
         crown.scale.x=.88+midHash(i,x)*.18;
         crown.scale.z=.84+midHash(i,z)*.2;
         crown.position.set((midHash(i*4,x)-.5)*.28*s,(2.05+i*.62)*s,(midHash(i*5,z)-.5)*.28*s);
@@ -1523,7 +1524,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       // A few low boughs make large trees feel grown rather than assembled.
       if(s>1.15){
         for(let i=0;i<3;i++){
-          const low=new THREE.Mesh(new THREE.ConeGeometry(.62*s,.7*s,8),mat(greens[(i+2)%greens.length],1));
+          const low=new THREE.Mesh(new THREE.ConeGeometry(.62*s,.7*s,8),matte(greens[(i+2)%greens.length]));
           low.position.set((i-1)*.38*s,.72*s,(midHash(i,z)-.5)*.3*s);
           low.rotation.y=midHash(i+70,x)*Math.PI*2;g.add(low);
         }
@@ -1534,7 +1535,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     const ashTree=(x:number,z:number,s:number,ancient=false)=>{
       const g=new THREE.Group();const y=groundY(x,z);
-      const bark=mat(ancient?0x403229:0x4a3427,1);
+      const bark=matte(ancient?0x403229:0x4a3427);
       const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.32*s,.52*s,5.8*s,11),bark);
       trunk.position.y=2.9*s;trunk.rotation.z=(midHash(x,z)-.5)*.035;g.add(trunk);
 
@@ -1552,7 +1553,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
         // Small leaf clusters at branch ends.
         for(let k=0;k<3;k++){
-          const leaf=new THREE.Mesh(new THREE.SphereGeometry((.42+midHash(k+i,90)*.22)*s,8,6),mat(k%2?0x496044:0x3b573b,1));
+          const leaf=new THREE.Mesh(new THREE.SphereGeometry((.42+midHash(k+i,90)*.22)*s,8,6),matte(k%2?0x496044:0x3b573b));
           const f=.55+k*.18;
           leaf.position.set(Math.cos(a)*len*.62+(midHash(k, i)-.5)*.35*s,(3.55+midHash(i,k)*1.15+f)*s,Math.sin(a)*len*.62+(midHash(k+4,i)-.5)*.35*s);
           leaf.scale.y=.72;g.add(leaf);
@@ -1813,11 +1814,11 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       const a=midHash(i,701)*Math.PI*2,r=15+midHash(i,702)*50,x=Math.cos(a)*r,z=Math.sin(a)*r+3;
       if(Math.abs(x)<10&&Math.abs(z)<16) continue;
       const g=new THREE.Group();g.position.set(x,groundY(x,z),z);
-      for(let k=0;k<3;k++){const blade=new THREE.Mesh(new THREE.ConeGeometry(.025,.38+midHash(k,i)*.28,4),new THREE.MeshStandardMaterial({color:k===1?0x50613c:0x3e5635,roughness:1,metalness:0,flatShading:true}));blade.position.set((k-1)*.09,.18,(midHash(k*3,i)-.5)*.12);blade.rotation.z=(k-1)*.22;g.add(blade);}
+      for(let k=0;k<3;k++){const blade=new THREE.Mesh(new THREE.ConeGeometry(.032,.38+midHash(k,i)*.28,5),matte(k===1?0x53683f:0x415a37));blade.position.set((k-1)*.09,.18,(midHash(k*3,i)-.5)*.12);blade.rotation.z=(k-1)*.22;g.add(blade);}
       scene.add(g);
     }
 
-    for(let i=0;i<80;i++){const x=-88+midHash(i,101)*176,z=-88+midHash(i,111)*176;if(Math.hypot(x,z+2)>30){const grass=new THREE.Mesh(new THREE.ConeGeometry(.08,.55+midHash(i,121)*.7,5),new THREE.MeshStandardMaterial({color:i%3===0?0x50633d:(i%3===1?0x455a38:0x3e5434),roughness:1,metalness:0,flatShading:true}));grass.position.set(x,groundY(x,z)+.3,z);scene.add(grass);}}
+    for(let i=0;i<80;i++){const x=-88+midHash(i,101)*176,z=-88+midHash(i,111)*176;if(Math.hypot(x,z+2)>30){const grass=new THREE.Mesh(new THREE.ConeGeometry(.085,.55+midHash(i,121)*.7,5),matte(0x4b6840));grass.position.set(x,groundY(x,z)+.3,z);scene.add(grass);}}
 
     // A small watchtower gives vertical scale and a visible landmark.
     const tower=new THREE.Group();tower.position.set(29,groundY(29,25),25);tower.userData={id:"tower",label:"Сторожевая башня"};for(const px of [-2,2])for(const pz of [-2,2]){const p=box(.35,7,.35,0x3c291d,1);p.position.set(px,3.5,pz);tower.add(p);}const deck=box(5,.35,5,0x68472d,1);deck.position.y=5.8;tower.add(deck);const roofT=new THREE.Mesh(new THREE.ConeGeometry(3.8,2.7,4),mat(0x292522,1));roofT.position.y=8;tower.add(roofT);addMesh(tower,"tower","Сторожевая башня");objects.push(tower);
