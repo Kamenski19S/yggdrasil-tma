@@ -1018,8 +1018,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     if (!el) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x9bb1a5);
-    scene.fog = new THREE.FogExp2(0x9aaea2, 0.0036);
+    scene.background = new THREE.Color(0xa4b6ad);
+    scene.fog = new THREE.FogExp2(0xa4b3aa, 0.00325);
 
     const camera = new THREE.PerspectiveCamera(54, 1, 0.1, 280);
     camera.position.set(0, 8.5, 17);
@@ -1033,9 +1033,9 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     renderer.toneMappingExposure = 1.03;
     el.appendChild(renderer.domElement);
 
-    const hemi = new THREE.HemisphereLight(0xe5f0e5, 0x66735f, 1.12);
+    const hemi = new THREE.HemisphereLight(0xe8f2e8, 0x65715f, 1.18);
     scene.add(hemi);
-    const sun = new THREE.DirectionalLight(0xffd9ad, 2.45);
+    const sun = new THREE.DirectionalLight(0xffdfb8, 2.32);
     sun.position.set(-42, 58, 34);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1536, 1536);
@@ -1045,7 +1045,9 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     sun.shadow.camera.bottom = -95;
     sun.shadow.bias = -0.0005;
     scene.add(sun);
-    const horizonLight=new THREE.DirectionalLight(0xb8ccd0,.68);horizonLight.position.set(55,18,-60);scene.add(horizonLight);
+    const horizonLight = new THREE.DirectionalLight(0xc1d4d6, 0.72);
+    horizonLight.position.set(55, 18, -60);
+    scene.add(horizonLight);
 
     const groundY = (x: number, z: number) => {
       const broad = Math.sin(x * 0.075) * 0.7 + Math.cos(z * 0.062) * 0.55 + Math.sin((x - z) * 0.045) * 0.35;
@@ -1053,6 +1055,51 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       const road = Math.exp(-((x * x) / 150 + ((z - 12) * (z - 12)) / 2200));
       return broad * (1 - village * 0.88) - road * 0.18;
     };
+\n    // Мягкие "солнечные окна" между кронами: лёгкая атмосфера без тяжёлого volumetric rendering.
+    const lightPoolCanvas = document.createElement("canvas");
+    lightPoolCanvas.width = lightPoolCanvas.height = 128;
+    const lctx = lightPoolCanvas.getContext("2d")!;
+    const grad = lctx.createRadialGradient(64, 64, 4, 64, 64, 64);
+    grad.addColorStop(0, "rgba(255,238,194,0.30)");
+    grad.addColorStop(0.34, "rgba(255,231,178,0.16)");
+    grad.addColorStop(0.72, "rgba(255,225,170,0.055)");
+    grad.addColorStop(1, "rgba(255,225,170,0)");
+    lctx.fillStyle = grad;
+    lctx.fillRect(0, 0, 128, 128);
+    const lightPoolTex = new THREE.CanvasTexture(lightPoolCanvas);
+    lightPoolTex.colorSpace = THREE.SRGBColorSpace;
+    const lightPoolMat = new THREE.MeshBasicMaterial({
+      map: lightPoolTex, transparent: true, depthWrite: false,
+      blending: THREE.AdditiveBlending, opacity: 0.58
+    });
+    const lightPools: THREE.Mesh[] = [];
+    const lightPoolData = [
+      [-22, -4, 7.5, 4.8], [-9, 18, 5.6, 2.2], [9, -10, 6.8, 5.4],
+      [24, 5, 5.0, 1.7], [-31, 20, 5.2, 0.8], [18, 27, 7.0, 3.5]
+    ];
+    lightPoolData.forEach(([x, z, size, rot]) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size * 0.68), lightPoolMat.clone());
+      m.rotation.x = -Math.PI / 2;
+      m.rotation.z = rot;
+      m.position.set(x, groundY(x,z) + 0.018, z);
+      m.renderOrder = 2;
+      scene.add(m);
+      lightPools.push(m);
+    });
+
+    // Тонкие вертикальные лучи в просветах — полупрозрачные плоскости, а не дорогой post-process.
+    const shaftMat = new THREE.MeshBasicMaterial({
+      color: 0xffe8bf, transparent: true, opacity: 0.032,
+      depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending
+    });
+    const shafts: THREE.Mesh[] = [];
+    [[-18,10,0.8,14], [4,8,-0.35,11], [27,15,0.5,13]].forEach(([x,z,angle,h]) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(5.5, h), shaftMat.clone());
+      m.position.set(x, h * 0.5 + 0.8, z);
+      m.rotation.set(0.10, angle * 0.045, angle);
+      scene.add(m);
+      shafts.push(m);
+    });
 
     const canvasTex = (type: "ground" | "wood" | "roof" | "road" | "bark" | "foliage") => {
       const c = document.createElement("canvas");
@@ -2868,11 +2915,19 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         }
       });
       npcs.forEach((n,i)=>{const phase=n.userData.phase||0;const bx=n.userData.baseX,bz=n.userData.baseZ;const nx=bx+Math.sin(now*.00028+phase)*1.6,nz=bz+Math.cos(now*.00022+phase)*1.1;n.position.set(nx,groundY(nx,nz),nz);n.rotation.y=Math.sin(now*.0004+phase)*.5;});
+      lightPools.forEach((m,i)=>{
+        const p=m.material as THREE.MeshBasicMaterial;
+        p.opacity = 0.48 + Math.sin(now*0.00055 + i*1.7)*0.07;
+        m.rotation.z += Math.sin(now*0.00018+i)*0.00008;
+      });
+      shafts.forEach((m,i)=>{
+        (m.material as THREE.MeshBasicMaterial).opacity = 0.024 + Math.sin(now*0.00042+i*2.1)*0.008;
+      });
       renderer.render(scene,camera);raf=requestAnimationFrame(loop);
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();renderer.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
+    return()=>{cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});shafts.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
   },[h.id,on,eventDone]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
