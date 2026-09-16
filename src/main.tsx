@@ -2094,6 +2094,152 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     makeForestClearing(67,49,9.5,'deepGrove','Глубокая роща',1);
     makeFallenAsh(52,7);
 
+    // ---------------------------------------------------------------------------
+    // Three new sacred locations: Stone of Three Threads, Circle of Power,
+    // and Whispering Stone. These are deliberately built from low-poly organic
+    // forms, emissive rune planes, curves and point lights so they remain mobile
+    // friendly while giving each place a strong magical identity.
+    // ---------------------------------------------------------------------------
+    const runeGlowTexture=(glyph:string,color:string)=>{
+      const c=document.createElement("canvas"); c.width=c.height=256; const ctx=c.getContext("2d")!;
+      ctx.clearRect(0,0,256,256); ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.shadowColor=color; ctx.shadowBlur=24; ctx.fillStyle=color; ctx.font="bold 156px serif"; ctx.fillText(glyph,128,132);
+      ctx.shadowBlur=6; ctx.globalAlpha=.72; ctx.font="bold 126px serif"; ctx.fillText(glyph,128,132);
+      const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; return t;
+    };
+    const addFloatingRune=(g:THREE.Group,glyph:string,x:number,y:number,z:number,color:number,size=.7,rot=0)=>{
+      const hex="#"+color.toString(16).padStart(6,"0");
+      const m=new THREE.MeshBasicMaterial({map:runeGlowTexture(glyph,hex),transparent:true,depthWrite:false,side:THREE.DoubleSide});
+      const q=new THREE.Mesh(new THREE.PlaneGeometry(size,size),m); q.position.set(x,y,z); q.rotation.set(0,rot,0); g.add(q); return q;
+    };
+    const addMagicThread=(g:THREE.Group,points:THREE.Vector3[],color:number,thickness=.075)=>{
+      const curve=new THREE.CatmullRomCurve3(points);
+      const tube=new THREE.Mesh(new THREE.TubeGeometry(curve,42,thickness,6,false),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.9}));
+      g.add(tube);
+      const glow=new THREE.Mesh(new THREE.TubeGeometry(curve,42,thickness*2.5,6,false),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.12,depthWrite:false}));
+      g.add(glow); return tube;
+    };
+
+    // 1) STONE OF THREE THREADS -------------------------------------------------
+    const threeThreads=new THREE.Group();
+    const threeThreadsX=-44, threeThreadsZ=66;
+    threeThreads.position.set(threeThreadsX,groundY(threeThreadsX,threeThreadsZ),threeThreadsZ);
+    threeThreads.userData={id:"threeThreads",label:"Камень Трёх Нитей"};
+    const obsidianMat=mat(0x111318,.72,.62);
+    const ritualDark=mat(0x272c2d,1,.12);
+    const sphereBase=new THREE.Mesh(new THREE.CylinderGeometry(4.5,5.2,.32,48),ritualDark);
+    sphereBase.position.y=.16; threeThreads.add(sphereBase);
+    const threadSphere=new THREE.Mesh(new THREE.SphereGeometry(2.55,32,20),obsidianMat);
+    threadSphere.scale.set(1,1,.92); threadSphere.position.y=2.62; threeThreads.add(threadSphere);
+    const sphereRim=new THREE.Mesh(new THREE.TorusGeometry(2.62,.07,8,64),new THREE.MeshBasicMaterial({color:0xb7a46d,transparent:true,opacity:.38}));
+    sphereRim.rotation.x=Math.PI/2; sphereRim.position.y=2.62; threeThreads.add(sphereRim);
+    // Engraved runic ring around the sphere.
+    for(const [r,w,c] of [[3.7,.06,0xd2b25f],[6.1,.045,0x8b78c8],[8.5,.035,0x6bbbc5]] as Array<[number,number,number]>){
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(r,w,7,80),new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.62,depthWrite:false}));
+      ring.rotation.x=Math.PI/2; ring.position.y=.075; threeThreads.add(ring);
+    }
+    const threadGlyphs=["ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᚷ","ᛟ","ᛉ","ᛏ","ᚺ","ᚾ"];
+    threadGlyphs.forEach((ch,i)=>{const a=i/threadGlyphs.length*Math.PI*2;addFloatingRune(threeThreads,ch,Math.cos(a)*6.8,.1,Math.sin(a)*6.8,i%3===0?0xffd26a:(i%3===1?0xa7eaff:0xd08cff),.48,a+Math.PI/2);});
+    // Three intertwining energy streams rising from the obsidian sphere.
+    const threadColors=[0xdfe8f2,0xffcf62,0xc94d58];
+    for(let k=0;k<3;k++){
+      const pts:THREE.Vector3[]=[];
+      for(let i=0;i<=18;i++){
+        const t=i/18, ang=t*Math.PI*3.2+k*Math.PI*2/3;
+        const rr=.22+.72*t;
+        pts.push(new THREE.Vector3(Math.cos(ang)*rr,4.15+t*5.8,Math.sin(ang)*rr));
+      }
+      addMagicThread(threeThreads,pts,threadColors[k],.09);
+    }
+    // Knotwork crown made from three crossing luminous arcs.
+    for(let k=0;k<3;k++){
+      const pts:THREE.Vector3[]=[];
+      for(let i=0;i<=22;i++){
+        const t=i/22, a=t*Math.PI*2, rr=1.45+.32*Math.sin(a*2+k*1.1);
+        pts.push(new THREE.Vector3(Math.cos(a+k*2.094)*rr,9.75+.42*Math.sin(a*3+k),Math.sin(a+k*2.094)*rr));
+      }
+      addMagicThread(threeThreads,pts,threadColors[k],.065);
+    }
+    const threadLight=new THREE.PointLight(0xffd16a,1.35,10,2); threadLight.position.set(0,4.0,0); threeThreads.add(threadLight);
+    for(let i=0;i<12;i++){
+      const a=midHash(i,1701)*Math.PI*2,rr=5.3+midHash(i,1702)*3.1;
+      irregularRock(threeThreads,Math.cos(a)*rr,.22,Math.sin(a)*rr,.32+midHash(i,1703)*.4,i%3===0?0x4e5553:0x3e4544,1704+i);
+    }
+    for(let i=0;i<8;i++){
+      const coin=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,.025,10),new THREE.MeshStandardMaterial({color:0x9d7d3d,metalness:.7,roughness:.4}));
+      const a=midHash(i,1710)*Math.PI*2,rr=1.8+midHash(i,1711)*6.2; coin.position.set(Math.cos(a)*rr,.11,Math.sin(a)*rr); coin.rotation.x=Math.PI/2; threeThreads.add(coin);
+    }
+    addMesh(threeThreads,"threeThreads","Камень Трёх Нитей"); objects.push(threeThreads); addCircleCollider(threeThreadsX,threeThreadsZ,2.9,.1);
+
+    // 2) CIRCLE OF POWER --------------------------------------------------------
+    const powerCircle=new THREE.Group();
+    const powerX=12, powerZ=74;
+    powerCircle.position.set(powerX,groundY(powerX,powerZ),powerZ);
+    powerCircle.userData={id:"powerCircle",label:"Круг Силы"};
+    const powerGround=new THREE.Mesh(new THREE.CircleGeometry(10.8,48),new THREE.MeshStandardMaterial({color:0x1d2b26,roughness:1,transparent:true,opacity:.94}));
+    powerGround.rotation.x=-Math.PI/2; powerGround.position.y=.02; powerCircle.add(powerGround);
+    for(const [r,w,c,op] of [[3.2,.075,0xd47cff,.8],[6.2,.06,0x6a9cff,.68],[9.2,.045,0xb77dff,.58]] as Array<[number,number,number,number]>) {
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(r,w,8,96),new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:op,depthWrite:false}));
+      ring.rotation.x=Math.PI/2; ring.position.y=.07; powerCircle.add(ring);
+    }
+    for(let i=0;i<20;i++){
+      const a=i/20*Math.PI*2,rr=5.1+(i%2)*2.2;
+      addGroundRune(powerCircle,Math.cos(a)*rr,Math.sin(a)*rr,fieldGlyphs[(i+2)%fieldGlyphs.length],i%2?0x8b78ff:0x63dff4,.38,a+.2);
+    }
+    const monolith=new THREE.Mesh(new THREE.DodecahedronGeometry(1.25,1),new THREE.MeshStandardMaterial({color:0x25292b,roughness:.9,metalness:.16}));
+    monolith.scale.set(.9,2.8,.7); monolith.position.y=2.45; monolith.rotation.set(.05,.2,-.08); powerCircle.add(monolith);
+    const monolithRune=addFloatingRune(powerCircle,"ᛟ",0,2.55,.78,0xffd55e,1.35,0); monolithRune.rotation.x=0;
+    const powerLight=new THREE.PointLight(0x9c6cff,1.7,10,2); powerLight.position.set(0,2.5,.8); powerCircle.add(powerLight);
+    for(let i=0;i<12;i++){
+      const a=i/12*Math.PI*2,rr=4.1+midHash(i,1801)*4.5;
+      const r=irregularRock(powerCircle,Math.cos(a)*rr,.3,Math.sin(a)*rr,.42+midHash(i,1802)*.42,i%3===0?0x59635d:0x4a514c,1803+i);
+      if(i%4===0){const crystal=new THREE.Mesh(new THREE.ConeGeometry(.18,.9,5),new THREE.MeshBasicMaterial({color:i%2?0x8e74ff:0x69ddff,transparent:true,opacity:.75}));crystal.position.set(r.position.x,.62,r.position.z);powerCircle.add(crystal);}
+    }
+    for(let i=0;i<9;i++){
+      const a=midHash(i,1820)*Math.PI*2,rr=2.2+midHash(i,1821)*6.7;
+      const dust=new THREE.Mesh(new THREE.SphereGeometry(.045+midHash(i,1822)*.04,6,5),new THREE.MeshBasicMaterial({color:i%2?0x72e9ff:0xb27dff,transparent:true,opacity:.7}));
+      dust.position.set(Math.cos(a)*rr,.4+midHash(i,1823)*2.6,Math.sin(a)*rr); powerCircle.add(dust);
+    }
+    addMesh(powerCircle,"powerCircle","Круг Силы"); objects.push(powerCircle); addCircleCollider(powerX,powerZ,2.2,.1);
+
+    // 3) WHISPERING STONE -------------------------------------------------------
+    const whisperStone=new THREE.Group();
+    const whisperX=-4, whisperZ=48;
+    whisperStone.position.set(whisperX,groundY(whisperX,whisperZ),whisperZ);
+    whisperStone.userData={id:"whisperStone",label:"Камень Шёпота"};
+    const whisperGround=new THREE.Mesh(new THREE.CircleGeometry(8.6,40),new THREE.MeshStandardMaterial({color:0x17251e,roughness:1,transparent:true,opacity:.95}));
+    whisperGround.rotation.x=-Math.PI/2; whisperGround.position.y=.02; whisperStone.add(whisperGround);
+    const whisperRing=new THREE.Mesh(new THREE.TorusGeometry(5.8,.09,8,96),new THREE.MeshBasicMaterial({color:0xa96cff,transparent:true,opacity:.78,depthWrite:false}));
+    whisperRing.rotation.x=Math.PI/2; whisperRing.position.y=.075; whisperStone.add(whisperRing);
+    const whisperBase=new THREE.Mesh(new THREE.DodecahedronGeometry(2.1,1),new THREE.MeshStandardMaterial({color:0x15171b,roughness:.8,metalness:.35}));
+    whisperBase.scale.set(1.15,1.35,.82); whisperBase.position.y=1.75; whisperBase.rotation.set(.05,.25,-.08); whisperStone.add(whisperBase);
+    // Ram-like curved horns, built as low-poly tubes.
+    for(const side of [-1,1]){
+      const pts:THREE.Vector3[]=[];
+      for(let i=0;i<=14;i++){
+        const t=i/14, a=t*Math.PI*1.15;
+        pts.push(new THREE.Vector3(side*(1.35+.72*Math.sin(a)),2.45+.85*t+.38*Math.sin(a),-.15+.78*Math.cos(a)-.78));
+      }
+      addMagicThread(whisperStone,pts,0x343744,.18);
+    }
+    const whisperGlyphs=["ᚨ","ᚱ","ᛉ","ᚷ","ᛟ","ᚦ","ᛏ","ᚢ","ᚺ","ᚾ"];
+    whisperGlyphs.forEach((ch,i)=>{
+      const a=i/whisperGlyphs.length*Math.PI*2;
+      addFloatingRune(whisperStone,ch,Math.cos(a)*3.5,1.0,Math.sin(a)*3.5,i%2?0x6edcff:0xb874ff,.46,a+Math.PI/2);
+    });
+    // Floating whisper-runes rising from the stone.
+    for(let i=0;i<9;i++){
+      const a=midHash(i,1901)*Math.PI*2,rr=.7+midHash(i,1902)*1.7;
+      const q=addFloatingRune(whisperStone,whisperGlyphs[i%whisperGlyphs.length],Math.cos(a)*rr,3.4+i*.48,Math.sin(a)*rr,i%2?0x79e6ff:0xc07cff,.42+midHash(i,1903)*.22,a);
+      q.rotation.x=(midHash(i,1904)-.5)*.35;
+    }
+    const whisperLight=new THREE.PointLight(0x9c55ff,1.5,9,2); whisperLight.position.set(0,2.2,.5); whisperStone.add(whisperLight);
+    for(let i=0;i<11;i++){
+      const a=midHash(i,1920)*Math.PI*2,rr=4.8+midHash(i,1921)*2.6;
+      irregularRock(whisperStone,Math.cos(a)*rr,.2,Math.sin(a)*rr,.28+midHash(i,1922)*.38,0x454b4a,1923+i);
+    }
+    addMesh(whisperStone,"whisperStone","Камень Шёпота"); objects.push(whisperStone); addCircleCollider(whisperX,whisperZ,2.5,.1);
+
     // The hero's home is deliberately a SMALL personal cabin just beyond the hunter camp.
     // It is visually distinct from the larger village houses: lower walls, a compact turf roof,
     // a short porch and a modest fenced yard. This is the hero's own dwelling, not another NPC house.
