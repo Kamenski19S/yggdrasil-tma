@@ -357,6 +357,23 @@ const midWarpGeometry = (geo: THREE.BufferGeometry, amount = 0.06, seed = 1) => 
   geo.computeVertexNormals();
   return geo;
 };
+    const organicBlobGeometry = (geo: THREE.BufferGeometry, amount = 0.10, seed = 1) => {
+      const p = geo.attributes.position as THREE.BufferAttribute;
+      for(let i=0;i<p.count;i++){
+        const x=p.getX(i), y=p.getY(i), z=p.getZ(i);
+        const r=Math.max(.001,Math.sqrt(x*x+z*z));
+        const n1=Math.sin(x*8.7+z*6.1+y*4.3+seed)*.5+.5;
+        const n2=Math.cos(x*13.2-z*9.4+y*3.1+seed*1.7)*.5+.5;
+        const edge=Math.min(1,r*1.4);
+        p.setX(i,x+(n1-.5)*amount*(.45+edge));
+        p.setZ(i,z+(n2-.5)*amount*(.35+edge));
+        p.setY(i,y+(n1+n2-1)*amount*.18);
+      }
+      p.needsUpdate=true;
+      geo.computeVertexNormals();
+      return geo;
+    };
+
 
 const midHeight = (x: number, z: number) => {
   const hillA = Math.sin(x * 0.11 + 0.7) * 0.65;
@@ -1749,13 +1766,30 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       const fm=[0x2c5132,0x3b6840,0x4b7a49];
       for(let i=0;i<12;i++){
         const r=Math.max(.48,(1.42-i*.075))*s;
-        const crown=new THREE.Mesh(new THREE.SphereGeometry(r,8,6),new THREE.MeshStandardMaterial({map:foliageTexture,color:fm[i%3],roughness:.99}));
+        const crown=new THREE.Mesh(organicBlobGeometry(new THREE.SphereGeometry(r,10,7),.18*s, i+Math.round(x*3+z*5)),new THREE.MeshStandardMaterial({map:foliageTexture,color:fm[i%3],roughness:.995}));
         crown.scale.set(1.0+midHash(i,x)*.25,.55+midHash(i,z)*.16,.82+midHash(i*2,x)*.22);
         crown.position.set((midHash(i*4,x)-.5)*.58*s,(1.55+i*.37)*s,(midHash(i*5,z)-.5)*.55*s); g.add(crown);
       }
       for(let i=0;i<3;i++){
         const moss=new THREE.Mesh(new THREE.SphereGeometry(.38*s,7,5),new THREE.MeshStandardMaterial({color:i%2?0x314d36:0x3d5d3d,roughness:1}));
         moss.scale.set(1.5,.28,.85); moss.position.set((i-1)*.45*s,.55*s,(midHash(i,88)-.5)*.5*s); g.add(moss);
+      }
+
+      // Small bark knots break the perfectly smooth trunk silhouette.
+      for(let i=0;i<4;i++){
+        const knot=new THREE.Mesh(new THREE.SphereGeometry((.11+midHash(i,77)*.08)*s,7,5),bark);
+        knot.scale.set(1.35,.72,.82);
+        knot.position.set((i%2?1:-1)*.18*s,(1.0+i*.78)*s,.29*s);
+        knot.rotation.y=(i%2)*Math.PI;
+        g.add(knot);
+      }
+      // A few thin surface roots visually connect trunk and forest floor.
+      for(let i=0;i<4;i++){
+        const a=i/4*Math.PI*2+.4, len=(.55+midHash(i,79)*.7)*s;
+        const root=new THREE.Mesh(new THREE.CylinderGeometry(.045*s,.12*s,len,6),bark);
+        root.position.set(Math.cos(a)*len*.42,.14*s,Math.sin(a)*len*.42);
+        root.rotation.z=Math.cos(a)*.85; root.rotation.x=-Math.sin(a)*.85; root.rotation.y=-a;
+        g.add(root);
       }
       g.position.set(x,y,z); addMesh(g); if(s>=1.15)addCircleCollider(x,z,.46*s,.04);
     };
@@ -1779,7 +1813,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         br.position.set(Math.cos(a)*len*.34,(3.25+midHash(i+33,x)*1.9)*s,Math.sin(a)*len*.34);
         br.rotation.z=Math.cos(a)*.76; br.rotation.x=Math.sin(a)*.76; br.rotation.y=-a; g.add(br);
         for(let k=0;k<4;k++){
-          const leaf=new THREE.Mesh(new THREE.SphereGeometry((.46+midHash(k+i,90)*.25)*s,8,6),new THREE.MeshStandardMaterial({map:foliageTexture,color:[0x315f39,0x427548,0x568653][(i+k)%3],roughness:1}));
+          const leaf=new THREE.Mesh(organicBlobGeometry(new THREE.SphereGeometry((.46+midHash(k+i,90)*.25)*s,10,7),.14*s,k+i+17),new THREE.MeshStandardMaterial({map:foliageTexture,color:[0x315f39,0x427548,0x568653][(i+k)%3],roughness:1}));
           leaf.scale.y=.62; leaf.position.set(Math.cos(a)*len*(.52+.09*k)+(midHash(k,i)-.5)*.55*s,(3.9+midHash(i,k)*1.45+.25*k)*s,Math.sin(a)*len*(.52+.09*k)+(midHash(k+4,i)-.5)*.55*s); g.add(leaf);
         }
       }
@@ -1791,6 +1825,16 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
           const rr=new THREE.Mesh(new THREE.PlaneGeometry(.48*s,.62*s),new THREE.MeshBasicMaterial({map:runeGroundTexture(runes[i],i%2?'#6fd4e8':'#e6bd61'),transparent:true,depthWrite:false,side:THREE.DoubleSide}));
           rr.position.set(Math.sin(a)*.56*s,(1.5+i*.68)*s,Math.cos(a)*.60*s); rr.rotation.y=a; g.add(rr);
         }
+      }
+
+      // Irregular bark ridges and knot scars make the trunk read as grown wood.
+      for(let i=0;i<6;i++){
+        const ridge=new THREE.Mesh(new THREE.SphereGeometry((.16+midHash(i,121)*.10)*s,7,5),bark);
+        ridge.scale.set(.55,1.55,.42);
+        const a=midHash(i,122)*Math.PI*2;
+        ridge.position.set(Math.cos(a)*.50*s,(1.05+i*.48)*s,Math.sin(a)*.50*s);
+        ridge.rotation.y=-a;
+        g.add(ridge);
       }
       g.position.set(x,y,z); addMesh(g); if(s>=1.2)addCircleCollider(x,z,.78*s,.05);
     };
