@@ -2566,6 +2566,55 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     }
     addMesh(whisperStone,"whisperStone","Камень Шёпота"); objects.push(whisperStone); addCircleCollider(whisperX,whisperZ,2.5,.1);
 
+    // STEP 9 — LANDMARK IDENTITY -------------------------------------------------
+    // Give each major sacred place a distinct visual "threshold" so landmarks feel
+    // embedded in the landscape rather than simply placed on top of it. Everything
+    // here is low-poly and intentionally lightweight for mobile rendering.
+    const landmarkThreshold=(x:number,z:number,glyph:string,accent:number,style:'grove'|'rune'|'fate'|'shadow'|'power'='rune')=>{
+      const g=new THREE.Group();
+      g.position.set(x,groundY(x,z),z);
+
+      const floorColor=style==='shadow'?0x202821:style==='power'?0x20242b:style==='fate'?0x2c302d:0x304333;
+      const floor=new THREE.Mesh(new THREE.CircleGeometry(style==='grove'?9.8:7.8,40),new THREE.MeshStandardMaterial({color:floorColor,roughness:1,transparent:true,opacity:.68}));
+      floor.rotation.x=-Math.PI/2; floor.position.y=.025; g.add(floor);
+
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(style==='grove'?7.2:5.8,.045,7,64),new THREE.MeshBasicMaterial({color:accent,transparent:true,opacity:style==='shadow'?.32:.46,depthWrite:false}));
+      ring.rotation.x=Math.PI/2; ring.position.y=.055; g.add(ring);
+
+      // Two asymmetric marker stones create a recognizable entrance silhouette.
+      for(const side of [-1,1]){
+        const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.48+midHash(side+Math.round(x),Math.round(z))*0.22,1),new THREE.MeshStandardMaterial({color:style==='shadow'?0x303638:0x59615a,roughness:1}));
+        rock.scale.set(.8,1.65,.72);
+        rock.position.set(side*2.35,.62,style==='grove'?-.15:.35);
+        rock.rotation.set(.05,side*.28,-side*.10);
+        g.add(rock);
+        const rune=addFloatingRune(g,glyph,side*2.35,1.25,.73,accent,.34,side*.08);
+        rune.rotation.x=0;
+      }
+
+      // Small embedded fragments point toward the center and visually connect the approach path.
+      for(let i=0;i<8;i++){
+        const a=-Math.PI/2+(i-3.5)*.16;
+        const rr=2.8+Math.abs(i-3.5)*.42;
+        const shard=new THREE.Mesh(new THREE.DodecahedronGeometry(.11+midHash(i,2200+Math.round(x))*.07,0),new THREE.MeshStandardMaterial({color:accent,emissive:accent,emissiveIntensity:.65,roughness:.72}));
+        shard.position.set(Math.cos(a)*rr,.08,Math.sin(a)*rr);
+        g.add(shard);
+      }
+
+      addMesh(g,`threshold_${style}_${Math.round(x)}_${Math.round(z)}`,`Порог: ${glyph}`);
+      scene.add(g);
+    };
+
+    // Each landmark receives its own framing treatment and rune, with no new gameplay object.
+    landmarkThreshold(ashGroveX,ashGroveZ,'ᚱ',0x8fe6a4,'grove');
+    landmarkThreshold(hoddX,hoddZ,'ᛉ',0xe0b55a,'grove');
+    landmarkThreshold(-72,48,'ᚠ',0xe2bd61,'shadow');
+    landmarkThreshold(58,-28,'ᛟ',0xf0c65e,'fate');
+    landmarkThreshold(5,-70,'ᛟ',0x8d78ff,'power');
+    landmarkThreshold(-72,-48,'ᚨ',0x9b72ff,'shadow');
+    landmarkThreshold(50,-62,'ᛏ',0x8fc6d7,'fate');
+    landmarkThreshold(-52,38,'ᛜ',0xd7ae61,'fate');
+
     // The hero's home is deliberately a SMALL personal cabin just beyond the hunter camp.
     // It is visually distinct from the larger village houses: lower walls, a compact turf roof,
     // a short porch and a modest fenced yard. This is the hero's own dwelling, not another NPC house.
