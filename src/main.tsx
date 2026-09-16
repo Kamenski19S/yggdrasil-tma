@@ -1260,48 +1260,55 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     terrain.receiveShadow = true;
     scene.add(terrain);
 
-    // ===== GLB TEST: two real trees beside Mimir's well =====
-    // Assets live in public/img/model/Tree.glb and Tree_1.glb.
+    // ===== GLB TEST: two real trees from public/img/model =====
+    // These are deliberately placed close to Mimir's well and normalized to a visible height.
     const gltfLoader = new GLTFLoader();
-    let glbTestTrees: THREE.Object3D[] = [];
-    let glbTestTreesAlive = true;
+    let glbTreesAlive = true;
+    const glbTrees: THREE.Object3D[] = [];
 
-    const loadGLBTree = (url: string, tx: number, tz: number, rotation: number) => {
-      gltfLoader.load(
-        url,
-        (gltf) => {
-          if (!glbTestTreesAlive) return;
-          const tree = markMeshes(gltf.scene);
+    const placeGLBTree = (gltf: any, x: number, z: number, rotationY: number, targetHeight = 8.5) => {
+      if (!glbTreesAlive) return;
+      const tree = markMeshes(gltf.scene);
 
-          // Put both test trees immediately beside Mimir's well.
-          const ty = groundY(tx, tz);
-          tree.position.set(tx, ty, tz);
-          tree.rotation.y = rotation;
+      // Normalize any source scale so different GLB files become comparable in the scene.
+      const sourceBox = new THREE.Box3().setFromObject(tree);
+      const sourceSize = new THREE.Vector3();
+      sourceBox.getSize(sourceSize);
+      const sourceHeight = Math.max(sourceSize.y, 0.001);
+      const scale = targetHeight / sourceHeight;
+      tree.scale.setScalar(scale);
+      tree.rotation.y = rotationY;
 
-          // Normalize each imported model to a predictable ~7 world-unit height.
-          const box = new THREE.Box3().setFromObject(tree);
-          const size = new THREE.Vector3();
-          box.getSize(size);
-          const h = Math.max(size.y, 0.001);
-          tree.scale.setScalar(7.0 / h);
+      // Put the model's lowest point exactly on the terrain.
+      tree.position.set(x, groundY(x, z), z);
+      const scaledBox = new THREE.Box3().setFromObject(tree);
+      tree.position.y += groundY(x, z) - scaledBox.min.y;
 
-          // After scaling, place the model's lowest point on the terrain.
-          const scaledBox = new THREE.Box3().setFromObject(tree);
-          tree.position.y += ty - scaledBox.min.y;
-
-          scene.add(tree);
-          glbTestTrees.push(tree);
-          console.log('GLB tree loaded successfully:', url, { height: h, position: [tx, tz] });
-        },
-        undefined,
-        (error) => {
-          console.error('GLB tree load failed:', url, error);
-        }
-      );
+      scene.add(tree);
+      glbTrees.push(tree);
+      console.log('REAL GLB TREE LOADED', { x, z, sourceHeight, scale });
     };
 
-    loadGLBTree(`${BASE}img/model/Tree.glb`, 3.4, 0.7, 0.25);
-    loadGLBTree(`${BASE}img/model/Tree_1.glb`, -2.4, 0.9, -0.35);
+    const loadGLBTree = async (url: string, x: number, z: number, rotationY: number) => {
+      try {
+        const response = await fetch(url, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const buffer = await response.arrayBuffer();
+        await new Promise<void>((resolve, reject) => {
+          gltfLoader.parse(buffer, '', (gltf) => {
+            placeGLBTree(gltf, x, z, rotationY);
+            resolve();
+          }, reject);
+        });
+      } catch (error) {
+        console.error('REAL GLB TREE FAILED', url, error);
+      }
+    };
+
+    // IMPORTANT: Vite serves files inside public/ from the site root.
+    // With the project's BASE_URL this becomes /yggdrasil-tma/img/model/Tree.glb.
+    void loadGLBTree(`${BASE}img/model/Tree.glb`, -4.8, 2.0, 0.25);
+    void loadGLBTree(`${BASE}img/model/Tree_1.glb`, 6.2, 1.2, -0.45);
 
     // Distant world depth: soft mountain ridges and far forest silhouettes.
     // They stay well beyond the playable area, so the village and landmarks keep open space.
@@ -3126,7 +3133,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{glbTestTreesAlive=false;glbTestTrees.forEach(tree=>tree.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}}));cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
+    return()=>{glbTestTreeAlive=false;if(glbTestTree){glbTestTree.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});}cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
   },[h.id,on,eventDone]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
