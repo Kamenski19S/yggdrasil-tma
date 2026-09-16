@@ -1979,11 +1979,11 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       m.position.copy(a).add(b).multiplyScalar(.5);
       m.lookAt(b); return m;
     };
-    const irregularRock=(g:THREE.Group,x:number,y:number,z:number,s:number,color:number,seed:number)=>{
+    function irregularRock(g:THREE.Group,x:number,y:number,z:number,s:number,color:number,seed:number){
       const r=new THREE.Mesh(new THREE.DodecahedronGeometry(s,1),mat(color,1));
       r.scale.set(.72+midHash(seed,1)*.62,.55+midHash(seed,2)*.85,.68+midHash(seed,3)*.55);
       r.rotation.set(midHash(seed,4)*1.2,midHash(seed,5)*Math.PI,midHash(seed,6)*1.1); r.position.set(x,y,z); g.add(r); return r;
-    };
+    }
 
     const makeFallenAsh=(x:number,z:number)=>{
       const g=new THREE.Group();g.position.set(x,groundY(x,z),z);g.userData={id:'fallenAsh',label:'Поверженный ясень'};
