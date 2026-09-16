@@ -1260,55 +1260,92 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     terrain.receiveShadow = true;
     scene.add(terrain);
 
-    // ===== GLB TEST: two real trees from public/img/model =====
-    // These are deliberately placed close to Mimir's well and normalized to a visible height.
+    // ===== GLB DIAGNOSTIC: isolate fetch + GLTFLoader + rendering =====
     const gltfLoader = new GLTFLoader();
-    let glbTreesAlive = true;
-    const glbTrees: THREE.Object3D[] = [];
+    let glbDiagnosticAlive = true;
+    let glbDiagnosticTree: THREE.Object3D | null = null;
 
-    const placeGLBTree = (gltf: any, x: number, z: number, rotationY: number, targetHeight = 8.5) => {
-      if (!glbTreesAlive) return;
-      const tree = markMeshes(gltf.scene);
+    const glbStatus = document.createElement("div");
+    glbStatus.style.cssText = "position:absolute;left:10px;top:10px;z-index:9999;padding:10px 12px;background:rgba(0,0,0,.78);color:#fff;font:12px/1.45 monospace;border:1px solid rgba(255,255,255,.25);border-radius:8px;max-width:90%;pointer-events:none;white-space:pre-wrap";
+    glbStatus.textContent = "GLB TEST: starting...";
+    el.style.position = "relative";
+    el.appendChild(glbStatus);
 
-      // Normalize any source scale so different GLB files become comparable in the scene.
-      const sourceBox = new THREE.Box3().setFromObject(tree);
-      const sourceSize = new THREE.Vector3();
-      sourceBox.getSize(sourceSize);
-      const sourceHeight = Math.max(sourceSize.y, 0.001);
-      const scale = targetHeight / sourceHeight;
-      tree.scale.setScalar(scale);
-      tree.rotation.y = rotationY;
-
-      // Put the model's lowest point exactly on the terrain.
-      tree.position.set(x, groundY(x, z), z);
-      const scaledBox = new THREE.Box3().setFromObject(tree);
-      tree.position.y += groundY(x, z) - scaledBox.min.y;
-
-      scene.add(tree);
-      glbTrees.push(tree);
-      console.log('REAL GLB TREE LOADED', { x, z, sourceHeight, scale });
+    const status = (text: string) => {
+      console.log("[GLB TEST]", text);
+      glbStatus.textContent = "GLB TEST\n" + text;
     };
 
-    const loadGLBTree = async (url: string, x: number, z: number, rotationY: number) => {
-      try {
-        const response = await fetch(url, { cache: 'no-store' });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const buffer = await response.arrayBuffer();
-        await new Promise<void>((resolve, reject) => {
-          gltfLoader.parse(buffer, '', (gltf) => {
-            placeGLBTree(gltf, x, z, rotationY);
-            resolve();
-          }, reject);
-        });
-      } catch (error) {
-        console.error('REAL GLB TREE FAILED', url, error);
+    const placeDiagnosticTree = (gltf: any, url: string, bytes: number) => {
+      if (!glbDiagnosticAlive) return;
+      glbDiagnosticTree = markMeshes(gltf.scene);
+      let meshes = 0;
+      glbDiagnosticTree.traverse((o: any) => { if (o.isMesh) meshes++; });
+
+      const box = new THREE.Box3().setFromObject(glbDiagnosticTree);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      const h = Math.max(size.y, 0.001);
+      const targetHeight = 18;
+      glbDiagnosticTree.scale.setScalar(targetHeight / h);
+      glbDiagnosticTree.rotation.y = 0.35;
+
+      // Put the model directly in front of the starting player/camera area.
+      const tx = 0;
+      const tz = 18;
+      glbDiagnosticTree.position.set(tx, groundY(tx, tz), tz);
+      const scaledBox = new THREE.Box3().setFromObject(glbDiagnosticTree);
+      glbDiagnosticTree.position.y += groundY(tx, tz) - scaledBox.min.y;
+      scene.add(glbDiagnosticTree);
+
+      glbDiagnosticTree.traverse((o: any) => {
+        if (o.isMesh) {
+          o.castShadow = true;
+          o.receiveShadow = true;
+        }
+      });
+
+      const helper = new THREE.Box3Helper(new THREE.Box3().setFromObject(glbDiagnosticTree), 0xff00ff);
+      scene.add(helper);
+
+      status(`SUCCESS\n${url}\nbytes: ${bytes}\nmeshes: ${meshes}\nsource height: ${h.toFixed(3)}\nscale: ${(targetHeight / h).toFixed(3)}\nposition: 0,18\nIf you see the tree + magenta box, Three.js GLB loading works.`);
+    };
+
+    const tryLoadDiagnosticGLB = async () => {
+      // These are the user's actual GitHub paths under public/img/model/.
+      const candidates = [
+        `${BASE}img/model/Tree.glb`,
+        `${BASE}img/model/Tree_1.glb`
+      ];
+      for (const url of candidates) {
+        try {
+          status(`FETCH\n${url}`);
+          const response = await fetch(url, { cache: "no-store" });
+          const type = response.headers.get("content-type") || "";
+          if (!response.ok) {
+            status(`HTTP FAILED\n${url}\nstatus: ${response.status}\ncontent-type: ${type}`);
+            continue;
+          }
+          const buffer = await response.arrayBuffer();
+          status(`FETCH OK\n${url}\nbytes: ${buffer.byteLength}\ncontent-type: ${type}\nParsing...`);
+          await new Promise<void>((resolve, reject) => {
+            gltfLoader.parse(buffer, "", (gltf) => {
+              try {
+                placeDiagnosticTree(gltf, url, buffer.byteLength);
+                resolve();
+              } catch (err) { reject(err); }
+            }, (error) => reject(error));
+          });
+          return;
+        } catch (error: any) {
+          console.error("[GLB TEST] failed", url, error);
+          status(`PARSE/LOAD FAILED\n${url}\n${String(error?.message || error)}`);
+        }
       }
+      status("NO GLB LOADED\nCheck Network/Console: the diagnostic tried both Tree.glb and Tree_1.glb.");
     };
 
-    // IMPORTANT: Vite serves files inside public/ from the site root.
-    // With the project's BASE_URL this becomes /yggdrasil-tma/img/model/Tree.glb.
-    void loadGLBTree(`${BASE}img/model/Tree.glb`, -4.8, 2.0, 0.25);
-    void loadGLBTree(`${BASE}img/model/Tree_1.glb`, 6.2, 1.2, -0.45);
+    void tryLoadDiagnosticGLB();
 
     // Distant world depth: soft mountain ridges and far forest silhouettes.
     // They stay well beyond the playable area, so the village and landmarks keep open space.
@@ -3133,7 +3170,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{glbTreesAlive=false;glbTrees.forEach((tree)=>{scene.remove(tree);tree.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});});cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
+    return()=>{glbDiagnosticAlive=false;if(glbDiagnosticTree){scene.remove(glbDiagnosticTree);glbDiagnosticTree.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});}glbStatus.remove();cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
   },[h.id,on,eventDone]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
