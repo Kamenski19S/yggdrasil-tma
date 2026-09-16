@@ -1088,19 +1088,38 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       lightPools.push(m);
     });
 
-    // Тонкие вертикальные лучи в просветах — полупрозрачные плоскости, а не дорогой post-process.
-    const shaftMat = new THREE.MeshBasicMaterial({
-      color: 0xffe8bf, transparent: true, opacity: 0.032,
-      depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending
+    // Мягкий туман: никаких больших плоскостей. Используем круглую градиентную текстуру
+    // на спрайтах, чтобы края растворялись в воздухе и не появлялись резкие "пластины".
+    const fogCanvas = document.createElement("canvas");
+    fogCanvas.width = fogCanvas.height = 128;
+    const fogCtx = fogCanvas.getContext("2d")!;
+    const fogGrad = fogCtx.createRadialGradient(64,64,4,64,64,64);
+    fogGrad.addColorStop(0, "rgba(214,224,218,0.16)");
+    fogGrad.addColorStop(0.42, "rgba(210,222,216,0.075)");
+    fogGrad.addColorStop(0.76, "rgba(205,219,212,0.025)");
+    fogGrad.addColorStop(1, "rgba(205,219,212,0)");
+    fogCtx.fillStyle = fogGrad;
+    fogCtx.fillRect(0,0,128,128);
+    const fogTex = new THREE.CanvasTexture(fogCanvas);
+    fogTex.colorSpace = THREE.SRGBColorSpace;
+    const fogSpriteMat = new THREE.SpriteMaterial({
+      map: fogTex, color: 0xd6e0da, transparent: true, opacity: 0.34,
+      depthWrite: false, depthTest: true, blending: THREE.NormalBlending
     });
-    const shafts: THREE.Mesh[] = [];
-    [[-18,10,0.8,14], [4,8,-0.35,11], [27,15,0.5,13]].forEach(([x,z,angle,h]) => {
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(5.5, h), shaftMat.clone());
-      m.position.set(x, h * 0.5 + 0.8, z);
-      m.rotation.set(0.10, angle * 0.045, angle);
-      scene.add(m);
-      shafts.push(m);
-    });
+    const fogSprites: THREE.Sprite[] = [];
+    for(let i=0;i<26;i++){
+      const s = new THREE.Sprite(fogSpriteMat.clone());
+      const scale = 7 + midHash(i,821)*12;
+      s.scale.set(scale, scale*(0.42+midHash(i,822)*0.24), 1);
+      s.position.set(
+        -78 + midHash(i,823)*156,
+        1.2 + midHash(i,824)*3.0,
+        -62 + midHash(i,825)*124
+      );
+      (s.material as THREE.SpriteMaterial).opacity = 0.10 + midHash(i,826)*0.10;
+      scene.add(s);
+      fogSprites.push(s);
+    }
 
     const canvasTex = (type: "ground" | "wood" | "roof" | "road" | "bark" | "foliage") => {
       const c = document.createElement("canvas");
@@ -2888,9 +2907,16 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const npc=(x:number,z:number,id:string,label:string,color:number,phase:number)=>{const g=new THREE.Group();g.userData={id,label,phase,baseX:x,baseZ:z};const body=new THREE.Mesh(new THREE.CapsuleGeometry(.32,.78,4,8),mat(color,.9));body.position.y=.85;g.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.25,12,8),mat(0xc99470,.9));head.position.y=1.58;g.add(head);const cloak=box(.7,.9,.15,0x27251f,1);cloak.position.set(0,.82,-.27);g.add(cloak);g.position.set(x,groundY(x,z),z);addMesh(g,id,label);objects.push(g);npcs.push(g);};
     npc(9,-8,"elder","Старейшина",0x73563f,.4);npc(-6,-3,"blacksmith","Кузнец",0x5c3b2b,1.5);npc(21,1,"hunter","Охотник",0x40523f,2.4);npc(5,10,"villager","Житель Мидгарда",0x59634d,3.4);npc(-16,4,"villager2","Житель деревни",0x654b3a,4.2);
 
-    const mistMat=new THREE.MeshBasicMaterial({color:0xc7d4cf,transparent:true,opacity:.045,depthWrite:false});
-    const mist=new THREE.Group();
-    for(let i=0;i<34;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(.9+midHash(i,810)*2.2,8,6),mistMat);m.position.set(-88+midHash(i,811)*176,1.8+midHash(i,812)*2.2,-72+midHash(i,813)*144);mist.add(m);}
+    // Дополнительный очень лёгкий приземный туман — отдельные мягкие пятна, без геометрических стен.
+    const mist = new THREE.Group();
+    for(let i=0;i<18;i++){
+      const s = new THREE.Sprite(fogSpriteMat.clone());
+      const scale = 4.5 + midHash(i,831)*7.5;
+      s.scale.set(scale, scale*(0.30+midHash(i,832)*0.18), 1);
+      s.position.set(-82+midHash(i,833)*164, .35+midHash(i,834)*1.15, -66+midHash(i,835)*132);
+      (s.material as THREE.SpriteMaterial).opacity = 0.055 + midHash(i,836)*0.055;
+      mist.add(s);
+    }
     scene.add(mist);
 
     // Tiny pollen motes drift through the air. One shared Points object keeps draw calls low.
@@ -3006,6 +3032,12 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
       fires.forEach(f=>{f.light.intensity=2.0+Math.sin(now*.012+f.phase)*.5;f.flame.scale.y=.9+Math.sin(now*.009+f.phase)*.12;});
       mist.children.forEach((m,i)=>{m.position.x+=Math.sin(now*.00012+i)*.003;m.position.z+=Math.cos(now*.0001+i)*.002;});
+      fogSprites.forEach((s,i)=>{
+        s.position.x += Math.sin(now*.00010+i*1.7)*.0025;
+        s.position.z += Math.cos(now*.00008+i*1.3)*.0020;
+        const sm=s.material as THREE.SpriteMaterial;
+        sm.opacity = 0.075 + (0.045 + 0.02*midHash(i,837))*(0.5+0.5*Math.sin(now*.00022+i));
+      });
       wildlife.forEach((w,i)=>{
         if(w.kind==='deer'){
           const dx=w.g.position.x-hero.position.x, dz=w.g.position.z-hero.position.z, dist=Math.hypot(dx,dz);
@@ -3046,14 +3078,11 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         p.opacity = 0.48 + Math.sin(now*0.00055 + i*1.7)*0.07;
         m.rotation.z += Math.sin(now*0.00018+i)*0.00008;
       });
-      shafts.forEach((m,i)=>{
-        (m.material as THREE.MeshBasicMaterial).opacity = 0.024 + Math.sin(now*0.00042+i*2.1)*0.008;
-      });
       renderer.render(scene,camera);raf=requestAnimationFrame(loop);
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});shafts.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
+    return()=>{cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
   },[h.id,on,eventDone]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
