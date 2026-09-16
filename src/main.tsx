@@ -1260,35 +1260,60 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     terrain.receiveShadow = true;
     scene.add(terrain);
 
-    // ===== GLB TEST: one real tree from public/models/tree.glb =====
-    // This is intentionally isolated: the existing procedural forest remains unchanged.
-    // Once the model is confirmed on mobile, we can replace the procedural trees safely.
+    // ===== GLB TEST: real tree near Mimir's well =====
+    // Load by ArrayBuffer so the test also works if the uploaded file has no .glb extension.
     const gltfLoader = new GLTFLoader();
     let glbTestTree: THREE.Object3D | null = null;
     let glbTestTreeAlive = true;
 
-    gltfLoader.load(
-      `${BASE}models/tree.glb`,
-      (gltf) => {
-        if (!glbTestTreeAlive) return;
-        glbTestTree = markMeshes(gltf.scene);
+    const placeGLBTree = (gltf: any) => {
+      if (!glbTestTreeAlive) return;
+      glbTestTree = markMeshes(gltf.scene);
 
-        // Test position: right beside Mimir's well in the village center.
-        const tx = 5;
-        const tz = 2;
-        const ty = groundY(tx, tz);
+      // Put it immediately beside Mimir's well.
+      const tx = 3.2;
+      const tz = 0.4;
+      const ty = groundY(tx, tz);
+      glbTestTree.position.set(tx, ty, tz);
+      glbTestTree.rotation.y = 0.35;
 
-        glbTestTree.position.set(tx, ty, tz);
-        glbTestTree.scale.setScalar(3.2);
-        glbTestTree.rotation.y = 0.65;
+      // Normalize the imported model to a predictable ~7 world-unit height.
+      const box = new THREE.Box3().setFromObject(glbTestTree);
+      const size = new THREE.Vector3();
+      const center = new THREE.Vector3();
+      box.getSize(size);
+      box.getCenter(center);
+      const h = Math.max(size.y, 0.001);
+      const scale = 7.0 / h;
+      glbTestTree.scale.setScalar(scale);
 
-        scene.add(glbTestTree);
-      },
-      undefined,
-      (error) => {
-        console.error("GLB tree load failed:", error);
+      // After scaling, put the bottom of the model on the terrain.
+      const scaledBox = new THREE.Box3().setFromObject(glbTestTree);
+      glbTestTree.position.y += ty - scaledBox.min.y;
+      scene.add(glbTestTree);
+
+      console.log("GLB tree loaded successfully", { height: h, scale, position: [tx, tz] });
+    };
+
+    const tryLoadGLB = async () => {
+      const candidates = [`${BASE}models/tree.glb`, `${BASE}models/tree`];
+      for (const url of candidates) {
+        try {
+          const response = await fetch(url, { cache: "no-store" });
+          if (!response.ok) continue;
+          const buffer = await response.arrayBuffer();
+          gltfLoader.parse(buffer, "", placeGLBTree, (error) => {
+            console.error("GLB parse failed:", url, error);
+          });
+          return;
+        } catch (error) {
+          console.warn("GLB test file not found at", url, error);
+        }
       }
-    );
+      console.error("GLB tree was not found. Expected public/models/tree.glb (or public/models/tree).");
+    };
+
+    tryLoadGLB();
 
     // Distant world depth: soft mountain ridges and far forest silhouettes.
     // They stay well beyond the playable area, so the village and landmarks keep open space.
