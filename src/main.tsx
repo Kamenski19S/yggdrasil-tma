@@ -2141,7 +2141,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const threadGlyphs=["ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᚷ","ᛟ","ᛉ","ᛏ","ᚺ","ᚾ"];
     threadGlyphs.forEach((ch,i)=>{const a=i/threadGlyphs.length*Math.PI*2;addFloatingRune(threeThreads,ch,Math.cos(a)*6.8,.1,Math.sin(a)*6.8,i%3===0?0xffd26a:(i%3===1?0xa7eaff:0xd08cff),.48,a+Math.PI/2);});
     // Three intertwining energy streams rising from the obsidian sphere.
-    const threadColors=[0xdfe8f2,0xffcf62,0xc94d58];
+    const threadStreamColors=[0xdfe8f2,0xffcf62,0xc94d58];
     for(let k=0;k<3;k++){
       const pts:THREE.Vector3[]=[];
       for(let i=0;i<=18;i++){
@@ -2149,7 +2149,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         const rr=.22+.72*t;
         pts.push(new THREE.Vector3(Math.cos(ang)*rr,4.15+t*5.8,Math.sin(ang)*rr));
       }
-      addMagicThread(threeThreads,pts,threadColors[k],.09);
+      addMagicThread(threeThreads,pts,threadStreamColors[k],.09);
     }
     // Knotwork crown made from three crossing luminous arcs.
     for(let k=0;k<3;k++){
@@ -2158,7 +2158,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         const t=i/22, a=t*Math.PI*2, rr=1.45+.32*Math.sin(a*2+k*1.1);
         pts.push(new THREE.Vector3(Math.cos(a+k*2.094)*rr,9.75+.42*Math.sin(a*3+k),Math.sin(a+k*2.094)*rr));
       }
-      addMagicThread(threeThreads,pts,threadColors[k],.065);
+      addMagicThread(threeThreads,pts,threadStreamColors[k],.065);
     }
     const threadLight=new THREE.PointLight(0xffd16a,1.35,10,2); threadLight.position.set(0,4.0,0); threeThreads.add(threadLight);
     for(let i=0;i<12;i++){
