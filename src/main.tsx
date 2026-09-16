@@ -1483,32 +1483,89 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     }
     addMesh(oldField);
 
-    // Field of Runes — an open clearing where carved stones and training posts mark an old rite.
+    const runeGroundTexture=(glyph:string,color:string)=>{
+      const c=document.createElement("canvas"); c.width=c.height=256; const ctx=c.getContext("2d")!;
+      ctx.clearRect(0,0,256,256); ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.shadowColor=color; ctx.shadowBlur=18; ctx.fillStyle=color; ctx.font="bold 150px serif"; ctx.fillText(glyph,128,132);
+      ctx.shadowBlur=4; ctx.globalAlpha=.55; ctx.font="bold 118px serif"; ctx.fillText(glyph,128,132);
+      const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; return t;
+    };
+    const addGroundRune=(g:THREE.Group,x:number,z:number,glyph:string,color:number,size=.72,rot=0)=>{
+      const hex="#"+color.toString(16).padStart(6,"0");
+      const m=new THREE.MeshBasicMaterial({map:runeGroundTexture(glyph,hex),transparent:true,depthWrite:false,side:THREE.DoubleSide});
+      const q=new THREE.Mesh(new THREE.PlaneGeometry(size,size),m); q.rotation.x=-Math.PI/2; q.rotation.z=rot; q.position.set(x,.065,z); g.add(q);
+      return q;
+    };
+
+    // Field of Runes — a monumental Norse ritual clearing, built around a central altar.
     const runeField=new THREE.Group();
-    runeField.position.set(39,groundY(39,70),70);
+    const runeFieldX=39, runeFieldZ=70;
+    runeField.position.set(runeFieldX,groundY(runeFieldX,runeFieldZ),runeFieldZ);
     runeField.userData={id:"runefield",label:"Поле Рун"};
-    const fieldStoneMat=mat(0x555b56,1);
-    const fieldRuneMat=new THREE.MeshStandardMaterial({color:0xb99a5b,emissive:0x68471d,emissiveIntensity:1.6,roughness:.62});
-    for(let i=0;i<11;i++){
-      const a=midHash(i,1201)*Math.PI*2; const rr=3.5+midHash(i,1202)*8.0;
-      const st=new THREE.Mesh(new THREE.DodecahedronGeometry(.65+midHash(i,1203)*.38,1),fieldStoneMat);
-      st.scale.y=1.4+midHash(i,1204)*1.5;
-      st.position.set(Math.cos(a)*rr,st.scale.y*.48,Math.sin(a)*rr);
-      st.rotation.set(midHash(i,1205),a,midHash(i,1206)); runeField.add(st);
-      const mark=new THREE.Mesh(new THREE.BoxGeometry(.11,.035,.72),fieldRuneMat);
-      mark.position.set(st.position.x,st.position.y+.55,st.position.z); mark.rotation.y=-a+.45; runeField.add(mark);
+    const fieldStoneMat=new THREE.MeshStandardMaterial({color:0x59615d,roughness:.94,metalness:.04});
+    const fieldDarkMat=new THREE.MeshStandardMaterial({color:0x3b4440,roughness:1});
+    const cyanRuneMat=new THREE.MeshBasicMaterial({color:0x7de8ff,transparent:true,opacity:.92,depthWrite:false,side:THREE.DoubleSide});
+    const purpleRuneMat=new THREE.MeshBasicMaterial({color:0xc58cff,transparent:true,opacity:.86,depthWrite:false,side:THREE.DoubleSide});
+    const goldRuneMat=new THREE.MeshBasicMaterial({color:0xffd76a,transparent:true,opacity:.9,depthWrite:false,side:THREE.DoubleSide});
+
+    // Mossy ritual ground.
+    const fieldGround=new THREE.Mesh(new THREE.CircleGeometry(12.2,48),new THREE.MeshStandardMaterial({color:0x283a2c,roughness:1,transparent:true,opacity:.92}));
+    fieldGround.rotation.x=-Math.PI/2; fieldGround.position.y=.018; runeField.add(fieldGround);
+
+    // Central monumental altar with a glowing rune face.
+    const altarBase=new THREE.Mesh(new THREE.CylinderGeometry(2.15,2.55,.48,10),fieldDarkMat);
+    altarBase.position.y=.24; altarBase.scale.z=.82; runeField.add(altarBase);
+    const altarBody=new THREE.Mesh(new THREE.DodecahedronGeometry(1.48,1),fieldStoneMat);
+    altarBody.scale.set(1.0,1.65,.72); altarBody.position.y=1.38; altarBody.rotation.y=.18; runeField.add(altarBody);
+    const altarCrown=new THREE.Mesh(new THREE.DodecahedronGeometry(.78,1),fieldStoneMat);
+    altarCrown.scale.set(.72,1.15,.55); altarCrown.position.set(0,2.72,.02); altarCrown.rotation.z=.06; runeField.add(altarCrown);
+    const altarRune=addGroundRune(runeField,0,0,"ᚠ",0x9feeff,1.15,0);
+    altarRune.position.y=2.55; altarRune.rotation.x=0;
+    const altarGlow=new THREE.PointLight(0x76eaff,1.7,9,2); altarGlow.position.set(0,2.0,.8); runeField.add(altarGlow);
+
+    // Two concentric golden ritual rings.
+    for(const [r,w] of [[3.0,.075],[7.1,.065],[10.1,.045]] as Array<[number,number]>) {
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(r,w,8,96),new THREE.MeshBasicMaterial({color:0xe9c76d,transparent:true,opacity:r<8?.82:.58,depthWrite:false}));
+      ring.rotation.x=Math.PI/2; ring.position.y=.055; runeField.add(ring);
     }
-    for(let i=0;i<5;i++){
-      const post=box(.22,1.8,.22,0x4a3020,1);
-      post.position.set(-6+i*3, .9, 7.5); runeField.add(post);
-      const ring=new THREE.Mesh(new THREE.TorusGeometry(.34,.035,6,18),fieldRuneMat);
-      ring.rotation.x=Math.PI/2; ring.position.set(-6+i*3,1.55,7.5); runeField.add(ring);
+    const fieldGlyphs=["ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᚷ","ᚹ","ᚺ","ᚾ","ᛁ","ᛃ","ᛇ","ᛈ","ᛉ","ᛏ"];
+    for(let i=0;i<16;i++){
+      const a=i/16*Math.PI*2;
+      addGroundRune(runeField,Math.cos(a)*8.55,Math.sin(a)*8.55,fieldGlyphs[i],i%3===0?0xe5b95b:(i%3===1?0x77e5f5:0xb887ef),.62,a+.18);
     }
-    const fieldFire=new THREE.Group();
-    for(let i=0;i<7;i++){const a=i/7*Math.PI*2;const st=new THREE.Mesh(new THREE.DodecahedronGeometry(.3,1),mat(0x55534d,1));st.position.set(Math.cos(a)*.65,.22,Math.sin(a)*.65);fieldFire.add(st);}
-    runeField.add(fieldFire);
+    for(let i=0;i<12;i++){
+      const a=i/12*Math.PI*2+.13;
+      addGroundRune(runeField,Math.cos(a)*5.45,Math.sin(a)*5.45,fieldGlyphs[(i+5)%fieldGlyphs.length],i%2?0x74dff2:0xc18bed,.38,a);
+    }
+
+    // Outer ring of irregular monolithic menhirs, each with a visible glowing rune.
+    for(let i=0;i<10;i++){
+      const a=i/10*Math.PI*2+.16; const rr=9.15+(.5-midHash(i,1202))*1.0;
+      const h=2.4+midHash(i,1203)*2.0; const w=.72+midHash(i,1204)*.48;
+      const st=new THREE.Mesh(new THREE.DodecahedronGeometry(.82+midHash(i,1205)*.22,1),fieldStoneMat);
+      st.scale.set(w,h,0.72+midHash(i,1206)*.28);
+      st.position.set(Math.cos(a)*rr,st.scale.y*.58,Math.sin(a)*rr);
+      st.rotation.set((midHash(i,1207)-.5)*.22,a+(midHash(i,1208)-.5)*.3,(midHash(i,1209)-.5)*.18);
+      runeField.add(st);
+      const glyph=fieldGlyphs[i%fieldGlyphs.length];
+      const tex=runeGroundTexture(glyph,i%3===0?'#8eeeff':(i%3===1?'#c08cff':'#ffd86b'));
+      const mark=new THREE.Mesh(new THREE.PlaneGeometry(.62,.92),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));
+      mark.position.set(st.position.x+Math.cos(a)*.68,st.position.y*.76,st.position.z+Math.sin(a)*.68); mark.rotation.y=-a+Math.PI*.5; runeField.add(mark);
+      const gl=new THREE.PointLight(i%3===1?0xb16dff:(i%3===0?0x62ddff:0xe5b95b),.35,3.6,2);
+      gl.position.set(st.position.x,st.position.y*.72,st.position.z); runeField.add(gl);
+    }
+    // Small boundary stones and sparse ritual debris.
+    for(let i=0;i<18;i++){
+      const a=midHash(i,1220)*Math.PI*2, rr=6.8+midHash(i,1221)*4.3;
+      irregularRock(runeField,Math.cos(a)*rr,.22,Math.sin(a)*rr,.28+midHash(i,1222)*.35,i%2?0x4c5750:0x59625a,1223+i);
+    }
+    for(let i=0;i<10;i++){
+      const a=midHash(i,1230)*Math.PI*2, rr=2.6+midHash(i,1231)*6.6;
+      const relic=new THREE.Mesh(new THREE.CylinderGeometry(.06,.09,.035,7),new THREE.MeshStandardMaterial({color:0x9b814b,metalness:.6,roughness:.45}));
+      relic.rotation.x=Math.PI/2; relic.position.set(Math.cos(a)*rr,.09,Math.sin(a)*rr); runeField.add(relic);
+    }
     addMesh(runeField,"runefield","Поле Рун"); objects.push(runeField);
-    addCircleCollider(39,70,1.0,.08);
+    addCircleCollider(runeFieldX,runeFieldZ,1.8,.08);
 
     // Palisade and gate: the player enters a settlement, not an isolated field.
     const palisade=(x1:number,z1:number,x2:number,z2:number)=>{const g=new THREE.Group();const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz),n=Math.floor(len/1.7);for(let i=0;i<=n;i++){const t=i/n;const px=x1+dx*t,pz=z1+dz*t;const p=new THREE.Mesh(new THREE.ConeGeometry(.24,.24+2.8+midHash(i,x1)*.5,6),mat(0x3c2a1c,1));p.position.set(px,groundY(px,pz)+1.45,pz);g.add(p);}const beam=box(.3,.35,len,0x2d2119,1);beam.rotation.y=Math.atan2(dx,dz);beam.position.set((x1+x2)/2,groundY((x1+x2)/2,(z1+z2)/2)+1.25,(z1+z2)/2);g.add(beam);scene.add(g);addSegmentCollider(x1,z1,x2,z2,.34,.08);};
@@ -1523,8 +1580,41 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const ml=new THREE.PointLight(0x72e8a0,1.8,10,2);ml.position.set(18,groundY(18,15)+1.4,15);scene.add(ml);
 
     const shrine=new THREE.Group();shrine.userData={id:"norns",label:"Прядильня норн"};shrine.position.set(-25,groundY(-25,43),43);
-    for(let i=0;i<3;i++){const st=new THREE.Mesh(new THREE.CapsuleGeometry(.65,2.3,5,8),mat(0x575d59,1));st.position.set((i-1)*2.2,1.35,0);st.rotation.z=(i-1)*.07;shrine.add(st);const r=new THREE.Mesh(new THREE.TorusGeometry(.42,.055,7,20),new THREE.MeshStandardMaterial({color:[0xc7e5cf,0xc8a4e8,0xe1c274][i],emissive:[0x5d9971,0x724d91,0x8d6c28][i],emissiveIntensity:2.2}));r.rotation.x=Math.PI/2;r.position.set((i-1)*2.2,1.6,-.55);shrine.add(r);}
-    const threadMat=new THREE.LineBasicMaterial({color:0xd4c4e7,transparent:true,opacity:.78});for(let i=0;i<2;i++){const p=[new THREE.Vector3((i-1)*2.2,2,.1),new THREE.Vector3((i-.5)*2.2,4.1,-.7),new THREE.Vector3(i*2.2,2,.1)];shrine.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p),threadMat));}const ring=new THREE.Mesh(new THREE.TorusGeometry(4.1,.07,8,48),new THREE.MeshStandardMaterial({color:0xbda8d2,emissive:0x5d4770,emissiveIntensity:1.5}));ring.rotation.x=Math.PI/2;ring.position.y=.05;shrine.add(ring);addMesh(shrine,"norns","Прядильня норн");objects.push(shrine);
+    const loomWood=mat(0x4b3022,1); const loomDark=mat(0x2b211b,1);
+    // Large carved loom frame.
+    const loomTop=box(5.7,.28,.28,0x593a28,1); loomTop.position.set(0,3.8,0); shrine.add(loomTop);
+    const loomBottom=box(5.0,.25,.32,0x3b291f,1); loomBottom.position.set(0,.65,.15); shrine.add(loomBottom);
+    for(const x of [-2.45,2.45]){const p=box(.28,3.55,.3,0x513423,1);p.position.set(x,2.15,0);p.rotation.z=x>0?.08:-.08;shrine.add(p);}
+    // Spinning wheel behind the fate stones.
+    const wheel=new THREE.Mesh(new THREE.TorusGeometry(2.05,.18,8,32),loomWood); wheel.rotation.y=Math.PI/2; wheel.position.set(0,2.25,-.8); shrine.add(wheel);
+    const hub=new THREE.Mesh(new THREE.CylinderGeometry(.28,.32,.38,10),loomDark); hub.rotation.z=Math.PI/2; hub.position.set(0,2.25,-.8); shrine.add(hub);
+    for(let i=0;i<10;i++){const a=i/10*Math.PI*2; const spoke=box(.08,.08,1.85,0x5a3b28,1); spoke.position.set(Math.cos(a)*.92,2.25+Math.sin(a)*.92,-.8); spoke.rotation.z=-a; shrine.add(spoke);}
+    // Three symbolic rough-hewn stones: Urd, Verdandi, Skuld.
+    const fateNames=['URD','VERDANDI','SKULD']; const fateColors=[0x83d8ff,0xe7e7e1,0xe37b88];
+    for(let i=0;i<3;i++){
+      const x=(i-1)*2.0; const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(.78,1),new THREE.MeshStandardMaterial({color:0x454b49,roughness:.92,metalness:.05}));
+      stone.scale.set(.9,1.18+midHash(i,1290)*.2,.72); stone.position.set(x,1.35,.18); stone.rotation.set(0,(i-1)*.16,0); shrine.add(stone);
+      const tex=runeGroundTexture(i===0?'ᚢ':(i===1?'ᚹ':'ᛋ'),i===0?'#8fe6ff':(i===1?'#f1f1ec':'#ef8d9a'));
+      const rune=new THREE.Mesh(new THREE.PlaneGeometry(.48,.62),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide})); rune.position.set(x,1.42,.86); rune.rotation.y=Math.PI; shrine.add(rune);
+      const lc=document.createElement("canvas"); lc.width=320; lc.height=96; const lctx=lc.getContext("2d")!; lctx.clearRect(0,0,320,96); lctx.textAlign="center"; lctx.textBaseline="middle"; lctx.font="bold 34px serif"; lctx.fillStyle=i===0?"#9fe9ff":(i===1?"#f4f4ef":"#ef91a0"); lctx.shadowColor=lctx.fillStyle; lctx.shadowBlur=12; lctx.fillText(fateNames[i],160,48);
+      const lt=new THREE.CanvasTexture(lc); lt.colorSpace=THREE.SRGBColorSpace;
+      const label=new THREE.Mesh(new THREE.PlaneGeometry(1.55,.46),new THREE.MeshBasicMaterial({map:lt,transparent:true,depthWrite:false,side:THREE.DoubleSide})); label.position.set(x,0.55,.86); label.rotation.y=Math.PI; shrine.add(label);
+      const light=new THREE.PointLight(fateColors[i],.45,4.5,2);light.position.set(x,1.55,1.0);shrine.add(light);
+    }
+    // Three luminous threads rise from the stones and weave into a knotwork crown.
+    const threadColors=[0xe6c45f,0xe8e8e5,0xd95f74];
+    for(let i=0;i<3;i++){
+      const pts:THREE.Vector3[]=[];
+      for(let k=0;k<=18;k++){const t=k/18; const y=1.9+t*4.6; const xx=(i-1)*2.0 + Math.sin(t*Math.PI*2+i*1.7)*(.45+.5*t); const zz=.35 + Math.cos(t*Math.PI*2+i)*.45; pts.push(new THREE.Vector3(xx,y,zz));}
+      shrine.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:threadColors[i],transparent:true,opacity:.9})));
+    }
+    // Knotwork loops at the top.
+    for(let i=0;i<3;i++){const knot=new THREE.Mesh(new THREE.TorusGeometry(1.15+i*.18,.045,6,32),new THREE.MeshBasicMaterial({color:threadColors[i],transparent:true,opacity:.75,depthWrite:false}));knot.position.set((i-1)*.38,6.15,.15);knot.rotation.set(.4,i*.65,.2);shrine.add(knot);}
+    // Ritual floor and weaving debris.
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(4.6,.065,8,72),new THREE.MeshBasicMaterial({color:0x9ddcf0,transparent:true,opacity:.72,depthWrite:false}));ring.rotation.x=Math.PI/2;ring.position.y=.05;shrine.add(ring);
+    for(let i=0;i<18;i++){const a=midHash(i,1300)*Math.PI*2,rr=2.5+midHash(i,1301)*3.1;const spool=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.16,9),new THREE.MeshStandardMaterial({color:[0x9b6548,0x6d7790,0x8d5367,0x77724d][i%4],roughness:.8}));spool.rotation.x=Math.PI/2;spool.position.set(Math.cos(a)*rr,.12,Math.sin(a)*rr);shrine.add(spool);}
+    for(let i=0;i<9;i++)addGroundRune(shrine,(midHash(i,1315)-.5)*7.5,(midHash(i,1316)-.5)*6.2,['ᚠ','ᚱ','ᛟ','ᛉ','ᚦ'][i%5],i%2?0x8fdff0:0xd7ae61,.34,midHash(i,1317)*Math.PI);
+    addMesh(shrine,"norns","Прядильня норн");objects.push(shrine);
     addCircleCollider(-25,43,3.0,.1);
 
     // Ritual Place of Power — an ancient stone circle where the hero can invoke different paths of power.
@@ -1580,18 +1670,6 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     // Realistic fantasy trees: firs for the forest + sacred ash trees around Midgard.
     // The ash is a deliberate visual echo of Yggdrasil rather than a generic oak.
-    const runeGroundTexture=(glyph:string,color:string)=>{
-      const c=document.createElement("canvas"); c.width=c.height=256; const ctx=c.getContext("2d")!;
-      ctx.clearRect(0,0,256,256); ctx.textAlign="center"; ctx.textBaseline="middle";
-      ctx.shadowColor=color; ctx.shadowBlur=18; ctx.fillStyle=color; ctx.font="bold 150px serif"; ctx.fillText(glyph,128,132);
-      ctx.shadowBlur=4; ctx.globalAlpha=.55; ctx.font="bold 118px serif"; ctx.fillText(glyph,128,132);
-      const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; return t;
-    };
-    const addGroundRune=(g:THREE.Group,x:number,z:number,glyph:string,color:number,size=.72,rot=0)=>{
-      const hex="#"+color.toString(16).padStart(6,"0");
-      const m=new THREE.MeshBasicMaterial({map:runeGroundTexture(glyph,hex),transparent:true,depthWrite:false,side:THREE.DoubleSide});
-      const q=new THREE.Mesh(new THREE.PlaneGeometry(size,size),m); q.rotation.x=-Math.PI/2; q.rotation.z=rot; q.position.set(x,.065,z); g.add(q);
-    };
 
     const firTree=(x:number,z:number,s:number)=>{
       const g=new THREE.Group(),y=groundY(x,z);
@@ -1840,7 +1918,57 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       }
       addMesh(g,id,label); objects.push(g); addCircleCollider(x,z,.9,.08);
     };
-    makeForestEvent(-15,58,'forestCache','Забытый тайник',0xb28b52,0x4b4035,2);
+    // Forgotten Cache — a colossal hollow oak with a hidden leather pouch inside.
+    const makeForgottenCache=(x:number,z:number)=>{
+      const g=new THREE.Group(); g.position.set(x,groundY(x,z),z); g.userData={id:'forestCache',label:'Забытый тайник'};
+      const bark= new THREE.MeshStandardMaterial({map:barkTexture,color:0x6a543d,roughness:1});
+      const darkBark=new THREE.MeshStandardMaterial({color:0x2a211b,roughness:1});
+      const stump=new THREE.Mesh(new THREE.CylinderGeometry(2.0,2.65,4.9,11),bark);
+      stump.position.y=2.45; stump.rotation.z=-.035; g.add(stump);
+      // Jagged broken crown.
+      for(let i=0;i<7;i++){
+        const h=1.3+midHash(i,1250)*2.7;
+        const shard=new THREE.Mesh(new THREE.ConeGeometry(.32+midHash(i,1251)*.3,h,6),bark);
+        const a=midHash(i,1252)*Math.PI*2; const rr=.55+midHash(i,1253)*1.35;
+        shard.position.set(Math.cos(a)*rr,4.75+h*.42,Math.sin(a)*rr);
+        shard.rotation.z=(midHash(i,1254)-.5)*.55; shard.rotation.x=(midHash(i,1255)-.5)*.55; g.add(shard);
+      }
+      // Deep black hollow, with a subtle inner rim.
+      const hollow=new THREE.Mesh(new THREE.SphereGeometry(1.18,16,10),darkBark);
+      hollow.scale.set(1.0,1.18,.46); hollow.position.set(0,2.0,2.08); g.add(hollow);
+      const innerRim=new THREE.Mesh(new THREE.TorusGeometry(1.05,.16,8,28),new THREE.MeshStandardMaterial({color:0x4b3b2d,roughness:1}));
+      innerRim.rotation.x=Math.PI/2; innerRim.position.set(0,2.0,2.12); innerRim.scale.y=1.15; g.add(innerRim);
+      // Silver spiderweb strands.
+      const webMat=new THREE.LineBasicMaterial({color:0xd8d8d0,transparent:true,opacity:.45});
+      for(let i=0;i<6;i++){
+        const pts=[new THREE.Vector3(-.95+i*.38,1.15+(i%3)*.55,2.15),new THREE.Vector3((i-2.5)*.2,2.0+(i%2)*.3,2.48),new THREE.Vector3(-.8+i*.32,2.95+(i%3)*.25,2.12)];
+        g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),webMat));
+      }
+      // Hidden traveler's pouch and glowing runic tokens.
+      const pouch=new THREE.Mesh(new THREE.SphereGeometry(.46,10,8),new THREE.MeshStandardMaterial({color:0x5b3a26,roughness:1}));
+      pouch.scale.set(.9,1.15,.62); pouch.position.set(.05,1.45,2.34); g.add(pouch);
+      const clasp=new THREE.Mesh(new THREE.SphereGeometry(.07,7,5),new THREE.MeshStandardMaterial({color:0xd5b15d,metalness:.7,roughness:.35,emissive:0x6f4b17,emissiveIntensity:1.4}));
+      clasp.position.set(.05,1.72,2.77); g.add(clasp);
+      for(let i=0;i<5;i++){
+        const tok=new THREE.Mesh(new THREE.DodecahedronGeometry(.11,0),new THREE.MeshStandardMaterial({color:0xe1b95c,emissive:0xa46d1e,emissiveIntensity:2.1,roughness:.5}));
+        tok.position.set(-.38+i*.19,1.02+(i%2)*.08,2.5); g.add(tok);
+      }
+      // Runes carved around the opening.
+      const cacheGlyphs=['ᚠ','ᚱ','ᛉ','ᛟ','ᚦ','ᚨ'];
+      for(let i=0;i<6;i++){
+        const a=-1.05+i*.42; const tex=runeGroundTexture(cacheGlyphs[i],i%2?'#e7bd61':'#7ce5ef');
+        const q=new THREE.Mesh(new THREE.PlaneGeometry(.45,.62),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));
+        q.position.set(Math.sin(a)*1.55,1.2+i*.42,1.93+Math.cos(a)*.22); q.rotation.y=Math.PI; g.add(q);
+      }
+      // Golden protection glyph on the moss.
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(4.15,.06,8,64),new THREE.MeshBasicMaterial({color:0xe4bf63,transparent:true,opacity:.78,depthWrite:false}));
+      ring.rotation.x=Math.PI/2; ring.position.y=.05; g.add(ring);
+      for(let i=0;i<10;i++){const a=i/10*Math.PI*2;addGroundRune(g,Math.cos(a)*3.65,Math.sin(a)*3.65,['ᚠ','ᚢ','ᚦ','ᚨ','ᚱ','ᚲ','ᚷ','ᛟ','ᛉ','ᛏ'][i],0xe2bd61,.38,a+.2);}
+      for(let i=0;i<12;i++){const a=midHash(i,1270)*Math.PI*2,rr=1.8+midHash(i,1271)*3.3; const c=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,.025,9),new THREE.MeshStandardMaterial({color:0x9b7d43,metalness:.55,roughness:.45}));c.rotation.x=Math.PI/2;c.position.set(Math.cos(a)*rr,.09,Math.sin(a)*rr);g.add(c);}
+      for(let i=0;i<4;i++){const b=box(.08,.08,.75,0x9e9784,1);b.position.set((midHash(i,1280)-.5)*5,.12,(midHash(i,1281)-.5)*5);b.rotation.y=midHash(i,1282)*Math.PI;g.add(b);}
+      addMesh(g,'forestCache','Забытый тайник'); objects.push(g); addCircleCollider(x,z,1.75,.08);
+    };
+    makeForgottenCache(-15,58);
     makeForestEvent(46,43,'forestWhisper','Камень Шёпота',0x7895a5,0x454d4d,3);
     makeForestEvent(-48,72,'forestThread','Разорванная нить',0x9c7190,0x51484d,2);
 
