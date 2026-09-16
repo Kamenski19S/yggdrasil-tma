@@ -2520,6 +2520,114 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       scene.add(twig);
     }
 
+    // Step 4 — natural ground detail: moss, ferns, exposed roots and small woodland debris.
+    // These are intentionally sparse and lightweight so the wide clearings remain readable.
+    const mossMatA=new THREE.MeshStandardMaterial({
+      color:0x6f8651,roughness:1,roughnessMap:surfaceMaps.rough,
+      bumpMap:surfaceMaps.height,bumpScale:.008
+    });
+    const mossMatB=new THREE.MeshStandardMaterial({
+      color:0x81935b,roughness:1,roughnessMap:surfaceMaps.rough,
+      bumpMap:surfaceMaps.height,bumpScale:.006
+    });
+    const rootMat=new THREE.MeshStandardMaterial({
+      map:barkTexture,color:0x5a402d,roughness:.99,
+      roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.026
+    });
+
+    // Flat irregular moss islands: a few overlapping discs give the ground a softer,
+    // organic transition instead of a repeated geometric patch.
+    for(let i=0;i<54;i++){
+      const a=midHash(i,920)*Math.PI*2,r=18+midHash(i,921)*63;
+      const x=Math.cos(a)*r,z=Math.sin(a)*r+3;
+      if(Math.abs(x)<12&&Math.abs(z)<20) continue;
+      const g=new THREE.Group();g.position.set(x,groundY(x,z)+.018,z);
+      const rx=.35+midHash(i,922)*.75, rz=.28+midHash(i,923)*.65;
+      for(let k=0;k<2;k++){
+        const patch=new THREE.Mesh(new THREE.CircleGeometry(1,9),k%2?mossMatB:mossMatA);
+        patch.rotation.x=-Math.PI/2;
+        patch.scale.set(rx*(1-k*.18),rz*(1-k*.12),1);
+        patch.position.set((midHash(i+k,924)-.5)*.32,.006+k*.003,(midHash(i+k,925)-.5)*.28);
+        g.add(patch);
+      }
+      scene.add(g);
+    }
+
+    // Small fern clusters. Three curved-ish fronds around one center make a readable
+    // silhouette without using expensive foliage models.
+    const fernMatA=new THREE.MeshStandardMaterial({color:0x547044,roughness:1});
+    const fernMatB=new THREE.MeshStandardMaterial({color:0x6f8751,roughness:1});
+    for(let i=0;i<72;i++){
+      const a=midHash(i,930)*Math.PI*2,r=20+midHash(i,931)*61;
+      const x=Math.cos(a)*r,z=Math.sin(a)*r+3;
+      if(Math.abs(x)<13&&Math.abs(z)<21) continue;
+      const g=new THREE.Group();g.position.set(x,groundY(x,z),z);
+      const s=.55+midHash(i,932)*.8;
+      for(let k=0;k<3;k++){
+        const frond=new THREE.Mesh(new THREE.CylinderGeometry(.018*s,.035*s,.55*s,5),k===1?fernMatB:fernMatA);
+        frond.position.set((k-1)*.12*s,.27*s,(midHash(i,k+933)-.5)*.10*s);
+        frond.rotation.z=(k-1)*.30;
+        frond.rotation.x=(midHash(i,k+936)-.5)*.22;
+        g.add(frond);
+        for(let q=0;q<3;q++){
+          const leaf=new THREE.Mesh(new THREE.ConeGeometry(.045*s,.18*s,5),k===1?fernMatB:fernMatA);
+          leaf.rotation.z=(k-1)*.30+(q%2?.18:-.18);
+          leaf.rotation.x=Math.PI*.5;
+          leaf.position.set((k-1)*.12*s+(q-1)*.075*s,.30*s+q*.10*s,(midHash(i,q+940)-.5)*.12*s);
+          g.add(leaf);
+        }
+      }
+      scene.add(g);
+    }
+
+    // Exposed roots around the three ancient ash trees. Each root is a tapered,
+    // slightly bent segment, visually tying the trunk into the soil.
+    const addRoot=(tx:number,tz:number,scale:number,seed:number)=>{
+      const baseY=groundY(tx,tz);
+      const g=new THREE.Group();g.position.set(tx,baseY,tz);
+      const count=5+Math.floor(midHash(seed,950)*3);
+      for(let i=0;i<count;i++){
+        const a=i/count*Math.PI*2+midHash(i,seed+951)*.32;
+        const len=(1.8+midHash(i,seed+952)*2.7)*scale;
+        const thick=(.11+midHash(i,seed+953)*.12)*scale;
+        const root=new THREE.Mesh(new THREE.CylinderGeometry(thick*.42,thick,len,7),rootMat);
+        root.position.set(Math.cos(a)*len*.46,.13*scale,Math.sin(a)*len*.46);
+        root.rotation.z=Math.PI/2;
+        root.rotation.y=-a;
+        root.rotation.x=(midHash(i,seed+954)-.5)*.16;
+        g.add(root);
+      }
+      scene.add(g);
+    };
+    addRoot(-10,18,1.55,11);
+    addRoot(13,24,1.70,23);
+    addRoot(-31,-12,2.15,37);
+
+    // A handful of low stumps and old branches add scale at the player's feet.
+    for(let i=0;i<22;i++){
+      const a=midHash(i,960)*Math.PI*2,r=27+midHash(i,961)*55;
+      const x=Math.cos(a)*r,z=Math.sin(a)*r+3;
+      if(Math.abs(x)<15&&Math.abs(z)<22) continue;
+      const s=.55+midHash(i,962)*.8;
+      const g=new THREE.Group();g.position.set(x,groundY(x,z),z);
+      const stump=new THREE.Mesh(new THREE.CylinderGeometry(.18*s,.30*s,.45*s,7),rootMat);
+      stump.position.y=.22*s;g.add(stump);
+      const top=new THREE.Mesh(new THREE.CylinderGeometry(.19*s,.19*s,.035*s,7),mat(0x806b50,1));
+      top.position.y=.45*s;g.add(top);
+      scene.add(g);
+    }
+
+    for(let i=0;i<18;i++){
+      const a=midHash(i,970)*Math.PI*2,r=24+midHash(i,971)*58;
+      const x=Math.cos(a)*r,z=Math.sin(a)*r+3;
+      if(Math.abs(x)<14&&Math.abs(z)<21) continue;
+      const len=1.0+midHash(i,972)*2.0;
+      const branch=new THREE.Mesh(new THREE.CylinderGeometry(.045,.10,len,6),rootMat);
+      branch.position.set(x,groundY(x,z)+.07,z);
+      branch.rotation.set(.08+midHash(i,973)*.22,midHash(i,974)*Math.PI,Math.PI/2+(midHash(i,975)-.5)*.5);
+      scene.add(branch);
+    }
+
     // A small watchtower gives vertical scale and a visible landmark.
     const tower=new THREE.Group();tower.position.set(29,groundY(29,25),25);tower.userData={id:"tower",label:"Сторожевая башня"};for(const px of [-2,2])for(const pz of [-2,2]){const p=box(.35,7,.35,0x3c291d,1);p.position.set(px,3.5,pz);tower.add(p);}const deck=box(5,.35,5,0x68472d,1);deck.position.y=5.8;tower.add(deck);const roofT=new THREE.Mesh(new THREE.ConeGeometry(3.8,2.7,4),mat(0x292522,1));roofT.position.y=8;tower.add(roofT);addMesh(tower,"tower","Сторожевая башня");objects.push(tower);
     addRectCollider(29,25,4.8,4.8,0,.08);
