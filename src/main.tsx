@@ -1055,7 +1055,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       const road = Math.exp(-((x * x) / 150 + ((z - 12) * (z - 12)) / 2200));
       return broad * (1 - village * 0.88) - road * 0.18;
     };
-\n    // Мягкие "солнечные окна" между кронами: лёгкая атмосфера без тяжёлого volumetric rendering.
+
+    // Мягкие "солнечные окна" между кронами: лёгкая атмосфера без тяжёлого volumetric rendering.
     const lightPoolCanvas = document.createElement("canvas");
     lightPoolCanvas.width = lightPoolCanvas.height = 128;
     const lctx = lightPoolCanvas.getContext("2d")!;
