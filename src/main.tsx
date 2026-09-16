@@ -984,8 +984,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     if (!el) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x6f8780);
-    scene.fog = new THREE.FogExp2(0x5d716b, 0.0055);
+    scene.background = new THREE.Color(0x8fa9a0);
+    scene.fog = new THREE.FogExp2(0x789188, 0.0042);
 
     const camera = new THREE.PerspectiveCamera(54, 1, 0.1, 280);
     camera.position.set(0, 8.5, 17);
@@ -996,12 +996,12 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.08;
+    renderer.toneMappingExposure = 1.16;
     el.appendChild(renderer.domElement);
 
-    const hemi = new THREE.HemisphereLight(0xbddbd3, 0x1e2923, 1.05);
+    const hemi = new THREE.HemisphereLight(0xd7efe1, 0x334a38, 1.35);
     scene.add(hemi);
-    const sun = new THREE.DirectionalLight(0xffddb0, 2.65);
+    const sun = new THREE.DirectionalLight(0xffe4b8, 3.15);
     sun.position.set(-42, 58, 34);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
@@ -1011,7 +1011,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     sun.shadow.camera.bottom = -95;
     sun.shadow.bias = -0.0005;
     scene.add(sun);
-    const horizonLight=new THREE.DirectionalLight(0x9fb8ad,.72);horizonLight.position.set(55,18,-60);scene.add(horizonLight);
+    const horizonLight=new THREE.DirectionalLight(0xb9d2c2,.95);horizonLight.position.set(55,18,-60);scene.add(horizonLight);
 
     const groundY = (x: number, z: number) => {
       const broad = Math.sin(x * 0.075) * 0.7 + Math.cos(z * 0.062) * 0.55 + Math.sin((x - z) * 0.045) * 0.35;
@@ -1026,7 +1026,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       const ctx = c.getContext("2d")!;
       const rand = (n:number) => Math.abs(Math.sin(n * 12.9898) * 43758.5453) % 1;
       if (type === "ground") {
-        ctx.fillStyle = "#3f4d38";
+        ctx.fillStyle = "#4c6042";
         ctx.fillRect(0,0,512,512);
         for(let i=0;i<1800;i++){
           const x=rand(i*1.17)*512,y=rand(i*2.31)*512;
@@ -1037,7 +1037,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         }
         for(let i=0;i<650;i++){
           const x=rand(i*7.1)*512,y=rand(i*8.2)*512;
-          ctx.strokeStyle=`rgba(118,126,78,${.16+rand(i*2)*.16})`;ctx.lineWidth=1+rand(i*4)*1.5;
+          ctx.strokeStyle=`rgba(142,154,91,${.18+rand(i*2)*.15})`;ctx.lineWidth=1+rand(i*4)*1.5;
           ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(rand(i*5)-.5)*5,y-3-rand(i*6)*5);ctx.stroke();
         }
       } else if (type === "wood") {
@@ -1059,7 +1059,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       } else if (type === "bark") {
         // Matte bark: vertical fibers and broken patches, intentionally no glossy bands.
         ctx.fillStyle="#7b5a3f";ctx.fillRect(0,0,512,512);
-        for(let i=0;i<95;i++){
+        for(let i=0;i<76;i++){
           const x=rand(i*2.1)*512;
           const w=2+rand(i*3.7)*7;
           ctx.fillStyle=`rgba(${24+rand(i)*24},${16+rand(i*4)*18},${10+rand(i*5)*14},${.18+rand(i*6)*.22})`;
@@ -1072,13 +1072,13 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         }
       } else if (type === "foliage") {
         // Soft, matte needle/leaf color breakup. No painted highlights.
-        ctx.fillStyle="#536b4b";ctx.fillRect(0,0,512,512);
+        ctx.fillStyle="#68865a";ctx.fillRect(0,0,512,512);
         for(let i=0;i<1900;i++){
           const x=rand(i*1.17)*512,y=rand(i*2.31)*512;
           const light=rand(i*3.7);
-          const r=light>.72?76:light>.36?63:51;
-          const g=light>.72?104:light>.36?87:70;
-          const b=light>.72?59:light>.36?49:40;
+          const r=light>.72?112:light>.36?92:74;
+          const g=light>.72?145:light>.36?121:98;
+          const b=light>.72?76:light>.36?60:48;
           ctx.fillStyle=`rgba(${r},${g},${b},${.16+rand(i*4)*.28})`;
           ctx.beginPath();ctx.arc(x,y,1.5+rand(i*5)*4.5,0,Math.PI*2);ctx.fill();
         }
@@ -1682,7 +1682,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         br.position.set(side*(.28+b*.035)*s,yy,(midHash(b,z)-.5)*.38*s);
         br.rotation.z=side*(.62-midHash(b,x)*.18); br.rotation.y=midHash(b+21,z)*Math.PI*2; g.add(br);
       }
-      const fm=[0x172d21,0x203b28,0x294831];
+      const fm=[0x2c5132,0x3b6840,0x4b7a49];
       for(let i=0;i<12;i++){
         const r=Math.max(.48,(1.42-i*.075))*s;
         const crown=new THREE.Mesh(new THREE.SphereGeometry(r,8,6),new THREE.MeshStandardMaterial({map:foliageTexture,color:fm[i%3],roughness:.99}));
@@ -1715,7 +1715,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         br.position.set(Math.cos(a)*len*.34,(3.25+midHash(i+33,x)*1.9)*s,Math.sin(a)*len*.34);
         br.rotation.z=Math.cos(a)*.76; br.rotation.x=Math.sin(a)*.76; br.rotation.y=-a; g.add(br);
         for(let k=0;k<4;k++){
-          const leaf=new THREE.Mesh(new THREE.SphereGeometry((.46+midHash(k+i,90)*.25)*s,8,6),new THREE.MeshStandardMaterial({map:foliageTexture,color:[0x24452d,0x315a37,0x3c6840][(i+k)%3],roughness:1}));
+          const leaf=new THREE.Mesh(new THREE.SphereGeometry((.46+midHash(k+i,90)*.25)*s,8,6),new THREE.MeshStandardMaterial({map:foliageTexture,color:[0x315f39,0x427548,0x568653][(i+k)%3],roughness:1}));
           leaf.scale.y=.62; leaf.position.set(Math.cos(a)*len*(.52+.09*k)+(midHash(k,i)-.5)*.55*s,(3.9+midHash(i,k)*1.45+.25*k)*s,Math.sin(a)*len*(.52+.09*k)+(midHash(k+4,i)-.5)*.55*s); g.add(leaf);
         }
       }
@@ -2120,56 +2120,112 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       g.add(glow); return tube;
     };
 
-    // 1) STONE OF THREE THREADS -------------------------------------------------
+    // 1) STONE OF THREE THREADS — WELL OF URD + THREE NORNS --------------------
     const threeThreads=new THREE.Group();
-    const threeThreadsX=-44, threeThreadsZ=66;
+    const threeThreadsX=-62, threeThreadsZ=72;
     threeThreads.position.set(threeThreadsX,groundY(threeThreadsX,threeThreadsZ),threeThreadsZ);
-    threeThreads.userData={id:"threeThreads",label:"Камень Трёх Нитей"};
-    const obsidianMat=mat(0x111318,.72,.62);
-    const ritualDark=mat(0x272c2d,1,.12);
-    const sphereBase=new THREE.Mesh(new THREE.CylinderGeometry(4.5,5.2,.32,48),ritualDark);
-    sphereBase.position.y=.16; threeThreads.add(sphereBase);
-    const threadSphere=new THREE.Mesh(new THREE.SphereGeometry(2.55,32,20),obsidianMat);
-    threadSphere.scale.set(1,1,.92); threadSphere.position.y=2.62; threeThreads.add(threadSphere);
-    const sphereRim=new THREE.Mesh(new THREE.TorusGeometry(2.62,.07,8,64),new THREE.MeshBasicMaterial({color:0xb7a46d,transparent:true,opacity:.38}));
-    sphereRim.rotation.x=Math.PI/2; sphereRim.position.y=2.62; threeThreads.add(sphereRim);
-    // Engraved runic ring around the sphere.
-    for(const [r,w,c] of [[3.7,.06,0xd2b25f],[6.1,.045,0x8b78c8],[8.5,.035,0x6bbbc5]] as Array<[number,number,number]>){
-      const ring=new THREE.Mesh(new THREE.TorusGeometry(r,w,7,80),new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.62,depthWrite:false}));
-      ring.rotation.x=Math.PI/2; ring.position.y=.075; threeThreads.add(ring);
+    threeThreads.userData={id:"threeThreads",label:"Камень Трёх Нитей — Колодец Урд"};
+
+    const urdStoneMat=new THREE.MeshStandardMaterial({color:0x59645e,roughness:.96,metalness:.04});
+    const urdDarkMat=new THREE.MeshStandardMaterial({color:0x343b38,roughness:.92,metalness:.08});
+    const urdWaterMat=new THREE.MeshStandardMaterial({color:0x2c6870,emissive:0x0d3b45,emissiveIntensity:1.15,roughness:.16,metalness:.05,transparent:true,opacity:.9});
+
+    // Wide sacred clearing and a large engraved golden runic circle.
+    const urdGround=new THREE.Mesh(new THREE.CircleGeometry(13.2,52),new THREE.MeshStandardMaterial({color:0x527044,roughness:1,transparent:true,opacity:.94}));
+    urdGround.rotation.x=-Math.PI/2; urdGround.position.y=.018; threeThreads.add(urdGround);
+    for(const [r,w,op] of [[4.1,.07,.82],[7.2,.055,.72],[10.8,.045,.62]] as Array<[number,number,number]>){
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(r,w,8,96),new THREE.MeshBasicMaterial({color:0xf0c95e,transparent:true,opacity:op,depthWrite:false}));
+      ring.rotation.x=Math.PI/2; ring.position.y=.065; threeThreads.add(ring);
     }
-    const threadGlyphs=["ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᚷ","ᛟ","ᛉ","ᛏ","ᚺ","ᚾ"];
-    threadGlyphs.forEach((ch,i)=>{const a=i/threadGlyphs.length*Math.PI*2;addFloatingRune(threeThreads,ch,Math.cos(a)*6.8,.1,Math.sin(a)*6.8,i%3===0?0xffd26a:(i%3===1?0xa7eaff:0xd08cff),.48,a+Math.PI/2);});
-    // Three intertwining energy streams rising from the obsidian sphere.
-    const threadStreamColors=[0xdfe8f2,0xffcf62,0xc94d58];
-    for(let k=0;k<3;k++){
-      const pts:THREE.Vector3[]=[];
-      for(let i=0;i<=18;i++){
-        const t=i/18, ang=t*Math.PI*3.2+k*Math.PI*2/3;
-        const rr=.22+.72*t;
-        pts.push(new THREE.Vector3(Math.cos(ang)*rr,4.15+t*5.8,Math.sin(ang)*rr));
+    const urdGlyphs=['ᚠ','ᚢ','ᚦ','ᚨ','ᚱ','ᚲ','ᚷ','ᚹ','ᚺ','ᚾ','ᛁ','ᛃ','ᛇ','ᛈ','ᛉ','ᛏ','ᛒ','ᛟ'];
+    for(let i=0;i<18;i++){
+      const a=i/18*Math.PI*2;
+      addGroundRune(threeThreads,Math.cos(a)*8.9,Math.sin(a)*8.9,urdGlyphs[i],0xf0c65e,.58,a+.15);
+    }
+
+    // Ancient moss-covered Well of Urd: irregular stones around dark living water.
+    const wellBase=new THREE.Mesh(new THREE.CylinderGeometry(3.15,3.45,.45,12),urdDarkMat);
+    wellBase.position.y=.24; threeThreads.add(wellBase);
+    for(let i=0;i<16;i++){
+      const a=i/16*Math.PI*2;
+      const rr=2.65+(midHash(i,2001)-.5)*.22;
+      const st=new THREE.Mesh(new THREE.DodecahedronGeometry(.72+midHash(i,2002)*.22,1),urdStoneMat);
+      st.scale.set(1.15+midHash(i,2003)*.25,.72+midHash(i,2004)*.22,.88+midHash(i,2005)*.24);
+      st.position.set(Math.cos(a)*rr,.55+midHash(i,2006)*.12,Math.sin(a)*rr);
+      st.rotation.set(midHash(i,2007)*.25,a+midHash(i,2008)*.4,midHash(i,2009)*.2); threeThreads.add(st);
+    }
+    const wellWater=new THREE.Mesh(new THREE.CircleGeometry(2.25,40),urdWaterMat);
+    wellWater.rotation.x=-Math.PI/2; wellWater.position.y=.72; threeThreads.add(wellWater);
+    for(let i=0;i<3;i++){
+      const ripple=new THREE.Mesh(new THREE.TorusGeometry(.65+i*.48,.025,6,48),new THREE.MeshBasicMaterial({color:i===0?0x8eeeff:0x6bc8d2,transparent:true,opacity:.3,depthWrite:false}));
+      ripple.rotation.x=Math.PI/2; ripple.position.y=.735; threeThreads.add(ripple);
+    }
+
+    // Three Norns: distinct silhouettes, wool/linen garments, shawls and wooden spindles.
+    const nornData=[
+      {x:-2.75,z:2.0,body:0x6b5a49,cloak:0x7b6a55,hair:0x382d27,light:0xe9e9df,thread:0xdfe8f2,phase:0},
+      {x:0,z:3.75,body:0x756046,cloak:0x5d725c,hair:0x4a3527,light:0xffd66b,thread:0xffd05e,phase:2.1},
+      {x:2.75,z:2.0,body:0x624d4a,cloak:0x5d536d,hair:0x302722,light:0xd85b68,thread:0xc94d58,phase:4.2}
+    ];
+    const nornHands:THREE.Vector3[]=[];
+    for(let i=0;i<3;i++){
+      const d=nornData[i]; const n=new THREE.Group(); n.position.set(d.x,0,d.z); n.rotation.y=i===0?.22:(i===2?-0.22:Math.PI);
+      const robe=new THREE.Mesh(new THREE.ConeGeometry(.72,.95,9),new THREE.MeshStandardMaterial({color:d.body,roughness:.98})); robe.position.y=.72; n.add(robe);
+      const apron=new THREE.Mesh(new THREE.ConeGeometry(.48,.72,8),new THREE.MeshStandardMaterial({color:d.cloak,roughness:.98})); apron.position.set(0,.86,.43); apron.rotation.x=.05; n.add(apron);
+      const shawl=new THREE.Mesh(new THREE.CylinderGeometry(.42,.58,.12,9),new THREE.MeshStandardMaterial({color:d.cloak,roughness:1})); shawl.position.set(0,1.23,0); shawl.rotation.z=.08; n.add(shawl);
+      const head=new THREE.Mesh(new THREE.SphereGeometry(.32,12,9),new THREE.MeshStandardMaterial({color:0xc79268,roughness:.9})); head.position.y=1.62; n.add(head);
+      const hair=new THREE.Mesh(new THREE.SphereGeometry(.38,10,8),new THREE.MeshStandardMaterial({color:d.hair,roughness:1})); hair.scale.set(1,.95,.9); hair.position.set(0,1.68,-.08); n.add(hair);
+      for(const side of [-1,1]){
+        const arm=new THREE.Mesh(new THREE.CylinderGeometry(.075,.105,.62,7),new THREE.MeshStandardMaterial({color:d.cloak,roughness:1}));
+        arm.position.set(side*.47,1.03,.18); arm.rotation.z=side*.42; arm.rotation.x=-.18; n.add(arm);
       }
-      addMagicThread(threeThreads,pts,threadStreamColors[k],.09);
+      // Seated posture: a low stone/wood stool hidden beneath the robe.
+      const seat=new THREE.Mesh(new THREE.CylinderGeometry(.38,.44,.18,9),urdDarkMat); seat.position.y=.25; n.add(seat);
+      // Wooden spindle held forward.
+      const spindle=new THREE.Mesh(new THREE.CylinderGeometry(.035,.055,.9,8),new THREE.MeshStandardMaterial({color:0x6a4328,roughness:.9}));
+      spindle.position.set(.58,1.08,.38); spindle.rotation.z=.62; n.add(spindle);
+      const whorl=new THREE.Mesh(new THREE.TorusGeometry(.12,.025,6,14),new THREE.MeshStandardMaterial({color:0x8d633c,roughness:.85}));
+      whorl.rotation.x=Math.PI/2; whorl.position.set(.75,.82,.48); n.add(whorl);
+      n.position.y=.02; threeThreads.add(n);
+      nornHands.push(new THREE.Vector3(d.x+.72,1.25,d.z+.48));
     }
-    // Knotwork crown made from three crossing luminous arcs.
+
+    // Three destiny threads leave the Norns' hands and braid into a celestial knot above the well.
+    const threadStreamColors=[0xdfe8f2,0xffd05e,0xc94d58];
+    for(let k=0;k<3;k++){
+      const h=nornHands[k], pts:THREE.Vector3[]=[];
+      for(let i=0;i<=30;i++){
+        const t=i/30;
+        const y=h.y+t*7.3;
+        const a=t*Math.PI*3.0+nornData[k].phase;
+        const rr=.35+.72*t;
+        pts.push(new THREE.Vector3(h.x*(1-t)+Math.cos(a)*rr*t,h.y*(1-t)+y*t,h.z*(1-t)+Math.sin(a)*rr*t));
+      }
+      addMagicThread(threeThreads,pts,threadStreamColors[k],.085);
+    }
+    // Celestial knotwork crown.
     for(let k=0;k<3;k++){
       const pts:THREE.Vector3[]=[];
-      for(let i=0;i<=22;i++){
-        const t=i/22, a=t*Math.PI*2, rr=1.45+.32*Math.sin(a*2+k*1.1);
-        pts.push(new THREE.Vector3(Math.cos(a+k*2.094)*rr,9.75+.42*Math.sin(a*3+k),Math.sin(a+k*2.094)*rr));
+      for(let i=0;i<=32;i++){
+        const t=i/32,a=t*Math.PI*2,rr=1.65+.42*Math.sin(a*2+k*.9);
+        pts.push(new THREE.Vector3(Math.cos(a+k*2.094)*rr,8.35+.45*Math.sin(a*3+k),Math.sin(a+k*2.094)*rr));
       }
       addMagicThread(threeThreads,pts,threadStreamColors[k],.065);
     }
-    const threadLight=new THREE.PointLight(0xffd16a,1.35,10,2); threadLight.position.set(0,4.0,0); threeThreads.add(threadLight);
-    for(let i=0;i<12;i++){
-      const a=midHash(i,1701)*Math.PI*2,rr=5.3+midHash(i,1702)*3.1;
-      irregularRock(threeThreads,Math.cos(a)*rr,.22,Math.sin(a)*rr,.32+midHash(i,1703)*.4,i%3===0?0x4e5553:0x3e4544,1704+i);
+    const nornLight=new THREE.PointLight(0xffd878,1.25,11,2); nornLight.position.set(0,4.2,1); threeThreads.add(nornLight);
+
+    // Wildflowers, relics and small golden talismans in the open clearing.
+    for(let i=0;i<20;i++){
+      const a=midHash(i,2030)*Math.PI*2,rr=3.8+midHash(i,2031)*8.0,x=Math.cos(a)*rr,z=Math.sin(a)*rr;
+      const stem=new THREE.Mesh(new THREE.CylinderGeometry(.018,.028,.22,5),new THREE.MeshStandardMaterial({color:0x56753d,roughness:1})); stem.position.set(x,.11,z); threeThreads.add(stem);
+      const flower=new THREE.Mesh(new THREE.SphereGeometry(.07,7,5),new THREE.MeshBasicMaterial({color:i%3===0?0xffe4a0:(i%3===1?0xf3b9d0:0xdcecff)})); flower.position.set(x,.25,z); threeThreads.add(flower);
     }
-    for(let i=0;i<8;i++){
-      const coin=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,.025,10),new THREE.MeshStandardMaterial({color:0x9d7d3d,metalness:.7,roughness:.4}));
-      const a=midHash(i,1710)*Math.PI*2,rr=1.8+midHash(i,1711)*6.2; coin.position.set(Math.cos(a)*rr,.11,Math.sin(a)*rr); coin.rotation.x=Math.PI/2; threeThreads.add(coin);
+    for(let i=0;i<10;i++){
+      const a=midHash(i,2040)*Math.PI*2,rr=4.0+midHash(i,2041)*8.0;
+      const relic=new THREE.Mesh(new THREE.DodecahedronGeometry(.12+midHash(i,2042)*.08,0),new THREE.MeshStandardMaterial({color:0x9b7b3f,metalness:.65,roughness:.4}));
+      relic.position.set(Math.cos(a)*rr,.1,Math.sin(a)*rr); threeThreads.add(relic);
     }
-    addMesh(threeThreads,"threeThreads","Камень Трёх Нитей"); objects.push(threeThreads); addCircleCollider(threeThreadsX,threeThreadsZ,2.9,.1);
+    addMesh(threeThreads,"threeThreads","Камень Трёх Нитей — Колодец Урд"); objects.push(threeThreads); addCircleCollider(threeThreadsX,threeThreadsZ,3.4,.1);
 
     // 2) CIRCLE OF POWER --------------------------------------------------------
     const powerCircle=new THREE.Group();
@@ -2334,9 +2390,9 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     // Dense forest ring uses varied, irregular firs.
     for(let i=0;i<95;i++){
-      const a=midHash(i,77)*Math.PI*2;const r=58+midHash(i,91)*32;
+      const a=midHash(i,77)*Math.PI*2;const r=68+midHash(i,91)*27;
       const x=Math.cos(a)*r,z=Math.sin(a)*r+2;
-      const reserved=[[ashGroveX,ashGroveZ,11],[39,70,13],[-64,36,11],[-43,62,10],[30,53,12],[61,78,10],[-15,58,7],[46,43,7],[-48,72,7],[70,18,11],[75,30,13],[67,49,12],[52,7,10]];
+      const reserved=[[ashGroveX,ashGroveZ,11],[39,70,13],[-64,36,11],[-43,62,10],[30,53,12],[61,78,10],[-15,58,7],[46,43,7],[-48,72,7],[-62,72,15],[70,18,11],[75,30,13],[67,49,12],[52,7,10]];
       const reservedHit=reserved.some(([rx,rz,rr])=>Math.hypot(x-rx,z-rz)<rr);
       if(Math.abs(x+57)>9 && !reservedHit)firTree(x,z,.78+midHash(i,13)*.82);
     }
@@ -2400,7 +2456,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       {id:"house",label:"Дом старейшины",x:13,z:-18,r:5.2},{id:"forge",label:"Кузница",x:-10,z:-5,r:5.4},
       {id:"mimir",label:"Колодец Мимира",x:18,z:15,r:4.8},{id:"norns",label:"Прядильня норн",x:-25,z:43,r:5.4},
       {id:"rune",label:"Древний камень Феху",x:27,z:57,r:4.5},{id:"ritual",label:"Круг Силы",x:-43,z:62,r:6.8},{id:"port",label:"Речной причал",x:-46,z:-15,r:5},
-      {id:"ashgrove",label:"Роща Ясеня",x:-4,z:69,r:7.5},{id:"forestEvent",label:eventDone?"Камень Трёх Нитей — место выбора":"Камень Трёх Нитей",x:eventX,z:eventZ,r:4.8},{id:"forestCache",label:"Забытый тайник",x:-15,z:58,r:4.2},{id:"forestWhisper",label:"Камень Шёпота",x:46,z:43,r:4.2},{id:"forestThread",label:"Разорванная нить",x:-48,z:72,r:4.2},{id:"runefield",label:"Поле Рун",x:39,z:70,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-64,z:36,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:30,z:53,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:61,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:70,z:18,r:8.5},{id:"heroHome",label:"Дверь дома героя",x:75,z:32.75,r:2.8},{id:"deepGrove",label:"Глубокая роща",x:67,z:49,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:52,z:7,r:7.5},
+      {id:"ashgrove",label:"Роща Ясеня",x:-4,z:69,r:7.5},{id:"threeThreads",label:"Камень Трёх Нитей — Колодец Урд",x:-62,z:72,r:6.8},{id:"forestEvent",label:eventDone?"Камень Трёх Нитей — место выбора":"Камень Трёх Нитей",x:eventX,z:eventZ,r:4.8},{id:"forestCache",label:"Забытый тайник",x:-15,z:58,r:4.2},{id:"forestWhisper",label:"Камень Шёпота",x:46,z:43,r:4.2},{id:"forestThread",label:"Разорванная нить",x:-48,z:72,r:4.2},{id:"runefield",label:"Поле Рун",x:39,z:70,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-64,z:36,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:30,z:53,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:61,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:70,z:18,r:8.5},{id:"heroHome",label:"Дверь дома героя",x:75,z:32.75,r:2.8},{id:"deepGrove",label:"Глубокая роща",x:67,z:49,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:52,z:7,r:7.5},
       {id:"elder",label:"Старейшина",x:9,z:-8,r:3.2},{id:"blacksmith",label:"Кузнец",x:-6,z:-3,r:3.2},
       {id:"gate",label:"Ворота Мидгарда",x:0,z:-31,r:5},{id:"tower",label:"Сторожевая башня",x:29,z:25,r:4}
     ];
@@ -2756,6 +2812,10 @@ const [roadT, setRoadT] = useState(0.06);
       }
       if (id === "norns") {
         say('Норны: «Каждый выбор оставляет нить. Не всякая дорога приведёт тебя туда же.»');
+        return;
+      }
+      if (id === "threeThreads") {
+        say('У колодца Урд три Норны прядут нити судьбы. Серебряная, золотая и алая нить сплетаются над водой в знак того, что прошлое, настоящее и будущее связаны.');
         return;
       }
       if (id === "forge" || id === "blacksmith") {
