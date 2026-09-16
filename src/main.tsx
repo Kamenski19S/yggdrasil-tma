@@ -343,6 +343,21 @@ const midHash = (x: number, z: number) => {
   return n - Math.floor(n);
 };
 
+// Subtle deterministic deformation: keeps silhouettes organic without adding heavy assets.
+const midWarpGeometry = (geo: THREE.BufferGeometry, amount = 0.06, seed = 1) => {
+  const p = geo.attributes.position as THREE.BufferAttribute;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    const n = Math.sin((x + seed) * 7.13 + (z - seed) * 5.71 + y * 3.17) * 0.5 + 0.5;
+    const radial = Math.min(1, Math.sqrt(x * x + z * z) * 0.7);
+    p.setX(i, x + (n - 0.5) * amount * (0.45 + radial));
+    p.setZ(i, z + (Math.cos((z + seed) * 6.41 + y * 2.37) - 0.5) * amount * (0.35 + radial));
+  }
+  p.needsUpdate = true;
+  geo.computeVertexNormals();
+  return geo;
+};
+
 const midHeight = (x: number, z: number) => {
   const hillA = Math.sin(x * 0.11 + 0.7) * 0.65;
   const hillB = Math.cos(z * 0.09 - 0.4) * 0.48;
@@ -371,10 +386,12 @@ function midTree(x: number, z: number, s = 1, autumn = false) {
   const greens = autumn ? [0x53623b, 0x697449, 0x7a7548] : [0x213f2a, 0x2d5132, 0x3a6040];
   for (let i = 0; i < 3; i++) {
     const r = (1.75 - i * 0.28) * s;
-    const crown = new THREE.Mesh(
-      new THREE.ConeGeometry(r, (2.7 - i * 0.18) * s, 9),
-      midMat(greens[i], 1)
+    const crownGeo = midWarpGeometry(
+      new THREE.ConeGeometry(r, (2.7 - i * 0.18) * s, 11, 5),
+      0.13 * s,
+      i + x * 0.17 + z * 0.11
     );
+    const crown = new THREE.Mesh(crownGeo, midMat(greens[i], 1));
     crown.position.y = (2.35 + i * 0.92) * s;
     crown.rotation.y = midHash(x + i, z - i) * Math.PI;
     g.add(crown);
@@ -996,7 +1013,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.16;
+    renderer.toneMappingExposure = 1.10;
     el.appendChild(renderer.domElement);
 
     const hemi = new THREE.HemisphereLight(0xd7efe1, 0x334a38, 1.35);
@@ -1004,7 +1021,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const sun = new THREE.DirectionalLight(0xffe4b8, 3.15);
     sun.position.set(-42, 58, 34);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.mapSize.set(1536, 1536);
     sun.shadow.camera.left = -95;
     sun.shadow.camera.right = 95;
     sun.shadow.camera.top = 95;
@@ -1100,6 +1117,36 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       return t;
     };
 
+    // Lightweight procedural surface maps: roughness + micro-bump.
+    // Generated in-memory; no external texture files are required.
+    const makeSurfaceMaps = () => {
+      const c = document.createElement("canvas");
+      c.width = c.height = 128;
+      const ctx = c.getContext("2d")!;
+      const img = ctx.createImageData(128, 128);
+      for (let y = 0; y < 128; y++) {
+        for (let x = 0; x < 128; x++) {
+          const i = (y * 128 + x) * 4;
+          const n =
+            Math.sin(x * 0.37) * 0.30 +
+            Math.sin(y * 0.61) * 0.24 +
+            Math.sin((x + y) * 0.17) * 0.20 +
+            Math.sin((x - y) * 0.09) * 0.14;
+          const v = Math.max(35, Math.min(220, Math.round(128 + n * 85)));
+          img.data[i] = v; img.data[i + 1] = v; img.data[i + 2] = v; img.data[i + 3] = 255;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+      const height = new THREE.CanvasTexture(c);
+      height.wrapS = height.wrapT = THREE.RepeatWrapping;
+      height.repeat.set(5, 5);
+      const rough = new THREE.CanvasTexture(c);
+      rough.wrapS = rough.wrapT = THREE.RepeatWrapping;
+      rough.repeat.set(4, 4);
+      return { height, rough };
+    };
+    const surfaceMaps = makeSurfaceMaps();
+
     const groundTexture = canvasTex("ground");
     groundTexture.repeat.set(5, 6);
     const barkTexture = canvasTex("bark");
@@ -1116,7 +1163,15 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     }
     groundGeo.rotateX(-Math.PI/2);
     groundGeo.computeVertexNormals();
-    const terrain = new THREE.Mesh(groundGeo, new THREE.MeshLambertMaterial({ map: groundTexture }));
+    const terrainMat = new THREE.MeshStandardMaterial({
+      map: groundTexture,
+      roughness: 0.96,
+      metalness: 0.0,
+      roughnessMap: surfaceMaps.rough,
+      bumpMap: surfaceMaps.height,
+      bumpScale: 0.035
+    });
+    const terrain = new THREE.Mesh(groundGeo, terrainMat);
     terrain.receiveShadow = true;
     scene.add(terrain);
 
@@ -1128,7 +1183,12 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       return g;
     };
 
-    const mat = (color:number, rough=.9, metal=0) => new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal});
+    const mat = (color:number, rough=.9, metal=0) => new THREE.MeshStandardMaterial({
+      color, roughness: rough, metalness: metal,
+      roughnessMap: surfaceMaps.rough,
+      bumpMap: surfaceMaps.height,
+      bumpScale: metal > 0.35 ? 0.012 : 0.028
+    });
     const box=(w:number,h:number,d:number,c:number,rough=.9)=>new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c,rough));
     const cyl=(r:number,h:number,c:number,segments=10,rough=.9)=>new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,segments),mat(c,rough));
     const log=(length:number,radius:number,c:number)=>{
@@ -1136,7 +1196,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
     const roofSlope=(w:number,d:number,c:number)=>{
       const g=new THREE.Group(), panelW=w*.62, angle=.61;
-      const roofMat=new THREE.MeshStandardMaterial({map:roofTex,color:c,roughness:.96,side:THREE.DoubleSide});
+      const roofMat=new THREE.MeshStandardMaterial({map:roofTex,color:c,roughness:.96,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.022,side:THREE.DoubleSide});
       // Thick boards rather than paper-thin planes: the roof remains visible from every camera angle.
       const a=new THREE.Mesh(new THREE.BoxGeometry(panelW,.18,d),roofMat);
       const b=a.clone();
@@ -1275,7 +1335,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     // Detailed Nordic longhouse.
     const house=(x:number,z:number,w:number,d:number,rot:number,label:string,id:string,wallColor:number,roofColor:number)=>{
       const g=new THREE.Group(); g.rotation.y=rot; g.position.set(x,groundY(x,z),z); g.userData={id,label};
-      const logMat=new THREE.MeshStandardMaterial({map:woodTex,color:wallColor,roughness:.94});
+      const logMat=new THREE.MeshStandardMaterial({map:woodTex,color:wallColor,roughness:.94,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.026});
       const foundation=box(w+.7,.55,d+.7,0x575a53,1); foundation.position.y=.28; g.add(foundation);
 
       // Seven courses of rounded logs, with alternating corner overlap.
@@ -1677,7 +1737,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     const firTree=(x:number,z:number,s:number)=>{
       const g=new THREE.Group(),y=groundY(x,z);
-      const bark=new THREE.MeshStandardMaterial({map:barkTexture,color:0xffffff,roughness:.98});
+      const bark=new THREE.MeshStandardMaterial({map:barkTexture,color:0xffffff,roughness:.98,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.034});
       const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18*s,.38*s,5.2*s,9),bark);
       trunk.position.y=2.6*s; trunk.rotation.z=(midHash(x,z)-.5)*.08; trunk.scale.x=1.08+midHash(x,z+4)*.22; g.add(trunk);
       for(let b=0;b<9;b++){
@@ -1702,7 +1762,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     const ashTree=(x:number,z:number,s:number,ancient=false)=>{
       const g=new THREE.Group(), y=groundY(x,z);
-      const bark=new THREE.MeshStandardMaterial({map:barkTexture,color:0xffffff,roughness:1});
+      const bark=new THREE.MeshStandardMaterial({map:barkTexture,color:0xffffff,roughness:1,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.034});
       const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.42*s,.72*s,6.4*s,11),bark);
       trunk.position.y=3.2*s; trunk.rotation.z=(midHash(x,z)-.5)*.06; trunk.scale.x=1.08; g.add(trunk);
       // Buttress roots: broad, crooked and asymmetrical.
@@ -1860,7 +1920,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const hoddX=62,hoddZ=78;
     const hodd=new THREE.Group(); hodd.userData={id:'hoddmimir',label:'Лес Ходдмимира'};
     const hoddGround=new THREE.Mesh(new THREE.CircleGeometry(11.5,44),new THREE.MeshStandardMaterial({color:0x203b2b,roughness:1,transparent:true,opacity:.86})); hoddGround.rotation.x=-Math.PI/2; hoddGround.position.set(hoddX,groundY(hoddX,hoddZ)+.025,hoddZ);scene.add(hoddGround);
-    const trunkMat=new THREE.MeshStandardMaterial({map:barkTexture,color:0xffffff,roughness:1});
+    const trunkMat=new THREE.MeshStandardMaterial({map:barkTexture,color:0xffffff,roughness:1,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.034});
     const worldTrunk=new THREE.Mesh(new THREE.CylinderGeometry(1.35,2.1,10.5,13),trunkMat); worldTrunk.position.set(hoddX,groundY(hoddX,hoddZ)+5.25,hoddZ); worldTrunk.rotation.z=-.05; scene.add(worldTrunk);
     for(let i=0;i<8;i++){
       const a=i/8*Math.PI*2+.2,len=(5.0+midHash(i,1401)*4.0);
@@ -1952,7 +2012,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const makeFallenAsh=(x:number,z:number)=>{
       const g=new THREE.Group();g.position.set(x,groundY(x,z),z);g.userData={id:'fallenAsh',label:'Поверженный ясень'};
       const ring=new THREE.Mesh(new THREE.TorusGeometry(7.8,.07,8,64),new THREE.MeshStandardMaterial({color:0x8b9f87,emissive:0x334633,emissiveIntensity:1.0,transparent:true,opacity:.55}));ring.rotation.x=Math.PI/2;ring.position.y=.05;g.add(ring);
-      const bark=new THREE.MeshStandardMaterial({map:barkTexture,color:0xffffff,roughness:1});
+      const bark=new THREE.MeshStandardMaterial({map:barkTexture,color:0xffffff,roughness:1,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.034});
       // Hollow broken trunk with jagged crown.
       const stump=new THREE.Mesh(new THREE.CylinderGeometry(1.45,2.15,4.8,10),bark);stump.position.set(0,2.4,.2);stump.rotation.z=-.04;g.add(stump);
       const hollow=new THREE.Mesh(new THREE.SphereGeometry(.88,12,9),new THREE.MeshBasicMaterial({color:0x121513}));hollow.scale.set(1,.95,.55);hollow.position.set(0,1.75,1.72);g.add(hollow);
@@ -2359,7 +2419,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const campFire=fire(68,8,.75); campFire.scale.setScalar(.72);
     const campStone=new THREE.Mesh(new THREE.CylinderGeometry(.65,.8,.7,7),mat(0x514a42,1)); campStone.position.set(68,groundY(68,8)+.35,6.5); scene.add(campStone);
     for(const [x,z] of [[66,10],[70,10],[66,6],[70,6]]){const post=box(.16,1.15,.16,0x493527,1);post.position.set(x,groundY(x,z)+.57,z);scene.add(post);}
-    const fallen=new THREE.Group(); fallen.position.set(-30,groundY(-30,15),15); const trunk= new THREE.Mesh(new THREE.CylinderGeometry(.5,.62,7,8),new THREE.MeshLambertMaterial({map:barkTexture,color:0x4c392b})); trunk.rotation.z=Math.PI/2; trunk.position.y=.5; fallen.add(trunk); const cut=new THREE.Mesh(new THREE.CylinderGeometry(.53,.53,.12,12),mat(0x75644d,1)); cut.rotation.z=Math.PI/2; cut.position.set(3.5,.5,0); fallen.add(cut); scene.add(fallen);
+    const fallen=new THREE.Group(); fallen.position.set(-30,groundY(-30,15),15); const trunk= new THREE.Mesh(new THREE.CylinderGeometry(.5,.62,7,8),new THREE.MeshStandardMaterial({map:barkTexture,color:0x4c392b,roughness:1,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.034})); trunk.rotation.z=Math.PI/2; trunk.position.y=.5; fallen.add(trunk); const cut=new THREE.Mesh(new THREE.CylinderGeometry(.53,.53,.12,12),mat(0x75644d,1)); cut.rotation.z=Math.PI/2; cut.position.set(3.5,.5,0); fallen.add(cut); scene.add(fallen);
     for(let i=0;i<7;i++){const rune=new THREE.Mesh(new THREE.DodecahedronGeometry(.14,0),mat(0x697d72,1));const a=i/7*Math.PI*2;rune.position.set(-45+Math.cos(a)*4,.12+groundY(-45+Math.cos(a)*4,75+Math.sin(a)*4),75+Math.sin(a)*4);scene.add(rune);}
 
     // Dense forest ring uses varied, irregular firs.
@@ -2382,11 +2442,39 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       const a=midHash(i,701)*Math.PI*2,r=15+midHash(i,702)*50,x=Math.cos(a)*r,z=Math.sin(a)*r+3;
       if(Math.abs(x)<10&&Math.abs(z)<16) continue;
       const g=new THREE.Group();g.position.set(x,groundY(x,z),z);
-      for(let k=0;k<3;k++){const blade=new THREE.Mesh(new THREE.ConeGeometry(.025,.38+midHash(k,i)*.28,4),new THREE.MeshLambertMaterial({color:k===1?0x53683f:0x415a37}));blade.position.set((k-1)*.09,.18,(midHash(k*3,i)-.5)*.12);blade.rotation.z=(k-1)*.22;g.add(blade);}
+      for(let k=0;k<3;k++){const blade=new THREE.Mesh(new THREE.ConeGeometry(.025,.38+midHash(k,i)*.28,4),new THREE.MeshStandardMaterial({color:k===1?0x53683f:0x415a37,roughness:1,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.012}));blade.position.set((k-1)*.09,.18,(midHash(k*3,i)-.5)*.12);blade.rotation.z=(k-1)*.22;g.add(blade);}
       scene.add(g);
     }
 
-    for(let i=0;i<80;i++){const x=-88+midHash(i,101)*176,z=-88+midHash(i,111)*176;if(Math.hypot(x,z+2)>30){const grass=new THREE.Mesh(new THREE.ConeGeometry(.08,.55+midHash(i,121)*.7,5),new THREE.MeshLambertMaterial({color:0x4b6840}));grass.position.set(x,groundY(x,z)+.3,z);scene.add(grass);}}
+    for(let i=0;i<80;i++){const x=-88+midHash(i,101)*176,z=-88+midHash(i,111)*176;if(Math.hypot(x,z+2)>30){const grass=new THREE.Mesh(new THREE.ConeGeometry(.08,.55+midHash(i,121)*.7,5),new THREE.MeshStandardMaterial({color:0x4b6840,roughness:1,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.012}));grass.position.set(x,groundY(x,z)+.3,z);scene.add(grass);}}
+
+    // Set dressing: small embedded stones, fallen twigs and mossy fragments.
+    // Sparse by design, so the large open spaces remain readable.
+    for(let i=0;i<72;i++){
+      const x=-84+midHash(i,150)*168, z=-82+midHash(i,151)*164;
+      const nearVillage=Math.hypot(x-1,z+1)<24;
+      const nearLandmark=[[18,55,15],[-65,5,13],[43,32,14],[62,78,12],[-45,75,13],[5,-70,14],[-72,-48,13],[-30,15,10]].some(([rx,rz,rr])=>Math.hypot(x-rx,z-rz)<rr);
+      if(nearVillage||nearLandmark) continue;
+      const s=.10+midHash(i,152)*.24;
+      const rock=new THREE.Mesh(
+        new THREE.DodecahedronGeometry(s,1),
+        new THREE.MeshStandardMaterial({color:i%3===0?0x555b54:0x66665d,roughness:.98,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.018})
+      );
+      rock.scale.set(1.0+midHash(i,153)*1.3,.55+midHash(i,154)*.7,.72+midHash(i,155)*1.15);
+      rock.rotation.set(midHash(i,156)*1.7,midHash(i,157)*Math.PI,midHash(i,158)*1.7);
+      rock.position.set(x,groundY(x,z)+s*.22,z);
+      rock.castShadow=true; rock.receiveShadow=true; scene.add(rock);
+    }
+
+    for(let i=0;i<46;i++){
+      const x=-82+midHash(i,160)*164, z=-80+midHash(i,161)*160;
+      if(Math.hypot(x-1,z+1)<28) continue;
+      const len=.55+midHash(i,162)*1.15;
+      const twig=new THREE.Mesh(new THREE.CylinderGeometry(.025,.055,len,6),mat(0x463224,.98));
+      twig.position.set(x,groundY(x,z)+.045,z);
+      twig.rotation.set(.05+midHash(i,163)*.35,midHash(i,164)*Math.PI,Math.PI*.5+(midHash(i,165)-.5)*.5);
+      scene.add(twig);
+    }
 
     // A small watchtower gives vertical scale and a visible landmark.
     const tower=new THREE.Group();tower.position.set(29,groundY(29,25),25);tower.userData={id:"tower",label:"Сторожевая башня"};for(const px of [-2,2])for(const pz of [-2,2]){const p=box(.35,7,.35,0x3c291d,1);p.position.set(px,3.5,pz);tower.add(p);}const deck=box(5,.35,5,0x68472d,1);deck.position.y=5.8;tower.add(deck);const roofT=new THREE.Mesh(new THREE.ConeGeometry(3.8,2.7,4),mat(0x292522,1));roofT.position.y=8;tower.add(roofT);addMesh(tower,"tower","Сторожевая башня");objects.push(tower);
