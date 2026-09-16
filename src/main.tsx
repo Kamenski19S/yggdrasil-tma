@@ -1135,10 +1135,15 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       const m=cyl(radius,length,c,10,.96); m.rotation.z=Math.PI/2; return m;
     };
     const roofSlope=(w:number,d:number,c:number)=>{
-      const g=new THREE.Group(), panelW=w*.59, angle=.61;
-      const a=new THREE.Mesh(new THREE.PlaneGeometry(panelW,d),mat(c,.99)), b=a.clone();
-      a.rotation.set(Math.PI/2,0,angle); b.rotation.set(Math.PI/2,0,-angle);
-      a.position.x=-w*.205; b.position.x=w*.205; g.add(a,b); return g;
+      const g=new THREE.Group(), panelW=w*.62, angle=.61;
+      const roofMat=new THREE.MeshStandardMaterial({map:roofTex,color:c,roughness:.96,side:THREE.DoubleSide});
+      // Thick boards rather than paper-thin planes: the roof remains visible from every camera angle.
+      const a=new THREE.Mesh(new THREE.BoxGeometry(panelW,.18,d),roofMat);
+      const b=a.clone();
+      a.rotation.z=angle; b.rotation.z=-angle;
+      a.position.x=-w*.205; b.position.x=w*.205;
+      g.add(a,b);
+      return g;
     };
 
 
@@ -1303,8 +1308,15 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         const hh=box(1.05,.07,.09,0x302219,1); hh.position.set(px,2.02,d*.5+.40); g.add(hh);
       }
 
-      const roof=roofSlope(w+1.15,d+1.0,roofColor); roof.position.y=4.15; g.add(roof);
-      const ridge=log(d+1.2,.16,0x2a201a); ridge.rotation.y=Math.PI/2; ridge.position.y=5.10; g.add(ridge);
+      const roof=roofSlope(w+1.55,d+1.35,roofColor); roof.position.y=4.18; g.add(roof);
+      // Heavy eaves and a real ridge make the silhouette unmistakably Nordic.
+      for(const ex of [-1,1]){
+        const eave=log(d+1.48,.12,0x30231b);
+        eave.position.set(ex*(w*.46),3.78,0);
+        eave.rotation.y=Math.PI/2;
+        g.add(eave);
+      }
+      const ridge=log(d+1.45,.18,0x2a201a); ridge.rotation.y=Math.PI/2; ridge.position.y=5.28; g.add(ridge);
 
       const porch=box(w*.34,.16,1.05,0x62422b,1); porch.position.set(0,.64,d*.5+.66); g.add(porch);
       for(const px of [-w*.16,w*.16]){
@@ -1634,15 +1646,90 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     // They are game-world manifestations in Midgard, not claims that the literal cosmic animals live here.
     const deer = (x:number,z:number,s:number,phase:number) => {
       const g=new THREE.Group();
-      const fur=mat(0x8a6d4d,1), dark=mat(0x342b24,1), ant=mat(0xb0a58e,1);
-      const body=new THREE.Mesh(new THREE.CapsuleGeometry(.46*s,1.0*s,6,10),fur); body.rotation.z=Math.PI/2; body.position.y=.9*s; g.add(body);
-      const neck=new THREE.Mesh(new THREE.CylinderGeometry(.24*s,.32*s,.84*s,8),fur); neck.position.set(.48*s,1.25*s,0); neck.rotation.z=-.35; g.add(neck);
-      const head=new THREE.Mesh(new THREE.SphereGeometry(.31*s,10,7),fur); head.scale.set(1.25,.9,1); head.position.set(.77*s,1.58*s,0); g.add(head);
-      const snout=new THREE.Mesh(new THREE.SphereGeometry(.14*s,8,5),dark); snout.scale.z=.72; snout.position.set(1.0*s,1.53*s,0); g.add(snout);
-      for(const pz of [-.25,.25]) for(const px of [-.27,.34]) { const leg=new THREE.Mesh(new THREE.CylinderGeometry(.065*s,.09*s,.72*s,6),dark); leg.position.set(px*s,.48*s,pz*s); leg.rotation.z=(px<0?.08:-.06); g.add(leg); }
-      for(const side of [-1,1]) for(let k=0;k<4;k++){ const a=new THREE.Mesh(new THREE.CylinderGeometry(.028*s,.05*s,.38*s,5),ant); a.position.set(.7*s,(1.82+k*.13)*s,side*(.11+k*.055)*s); a.rotation.z=side*(.45-k*.08); g.add(a); }
-      const tail=new THREE.Mesh(new THREE.SphereGeometry(.13*s,7,5),fur); tail.position.set(-.52*s,1.05*s,0); tail.scale.set(.7,1.2,.7); g.add(tail);
-      g.position.set(x,groundY(x,z),z); g.userData={phase}; addMesh(g); wildlife.push({g,x,z,r:4+midHash(phase,41)*3,speed:1.25+midHash(phase,42)*.8,phase,kind:'deer'});
+      const fur=new THREE.MeshStandardMaterial({color:0x806044,roughness:.96});
+      const furLight=new THREE.MeshStandardMaterial({color:0x9b7856,roughness:.96});
+      const dark=new THREE.MeshStandardMaterial({color:0x30251e,roughness:1});
+      const ant=new THREE.MeshStandardMaterial({color:0xb9ad98,roughness:.9});
+      const eyeMat=new THREE.MeshStandardMaterial({color:0x17130f,roughness:.25});
+
+      // Torso: broad ribcage tapering toward the rump.
+      const body=new THREE.Mesh(new THREE.SphereGeometry(.68,14,10),fur);
+      body.scale.set(1.35,.78,.72);
+      body.position.set(0,.98*s,0); body.scale.multiplyScalar(s); g.add(body);
+
+      const chest=new THREE.Mesh(new THREE.SphereGeometry(.42,12,9),furLight);
+      chest.scale.set(1,.9,.86); chest.position.set(.49*s,1.04*s,0); g.add(chest);
+
+      // Long sloping neck and a distinct deer head.
+      const neck=new THREE.Mesh(new THREE.CylinderGeometry(.20*s,.34*s,.98*s,10),fur);
+      neck.position.set(.50*s,1.46*s,0); neck.rotation.z=-.30; g.add(neck);
+
+      const head=new THREE.Mesh(new THREE.SphereGeometry(.34*s,12,9),furLight);
+      head.scale.set(1.18,.92,.78); head.position.set(.86*s,1.82*s,0); g.add(head);
+
+      const muzzle=new THREE.Mesh(new THREE.SphereGeometry(.17*s,10,7),furLight);
+      muzzle.scale.set(1.15,.72,.72); muzzle.position.set(1.16*s,1.72*s,0); g.add(muzzle);
+
+      const nose=new THREE.Mesh(new THREE.SphereGeometry(.075*s,8,6),dark);
+      nose.scale.set(1,.72,.85); nose.position.set(1.30*s,1.72*s,0); g.add(nose);
+
+      // Visible ears.
+      for(const side of [-1,1]){
+        const ear=new THREE.Mesh(new THREE.ConeGeometry(.095*s,.30*s,7),furLight);
+        ear.position.set(.77*s,2.10*s,side*.20*s);
+        ear.rotation.z=-.28; ear.rotation.x=side*.18;
+        g.add(ear);
+      }
+
+      // Eyes with a tiny highlight.
+      for(const side of [-1,1]){
+        const eye=new THREE.Mesh(new THREE.SphereGeometry(.035*s,8,6),eyeMat);
+        eye.position.set(1.05*s,1.91*s,side*.235*s); g.add(eye);
+        const glint=new THREE.Mesh(new THREE.SphereGeometry(.009*s,6,4),new THREE.MeshBasicMaterial({color:0xffffff}));
+        glint.position.set(1.075*s,1.925*s,side*.257*s); g.add(glint);
+      }
+
+      // Four articulated legs: upper limb, lower limb and small hoof.
+      const legJoints: THREE.Object3D[]=[];
+      for(const zSide of [-1,1]){
+        for(const xSide of [-1,1]){
+          const upper=new THREE.Group();
+          upper.position.set(xSide*.43*s,.76*s,zSide*.34*s);
+          const upperMesh=new THREE.Mesh(new THREE.CylinderGeometry(.085*s,.11*s,.43*s,7),fur);
+          upperMesh.position.y=-.20*s; upper.add(upperMesh);
+
+          const lower=new THREE.Group();
+          lower.position.y=-.40*s;
+          const lowerMesh=new THREE.Mesh(new THREE.CylinderGeometry(.055*s,.075*s,.43*s,7),dark);
+          lowerMesh.position.y=-.20*s; lower.add(lowerMesh);
+
+          const hoof=new THREE.Mesh(new THREE.SphereGeometry(.075*s,7,5),dark);
+          hoof.scale.set(1.15,.55,1.25); hoof.position.y=-.43*s; lower.add(hoof);
+
+          upper.add(lower); g.add(upper); legJoints.push(upper,lower);
+        }
+      }
+
+      // Short white-ish tail.
+      const tail=new THREE.Mesh(new THREE.SphereGeometry(.16*s,9,7),furLight);
+      tail.scale.set(.75,1.25,.72); tail.position.set(-.90*s,1.18*s,0); g.add(tail);
+
+      // More natural branched antlers, with a main beam and 3 tines per side.
+      for(const side of [-1,1]){
+        const beam=new THREE.Mesh(new THREE.CylinderGeometry(.035*s,.055*s,.55*s,7),ant);
+        beam.position.set(.69*s,2.25*s,side*.14*s);
+        beam.rotation.z=side*.22; g.add(beam);
+        for(let k=0;k<3;k++){
+          const tine=new THREE.Mesh(new THREE.CylinderGeometry(.018*s,.035*s,.28*s,6),ant);
+          tine.position.set((.56+.10*k)*s,(2.48+.12*k)*s,side*(.14+.045*k)*s);
+          tine.rotation.z=side*(.55-.08*k); g.add(tine);
+        }
+      }
+
+      g.position.set(x,groundY(x,z),z);
+      g.userData={phase,legJoints};
+      addMesh(g);
+      wildlife.push({g,x,z,r:4+midHash(phase,41)*3,speed:1.25+midHash(phase,42)*.8,phase,kind:'deer'});
     };
     const squirrel=(x:number,z:number) => {
       const g=new THREE.Group(); const fur=mat(0x6a4930,1),dark=mat(0x2f241c,1);
@@ -1976,6 +2063,13 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         if(w.kind==='deer'){
           const dx=w.g.position.x-hero.position.x, dz=w.g.position.z-hero.position.z, dist=Math.hypot(dx,dz);
           if(dist<11){
+            const legJoints=(w.g.userData?.legJoints||[]) as THREE.Object3D[];
+            const gait=now*.014*(w.speed||1);
+            for(let li=0;li<4;li++){
+              const upper=legJoints[li*2], lower=legJoints[li*2+1];
+              if(upper) upper.rotation.z=Math.sin(gait+li*Math.PI)*.10;
+              if(lower) lower.rotation.z=Math.max(0,Math.sin(gait+li*Math.PI))*-.18;
+            }
             const len=Math.max(.001,dist);
             const step=dist<5.5?.115:.075;
             const nx=w.g.position.x+(dx/len)*step, nz=w.g.position.z+(dz/len)*step;
@@ -1986,7 +2080,18 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
             w.g.rotation.y=Math.atan2(dz,dx); w.g.position.y+=Math.sin(now*.008+i)*.025; return;
           }
         }
-        const ang=now*.00105*w.speed+w.phase;const nx=w.x+Math.cos(ang)*w.r,nz=w.z+Math.sin(ang*.83)*w.r*.62;w.g.position.set(nx,groundY(nx,nz),nz);w.g.rotation.y=Math.atan2(Math.cos(ang*.83),-Math.sin(ang)); if(w.kind==='deer') w.g.position.y+=Math.sin(now*.006+i)*.025;
+        const ang=now*.00105*w.speed+w.phase;const nx=w.x+Math.cos(ang)*w.r,nz=w.z+Math.sin(ang*.83)*w.r*.62;w.g.position.set(nx,groundY(nx,nz),nz);w.g.rotation.y=Math.atan2(Math.cos(ang*.83),-Math.sin(ang));
+        if(w.kind==='deer'){
+          const legJoints=(w.g.userData?.legJoints||[]) as THREE.Object3D[];
+          const gait=now*.014*(w.speed||1);
+          for(let li=0;li<4;li++){
+            const upper=legJoints[li*2], lower=legJoints[li*2+1];
+            if(upper) upper.rotation.z=Math.sin(gait+li*Math.PI)*.10;
+            if(lower) lower.rotation.z=Math.max(0,Math.sin(gait+li*Math.PI))*-.18;
+          }
+          w.g.position.y+=Math.sin(now*.006+i)*.025;
+          w.g.rotation.x=Math.sin(now*.004+w.phase)*.018;
+        }
       });
       npcs.forEach((n,i)=>{const phase=n.userData.phase||0;const bx=n.userData.baseX,bz=n.userData.baseZ;const nx=bx+Math.sin(now*.00028+phase)*1.6,nz=bz+Math.cos(now*.00022+phase)*1.1;n.position.set(nx,groundY(nx,nz),nz);n.rotation.y=Math.sin(now*.0004+phase)*.5;});
       renderer.render(scene,camera);raf=requestAnimationFrame(loop);
