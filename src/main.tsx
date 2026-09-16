@@ -1832,20 +1832,123 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     makeForestEvent(46,43,'forestWhisper','Камень Шёпота',0x7895a5,0x454d4d,3);
     makeForestEvent(-48,72,'forestThread','Разорванная нить',0x9c7190,0x51484d,2);
 
-    // Right forest expansion: three larger areas so the eastern side feels like a
-    // place to explore, not an empty ring of trees. These are game interpretations.
+    // Right forest expansion: detailed landmark clearings. The goal is a cinematic
+    // handcrafted look rather than a ring of identical primitive stones.
+    const runeGroundTexture=(glyph:string,color:string)=>{
+      const c=document.createElement("canvas"); c.width=c.height=256; const ctx=c.getContext("2d")!;
+      ctx.clearRect(0,0,256,256); ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.shadowColor=color; ctx.shadowBlur=18; ctx.fillStyle=color; ctx.font="bold 150px serif"; ctx.fillText(glyph,128,132);
+      ctx.shadowBlur=4; ctx.globalAlpha=.55; ctx.font="bold 118px serif"; ctx.fillText(glyph,128,132);
+      const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; return t;
+    };
+    const addGroundRune=(g:THREE.Group,x:number,z:number,glyph:string,color:number,size=.72,rot=0)=>{
+      const hex="#"+color.toString(16).padStart(6,"0");
+      const m=new THREE.MeshBasicMaterial({map:runeGroundTexture(glyph,hex),transparent:true,depthWrite:false,side:THREE.DoubleSide});
+      const q=new THREE.Mesh(new THREE.PlaneGeometry(size,size),m); q.rotation.x=-Math.PI/2; q.rotation.z=rot; q.position.set(x,.065,z); g.add(q);
+    };
+    const plankBetween=(a:THREE.Vector3,b:THREE.Vector3,w:number,h:number,material:THREE.Material)=>{
+      const d=a.distanceTo(b), m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
+      m.position.copy(a).add(b).multiplyScalar(.5);
+      m.lookAt(b); return m;
+    };
+    const irregularRock=(g:THREE.Group,x:number,y:number,z:number,s:number,color:number,seed:number)=>{
+      const r=new THREE.Mesh(new THREE.DodecahedronGeometry(s,1),mat(color,1));
+      r.scale.set(.72+midHash(seed,1)*.62,.55+midHash(seed,2)*.85,.68+midHash(seed,3)*.55);
+      r.rotation.set(midHash(seed,4)*1.2,midHash(seed,5)*Math.PI,midHash(seed,6)*1.1); r.position.set(x,y,z); g.add(r); return r;
+    };
+
+    const makeForgottenCamp=(x:number,z:number)=>{
+      const g=new THREE.Group(); g.position.set(x,groundY(x,z),z); g.userData={id:'hunterCamp',label:'Забытая стоянка'};
+      const earth=new THREE.Mesh(new THREE.CircleGeometry(8.7,40),new THREE.MeshStandardMaterial({color:0x31382c,roughness:1,transparent:true,opacity:.78}));
+      earth.rotation.x=-Math.PI/2; earth.position.y=.025; earth.scale.set(1.18,.92,1); g.add(earth);
+
+      // Collapsed Viking wagon: crooked frame, rotten planks and a broken spoked wheel.
+      const wagon=new THREE.Group(); wagon.position.set(-1.45,.05,-.65); wagon.rotation.y=-.34; g.add(wagon);
+      const rotten=mat(0x5b3b28,1), darkRotten=mat(0x38271e,1), iron=mat(0x292a28,.82,.35), mossMat=mat(0x43553a,1);
+      const bed=box(3.7,.26,1.65,0x60412d,1); bed.position.y=1.05; bed.rotation.z=-.08; wagon.add(bed);
+      for(let i=0;i<9;i++){
+        const plank=box(2.8+midHash(i,501)*1.1,.16,.26, i%3?0x63452f:0x4b3325,1);
+        plank.position.set(-.25+(midHash(i,502)-.5)*.25,1.18+(midHash(i,503)-.5)*.34,-.72+(i%3)*.68);
+        plank.rotation.z=(midHash(i,504)-.5)*.16; plank.rotation.y=(midHash(i,505)-.5)*.16; wagon.add(plank);
+      }
+      for(const [xx,zz,rr] of [[-1.55,-.83,.82],[1.35,-.83,.74]] as Array<[number,number,number]>) {
+        const wheel=new THREE.Mesh(new THREE.TorusGeometry(rr,.14,7,20,Math.PI*1.56),iron); wheel.rotation.y=Math.PI/2; wheel.rotation.z=rr>.8?.08:-.18; wheel.position.set(xx,.9,zz); wagon.add(wheel);
+        const hub=new THREE.Mesh(new THREE.CylinderGeometry(.15,.18,.28,8),iron); hub.rotation.z=Math.PI/2; hub.position.set(xx,.9,zz); wagon.add(hub);
+        for(let k=0;k<6;k++){
+          const a=k/6*Math.PI*2+.25; const aa=new THREE.Vector3(xx+Math.cos(a)*rr*.82,.9+Math.sin(a)*rr*.82,zz+.02);
+          const bb=new THREE.Vector3(xx,.9,zz+.02); wagon.add(plankBetween(bb,aa,.065,.065,iron));
+        }
+      }
+      const axle=box(3.8,.14,.16,iron,1); axle.position.set(0,.62,-.83); axle.rotation.z=.08; wagon.add(axle);
+      const shaft=box(.16,.18,3.2,rotten,1); shaft.position.set(1.8,.8,-.35); shaft.rotation.y=.9; wagon.add(shaft);
+      for(let i=0;i<6;i++){const moss=new THREE.Mesh(new THREE.SphereGeometry(.28+midHash(i,507)*.18,7,5),mossMat);moss.scale.set(1.4,.32,.7);moss.position.set(-1.1+i*.48,1.34+(i%2)*.05,-.82);wagon.add(moss);}
+
+      // Collapsed teepee-style leather shelter, partially swallowed by the forest.
+      const tent=new THREE.Group(); tent.position.set(2.85,.02,1.15); tent.rotation.y=.18; g.add(tent);
+      const poles=mat(0x4a3021,1);
+      for(let i=0;i<4;i++){const a=i/4*Math.PI*2+.25; const p=box(.11,3.7,.11,0x4a3021,1); p.position.set(Math.cos(a)*1.25,1.65,Math.sin(a)*1.25); p.rotation.z=Math.cos(a)*.34; p.rotation.x=-Math.sin(a)*.34; tent.add(p);}
+      const cloth=new THREE.Mesh(new THREE.ConeGeometry(2.0,3.2,4,1,true),new THREE.MeshStandardMaterial({color:0x4a3127,roughness:1,side:THREE.DoubleSide,transparent:true,opacity:.94}));
+      cloth.position.y=1.45; cloth.scale.set(1,.9,.82); cloth.rotation.y=.78; tent.add(cloth);
+      for(let i=0;i<9;i++){const moss=new THREE.Mesh(new THREE.SphereGeometry(.16+midHash(i,509)*.14,6,5),mossMat);moss.scale.set(1.5,.35,.8);moss.position.set((midHash(i,510)-.5)*2.4,1.0+midHash(i,511)*1.9,(midHash(i,512)-.5)*1.8);tent.add(moss);}
+      const flap=box(1.05,1.55,.05,0x2f211c,1); flap.position.set(0,.72,1.65); flap.rotation.y=.16; tent.add(flap);
+
+      // Stone hearth with warm firelight.
+      fire(x+.1,z+.45,.78);
+      const campLight=new THREE.PointLight(0xff9a45,1.0,8,2); campLight.position.set(.1,1.7,.45); g.add(campLight);
+
+      // Rusted shield with a broken boss and scattered tools.
+      const shield=new THREE.Group(); shield.position.set(-3.15,.5,1.25); shield.rotation.y=.8; shield.rotation.z=-.22; g.add(shield);
+      const shieldDisc=new THREE.Mesh(new THREE.CircleGeometry(1.05,16),new THREE.MeshStandardMaterial({color:0x3b3c39,roughness:.85,metalness:.55,side:THREE.DoubleSide})); shieldDisc.rotation.x=-Math.PI/2; shieldDisc.scale.y=.8; shield.add(shieldDisc);
+      const rim=new THREE.Mesh(new THREE.TorusGeometry(1.03,.11,7,18),iron); rim.rotation.x=-Math.PI/2; rim.scale.y=.8; shield.add(rim);
+      const boss=new THREE.Mesh(new THREE.CylinderGeometry(.24,.31,.22,8),iron); boss.rotation.x=Math.PI/2; boss.position.set(.18,0,.08); shield.add(boss);
+      const crack=box(.05,.035,1.15,0x171816,1); crack.position.set(-.28,.025,.05); crack.rotation.y=.42; shield.add(crack);
+
+      const toolMat=mat(0x2d2c29,.65,.45);
+      const axe=(px:number,pz:number,rot:number)=>{const t=new THREE.Group();t.position.set(px,.18,pz);t.rotation.y=rot;const h=box(.09,.09,1.55,0x4d3322,1);h.rotation.x=Math.PI/2;h.position.z=.15;t.add(h);const head=box(.55,.13,.28,0x30302d,.55);head.position.set(0,.02,-.62);head.rotation.y=-.25;t.add(head);g.add(t);};
+      axe(-1.9,3.15,.45); axe(4.15,-.65,-.8);
+      const hammer=box(.11,.11,.95,0x523724,1); hammer.rotation.y=.55; hammer.position.set(-2.1,.16,2.65); g.add(hammer);
+
+      // Leather pouch, coins and bones.
+      const pouch=new THREE.Mesh(new THREE.SphereGeometry(.48,9,7),new THREE.MeshStandardMaterial({color:0x5b3b27,roughness:1})); pouch.scale.set(.9,1.15,.65); pouch.position.set(3.55,.48,2.65); g.add(pouch);
+      const strap=new THREE.Mesh(new THREE.TorusGeometry(.33,.035,6,18,Math.PI*1.5),mat(0x2e2119,1)); strap.rotation.x=Math.PI/2; strap.position.set(3.55,.93,2.65); g.add(strap);
+      for(let i=0;i<15;i++){const c=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.025,10),new THREE.MeshStandardMaterial({color:0x8e7445,metalness:.55,roughness:.45}));const a=midHash(i,520)*Math.PI*2,rr=2.1+midHash(i,521)*3.7;c.position.set(Math.cos(a)*rr,.13,Math.sin(a)*rr);c.rotation.x=Math.PI/2;g.add(c);}
+      for(let i=0;i<5;i++){const bone=box(.08,.08,.9,0xaaa28d,1);bone.position.set(3.2+midHash(i,522)*2.4,.18,-2.7+midHash(i,523)*1.7);bone.rotation.y=midHash(i,524)*Math.PI;bone.rotation.z=(midHash(i,525)-.5)*.25;g.add(bone);}
+
+      // Ancient runes etched into the mossy ground.
+      const runeRing=new THREE.Mesh(new THREE.TorusGeometry(4.7,.055,7,64),new THREE.MeshBasicMaterial({color:0x8bc5c7,transparent:true,opacity:.5})); runeRing.rotation.x=Math.PI/2; runeRing.position.y=.075; g.add(runeRing);
+      const runeGlyphs=["ᚠ","ᚱ","ᛉ","ᚷ","ᛟ","ᚦ","ᛏ","ᚢ"];
+      runeGlyphs.forEach((ch,i)=>{const a=i/runeGlyphs.length*Math.PI*2;addGroundRune(g,Math.cos(a)*4.15,Math.sin(a)*4.15,ch,i%3===0?0xc9a55a:0x79b8bd,.55,a+.3);});
+      for(let i=0;i<18;i++){const r=irregularRock(g,(midHash(i,530)-.5)*8,.18,(midHash(i,531)-.5)*7,.22+midHash(i,532)*.34, i%4===0?0x5d6658:0x4e544d,530+i);}
+      for(let i=0;i<12;i++){const root=box(.12,.12,1.7+midHash(i,535)*2.0,0x3a2a20,1);root.position.set((midHash(i,536)-.5)*8,.11,(midHash(i,537)-.5)*8);root.rotation.y=midHash(i,538)*Math.PI;root.rotation.z=(midHash(i,539)-.5)*.2;g.add(root);}
+
+      addMesh(g,'hunterCamp','Забытая стоянка'); objects.push(g); addCircleCollider(x,z,1.9,.1);
+    };
+
     const makeForestClearing=(x:number,z:number,r:number,id:string,label:string,kind:number)=>{
       const g=new THREE.Group(); g.position.set(x,groundY(x,z),z);
-      const ring=new THREE.Mesh(new THREE.TorusGeometry(r,.07,8,56),new THREE.MeshStandardMaterial({color:kind===1?0x667b63:kind===2?0x6f7780:0x7d6955,emissive:kind===1?0x263b29:0x252b30,emissiveIntensity:.7,transparent:true,opacity:.48}));
+      const ringColor=kind===1?0x718e78:kind===2?0x78808a:0x8a765e;
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(r,.07,8,64),new THREE.MeshStandardMaterial({color:ringColor,emissive:ringColor,emissiveIntensity:.65,transparent:true,opacity:.42}));
       ring.rotation.x=Math.PI/2; ring.position.y=.045; g.add(ring);
-      for(let i=0;i<Math.floor(r/2);i++){
+      const count=Math.floor(r/1.7);
+      for(let i=0;i<count;i++){
         const a=midHash(i,x*11+z)*Math.PI*2, rr=r*.35+midHash(i,z*17)*r*.45;
-        const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(.28+midHash(i,33)*.22,1),mat(kind===1?0x555d54:kind===2?0x51565a:0x5a4a3c,1));
-        stone.position.set(Math.cos(a)*rr,.22,Math.sin(a)*rr); stone.scale.y=.65; g.add(stone);
+        irregularRock(g,Math.cos(a)*rr,.2,Math.sin(a)*rr,.34+midHash(i,33)*.32,kind===1?0x505c52:kind===2?0x50575b:0x574a3c,800+i);
+      }
+      if(kind===1){
+        for(let i=0;i<8;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(.34+midHash(i,600)*.25,7,5),mossMat);m.scale.y=.35;m.position.set((midHash(i,601)-.5)*r,.16,(midHash(i,602)-.5)*r);g.add(m);}
+        for(let i=0;i<6;i++) addGroundRune(g,(midHash(i,603)-.5)*r*.9,(midHash(i,604)-.5)*r*.9,["ᛉ","ᚱ","ᚦ","ᚨ","ᛟ","ᚠ"][i],0x78a8a4,.42,midHash(i,605)*Math.PI);
+      }
+      if(kind===2){
+        // A dead ash silhouette with a hollow center and broken branches.
+        const stump=new THREE.Mesh(new THREE.CylinderGeometry(1.45,2.0,4.6,9),new THREE.MeshStandardMaterial({map:barkTexture,color:0x5a4a38,roughness:1})); stump.position.set(0,2.25,0); stump.rotation.z=.08; g.add(stump);
+        const hollow=new THREE.Mesh(new THREE.SphereGeometry(.72,10,8),new THREE.MeshBasicMaterial({color:0x171714})); hollow.scale.set(1,.8,.45); hollow.position.set(0,1.75,1.32); g.add(hollow);
+        for(let i=0;i<5;i++){const br=box(.22,.24,2.8+midHash(i,610)*1.7,0x4a392d,1);br.position.set((midHash(i,611)-.5)*2.0,3.7+midHash(i,612)*1.8,(midHash(i,613)-.5)*1.7);br.rotation.y=midHash(i,614)*Math.PI;br.rotation.z=(midHash(i,615)-.5)*.65;g.add(br);}
+        addGroundRune(g,0,0,"ᚦ",0xd0b56d,.95,.15);
       }
       addMesh(g,id,label); objects.push(g);
     };
-    makeForestClearing(70,18,8.5,'hunterCamp','Забытая стоянка',3);
+
+    makeForgottenCamp(70,18);
     makeForestClearing(67,49,9.5,'deepGrove','Глубокая роща',1);
     makeForestClearing(52,7,7.5,'fallenAsh','Поверженный ясень',2);
 
