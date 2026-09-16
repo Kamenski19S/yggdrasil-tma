@@ -1372,7 +1372,54 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     table(-4,2);table(7,3);
 
     const fire=(x:number,z:number,scale:number)=>{const g=new THREE.Group();g.position.set(x,groundY(x,z),z);for(let i=0;i<7;i++){const a=i/7*Math.PI*2;const s=new THREE.Mesh(new THREE.DodecahedronGeometry(.32*scale,1),mat(0x5d5a52,1));s.position.set(Math.cos(a)*.7*scale,.25*scale,Math.sin(a)*.7*scale);g.add(s);}const log1=box(.2*scale,.2*scale,1.5*scale,0x4a2d1b,1),log2=log1.clone();log1.rotation.y=.55;log2.rotation.y=-.55;log1.position.y=log2.position.y=.38*scale;g.add(log1,log2);const fm=new THREE.MeshStandardMaterial({color:0xff8128,emissive:0xff4d0a,emissiveIntensity:4});const flame=new THREE.Mesh(new THREE.ConeGeometry(.5*scale,1.35*scale,8),fm);flame.position.y=1.02*scale;g.add(flame);scene.add(g);const light=new THREE.PointLight(0xff8a3c,2.4*scale,12*scale,2);light.position.set(x,groundY(x,z)+2*scale,z);scene.add(light);fires.push({light,flame,phase:midHash(x,z)*8});return g;};
-    fire(1,0,1.15);fire(18,-15,.72);
+    // Village center: Mimir's well replaces the bonfire; the existing 18-stone circle stays.
+    const villageMimir=new THREE.Group();
+    villageMimir.userData={id:"mimir",label:"Колодец Мимира"};
+    villageMimir.position.set(1,groundY(1,0),0);
+
+    const villageWellWater=new THREE.Mesh(
+      new THREE.CircleGeometry(1.18,32),
+      new THREE.MeshStandardMaterial({color:0x174b58,emissive:0x0c3d48,emissiveIntensity:1.9,roughness:.16,metalness:.04})
+    );
+    villageWellWater.rotation.x=-Math.PI/2; villageWellWater.position.y=.5; villageMimir.add(villageWellWater);
+
+    for(let i=0;i<3;i++){
+      const ripple=new THREE.Mesh(
+        new THREE.TorusGeometry(.38+i*.28,.025,6,40),
+        new THREE.MeshBasicMaterial({color:i===0?0x8eeeff:0x6bd7df,transparent:true,opacity:.42,depthWrite:false})
+      );
+      ripple.rotation.x=Math.PI/2; ripple.position.y=.525; villageMimir.add(ripple);
+    }
+
+    for(const px of [-1.35,1.35]){
+      const p=box(.24,3.0,.24,0x4a3020,1);
+      p.position.set(px,1.55,0); villageMimir.add(p);
+    }
+
+    const villageWellBeam=box(3.15,.26,.26,0x382519,1);
+    villageWellBeam.position.y=2.96; villageMimir.add(villageWellBeam);
+
+    const villageRope=new THREE.Mesh(
+      new THREE.CylinderGeometry(.035,.035,1.2,6),mat(0x7b6248,1)
+    );
+    villageRope.position.y=2.25; villageMimir.add(villageRope);
+
+    const villageBucket=box(.58,.5,.58,0x5a3b27,1);
+    villageBucket.position.set(0,1.65,0); villageMimir.add(villageBucket);
+
+    const villageWellHalo=new THREE.Mesh(
+      new THREE.TorusGeometry(1.55,.055,8,48),
+      new THREE.MeshStandardMaterial({color:0x76e59c,emissive:0x287c48,emissiveIntensity:3,roughness:.5})
+    );
+    villageWellHalo.rotation.x=Math.PI/2; villageWellHalo.position.y=.54; villageMimir.add(villageWellHalo);
+
+    addMesh(villageMimir,"mimir","Колодец Мимира"); objects.push(villageMimir);
+    addCircleCollider(1,0,2.0,.08);
+
+    const villageMimirLight=new THREE.PointLight(0x72e8a0,2.0,10,2);
+    villageMimirLight.position.set(1,groundY(1,0)+1.5,0); scene.add(villageMimirLight);
+
+    fire(18,-15,.72);
 
     // Outer settlement: farms, workshops and service yards make the village read as a place,
     // not a handful of buildings. These are deliberately lightweight so the scene remains mobile-friendly.
@@ -1572,13 +1619,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     palisade(-30,-31,-8,-31);palisade(8,-31,30,-31);palisade(-30,-31,-30,-13);palisade(30,-31,30,16);
     const gate=new THREE.Group();gate.userData={id:"gate",label:"Ворота Мидгарда"};for(const x of [-4.2,4.2]){const p=box(.8,6,.8,0x35251a,1);p.position.set(x,3,-31);gate.add(p);}const top=box(10,.8,1,0x2d2018,1);top.position.set(0,6,-31);gate.add(top);for(let i=-3;i<=3;i++){const bar=box(1.0,4.2,.22,0x5b3a24,1);bar.position.set(i*1.15,2,-30.7);gate.add(bar);}addMesh(gate,"gate","Ворота Мидгарда");objects.push(gate);
     addCircleCollider(-4.2,-31,.55,.05);addCircleCollider(4.2,-31,.55,.05);
-
-    // Mimir's well and Norn shrine are visually distinctive landmarks.
-    const mimir=new THREE.Group();mimir.userData={id:"mimir",label:"Колодец Мимира"};mimir.position.set(18,groundY(18,15),15);
-    for(let i=0;i<14;i++){const a=i/14*Math.PI*2;const s=box(.7,.48,.5,0x666a63,1);s.position.set(Math.cos(a)*1.45,.24,Math.sin(a)*1.45);s.rotation.y=a+Math.PI/2;mimir.add(s);}const water=new THREE.Mesh(new THREE.CircleGeometry(1.05,28),new THREE.MeshStandardMaterial({color:0x173b43,emissive:0x0b3138,emissiveIntensity:1.8,roughness:.18}));water.rotation.x=-Math.PI/2;water.position.y=.5;mimir.add(water);for(const px of [-1.35,1.35]){const p=box(.22,3,.22,0x4a3020,1);p.position.set(px,1.55,0);mimir.add(p);}const beam=box(3.1,.25,.25,0x382519,1);beam.position.y=2.95;mimir.add(beam);const bucket=box(.55,.5,.55,0x5a3b27,1);bucket.position.set(0,1.65,0);mimir.add(bucket);const halo=new THREE.Mesh(new THREE.TorusGeometry(1.8,.06,8,40),new THREE.MeshStandardMaterial({color:0x76e59c,emissive:0x287c48,emissiveIntensity:3}));halo.rotation.x=Math.PI/2;halo.position.y=.53;mimir.add(halo);addMesh(mimir,"mimir","Колодец Мимира");objects.push(mimir);
-    addCircleCollider(18,15,1.8,.08);
-    const ml=new THREE.PointLight(0x72e8a0,1.8,10,2);ml.position.set(18,groundY(18,15)+1.4,15);scene.add(ml);
-
+    // Mimir's well now occupies the village central stone circle — one unique instance.
     const shrine=new THREE.Group();shrine.userData={id:"norns",label:"Прядильня норн"};shrine.position.set(-52,groundY(-52,38),38);
     const loomWood=mat(0x4b3022,1); const loomDark=mat(0x2b211b,1);
     // Large carved loom frame.
@@ -2387,7 +2428,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     const destinations=[
       {id:"house",label:"Дом старейшины",x:13,z:-18,r:5.2},{id:"forge",label:"Кузница",x:-10,z:-5,r:5.4},
-      {id:"mimir",label:"Колодец Мимира",x:18,z:15,r:4.8},{id:"norns",label:"Прядильня норн",x:-52,z:38,r:5.4},
+      {id:"mimir",label:"Колодец Мимира",x:1,z:0,r:4.8},{id:"norns",label:"Прядильня норн",x:-52,z:38,r:5.4},
       {id:"rune",label:"Древний камень Феху",x:50,z:60,r:4.5},{id:"port",label:"Речной причал",x:-45,z:-48,r:5},
       {id:"ashgrove",label:"Роща Ясеня",x:-5,z:75,r:7.5},{id:"threeThreads",label:"Камень Трёх Нитей — Колодец Урд",x:58,z:-28,r:6.8},{id:"forestCache",label:"Забытый тайник",x:-72,z:48,r:4.2},{id:"forestThread",label:"Разорванная нить",x:50,z:-62,r:4.2},
       {id:"runefield",label:"Поле Рун",x:18,z:55,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-65,z:5,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:43,z:32,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:62,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:68,z:8,r:8.5},{id:"heroHome",label:"Дверь дома героя",x:75,z:32.75,r:2.8},{id:"deepGrove",label:"Глубокая роща",x:-45,z:75,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:-30,z:15,r:7.5},{id:"powerCircle",label:"Круг Силы — Монолит",x:5,z:-70,r:6.5},{id:"whisperStone",label:"Камень Шёпота",x:-72,z:-48,r:6.5},
