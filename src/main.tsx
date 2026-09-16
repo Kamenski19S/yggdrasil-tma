@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 const tg: any = (window as any).Telegram?.WebApp;
 const BASE: string = (import.meta as any).env?.BASE_URL || "/";
@@ -1258,6 +1259,36 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const terrain = new THREE.Mesh(groundGeo, terrainMat);
     terrain.receiveShadow = true;
     scene.add(terrain);
+
+    // ===== GLB TEST: one real tree from public/models/tree.glb =====
+    // This is intentionally isolated: the existing procedural forest remains unchanged.
+    // Once the model is confirmed on mobile, we can replace the procedural trees safely.
+    const gltfLoader = new GLTFLoader();
+    let glbTestTree: THREE.Object3D | null = null;
+    let glbTestTreeAlive = true;
+
+    gltfLoader.load(
+      `${BASE}models/tree.glb`,
+      (gltf) => {
+        if (!glbTestTreeAlive) return;
+        glbTestTree = markMeshes(gltf.scene);
+
+        // Test position: visible near the village, but not on the player's start point.
+        const tx = 12;
+        const tz = 16;
+        const ty = groundY(tx, tz);
+
+        glbTestTree.position.set(tx, ty, tz);
+        glbTestTree.scale.setScalar(3.2);
+        glbTestTree.rotation.y = 0.65;
+
+        scene.add(glbTestTree);
+      },
+      undefined,
+      (error) => {
+        console.error("GLB tree load failed:", error);
+      }
+    );
 
     // Distant world depth: soft mountain ridges and far forest silhouettes.
     // They stay well beyond the playable area, so the village and landmarks keep open space.
@@ -3082,7 +3113,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
+    return()=>{glbTestTreeAlive=false;if(glbTestTree){glbTestTree.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});}cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
   },[h.id,on,eventDone]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
