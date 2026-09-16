@@ -1900,6 +1900,11 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     [[24,-13],[25,-10],[18,-20],[-18,-21],[-24,-4],[-8,-18],[21,2],[14,11]].forEach(([x,z])=>barrel(x,z));
     [[25,-14],[27,-11],[-19,-20],[-21,-5],[18,-19],[-7,-19]].forEach(([x,z])=>crate(x,z));
 
+    // Step 10 — living forest: gentle wind for foliage and small plants.
+    // Group-level animation keeps the effect inexpensive on mobile.
+    const windFoliage: Array<{o:THREE.Object3D,baseX:number,baseZ:number,phase:number,amp:number}> = [];
+    const windPlants: Array<{o:THREE.Object3D,baseX:number,baseZ:number,phase:number,amp:number}> = [];
+
     // Realistic fantasy trees: firs for the forest + sacred ash trees around Midgard.
     // The ash is a deliberate visual echo of Yggdrasil rather than a generic oak.
 
@@ -1919,7 +1924,9 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         const r=Math.max(.48,(1.42-i*.075))*s;
         const crown=new THREE.Mesh(organicBlobGeometry(new THREE.SphereGeometry(r,10,7),.18*s, i+Math.round(x*3+z*5)),new THREE.MeshStandardMaterial({map:foliageTexture,color:fm[i%3],roughness:.995}));
         crown.scale.set(1.0+midHash(i,x)*.25,.55+midHash(i,z)*.16,.82+midHash(i*2,x)*.22);
-        crown.position.set((midHash(i*4,x)-.5)*.58*s,(1.55+i*.37)*s,(midHash(i*5,z)-.5)*.55*s); g.add(crown);
+        crown.position.set((midHash(i*4,x)-.5)*.58*s,(1.55+i*.37)*s,(midHash(i*5,z)-.5)*.55*s);
+        windFoliage.push({o:crown,baseX:crown.rotation.x,baseZ:crown.rotation.z,phase:midHash(i+41,x+z)*Math.PI*2,amp:.010+.008*midHash(i+42,z)});
+        g.add(crown);
       }
       for(let i=0;i<3;i++){
         const moss=new THREE.Mesh(new THREE.SphereGeometry(.38*s,7,5),new THREE.MeshStandardMaterial({color:i%2?0x314d36:0x3d5d3d,roughness:1}));
@@ -1965,7 +1972,9 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         br.rotation.z=Math.cos(a)*.76; br.rotation.x=Math.sin(a)*.76; br.rotation.y=-a; g.add(br);
         for(let k=0;k<4;k++){
           const leaf=new THREE.Mesh(organicBlobGeometry(new THREE.SphereGeometry((.46+midHash(k+i,90)*.25)*s,10,7),.14*s,k+i+17),new THREE.MeshStandardMaterial({map:foliageTexture,color:[0x315f39,0x427548,0x568653][(i+k)%3],roughness:1}));
-          leaf.scale.y=.62; leaf.position.set(Math.cos(a)*len*(.52+.09*k)+(midHash(k,i)-.5)*.55*s,(3.9+midHash(i,k)*1.45+.25*k)*s,Math.sin(a)*len*(.52+.09*k)+(midHash(k+4,i)-.5)*.55*s); g.add(leaf);
+          leaf.scale.y=.62; leaf.position.set(Math.cos(a)*len*(.52+.09*k)+(midHash(k,i)-.5)*.55*s,(3.9+midHash(i,k)*1.45+.25*k)*s,Math.sin(a)*len*(.52+.09*k)+(midHash(k+4,i)-.5)*.55*s);
+          windFoliage.push({o:leaf,baseX:leaf.rotation.x,baseZ:leaf.rotation.z,phase:midHash(k+61,i+z)*Math.PI*2,amp:.012+.012*midHash(k+62,x)});
+          g.add(leaf);
         }
       }
       if(ancient){
@@ -2729,9 +2738,10 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       const g=new THREE.Group();g.position.set(x,groundY(x,z),z);
       for(let k=0;k<3;k++){const blade=new THREE.Mesh(new THREE.ConeGeometry(.025,.38+midHash(k,i)*.28,4),new THREE.MeshStandardMaterial({color:k===1?0x53683f:0x415a37,roughness:1,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.012}));blade.position.set((k-1)*.09,.18,(midHash(k*3,i)-.5)*.12);blade.rotation.z=(k-1)*.22;g.add(blade);}
       scene.add(g);
+      windPlants.push({o:g,baseX:0,baseZ:0,phase:midHash(i,703)*Math.PI*2,amp:.018+.016*midHash(i,704)});
     }
 
-    for(let i=0;i<80;i++){const x=-88+midHash(i,101)*176,z=-88+midHash(i,111)*176;if(Math.hypot(x,z+2)>30){const grass=new THREE.Mesh(new THREE.ConeGeometry(.08,.55+midHash(i,121)*.7,5),new THREE.MeshStandardMaterial({color:0x4b6840,roughness:1,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.012}));grass.position.set(x,groundY(x,z)+.3,z);scene.add(grass);}}
+    for(let i=0;i<80;i++){const x=-88+midHash(i,101)*176,z=-88+midHash(i,111)*176;if(Math.hypot(x,z+2)>30){const grass=new THREE.Mesh(new THREE.ConeGeometry(.08,.55+midHash(i,121)*.7,5),new THREE.MeshStandardMaterial({color:0x4b6840,roughness:1,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.012}));grass.position.set(x,groundY(x,z)+.3,z);scene.add(grass); windPlants.push({o:grass,baseX:0,baseZ:0,phase:midHash(i,122)*Math.PI*2,amp:.014+.012*midHash(i,123)});}}
 
     // Set dressing: small embedded stones, fallen twigs and mossy fragments.
     // Sparse by design, so the large open spaces remain readable.
@@ -2819,6 +2829,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         }
       }
       scene.add(g);
+      windPlants.push({o:g,baseX:0,baseZ:0,phase:midHash(i,941)*Math.PI*2,amp:.022+.018*midHash(i,942)});
     }
 
     // Exposed roots around the three ancient ash trees. Each root is a tapered,
@@ -2881,6 +2892,19 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const mist=new THREE.Group();
     for(let i=0;i<34;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(.9+midHash(i,810)*2.2,8,6),mistMat);m.position.set(-88+midHash(i,811)*176,1.8+midHash(i,812)*2.2,-72+midHash(i,813)*144);mist.add(m);}
     scene.add(mist);
+
+    // Tiny pollen motes drift through the air. One shared Points object keeps draw calls low.
+    const moteCount=72;
+    const motePos=new Float32Array(moteCount*3);
+    for(let i=0;i<moteCount;i++){
+      const a=midHash(i,1401)*Math.PI*2,r=12+midHash(i,1402)*74;
+      motePos[i*3]=Math.cos(a)*r; motePos[i*3+1]=1.0+midHash(i,1403)*4.8; motePos[i*3+2]=Math.sin(a)*r+3;
+    }
+    const moteGeo=new THREE.BufferGeometry();
+    moteGeo.setAttribute('position',new THREE.Float32BufferAttribute(motePos,3));
+    const moteMat=new THREE.PointsMaterial({color:0xf0dfae,size:.075,transparent:true,opacity:.24,depthWrite:false,sizeAttenuation:true});
+    const motes=new THREE.Points(moteGeo,moteMat);
+    scene.add(motes);
 
     const hero=midHero3d(h);scene.add(hero);
     const heroAnim:any=hero.userData.anim;
@@ -2959,6 +2983,24 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         for(const d of destinations){if(Math.hypot(q.x-d.x,q.z-d.z)<d.r){found=d.label;foundId=d.id;break;}}
       }
       setNear(found?`${found}|${foundId}`:"");
+      // Slow, irregular wind keeps the vegetation subtly alive.
+      windFoliage.forEach((w,i)=>{
+        const sway=Math.sin(now*.00125+w.phase)*w.amp + Math.sin(now*.00063+w.phase*1.7+i)*w.amp*.45;
+        w.o.rotation.x=w.baseX+sway*.75; w.o.rotation.z=w.baseZ+sway;
+      });
+      windPlants.forEach((w,i)=>{
+        const sway=Math.sin(now*.0017+w.phase)*w.amp + Math.sin(now*.00091+w.phase*1.9+i)*w.amp*.5;
+        w.o.rotation.x=w.baseX+sway*.55; w.o.rotation.z=w.baseZ+sway;
+      });
+      for(let i=0;i<moteCount;i++){
+        const j=i*3,phase=i*.73;
+        motePos[j]+=Math.sin(now*.00022+phase)*.0018;
+        motePos[j+1]+=Math.sin(now*.00047+phase*1.3)*.0010;
+        motePos[j+2]+=Math.cos(now*.00019+phase)*.0015;
+      }
+      moteGeo.attributes.position.needsUpdate=true;
+      moteMat.opacity=.19+.07*(.5+.5*Math.sin(now*.00055));
+
       ripples.forEach((r)=>{const pulse=.72+.28*Math.sin(now*.0016+r.phase);r.mesh.scale.set(pulse,pulse*.42,pulse);const m=r.mesh.material as THREE.MeshBasicMaterial;m.opacity=.055+.055*(.5+.5*Math.sin(now*.0016+r.phase));});
       currentStreaks.forEach((r)=>{const drift=Math.sin(now*.00055*r.speed+r.phase)*.9;r.mesh.position.y=groundY(r.mesh.position.x,r.mesh.position.z)+.095+drift*.008;const m=r.mesh.material as THREE.MeshBasicMaterial;m.opacity=.045+.045*(.5+.5*Math.sin(now*.0011*r.speed+r.phase));});
 
@@ -3011,7 +3053,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});shafts.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
+    return()=>{cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});shafts.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
   },[h.id,on,eventDone]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
