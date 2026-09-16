@@ -1414,22 +1414,55 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       if(i<riverPts.length-1){const k=i*2;riverIdx.push(k,k+1,k+2,k+1,k+3,k+2);}
     }
     const riverGeo=new THREE.BufferGeometry();riverGeo.setAttribute("position",new THREE.Float32BufferAttribute(riverVerts,3));riverGeo.setIndex(riverIdx);riverGeo.computeVertexNormals();
-    const river=new THREE.Mesh(riverGeo,new THREE.MeshStandardMaterial({color:0x315f69,roughness:.18,metalness:.08,transparent:true,opacity:.88}));
+    const riverMat=new THREE.MeshStandardMaterial({color:0x315f69,roughness:.52,metalness:0,transparent:true,opacity:.9});
+    const river=new THREE.Mesh(riverGeo,riverMat);
     river.receiveShadow=true;scene.add(river);
-    const ripples:Array<{mesh:THREE.Mesh;phase:number}>=[];
-    for(let i=0;i<34;i++){
-      const p=riverPts[Math.min(riverPts.length-1,Math.floor(i*.94))],r=.7+midHash(i,1500)*1.35;
-      const ripple=new THREE.Mesh(new THREE.RingGeometry(r*.45,r,12),new THREE.MeshBasicMaterial({color:0xa7d4d4,transparent:true,opacity:.12,side:THREE.DoubleSide}));
-      ripple.rotation.x=-Math.PI/2;ripple.scale.y=.42;
-      ripple.position.set(p.x+(midHash(i,1501)-.5)*4.5,groundY(p.x,p.z)+.075,p.z+(midHash(i,1502)-.5)*4);
-      scene.add(ripple);ripples.push({mesh:ripple,phase:midHash(i,1503)*Math.PI*2});
+
+    // Shallow-bank shelves: slightly lighter water near the edges makes the river read as deep in the center.
+    const bankWaterMat=new THREE.MeshStandardMaterial({color:0x4f7880,roughness:.68,metalness:0,transparent:true,opacity:.58,side:THREE.DoubleSide});
+    for(const side of [-1,1]){
+      const verts:number[]=[]; const idx:number[]=[]; const shelf=1.18;
+      for(let i=0;i<riverPts.length;i++){
+        const p=riverPts[i],prev=riverPts[Math.max(0,i-1)],next=riverPts[Math.min(riverPts.length-1,i+1)];
+        const dx=next.x-prev.x,dz=next.z-prev.z,len=Math.max(.001,Math.hypot(dx,dz)),nx=-dz/len,nz=dx/len;
+        const inner=riverHalf*side, outer=(riverHalf-shelf)*side;
+        verts.push(p.x+nx*inner,groundY(p.x,p.z)+.072,p.z+nz*inner);
+        verts.push(p.x+nx*outer,groundY(p.x,p.z)+.078,p.z+nz*outer);
+        if(i<riverPts.length-1){const k=i*2;idx.push(k,k+1,k+2,k+1,k+3,k+2);}
+      }
+      const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setIndex(idx);g.computeVertexNormals();
+      const m=new THREE.Mesh(g,bankWaterMat);m.receiveShadow=true;scene.add(m);
     }
+
+    // Soft current streaks: low-cost elongated planes that drift along the river direction.
+    const currentStreaks:Array<{mesh:THREE.Mesh;phase:number;speed:number}>=[];
+    const currentMat=new THREE.MeshBasicMaterial({color:0xc0d9d8,transparent:true,opacity:.085,depthWrite:false,side:THREE.DoubleSide});
+    for(let i=0;i<22;i++){
+      const pi=Math.min(riverPts.length-1,2+Math.floor(midHash(i,1510)*(riverPts.length-4))),p=riverPts[pi];
+      const prev=riverPts[Math.max(0,pi-1)],next=riverPts[Math.min(riverPts.length-1,pi+1)];
+      const ang=Math.atan2(next.x-prev.x,next.z-prev.z);
+      const q=new THREE.Mesh(new THREE.PlaneGeometry(1.5+midHash(i,1511)*2.8,.08+midHash(i,1512)*.07),currentMat.clone());
+      q.rotation.x=-Math.PI/2;q.rotation.z=ang;q.position.set(p.x+(midHash(i,1513)-.5)*6.4,groundY(p.x,p.z)+.095,p.z+(midHash(i,1514)-.5)*5.4);
+      scene.add(q);currentStreaks.push({mesh:q,phase:midHash(i,1515)*Math.PI*2,speed:.55+midHash(i,1516)*.7});
+    }
+
+    const ripples:Array<{mesh:THREE.Mesh;phase:number}> = [];
     for(let i=0;i<52;i++){
       const pi=Math.min(riverPts.length-1,Math.floor(i*.62)),p=riverPts[pi],prev=riverPts[Math.max(0,pi-1)],next=riverPts[Math.min(riverPts.length-1,pi+1)];
       const dx=next.x-prev.x,dz=next.z-prev.z,len=Math.max(.001,Math.hypot(dx,dz)),side=i%2===0?-1:1,rr=.34+midHash(i,15)*.72,off=riverHalf+side*(.25+midHash(i,16)*1.4);
       const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(rr,1),mat(0x5e625a,1));
       stone.position.set(p.x+(-dz/len)*off,groundY(p.x,p.z)+.18,p.z+(dx/len)*off);stone.scale.y=.5+midHash(i,17)*.35;
       addMesh(stone);addCircleCollider(stone.position.x,stone.position.z,rr*.75,.03);
+    }
+
+    // A few partially submerged stones break the perfect ribbon silhouette and add scale.
+    for(let i=0;i<18;i++){
+      const pi=Math.min(riverPts.length-1,1+Math.floor(midHash(i,1520)*(riverPts.length-2))),p=riverPts[pi],prev=riverPts[Math.max(0,pi-1)],next=riverPts[Math.min(riverPts.length-1,pi+1)];
+      const dx=next.x-prev.x,dz=next.z-prev.z,len=Math.max(.001,Math.hypot(dx,dz));
+      const across=(midHash(i,1521)-.5)*6.4;
+      const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(.16+midHash(i,1522)*.3,1),mat(0x68736d,1));
+      stone.position.set(p.x+(-dz/len)*across,groundY(p.x,p.z)+.045,p.z+(dx/len)*across);
+      stone.scale.y=.35+midHash(i,1523)*.45;stone.rotation.set(midHash(i,1524)*2,midHash(i,1525)*2,midHash(i,1526)*2);scene.add(stone);
     }
 
     // Roads are deliberately dark and wide, with two wheel ruts and stone edges.
@@ -2878,6 +2911,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       }
       setNear(found?`${found}|${foundId}`:"");
       ripples.forEach((r)=>{const pulse=.72+.28*Math.sin(now*.0016+r.phase);r.mesh.scale.set(pulse,pulse*.42,pulse);const m=r.mesh.material as THREE.MeshBasicMaterial;m.opacity=.055+.055*(.5+.5*Math.sin(now*.0016+r.phase));});
+      currentStreaks.forEach((r)=>{const drift=Math.sin(now*.00055*r.speed+r.phase)*.9;r.mesh.position.y=groundY(r.mesh.position.x,r.mesh.position.z)+.095+drift*.008;const m=r.mesh.material as THREE.MeshBasicMaterial;m.opacity=.045+.045*(.5+.5*Math.sin(now*.0011*r.speed+r.phase));});
 
       fires.forEach(f=>{f.light.intensity=2.0+Math.sin(now*.012+f.phase)*.5;f.flame.scale.y=.9+Math.sin(now*.009+f.phase)*.12;});
       mist.children.forEach((m,i)=>{m.position.x+=Math.sin(now*.00012+i)*.003;m.position.z+=Math.cos(now*.0001+i)*.002;});
@@ -2928,7 +2962,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});shafts.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
+    return()=>{cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});shafts.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
   },[h.id,on,eventDone]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
