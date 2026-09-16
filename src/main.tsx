@@ -1273,9 +1273,9 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         if (!glbTestTreeAlive) return;
         glbTestTree = markMeshes(gltf.scene);
 
-        // Test position: visible near the village, but not on the player's start point.
-        const tx = 12;
-        const tz = 16;
+        // Test position: right beside Mimir's well in the village center.
+        const tx = 5;
+        const tz = 2;
         const ty = groundY(tx, tz);
 
         glbTestTree.position.set(tx, ty, tz);
