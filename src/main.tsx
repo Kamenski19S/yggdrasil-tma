@@ -984,8 +984,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     if (!el) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x8fa8a1);
-    scene.fog = new THREE.FogExp2(0x6f817a, 0.0064);
+    scene.background = new THREE.Color(0x6f8780);
+    scene.fog = new THREE.FogExp2(0x5d716b, 0.0055);
 
     const camera = new THREE.PerspectiveCamera(54, 1, 0.1, 280);
     camera.position.set(0, 8.5, 17);
@@ -999,9 +999,9 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     renderer.toneMappingExposure = 1.08;
     el.appendChild(renderer.domElement);
 
-    const hemi = new THREE.HemisphereLight(0xdce9e5, 0x2c332d, 1.22);
+    const hemi = new THREE.HemisphereLight(0xbddbd3, 0x1e2923, 1.05);
     scene.add(hemi);
-    const sun = new THREE.DirectionalLight(0xffe4b2, 3.45);
+    const sun = new THREE.DirectionalLight(0xffddb0, 2.65);
     sun.position.set(-42, 58, 34);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
@@ -1580,69 +1580,80 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     // Realistic fantasy trees: firs for the forest + sacred ash trees around Midgard.
     // The ash is a deliberate visual echo of Yggdrasil rather than a generic oak.
+    const runeGroundTexture=(glyph:string,color:string)=>{
+      const c=document.createElement("canvas"); c.width=c.height=256; const ctx=c.getContext("2d")!;
+      ctx.clearRect(0,0,256,256); ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.shadowColor=color; ctx.shadowBlur=18; ctx.fillStyle=color; ctx.font="bold 150px serif"; ctx.fillText(glyph,128,132);
+      ctx.shadowBlur=4; ctx.globalAlpha=.55; ctx.font="bold 118px serif"; ctx.fillText(glyph,128,132);
+      const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; return t;
+    };
+    const addGroundRune=(g:THREE.Group,x:number,z:number,glyph:string,color:number,size=.72,rot=0)=>{
+      const hex="#"+color.toString(16).padStart(6,"0");
+      const m=new THREE.MeshBasicMaterial({map:runeGroundTexture(glyph,hex),transparent:true,depthWrite:false,side:THREE.DoubleSide});
+      const q=new THREE.Mesh(new THREE.PlaneGeometry(size,size),m); q.rotation.x=-Math.PI/2; q.rotation.z=rot; q.position.set(x,.065,z); g.add(q);
+    };
+
     const firTree=(x:number,z:number,s:number)=>{
       const g=new THREE.Group(),y=groundY(x,z);
-      const bark=new THREE.MeshStandardMaterial({map:barkTexture,color:0xffffff,roughness:.96});
-      const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.20*s,.36*s,4.8*s,10),bark);trunk.position.y=2.4*s;trunk.rotation.z=(midHash(x,z)-.5)*.05;g.add(trunk);
-      for(let b=0;b<7;b++){
-        const yy=(1.35+b*.50)*s,side=b%2?1:-1;
-        const branch=new THREE.Mesh(new THREE.CylinderGeometry(.045*s,.10*s,(1.15+b*.13)*s,7),bark);
-        branch.position.set(side*.35*s,yy,(midHash(b,z)-.5)*.34*s);branch.rotation.z=side*(.72-midHash(b,x)*.18);branch.rotation.y=midHash(b+20,z)*Math.PI*2;g.add(branch);
+      const bark=new THREE.MeshStandardMaterial({map:barkTexture,color:0xffffff,roughness:.98});
+      const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18*s,.38*s,5.2*s,9),bark);
+      trunk.position.y=2.6*s; trunk.rotation.z=(midHash(x,z)-.5)*.08; trunk.scale.x=1.08+midHash(x,z+4)*.22; g.add(trunk);
+      for(let b=0;b<9;b++){
+        const yy=(1.15+b*.47)*s, side=b%2?1:-1, len=(.9+b*.16)*s;
+        const br=new THREE.Mesh(new THREE.CylinderGeometry(.035*s,.095*s,len,7),bark);
+        br.position.set(side*(.28+b*.035)*s,yy,(midHash(b,z)-.5)*.38*s);
+        br.rotation.z=side*(.62-midHash(b,x)*.18); br.rotation.y=midHash(b+21,z)*Math.PI*2; g.add(br);
       }
-      const foliageMats=[
-        new THREE.MeshStandardMaterial({map:foliageTexture,color:0x1f3a29,roughness:.98}),
-        new THREE.MeshStandardMaterial({map:foliageTexture,color:0x294832,roughness:.98}),
-        new THREE.MeshStandardMaterial({map:foliageTexture,color:0x34573c,roughness:.98})
-      ];
-      for(let i=0;i<10;i++){
-        const r=(1.38-(i/9)*.72)*s;
-        const crown=new THREE.Mesh(new THREE.SphereGeometry(r,8,6),foliageMats[i%3]);
-        crown.scale.set(1+.18*midHash(i,x),.62+.10*midHash(i,z),.82+.18*midHash(i*2,x));
-        crown.position.set((midHash(i*4,x)-.5)*.52*s,(1.75+i*.40)*s,(midHash(i*5,z)-.5)*.48*s);g.add(crown);
+      const fm=[0x172d21,0x203b28,0x294831];
+      for(let i=0;i<12;i++){
+        const r=Math.max(.48,(1.42-i*.075))*s;
+        const crown=new THREE.Mesh(new THREE.SphereGeometry(r,8,6),new THREE.MeshStandardMaterial({map:foliageTexture,color:fm[i%3],roughness:.99}));
+        crown.scale.set(1.0+midHash(i,x)*.25,.55+midHash(i,z)*.16,.82+midHash(i*2,x)*.22);
+        crown.position.set((midHash(i*4,x)-.5)*.58*s,(1.55+i*.37)*s,(midHash(i*5,z)-.5)*.55*s); g.add(crown);
       }
-      if(s>1.25){const low=new THREE.Mesh(new THREE.SphereGeometry(.95*s,8,6),foliageMats[1]);low.scale.y=.48;low.position.set(.2*s,.95*s,-.05*s);g.add(low);}
-      g.position.set(x,y,z);addMesh(g);if(s>=1.15)addCircleCollider(x,z,.42*s,.04);
+      for(let i=0;i<3;i++){
+        const moss=new THREE.Mesh(new THREE.SphereGeometry(.38*s,7,5),new THREE.MeshStandardMaterial({color:i%2?0x314d36:0x3d5d3d,roughness:1}));
+        moss.scale.set(1.5,.28,.85); moss.position.set((i-1)*.45*s,.55*s,(midHash(i,88)-.5)*.5*s); g.add(moss);
+      }
+      g.position.set(x,y,z); addMesh(g); if(s>=1.15)addCircleCollider(x,z,.46*s,.04);
     };
 
     const ashTree=(x:number,z:number,s:number,ancient=false)=>{
-      const g=new THREE.Group();const y=groundY(x,z);
-      const bark=new THREE.MeshLambertMaterial({map:barkTexture,color:0xffffff});
-      const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.32*s,.52*s,5.8*s,11),bark);
-      trunk.position.y=2.9*s;trunk.rotation.z=(midHash(x,z)-.5)*.035;g.add(trunk);
-
-      // Forked ash branches: broad crown, not a conifer silhouette.
-      const branchCount=ancient?8:6;
-      for(let i=0;i<branchCount;i++){
-        const a=(i/branchCount)*Math.PI*2+midHash(i,x)*.25;
-        const len=(1.65+midHash(i+30,z)*1.35)*s;
-        const branch=new THREE.Mesh(new THREE.CylinderGeometry(.075*s,.16*s,len,8),bark);
-        branch.position.set(Math.cos(a)*len*.34,(3.35+midHash(i+40,x)*1.25)*s,Math.sin(a)*len*.34);
-        branch.rotation.z=Math.cos(a)*.78;
-        branch.rotation.x=Math.sin(a)*.78;
-        branch.rotation.y=-a;
-        g.add(branch);
-
-        // Small leaf clusters at branch ends.
-        for(let k=0;k<3;k++){
-          const leaf=new THREE.Mesh(new THREE.SphereGeometry((.42+midHash(k+i,90)*.22)*s,8,6),new THREE.MeshLambertMaterial({map:foliageTexture,color:k%2?0xd4e0c8:0xc5d5b8}));
-          const f=.55+k*.18;
-          leaf.position.set(Math.cos(a)*len*.62+(midHash(k, i)-.5)*.35*s,(3.55+midHash(i,k)*1.15+f)*s,Math.sin(a)*len*.62+(midHash(k+4,i)-.5)*.35*s);
-          leaf.scale.y=.72;g.add(leaf);
+      const g=new THREE.Group(), y=groundY(x,z);
+      const bark=new THREE.MeshStandardMaterial({map:barkTexture,color:0xffffff,roughness:1});
+      const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.42*s,.72*s,6.4*s,11),bark);
+      trunk.position.y=3.2*s; trunk.rotation.z=(midHash(x,z)-.5)*.06; trunk.scale.x=1.08; g.add(trunk);
+      // Buttress roots: broad, crooked and asymmetrical.
+      for(let i=0;i<(ancient?9:7);i++){
+        const a=i/(ancient?9:7)*Math.PI*2+midHash(i,x)*.18, len=(1.0+midHash(i,z)*1.6)*s;
+        const root=new THREE.Mesh(new THREE.CylinderGeometry(.11*s,.30*s,len,7),bark);
+        root.position.set(Math.cos(a)*len*.42,.28*s,Math.sin(a)*len*.42);
+        root.rotation.z=Math.cos(a)*.72; root.rotation.x=-Math.sin(a)*.72; root.rotation.y=-a; g.add(root);
+      }
+      const branches=ancient?10:8;
+      for(let i=0;i<branches;i++){
+        const a=i/branches*Math.PI*2+midHash(i+11,x)*.22, len=(2.0+midHash(i+22,z)*2.2)*s;
+        const br=new THREE.Mesh(new THREE.CylinderGeometry(.07*s,.19*s,len,8),bark);
+        br.position.set(Math.cos(a)*len*.34,(3.25+midHash(i+33,x)*1.9)*s,Math.sin(a)*len*.34);
+        br.rotation.z=Math.cos(a)*.76; br.rotation.x=Math.sin(a)*.76; br.rotation.y=-a; g.add(br);
+        for(let k=0;k<4;k++){
+          const leaf=new THREE.Mesh(new THREE.SphereGeometry((.46+midHash(k+i,90)*.25)*s,8,6),new THREE.MeshStandardMaterial({map:foliageTexture,color:[0x24452d,0x315a37,0x3c6840][(i+k)%3],roughness:1}));
+          leaf.scale.y=.62; leaf.position.set(Math.cos(a)*len*(.52+.09*k)+(midHash(k,i)-.5)*.55*s,(3.9+midHash(i,k)*1.45+.25*k)*s,Math.sin(a)*len*(.52+.09*k)+(midHash(k+4,i)-.5)*.55*s); g.add(leaf);
         }
       }
-
-      // A few hanging twigs give the sacred ash a slightly mythical silhouette.
-      for(let i=0;i<(ancient?7:4);i++){
-        const a=midHash(i+100,x)*Math.PI*2;
-        const twig=new THREE.Mesh(new THREE.CylinderGeometry(.025*s,.055*s,(.9+midHash(i,z)*.7)*s,6),bark);
-        twig.position.set(Math.cos(a)*1.05*s,(3.15+midHash(i+5,x)*1.5)*s,Math.sin(a)*1.05*s);
-        twig.rotation.z=(midHash(i+8,z)-.5)*.35;g.add(twig);
+      if(ancient){
+        // A few luminous runes are embedded in the bark rather than floating in front of it.
+        const runes=['ᚱ','ᛉ','ᛟ','ᚦ','ᚨ'];
+        for(let i=0;i<runes.length;i++){
+          const a=-.9+i*.46;
+          const rr=new THREE.Mesh(new THREE.PlaneGeometry(.48*s,.62*s),new THREE.MeshBasicMaterial({map:runeGroundTexture(runes[i],i%2?'#6fd4e8':'#e6bd61'),transparent:true,depthWrite:false,side:THREE.DoubleSide}));
+          rr.position.set(Math.sin(a)*.56*s,(1.5+i*.68)*s,Math.cos(a)*.60*s); rr.rotation.y=a; g.add(rr);
+        }
       }
-      g.position.set(x,y,z);addMesh(g);
-      if(s>=1.2)addCircleCollider(x,z,.62*s,.04);
+      g.position.set(x,y,z); addMesh(g); if(s>=1.2)addCircleCollider(x,z,.78*s,.05);
     };
 
-    // Forest life inspired by the Edda: four deer associated with Yggdrasil and a wandering squirrel.
+    // Forest life inspired    // Forest life inspired by the Edda: four deer associated with Yggdrasil and a wandering squirrel.
     // They are game-world manifestations in Midgard, not claims that the literal cosmic animals live here.
     const deer = (x:number,z:number,s:number,phase:number) => {
       const g=new THREE.Group();
@@ -1743,48 +1754,49 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       wildlife.push({g,x,z,r:2.2,speed:.7,phase:1.7,kind:'squirrel'});
     };
 
-    // Grove of Ash — the strongest Midgard echo of Yggdrasil: several old ash trees
-    // gathered around a quiet root-stone clearing. This is an in-world interpretation.
+    // Grove of Ash — a cathedral-like natural chamber built from huge living roots.
     const ashGroveX=-4, ashGroveZ=69;
-    const ashGrove=new THREE.Group();
-    ashGrove.userData={id:"ashgrove",label:"Роща Ясеня"};
-    const grovePositions:Array<[number,number,number,boolean]>=[
-      [-5,2,1.65,false],[-1,1,1.45,false],[-7,4,1.25,false],[1,5,1.3,false],
-      [-2,7,2.05,true],[4,3,1.15,false]
-    ];
-    for(const [dx,dz,sc,anc] of grovePositions){
-      // Build at local offsets by creating the same sacred-ash model at world coordinates.
-      ashTree(ashGroveX+dx,ashGroveZ+dz,sc,anc);
+    const ashGrove=new THREE.Group(); ashGrove.userData={id:'ashgrove',label:'Роща Ясеня'};
+    const groveFloor=new THREE.Mesh(new THREE.CircleGeometry(10.5,40),new THREE.MeshStandardMaterial({color:0x26382b,roughness:1,transparent:true,opacity:.82}));
+    groveFloor.rotation.x=-Math.PI/2; groveFloor.position.set(ashGroveX,groundY(ashGroveX,ashGroveZ)+.02,ashGroveZ); scene.add(groveFloor);
+    const grovePositions=[[-6,1,1.7,false],[-1,0,1.55,false],[-8,5,1.45,false],[2,5,1.45,false],[-2,8,2.45,true],[5,2,1.35,false],[4,8,1.55,false]] as Array<[number,number,number,boolean]>;
+    for(const [dx,dz,sc,anc] of grovePositions) ashTree(ashGroveX+dx,ashGroveZ+dz,sc,anc);
+    const groveRing=new THREE.Mesh(new THREE.TorusGeometry(6.4,.07,8,64),new THREE.MeshStandardMaterial({color:0x78b4a0,emissive:0x214c3d,emissiveIntensity:1.8,transparent:true,opacity:.7}));
+    groveRing.rotation.x=Math.PI/2; groveRing.position.set(ashGroveX,groundY(ashGroveX,ashGroveZ)+.05,ashGroveZ); scene.add(groveRing);
+    const groveAltar=new THREE.Mesh(new THREE.DodecahedronGeometry(1.05,1),mat(0x555b55,1)); groveAltar.scale.set(1.3,.7,1.05); groveAltar.position.set(ashGroveX,groundY(ashGroveX,ashGroveZ)+.65,ashGroveZ); scene.add(groveAltar);
+    addGroundRune(ashGrove,0,0,'ᚱ',0x8fe6a4,1.25,0);
+    // Bioluminescent mushrooms and small artifacts make the foreground richer.
+    for(let i=0;i<26;i++){
+      const a=midHash(i,1310)*Math.PI*2, rr=2.5+midHash(i,1311)*7.2, x=ashGroveX+Math.cos(a)*rr,z=ashGroveZ+Math.sin(a)*rr;
+      const stem=new THREE.Mesh(new THREE.CylinderGeometry(.025,.045,.22+midHash(i,1312)*.28,6),mat(0xb7b59b,1)); stem.position.set(x,groundY(x,z)+.12,z); scene.add(stem);
+      const cap=new THREE.Mesh(new THREE.SphereGeometry(.13+midHash(i,1313)*.08,8,5),new THREE.MeshStandardMaterial({color:0x8ddfd0,emissive:0x3bb7aa,emissiveIntensity:2.5,roughness:.6})); cap.scale.y=.48; cap.position.set(x,groundY(x,z)+.34,z); scene.add(cap);
     }
-    for(let i=0;i<9;i++){
-      const a=i/9*Math.PI*2; const rr=4.2+midHash(i,1301)*2.0;
-      const st=new THREE.Mesh(new THREE.DodecahedronGeometry(.48+midHash(i,1302)*.24,1),mat(0x575b56,1));
-      st.position.set(ashGroveX+Math.cos(a)*rr,groundY(ashGroveX+Math.cos(a)*rr,ashGroveZ+Math.sin(a)*rr)+.35,ashGroveZ+Math.sin(a)*rr);
-      st.scale.y=1.3+midHash(i,1303)*.7; st.rotation.set(midHash(i,1304),a,midHash(i,1305));
-      addMesh(st);
-    }
-    const groveRing=new THREE.Mesh(new THREE.TorusGeometry(5.7,.055,7,64),new THREE.MeshStandardMaterial({color:0x8c9b78,emissive:0x394d31,emissiveIntensity:1.1,transparent:true,opacity:.62}));
-    groveRing.rotation.x=Math.PI/2; groveRing.position.set(ashGroveX,groundY(ashGroveX,ashGroveZ)+.045,ashGroveZ); scene.add(groveRing);
-    const groveStone=new THREE.Mesh(new THREE.DodecahedronGeometry(1.0,1),mat(0x4f5651,1));
-    groveStone.position.set(ashGroveX,groundY(ashGroveX,ashGroveZ)+.75,ashGroveZ); groveStone.scale.y=1.5; scene.add(groveStone);
-    const groveRune=new THREE.Mesh(new THREE.TorusGeometry(.62,.05,7,24),new THREE.MeshStandardMaterial({color:0xc2aa67,emissive:0x65471d,emissiveIntensity:1.7}));
-    groveRune.rotation.x=Math.PI/2; groveRune.position.set(ashGroveX,groundY(ashGroveX,ashGroveZ)+1.45,ashGroveZ); scene.add(groveRune);
+    for(let i=0;i<16;i++){ const a=midHash(i,1320)*Math.PI*2,rr=2.0+midHash(i,1321)*7.5,x=ashGroveX+Math.cos(a)*rr,z=ashGroveZ+Math.sin(a)*rr; const c=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.025,10),mat(0x8d7445,.5,.55)); c.rotation.x=Math.PI/2;c.position.set(x,groundY(x,z)+.05,z);scene.add(c); }
     objects.push(ashGrove); addCircleCollider(ashGroveX,ashGroveZ,1.0,.08);
 
-    // Hoddmímir's Holt — a distant refuge in the forest, inspired by Vafþrúðnismál.
-    // The exact location is our game interpretation; the Edda gives the wood, not a Midgard map pin.
-    const hoddX=61, hoddZ=78;
+    // Hoddmímir's Holt — a sacred refuge beneath a smaller world-tree.
+    const hoddX=61,hoddZ=78;
     const hodd=new THREE.Group(); hodd.userData={id:'hoddmimir',label:'Лес Ходдмимира'};
-    const hoddRing=new THREE.Mesh(new THREE.TorusGeometry(5.6,.055,7,56),new THREE.MeshStandardMaterial({color:0x899579,emissive:0x34432f,emissiveIntensity:1.0,transparent:true,opacity:.55}));
-    hoddRing.rotation.x=Math.PI/2; hoddRing.position.set(hoddX,groundY(hoddX,hoddZ)+.04,hoddZ); scene.add(hoddRing);
-    const shelter=new THREE.Group(); shelter.position.set(hoddX,groundY(hoddX,hoddZ),hoddZ); shelter.userData={id:'hoddmimir',label:'Лес Ходдмимира'};
-    for(const dx of [-2.4,2.4]){const post=box(.28,2.5,.28,0x4a3323,1);post.position.set(dx,1.25,0);shelter.add(post);}
-    const roof=new THREE.Mesh(new THREE.ConeGeometry(3.4,1.65,6),mat(0x3a3129,1));roof.position.y=2.75;roof.scale.z=.72;shelter.add(roof);
-    const hearth=fire(hoddX,hoddZ+1.8,.55);
-    const refugeStone=new THREE.Mesh(new THREE.DodecahedronGeometry(.8,1),mat(0x505650,1));refugeStone.position.set(hoddX,groundY(hoddX,hoddZ)+.65,hoddZ+2.2);shelter.add(refugeStone);
-    addMesh(shelter,'hoddmimir','Лес Ходдмимира'); objects.push(shelter); addCircleCollider(hoddX,hoddZ,1.1,.08);
+    const hoddGround=new THREE.Mesh(new THREE.CircleGeometry(11.5,44),new THREE.MeshStandardMaterial({color:0x203b2b,roughness:1,transparent:true,opacity:.86})); hoddGround.rotation.x=-Math.PI/2; hoddGround.position.set(hoddX,groundY(hoddX,hoddZ)+.025,hoddZ);scene.add(hoddGround);
+    const trunkMat=new THREE.MeshStandardMaterial({map:barkTexture,color:0xffffff,roughness:1});
+    const worldTrunk=new THREE.Mesh(new THREE.CylinderGeometry(1.35,2.1,10.5,13),trunkMat); worldTrunk.position.set(hoddX,groundY(hoddX,hoddZ)+5.25,hoddZ); worldTrunk.rotation.z=-.05; scene.add(worldTrunk);
+    for(let i=0;i<8;i++){
+      const a=i/8*Math.PI*2+.2,len=(5.0+midHash(i,1401)*4.0);
+      const br=new THREE.Mesh(new THREE.CylinderGeometry(.25,.58,len,9),trunkMat); br.position.set(hoddX+Math.cos(a)*len*.36,groundY(hoddX,hoddZ)+6.8+midHash(i,1402)*2.2,hoddZ+Math.sin(a)*len*.36); br.rotation.z=Math.cos(a)*.8;br.rotation.x=Math.sin(a)*.8;br.rotation.y=-a;scene.add(br);
+      for(let k=0;k<4;k++){const leaf=new THREE.Mesh(new THREE.SphereGeometry((1.0+midHash(k+i,1403)*.55),9,6),new THREE.MeshStandardMaterial({map:foliageTexture,color:[0x234a31,0x2d5c39,0x386b42][(i+k)%3],roughness:1}));leaf.scale.y=.65;leaf.position.set(hoddX+Math.cos(a)*len*(.48+.09*k)+(midHash(k,i)-.5)*1.1,groundY(hoddX,hoddZ)+8.0+midHash(i,k)*3.0+k*.45,hoddZ+Math.sin(a)*len*(.48+.09*k)+(midHash(k+5,i)-.5)*1.1);scene.add(leaf);}
+    }
+    // Deeply carved luminous runes on the trunk.
+    for(let i=0;i<9;i++){const glyph=['ᚱ','ᛉ','ᛟ','ᚦ','ᚨ','ᚠ','ᚷ','ᛏ','ᚢ'][i];const tex=runeGroundTexture(glyph,i%2?'#63d9ef':'#f0c65d');const q=new THREE.Mesh(new THREE.PlaneGeometry(.7,.9),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));q.position.set(hoddX+Math.sin(i*.63)*1.42,groundY(hoddX,hoddZ)+1.0+i*.78,hoddZ+Math.cos(i*.63)*1.42);q.rotation.y=Math.PI*.5-i*.16;scene.add(q);}
+    // Sacred stone altar and eternal fire at the roots.
+    const altar2=new THREE.Mesh(new THREE.DodecahedronGeometry(1.35,1),mat(0x4f5852,1));altar2.scale.set(1.45,.7,1.15);altar2.position.set(hoddX,groundY(hoddX,hoddZ)+.75,hoddZ+1.6);scene.add(altar2);
+    fire(hoddX,hoddZ+2.1,.72);
+    const hoddRing=new THREE.Mesh(new THREE.TorusGeometry(6.7,.06,8,64),new THREE.MeshStandardMaterial({color:0x8bcfd1,emissive:0x235f62,emissiveIntensity:1.9,transparent:true,opacity:.62}));hoddRing.rotation.x=Math.PI/2;hoddRing.position.set(hoddX,groundY(hoddX,hoddZ)+.055,hoddZ);scene.add(hoddRing);
+    for(let i=0;i<22;i++){const a=midHash(i,1410)*Math.PI*2,rr=1.8+midHash(i,1411)*8.2,x=hoddX+Math.cos(a)*rr,z=hoddZ+Math.sin(a)*rr;addGroundRune(hodd,(x-hoddX),(z-hoddZ),['ᚱ','ᛉ','ᛟ','ᚦ','ᚨ','ᚠ'][i%6],i%2?0x67d3df:0xe0b55a,.35,midHash(i,1412)*Math.PI);}
+    // Floating rune motes are intentionally sparse for mobile performance.
+    for(let i=0;i<18;i++){const glyph=['ᚱ','ᚨ','ᛟ','ᚦ'][i%4];const tex=runeGroundTexture(glyph,i%2?'#63d9ef':'#e4bd65');const q=new THREE.Mesh(new THREE.PlaneGeometry(.34,.44),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));q.position.set(hoddX+(midHash(i,1420)-.5)*12,1.4+midHash(i,1421)*7,hoddZ+(midHash(i,1422)-.5)*12);q.userData.floatPhase=midHash(i,1423)*6;scene.add(q);}
+    addMesh(hodd,'hoddmimir','Лес Ходдмимира');objects.push(hodd);addCircleCollider(hoddX,hoddZ,1.2,.08);
 
-    // The four deer are a deliberate Yggdrasil reference: they roam a separate clearing.
+    // The four deer are a deliberate Yggdrasil reference: they roam a separate clearing.    // The four deer are a deliberate Yggdrasil reference: they roam a separate clearing.
     const deerClearingX=30, deerClearingZ=53;
     for(let i=0;i<4;i++) deer(deerClearingX+(i-1.5)*2.6,deerClearingZ+(i%2?2.6:-2.6),1.12+midHash(i,1440)*.16,10+i);
     const deerStone=new THREE.Mesh(new THREE.DodecahedronGeometry(.72,1),mat(0x575d56,1));deerStone.position.set(deerClearingX,groundY(deerClearingX,deerClearingZ)+.5,deerClearingZ);scene.add(deerStone);
@@ -1834,18 +1846,6 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     // Right forest expansion: detailed landmark clearings. The goal is a cinematic
     // handcrafted look rather than a ring of identical primitive stones.
-    const runeGroundTexture=(glyph:string,color:string)=>{
-      const c=document.createElement("canvas"); c.width=c.height=256; const ctx=c.getContext("2d")!;
-      ctx.clearRect(0,0,256,256); ctx.textAlign="center"; ctx.textBaseline="middle";
-      ctx.shadowColor=color; ctx.shadowBlur=18; ctx.fillStyle=color; ctx.font="bold 150px serif"; ctx.fillText(glyph,128,132);
-      ctx.shadowBlur=4; ctx.globalAlpha=.55; ctx.font="bold 118px serif"; ctx.fillText(glyph,128,132);
-      const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; return t;
-    };
-    const addGroundRune=(g:THREE.Group,x:number,z:number,glyph:string,color:number,size=.72,rot=0)=>{
-      const hex="#"+color.toString(16).padStart(6,"0");
-      const m=new THREE.MeshBasicMaterial({map:runeGroundTexture(glyph,hex),transparent:true,depthWrite:false,side:THREE.DoubleSide});
-      const q=new THREE.Mesh(new THREE.PlaneGeometry(size,size),m); q.rotation.x=-Math.PI/2; q.rotation.z=rot; q.position.set(x,.065,z); g.add(q);
-    };
     const plankBetween=(a:THREE.Vector3,b:THREE.Vector3,w:number,h:number,material:THREE.Material)=>{
       const d=a.distanceTo(b), m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
       m.position.copy(a).add(b).multiplyScalar(.5);
@@ -1855,6 +1855,20 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       const r=new THREE.Mesh(new THREE.DodecahedronGeometry(s,1),mat(color,1));
       r.scale.set(.72+midHash(seed,1)*.62,.55+midHash(seed,2)*.85,.68+midHash(seed,3)*.55);
       r.rotation.set(midHash(seed,4)*1.2,midHash(seed,5)*Math.PI,midHash(seed,6)*1.1); r.position.set(x,y,z); g.add(r); return r;
+    };
+
+    const makeFallenAsh=(x:number,z:number)=>{
+      const g=new THREE.Group();g.position.set(x,groundY(x,z),z);g.userData={id:'fallenAsh',label:'Поверженный ясень'};
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(7.8,.07,8,64),new THREE.MeshStandardMaterial({color:0x8b9f87,emissive:0x334633,emissiveIntensity:1.0,transparent:true,opacity:.55}));ring.rotation.x=Math.PI/2;ring.position.y=.05;g.add(ring);
+      const bark=new THREE.MeshStandardMaterial({map:barkTexture,color:0xffffff,roughness:1});
+      // Hollow broken trunk with jagged crown.
+      const stump=new THREE.Mesh(new THREE.CylinderGeometry(1.45,2.15,4.8,10),bark);stump.position.set(0,2.4,.2);stump.rotation.z=-.04;g.add(stump);
+      const hollow=new THREE.Mesh(new THREE.SphereGeometry(.88,12,9),new THREE.MeshBasicMaterial({color:0x121513}));hollow.scale.set(1,.95,.55);hollow.position.set(0,1.75,1.72);g.add(hollow);
+      for(let i=0;i<7;i++){const a=-.9+i*.30,len=2.5+midHash(i,1500)*2.7;const br=new THREE.Mesh(new THREE.CylinderGeometry(.11,.28,len,7),bark);br.position.set(Math.sin(a)*len*.34,(4.0+midHash(i,1501)*2.8),.15+Math.cos(a)*len*.30);br.rotation.z=Math.sin(a)*.65;br.rotation.x=-Math.cos(a)*.55;br.rotation.y=a;g.add(br);}
+      for(let i=0;i<9;i++){const a=midHash(i,1510)*Math.PI*2,rr=1.7+midHash(i,1511)*5.6;irregularRock(g,Math.cos(a)*rr,.22,Math.sin(a)*rr,.3+midHash(i,1512)*.45,i%3?0x505852:0x5f645d,1513+i);}
+      for(let i=0;i<8;i++)addGroundRune(g,(midHash(i,1520)-.5)*5.8,(midHash(i,1521)-.5)*5.8,['ᚦ','ᛉ','ᚱ','ᛟ'][i%4],0x9fd0c4,.42,midHash(i,1522)*Math.PI);
+      const cache=new THREE.Mesh(new THREE.SphereGeometry(.45,10,7),mat(0x5b3b27,1));cache.scale.set(.9,1.2,.7);cache.position.set(0,1.55,1.25);g.add(cache);
+      addMesh(g,'fallenAsh','Поверженный ясень');objects.push(g);addCircleCollider(x,z,1.8,.08);
     };
 
     const makeForgottenCamp=(x:number,z:number)=>{
@@ -1950,7 +1964,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     makeForgottenCamp(70,18);
     makeForestClearing(67,49,9.5,'deepGrove','Глубокая роща',1);
-    makeForestClearing(52,7,7.5,'fallenAsh','Поверженный ясень',2);
+    makeFallenAsh(52,7);
 
     // The hero's home is deliberately a SMALL personal cabin just beyond the hunter camp.
     // It is visually distinct from the larger village houses: lower walls, a compact turf roof,
