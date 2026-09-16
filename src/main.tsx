@@ -1879,8 +1879,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
           const bb=new THREE.Vector3(xx,.9,zz+.02); wagon.add(plankBetween(bb,aa,.065,.065,iron));
         }
       }
-      const axle=box(3.8,.14,.16,iron,1); axle.position.set(0,.62,-.83); axle.rotation.z=.08; wagon.add(axle);
-      const shaft=box(.16,.18,3.2,rotten,1); shaft.position.set(1.8,.8,-.35); shaft.rotation.y=.9; wagon.add(shaft);
+      const axle=new THREE.Mesh(new THREE.BoxGeometry(3.8,.14,.16),iron); axle.position.set(0,.62,-.83); axle.rotation.z=.08; wagon.add(axle);
+      const shaft=new THREE.Mesh(new THREE.BoxGeometry(.16,.18,3.2),rotten); shaft.position.set(1.8,.8,-.35); shaft.rotation.y=.9; wagon.add(shaft);
       for(let i=0;i<6;i++){const moss=new THREE.Mesh(new THREE.SphereGeometry(.28+midHash(i,507)*.18,7,5),mossMat);moss.scale.set(1.4,.32,.7);moss.position.set(-1.1+i*.48,1.34+(i%2)*.05,-.82);wagon.add(moss);}
 
       // Collapsed teepee-style leather shelter, partially swallowed by the forest.
@@ -1926,7 +1926,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     const makeForestClearing=(x:number,z:number,r:number,id:string,label:string,kind:number)=>{
       const g=new THREE.Group(); g.position.set(x,groundY(x,z),z);
-      const ringColor=kind===1?0x718e78:kind===2?0x78808a:0x8a765e;
+      const ringColor=kind===1?0x718e78:kind===2?0x78808a:0x8a765e; const clearingMossMat=mat(0x43553a,1);
       const ring=new THREE.Mesh(new THREE.TorusGeometry(r,.07,8,64),new THREE.MeshStandardMaterial({color:ringColor,emissive:ringColor,emissiveIntensity:.65,transparent:true,opacity:.42}));
       ring.rotation.x=Math.PI/2; ring.position.y=.045; g.add(ring);
       const count=Math.floor(r/1.7);
@@ -1935,7 +1935,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         irregularRock(g,Math.cos(a)*rr,.2,Math.sin(a)*rr,.34+midHash(i,33)*.32,kind===1?0x505c52:kind===2?0x50575b:0x574a3c,800+i);
       }
       if(kind===1){
-        for(let i=0;i<8;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(.34+midHash(i,600)*.25,7,5),mossMat);m.scale.y=.35;m.position.set((midHash(i,601)-.5)*r,.16,(midHash(i,602)-.5)*r);g.add(m);}
+        for(let i=0;i<8;i++){const m=new THREE.Mesh(new THREE.SphereGeometry(.34+midHash(i,600)*.25,7,5),clearingMossMat);m.scale.y=.35;m.position.set((midHash(i,601)-.5)*r,.16,(midHash(i,602)-.5)*r);g.add(m);}
         for(let i=0;i<6;i++) addGroundRune(g,(midHash(i,603)-.5)*r*.9,(midHash(i,604)-.5)*r*.9,["ᛉ","ᚱ","ᚦ","ᚨ","ᛟ","ᚠ"][i],0x78a8a4,.42,midHash(i,605)*Math.PI);
       }
       if(kind===2){
