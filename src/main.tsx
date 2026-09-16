@@ -1836,6 +1836,47 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         ridge.rotation.y=-a;
         g.add(ridge);
       }
+      if(ancient){
+        // Ancient-tree pass: layered trunk masses, crooked braces and hanging limbs
+        // break the silhouette so the sacred ash reads as a centuries-old tree.
+        const oldBark=new THREE.MeshStandardMaterial({
+          map:barkTexture,color:0xffffff,roughness:1,
+          roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.048
+        });
+        for(let i=0;i<4;i++){
+          const a=i/4*Math.PI*2+.35;
+          const len=(1.35+midHash(i,441)*.85)*s;
+          const brace=new THREE.Mesh(new THREE.CylinderGeometry(.10*s,.26*s,len,8),oldBark);
+          brace.position.set(Math.cos(a)*len*.34,.48*s,Math.sin(a)*len*.34);
+          brace.rotation.z=Math.cos(a)*.92;
+          brace.rotation.x=-Math.sin(a)*.92;
+          brace.rotation.y=-a;
+          g.add(brace);
+        }
+        for(let i=0;i<6;i++){
+          const a=-1.25+i*.48;
+          const len=(2.1+midHash(i,452)*1.7)*s;
+          const limb=new THREE.Mesh(new THREE.CylinderGeometry(.045*s,.12*s,len,7),oldBark);
+          limb.position.set(Math.sin(a)*len*.46,(5.0+midHash(i,453)*1.6)*s,Math.cos(a)*len*.46);
+          limb.rotation.z=.72*Math.cos(a);
+          limb.rotation.x=.55*Math.sin(a);
+          limb.rotation.y=-a;
+          g.add(limb);
+        }
+        // A few dark hollows suggest age without using expensive boolean geometry.
+        for(let i=0;i<3;i++){
+          const hollow=new THREE.Mesh(
+            new THREE.SphereGeometry((.13+midHash(i,461)*.07)*s,8,6),
+            new THREE.MeshStandardMaterial({color:0x171914,roughness:1})
+          );
+          const a=-.8+i*.72;
+          hollow.scale.set(.55,1.15,.32);
+          hollow.position.set(Math.sin(a)*.61*s,(2.05+i*.65)*s,Math.cos(a)*.61*s);
+          hollow.rotation.y=a;
+          g.add(hollow);
+        }
+      }
+
       g.position.set(x,y,z); addMesh(g); if(s>=1.2)addCircleCollider(x,z,.78*s,.05);
     };
 
