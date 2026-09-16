@@ -1646,8 +1646,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     // They are game-world manifestations in Midgard, not claims that the literal cosmic animals live here.
     const deer = (x:number,z:number,s:number,phase:number) => {
       const g=new THREE.Group();
-      const fur=new THREE.MeshStandardMaterial({color:0x806044,roughness:.96});
-      const furLight=new THREE.MeshStandardMaterial({color:0x9b7856,roughness:.96});
+      const fur=new THREE.MeshStandardMaterial({color:0x6f4328,roughness:.96});
+      const furLight=new THREE.MeshStandardMaterial({color:0x8b5a37,roughness:.96});
       const dark=new THREE.MeshStandardMaterial({color:0x30251e,roughness:1});
       const ant=new THREE.MeshStandardMaterial({color:0xb9ad98,roughness:.9});
       const eyeMat=new THREE.MeshStandardMaterial({color:0x17130f,roughness:.25});
@@ -1716,16 +1716,17 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
       // More natural branched antlers, with a main beam and 3 tines per side.
       for(const side of [-1,1]){
-        const beam=new THREE.Mesh(new THREE.CylinderGeometry(.035*s,.055*s,.55*s,7),ant);
+        const beam=new THREE.Mesh(new THREE.CylinderGeometry(.040*s,.060*s,.68*s,7),ant);
         beam.position.set(.69*s,2.25*s,side*.14*s);
         beam.rotation.z=side*.22; g.add(beam);
         for(let k=0;k<3;k++){
-          const tine=new THREE.Mesh(new THREE.CylinderGeometry(.018*s,.035*s,.28*s,6),ant);
-          tine.position.set((.56+.10*k)*s,(2.48+.12*k)*s,side*(.14+.045*k)*s);
+          const tine=new THREE.Mesh(new THREE.CylinderGeometry(.020*s,.038*s,.34*s,6),ant);
+          tine.position.set((.56+.11*k)*s,(2.48+.15*k)*s,side*(.14+.045*k)*s);
           tine.rotation.z=side*(.55-.08*k); g.add(tine);
         }
       }
 
+      g.scale.setScalar(1.10);
       g.position.set(x,groundY(x,z),z);
       g.userData={phase,legJoints};
       addMesh(g);
