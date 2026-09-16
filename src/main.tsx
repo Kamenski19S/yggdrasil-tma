@@ -1001,8 +1001,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     if (!el) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x8fa9a0);
-    scene.fog = new THREE.FogExp2(0x789188, 0.0042);
+    scene.background = new THREE.Color(0x9bb1a5);
+    scene.fog = new THREE.FogExp2(0x9aaea2, 0.0036);
 
     const camera = new THREE.PerspectiveCamera(54, 1, 0.1, 280);
     camera.position.set(0, 8.5, 17);
@@ -1013,12 +1013,12 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.10;
+    renderer.toneMappingExposure = 1.03;
     el.appendChild(renderer.domElement);
 
-    const hemi = new THREE.HemisphereLight(0xd7efe1, 0x334a38, 1.35);
+    const hemi = new THREE.HemisphereLight(0xe5f0e5, 0x66735f, 1.12);
     scene.add(hemi);
-    const sun = new THREE.DirectionalLight(0xffe4b8, 3.15);
+    const sun = new THREE.DirectionalLight(0xffd9ad, 2.45);
     sun.position.set(-42, 58, 34);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1536, 1536);
@@ -1028,7 +1028,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     sun.shadow.camera.bottom = -95;
     sun.shadow.bias = -0.0005;
     scene.add(sun);
-    const horizonLight=new THREE.DirectionalLight(0xb9d2c2,.95);horizonLight.position.set(55,18,-60);scene.add(horizonLight);
+    const horizonLight=new THREE.DirectionalLight(0xb8ccd0,.68);horizonLight.position.set(55,18,-60);scene.add(horizonLight);
 
     const groundY = (x: number, z: number) => {
       const broad = Math.sin(x * 0.075) * 0.7 + Math.cos(z * 0.062) * 0.55 + Math.sin((x - z) * 0.045) * 0.35;
@@ -1132,7 +1132,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
             Math.sin(y * 0.61) * 0.24 +
             Math.sin((x + y) * 0.17) * 0.20 +
             Math.sin((x - y) * 0.09) * 0.14;
-          const v = Math.max(35, Math.min(220, Math.round(128 + n * 85)));
+          const v = Math.max(214, Math.min(250, Math.round(232 + n * 18)));
           img.data[i] = v; img.data[i + 1] = v; img.data[i + 2] = v; img.data[i + 3] = 255;
         }
       }
@@ -1165,11 +1165,11 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     groundGeo.computeVertexNormals();
     const terrainMat = new THREE.MeshStandardMaterial({
       map: groundTexture,
-      roughness: 0.96,
+      roughness: 0.985,
       metalness: 0.0,
       roughnessMap: surfaceMaps.rough,
       bumpMap: surfaceMaps.height,
-      bumpScale: 0.035
+      bumpScale: 0.018
     });
     const terrain = new THREE.Mesh(groundGeo, terrainMat);
     terrain.receiveShadow = true;
@@ -1187,7 +1187,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       color, roughness: rough, metalness: metal,
       roughnessMap: surfaceMaps.rough,
       bumpMap: surfaceMaps.height,
-      bumpScale: metal > 0.35 ? 0.012 : 0.028
+      bumpScale: metal > 0.35 ? 0.008 : 0.018
     });
     const box=(w:number,h:number,d:number,c:number,rough=.9)=>new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(c,rough));
     const cyl=(r:number,h:number,c:number,segments=10,rough=.9)=>new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,segments),mat(c,rough));
@@ -1196,7 +1196,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
     const roofSlope=(w:number,d:number,c:number)=>{
       const g=new THREE.Group(), panelW=w*.62, angle=.61;
-      const roofMat=new THREE.MeshStandardMaterial({map:roofTex,color:c,roughness:.96,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.022,side:THREE.DoubleSide});
+      const roofMat=new THREE.MeshStandardMaterial({map:roofTex,color:c,roughness:.96,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.012,side:THREE.DoubleSide});
       // Thick boards rather than paper-thin planes: the roof remains visible from every camera angle.
       const a=new THREE.Mesh(new THREE.BoxGeometry(panelW,.18,d),roofMat);
       const b=a.clone();
@@ -1335,7 +1335,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     // Detailed Nordic longhouse.
     const house=(x:number,z:number,w:number,d:number,rot:number,label:string,id:string,wallColor:number,roofColor:number)=>{
       const g=new THREE.Group(); g.rotation.y=rot; g.position.set(x,groundY(x,z),z); g.userData={id,label};
-      const logMat=new THREE.MeshStandardMaterial({map:woodTex,color:wallColor,roughness:.94,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.026});
+      const logMat=new THREE.MeshStandardMaterial({map:woodTex,color:wallColor,roughness:.94,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.014});
       const foundation=box(w+.7,.55,d+.7,0x575a53,1); foundation.position.y=.28; g.add(foundation);
 
       // Seven courses of rounded logs, with alternating corner overlap.
@@ -1799,8 +1799,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     // They are game-world manifestations in Midgard, not claims that the literal cosmic animals live here.
     const deer = (x:number,z:number,s:number,phase:number) => {
       const g=new THREE.Group();
-      const fur=new THREE.MeshStandardMaterial({color:0x6f4328,roughness:.96});
-      const furLight=new THREE.MeshStandardMaterial({color:0x8b5a37,roughness:.96});
+      const fur=new THREE.MeshStandardMaterial({color:0x6b4a31,roughness:.96});
+      const furLight=new THREE.MeshStandardMaterial({color:0x87603f,roughness:.96});
       const dark=new THREE.MeshStandardMaterial({color:0x30251e,roughness:1});
       const ant=new THREE.MeshStandardMaterial({color:0xb9ad98,roughness:.9});
       const eyeMat=new THREE.MeshStandardMaterial({color:0x17130f,roughness:.25});
