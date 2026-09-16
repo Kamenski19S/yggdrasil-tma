@@ -1192,6 +1192,76 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     terrain.receiveShadow = true;
     scene.add(terrain);
 
+    // Distant world depth: soft mountain ridges and far forest silhouettes.
+    // They stay well beyond the playable area, so the village and landmarks keep open space.
+    const makeHorizonRidge = (zBase: number, spread: number, height: number, seed: number, color: number) => {
+      const verts: number[] = [];
+      const idx: number[] = [];
+      const count = 18;
+      for (let i = 0; i <= count; i++) {
+        const x = -95 + (190 / count) * i;
+        const n = Math.sin(i * 1.73 + seed) * 0.5 + Math.cos(i * 0.61 + seed * 1.9) * 0.28;
+        const h = height * (0.72 + n * 0.34);
+        verts.push(x, 0, 0);
+        verts.push(x + n * 2.2, h, 0);
+      }
+      for (let i = 0; i < count; i++) {
+        const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
+        idx.push(a, b, c, b, d, c);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+      const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({
+        color,
+        transparent: true,
+        opacity: 0.72,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      }));
+      mesh.rotation.x = Math.PI / 2;
+      mesh.position.set(0, 1.5, zBase);
+      mesh.scale.set(1, spread, 1);
+      scene.add(mesh);
+      return mesh;
+    };
+
+    makeHorizonRidge(-82, 1, 17, 2.1, 0x72857d);
+    makeHorizonRidge(-72, 1, 11, 6.7, 0x81938a);
+
+    const makeFarFir = (x: number, z: number, h: number, r: number, color: number) => {
+      const g = new THREE.Group();
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(r * 0.10, r * 0.14, h * 0.42, 5),
+        new THREE.MeshLambertMaterial({ color: 0x5a4a39 })
+      );
+      trunk.position.y = h * 0.21;
+      g.add(trunk);
+      for (let i = 0; i < 4; i++) {
+        const rr = r * (1 - i * 0.17);
+        const crown = new THREE.Mesh(
+          new THREE.ConeGeometry(rr, h * (0.48 - i * 0.035), 7, 1),
+          new THREE.MeshLambertMaterial({ color })
+        );
+        crown.position.y = h * (0.38 + i * 0.15);
+        crown.rotation.y = (i * 1.7 + x * 0.03) % Math.PI;
+        g.add(crown);
+      }
+      g.position.set(x, midHeight(x, z) - 0.2, z);
+      g.scale.setScalar(0.82 + midHash(x, z) * 0.34);
+      scene.add(markMeshes(g));
+    };
+
+    for (let i = 0; i < 26; i++) {
+      const x = -86 + i * 6.8;
+      makeFarFir(x, -67 - (i % 3) * 3, 9 + (i % 5) * 1.5, 2.7 + (i % 4) * 0.45, 0x526b58);
+    }
+    for (let i = 0; i < 20; i++) {
+      const x = -82 + i * 8.7;
+      makeFarFir(x, 68 + (i % 4) * 2.5, 7.5 + (i % 4) * 1.2, 2.4, 0x617765);
+    }
+
     const addMesh = (g: THREE.Object3D, interactive?: string, label?: string) => {
       if (interactive) g.userData = { id: interactive, label: label || interactive };
       g.traverse((o:any)=>{ if(o.isMesh){o.castShadow=true;o.receiveShadow=true;} });
