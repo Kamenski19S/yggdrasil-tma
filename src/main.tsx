@@ -1470,10 +1470,10 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     // Old human settlement — a quiet abandoned farmstead beyond the village.
     // It is a game interpretation inspired by the human dwellings, barns, carts and hearths
     // described in Rígþula, not a claim that this exact place exists in the Edda.
-    house(-64,36,8,5,0.12,"Старый дом","oldfarm",0x63432f,0x2b2926);
+    house(-65,5,8,5,0.12,"Старый дом","oldfarm",0x63432f,0x2b2926);
     shed(-58,42,6,4,-0.12,"Старый амбар","oldbarn");
     fenceRun(-70,32,-60,32); fenceRun(-70,32,-70,43); fenceRun(-70,43,-61,43);
-    hay(-67,39,.9); cart(-61,33,-.25); wellMarker(-57,34);
+    hay(-68,8,.9); cart(-62,2,-.25); wellMarker(-58,4);
     const oldField=new THREE.Group();
     oldField.position.set(-63,groundY(-63,47),47);
     for(let r=0;r<6;r++){
@@ -1499,7 +1499,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     // Field of Runes — a monumental Norse ritual clearing, built around a central altar.
     const runeField=new THREE.Group();
-    const runeFieldX=39, runeFieldZ=70;
+    const runeFieldX=18, runeFieldZ=55;
     runeField.position.set(runeFieldX,groundY(runeFieldX,runeFieldZ),runeFieldZ);
     runeField.userData={id:"runefield",label:"Поле Рун"};
     const fieldStoneMat=new THREE.MeshStandardMaterial({color:0x59615d,roughness:.94,metalness:.04});
@@ -1579,7 +1579,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     addCircleCollider(18,15,1.8,.08);
     const ml=new THREE.PointLight(0x72e8a0,1.8,10,2);ml.position.set(18,groundY(18,15)+1.4,15);scene.add(ml);
 
-    const shrine=new THREE.Group();shrine.userData={id:"norns",label:"Прядильня норн"};shrine.position.set(-25,groundY(-25,43),43);
+    const shrine=new THREE.Group();shrine.userData={id:"norns",label:"Прядильня норн"};shrine.position.set(-52,groundY(-52,38),38);
     const loomWood=mat(0x4b3022,1); const loomDark=mat(0x2b211b,1);
     // Large carved loom frame.
     const loomTop=box(5.7,.28,.28,0x593a28,1); loomTop.position.set(0,3.8,0); shrine.add(loomTop);
@@ -1615,52 +1615,15 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     for(let i=0;i<18;i++){const a=midHash(i,1300)*Math.PI*2,rr=2.5+midHash(i,1301)*3.1;const spool=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.16,9),new THREE.MeshStandardMaterial({color:[0x9b6548,0x6d7790,0x8d5367,0x77724d][i%4],roughness:.8}));spool.rotation.x=Math.PI/2;spool.position.set(Math.cos(a)*rr,.12,Math.sin(a)*rr);shrine.add(spool);}
     for(let i=0;i<9;i++)addGroundRune(shrine,(midHash(i,1315)-.5)*7.5,(midHash(i,1316)-.5)*6.2,['ᚠ','ᚱ','ᛟ','ᛉ','ᚦ'][i%5],i%2?0x8fdff0:0xd7ae61,.34,midHash(i,1317)*Math.PI);
     addMesh(shrine,"norns","Прядильня норн");objects.push(shrine);
-    addCircleCollider(-25,43,3.0,.1);
-
-    // Ritual Place of Power — an ancient stone circle where the hero can invoke different paths of power.
-    const ritualX=-43, ritualZ=62;
-    const ritual=new THREE.Group();
-    ritual.userData={id:"ritual",label:"Круг Силы"};
-    ritual.position.set(ritualX,groundY(ritualX,ritualZ),ritualZ);
-    const outerStoneMat=mat(0x666963,1);
-    const innerStoneMat=mat(0x555a55,1);
-    for(let ring=0;ring<2;ring++){
-      const count=ring===0?18:12;
-      const radius=ring===0?6.2:3.65;
-      for(let i=0;i<count;i++){
-        const a=i/count*Math.PI*2+ring*.12;
-        const rr=radius+(midHash(i,930+ring)*.5-.25);
-        const h=.42+midHash(i,940+ring)*.48;
-        const st=new THREE.Mesh(new THREE.DodecahedronGeometry(.55+midHash(i,950+ring)*.28,1),ring===0?outerStoneMat:innerStoneMat);
-        st.scale.y=.65+h*.35;
-        st.position.set(Math.cos(a)*rr,h*.45,Math.sin(a)*rr);
-        st.rotation.set(midHash(i,960+ring),a+midHash(i,970+ring),midHash(i,980+ring));
-        ritual.add(st);
-      }
-    }
-    const altar=new THREE.Mesh(new THREE.DodecahedronGeometry(1.05,1),mat(0x555954,1));
-    altar.scale.set(1.25,.62,1.05);altar.position.y=.5;ritual.add(altar);
-    for(const r of [2.1,3.15,5.15]){
-      const rm=new THREE.Mesh(new THREE.TorusGeometry(r,.045,7,64),new THREE.MeshStandardMaterial({color:0x8cae9b,emissive:0x355b49,emissiveIntensity:1.4,transparent:true,opacity:.72}));
-      rm.rotation.x=Math.PI/2;rm.position.y=.055;ritual.add(rm);
-    }
-    const ritualRuneMat=new THREE.MeshStandardMaterial({color:0xc9a85e,emissive:0x8c5f18,emissiveIntensity:2.2,roughness:.5});
-    for(let i=0;i<8;i++){
-      const a=i/8*Math.PI*2;
-      const runeMark=new THREE.Mesh(new THREE.BoxGeometry(.13,.025,.65),ritualRuneMat);
-      runeMark.position.set(Math.cos(a)*4.55,.075,Math.sin(a)*4.55);runeMark.rotation.y=-a;ritual.add(runeMark);
-    }
-    addMesh(ritual,"ritual","Круг Силы");objects.push(ritual);
-    addCircleCollider(ritualX,ritualZ,1.25,.06);
-    const ritualLight=new THREE.PointLight(0x8cc7a8,1.15,11,2);ritualLight.position.set(ritualX,groundY(ritualX,ritualZ)+1.6,ritualZ);scene.add(ritualLight);
+    addCircleCollider(-52,38,3.0,.1);
 
     // Ancient rune altar.
-    const rune=new THREE.Group();rune.userData={id:"rune",label:"Древний камень Феху"};rune.position.set(27,groundY(27,57),57);const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(1.45,1),mat(0x4c534f,1));stone.position.y=1.2;rune.add(stone);const rr=new THREE.Mesh(new THREE.TorusGeometry(1.05,.07,8,30),new THREE.MeshStandardMaterial({color:0xffd76a,emissive:0x996313,emissiveIntensity:3}));rr.rotation.x=Math.PI/2;rr.position.y=1.2;rune.add(rr);addMesh(rune,"rune","Древний камень Феху");objects.push(rune);
-    addCircleCollider(27,57,1.7,.1);
+    const rune=new THREE.Group();rune.userData={id:"rune",label:"Древний камень Феху"};rune.position.set(50,groundY(50,60),60);const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(1.45,1),mat(0x4c534f,1));stone.position.y=1.2;rune.add(stone);const rr=new THREE.Mesh(new THREE.TorusGeometry(1.05,.07,8,30),new THREE.MeshStandardMaterial({color:0xffd76a,emissive:0x996313,emissiveIntensity:3}));rr.rotation.x=Math.PI/2;rr.position.y=1.2;rune.add(rr);addMesh(rune,"rune","Древний камень Феху");objects.push(rune);
+    addCircleCollider(50,60,1.7,.1);
 
     // Bridge and dock.
     const bridge=new THREE.Group();bridge.userData={id:"port",label:"Мост к причалу"};for(let i=-5;i<=5;i++){const plank=box(3.6,.28,.82,0x60402a,1);plank.position.set(-53,groundY(-53,i*1.0)+.5,i);bridge.add(plank);}addMesh(bridge,"port","Мост к причалу");objects.push(bridge);
-    const dock=new THREE.Group();dock.position.set(-46,groundY(-46,-15),-15);for(let i=0;i<7;i++){const p=box(2.8,.24,.72,0x6b472d,1);p.position.set(0,.3,i*.85);dock.add(p);}for(const px of [-1.2,1.2])for(let i=0;i<3;i++){const p=box(.22,1.5,.22,0x3f291c,1);p.position.set(px,-.2,i*2.5);dock.add(p);}const hull=box(2.2,.55,4.8,0x4b2c1d,1);hull.position.set(3,-.15,2.5);dock.add(hull);addMesh(dock,"port","Речной причал");objects.push(dock);
+    const dock=new THREE.Group();dock.position.set(-45,groundY(-45,-48),-48);for(let i=0;i<7;i++){const p=box(2.8,.24,.72,0x6b472d,1);p.position.set(0,.3,i*.85);dock.add(p);}for(const px of [-1.2,1.2])for(let i=0;i<3;i++){const p=box(.22,1.5,.22,0x3f291c,1);p.position.set(px,-.2,i*2.5);dock.add(p);}const hull=box(2.2,.55,4.8,0x4b2c1d,1);hull.position.set(3,-.15,2.5);dock.add(hull);addMesh(dock,"port","Речной причал");objects.push(dock);
 
     // Utility clutter makes the village feel inhabited.
     const barrel=(x:number,z:number)=>{const b=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,1,12),mat(0x65432c,1));b.position.set(x,groundY(x,z)+.5,z);scene.add(b);for(const y of [.25,.76]){const r=new THREE.Mesh(new THREE.TorusGeometry(.51,.045,6,18),mat(0x302824,.7,.1));r.rotation.x=Math.PI/2;r.position.set(x,groundY(x,z)+y,z);scene.add(r);}};
@@ -1833,7 +1796,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
 
     // Grove of Ash — a cathedral-like natural chamber built from huge living roots.
-    const ashGroveX=-4, ashGroveZ=69;
+    const ashGroveX=-5, ashGroveZ=75;
     const ashGrove=new THREE.Group(); ashGrove.userData={id:'ashgrove',label:'Роща Ясеня'};
     const groveFloor=new THREE.Mesh(new THREE.CircleGeometry(10.5,40),new THREE.MeshStandardMaterial({color:0x26382b,roughness:1,transparent:true,opacity:.82}));
     groveFloor.rotation.x=-Math.PI/2; groveFloor.position.set(ashGroveX,groundY(ashGroveX,ashGroveZ)+.02,ashGroveZ); scene.add(groveFloor);
@@ -1853,7 +1816,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     objects.push(ashGrove); addCircleCollider(ashGroveX,ashGroveZ,1.0,.08);
 
     // Hoddmímir's Holt — a sacred refuge beneath a smaller world-tree.
-    const hoddX=61,hoddZ=78;
+    const hoddX=62,hoddZ=78;
     const hodd=new THREE.Group(); hodd.userData={id:'hoddmimir',label:'Лес Ходдмимира'};
     const hoddGround=new THREE.Mesh(new THREE.CircleGeometry(11.5,44),new THREE.MeshStandardMaterial({color:0x203b2b,roughness:1,transparent:true,opacity:.86})); hoddGround.rotation.x=-Math.PI/2; hoddGround.position.set(hoddX,groundY(hoddX,hoddZ)+.025,hoddZ);scene.add(hoddGround);
     const trunkMat=new THREE.MeshStandardMaterial({map:barkTexture,color:0xffffff,roughness:1});
@@ -1875,49 +1838,12 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     addMesh(hodd,'hoddmimir','Лес Ходдмимира');objects.push(hodd);addCircleCollider(hoddX,hoddZ,1.2,.08);
 
     // The four deer are a deliberate Yggdrasil reference: they roam a separate clearing.    // The four deer are a deliberate Yggdrasil reference: they roam a separate clearing.
-    const deerClearingX=30, deerClearingZ=53;
+    const deerClearingX=43, deerClearingZ=32;
     for(let i=0;i<4;i++) deer(deerClearingX+(i-1.5)*2.6,deerClearingZ+(i%2?2.6:-2.6),1.12+midHash(i,1440)*.16,10+i);
     const deerStone=new THREE.Mesh(new THREE.DodecahedronGeometry(.72,1),mat(0x575d56,1));deerStone.position.set(deerClearingX,groundY(deerClearingX,deerClearingZ)+.5,deerClearingZ);scene.add(deerStone);
     const deerRing=new THREE.Mesh(new THREE.TorusGeometry(5.8,.045,7,48),new THREE.MeshStandardMaterial({color:0x7e8b72,emissive:0x303d2a,emissiveIntensity:.8,transparent:true,opacity:.48}));deerRing.rotation.x=Math.PI/2;deerRing.position.set(deerClearingX,groundY(deerClearingX,deerClearingZ)+.035,deerClearingZ);scene.add(deerRing);
     squirrel(ashGroveX+5,ashGroveZ+1);
 
-    // First living forest event: the Three Threads stone.
-    // This is a game-world interpretation: the Edda gives the Norns as powers
-    // that mark the fates of people; the concrete Midgard location is our fiction.
-    const eventX=12, eventZ=49;
-    const eventGroup=new THREE.Group();
-    eventGroup.position.set(eventX,groundY(eventX,eventZ),eventZ);
-    const eventStone=new THREE.Mesh(new THREE.DodecahedronGeometry(1.05,1),mat(0x4e5550,1));
-    eventStone.position.y=.85; eventStone.scale.y=1.55; eventGroup.add(eventStone);
-    const eventRing=new THREE.Mesh(new THREE.TorusGeometry(2.7,.055,7,48),new THREE.MeshStandardMaterial({color:0x9c8cb0,emissive:0x4b365a,emissiveIntensity:1.8,transparent:true,opacity:.78}));
-    eventRing.rotation.x=Math.PI/2; eventRing.position.y=.06; eventGroup.add(eventRing);
-    const eventThreadMat=new THREE.LineBasicMaterial({color:0xd8c9e8,transparent:true,opacity:.72});
-    for(let i=0;i<3;i++){
-      const pts=[new THREE.Vector3((i-1)*.72,.95,.15),new THREE.Vector3((i-1)*1.25,2.9,-.35+Math.sin(i)*.25),new THREE.Vector3((i-1)*1.75,.5,.9)];
-      eventGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),eventThreadMat));
-    }
-    for(let i=0;i<7;i++){
-      const fp=new THREE.Mesh(new THREE.DodecahedronGeometry(.11,0),mat(0x665b52,1));
-      const a=-1.0+i*.32; fp.position.set(-1.7+a*.95,.06,-1.6+i*.46); fp.scale.set(1.6,.35,.8); eventGroup.add(fp);
-    }
-    addMesh(eventGroup,'forestEvent','Камень Трёх Нитей');
-    addCircleCollider(eventX,eventZ,1.15,.08);
-
-    // Additional living forest events. These are small, reusable encounters rather than decoration.
-    // Their exact locations and outcomes are game fiction inspired by the Edda's themes of fate,
-    // wisdom and the living ecosystem around Yggdrasil.
-    const makeForestEvent = (x:number,z:number,id:string,label:string,ringColor:number,stoneColor:number,detail:number) => {
-      const g=new THREE.Group(); g.position.set(x,groundY(x,z),z);
-      const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(.78+detail*.08,1),mat(stoneColor,1));
-      stone.position.y=.58+detail*.08; stone.scale.y=1.35; g.add(stone);
-      const ring=new THREE.Mesh(new THREE.TorusGeometry(2.0+detail*.18,.045,7,40),new THREE.MeshStandardMaterial({color:ringColor,emissive:ringColor,emissiveIntensity:1.25,transparent:true,opacity:.62}));
-      ring.rotation.x=Math.PI/2; ring.position.y=.045; g.add(ring);
-      for(let i=0;i<3+detail;i++){
-        const mark=new THREE.Mesh(new THREE.DodecahedronGeometry(.12,.0),mat(0x777066,1));
-        const a=i/(3+detail)*Math.PI*2; mark.position.set(Math.cos(a)*(1.15+detail*.12),.08,Math.sin(a)*(1.15+detail*.12)); mark.scale.y=.45; g.add(mark);
-      }
-      addMesh(g,id,label); objects.push(g); addCircleCollider(x,z,.9,.08);
-    };
     // Forgotten Cache — a colossal hollow oak with a hidden leather pouch inside.
     const makeForgottenCache=(x:number,z:number)=>{
       const g=new THREE.Group(); g.position.set(x,groundY(x,z),z); g.userData={id:'forestCache',label:'Забытый тайник'};
@@ -1968,10 +1894,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       for(let i=0;i<4;i++){const b=box(.08,.08,.75,0x9e9784,1);b.position.set((midHash(i,1280)-.5)*5,.12,(midHash(i,1281)-.5)*5);b.rotation.y=midHash(i,1282)*Math.PI;g.add(b);}
       addMesh(g,'forestCache','Забытый тайник'); objects.push(g); addCircleCollider(x,z,1.75,.08);
     };
-    makeForgottenCache(-15,58);
-    makeForestEvent(46,43,'forestWhisper','Камень Шёпота',0x7895a5,0x454d4d,3);
-    makeForestEvent(-48,72,'forestThread','Разорванная нить',0x9c7190,0x51484d,2);
-
+    makeForgottenCache(-72,48);
     // Right forest expansion: detailed landmark clearings. The goal is a cinematic
     // handcrafted look rather than a ring of identical primitive stones.
     const plankBetween=(a:THREE.Vector3,b:THREE.Vector3,w:number,h:number,material:THREE.Material)=>{
@@ -2090,9 +2013,9 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       addMesh(g,id,label); objects.push(g);
     };
 
-    makeForgottenCamp(70,18);
-    makeForestClearing(67,49,9.5,'deepGrove','Глубокая роща',1);
-    makeFallenAsh(52,7);
+    makeForgottenCamp(68,8);
+    makeForestClearing(-45,75,9.5,'deepGrove','Глубокая роща',1);
+    makeFallenAsh(-30,15);
 
     // ---------------------------------------------------------------------------
     // Three new sacred locations: Stone of Three Threads, Circle of Power,
@@ -2120,9 +2043,19 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       g.add(glow); return tube;
     };
 
+    // A small unique broken-thread shrine, kept separate from the Three Threads well.
+    const forestThreadX=50, forestThreadZ=-62;
+    const forestThreadShrine=new THREE.Group(); forestThreadShrine.position.set(forestThreadX,groundY(forestThreadX,forestThreadZ),forestThreadZ); forestThreadShrine.userData={id:'forestThread',label:'Разорванная нить'};
+    const ftRing=new THREE.Mesh(new THREE.TorusGeometry(2.4,.05,7,48),new THREE.MeshStandardMaterial({color:0x9c7190,emissive:0x5a3854,emissiveIntensity:1.5,transparent:true,opacity:.72})); ftRing.rotation.x=Math.PI/2; ftRing.position.y=.055; forestThreadShrine.add(ftRing);
+    const ftStone=new THREE.Mesh(new THREE.DodecahedronGeometry(1.0,1),mat(0x51484d,1)); ftStone.scale.set(.9,1.45,.72); ftStone.position.y=.95; forestThreadShrine.add(ftStone);
+    addFloatingRune(forestThreadShrine,'ᛏ',0,1.2,.76,0xc07cae,.9,0);
+    const ftThreadPts=[new THREE.Vector3(-.9,1.8,.3),new THREE.Vector3(0,3.1,.1),new THREE.Vector3(1.0,2.0,-.2)]; addMagicThread(forestThreadShrine,ftThreadPts,0xd9b8d6,.06);
+    addMesh(forestThreadShrine,'forestThread','Разорванная нить'); objects.push(forestThreadShrine); addCircleCollider(forestThreadX,forestThreadZ,1.1,.08);
+
+
     // 1) STONE OF THREE THREADS — WELL OF URD + THREE NORNS --------------------
     const threeThreads=new THREE.Group();
-    const threeThreadsX=-62, threeThreadsZ=72;
+    const threeThreadsX=58, threeThreadsZ=-28;
     threeThreads.position.set(threeThreadsX,groundY(threeThreadsX,threeThreadsZ),threeThreadsZ);
     threeThreads.userData={id:"threeThreads",label:"Камень Трёх Нитей — Колодец Урд"};
 
@@ -2229,7 +2162,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     // 2) CIRCLE OF POWER --------------------------------------------------------
     const powerCircle=new THREE.Group();
-    const powerX=12, powerZ=74;
+    const powerX=5, powerZ=-70;
     powerCircle.position.set(powerX,groundY(powerX,powerZ),powerZ);
     powerCircle.userData={id:"powerCircle",label:"Круг Силы"};
     const powerGround=new THREE.Mesh(new THREE.CircleGeometry(10.8,48),new THREE.MeshStandardMaterial({color:0x1d2b26,roughness:1,transparent:true,opacity:.94}));
@@ -2260,7 +2193,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     // 3) WHISPERING STONE -------------------------------------------------------
     const whisperStone=new THREE.Group();
-    const whisperX=-4, whisperZ=48;
+    const whisperX=-72, whisperZ=-48;
     whisperStone.position.set(whisperX,groundY(whisperX,whisperZ),whisperZ);
     whisperStone.userData={id:"whisperStone",label:"Камень Шёпота"};
     const whisperGround=new THREE.Mesh(new THREE.CircleGeometry(8.6,40),new THREE.MeshStandardMaterial({color:0x17251e,roughness:1,transparent:true,opacity:.95}));
@@ -2382,17 +2315,17 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     addMesh(heroYard,'heroHomeYard','Двор домика героя'); objects.push(heroYard);
 
     // Small landmarks inside the clearings.
-    const campFire=fire(70,18,.75); campFire.scale.setScalar(.72);
-    const campStone=new THREE.Mesh(new THREE.CylinderGeometry(.65,.8,.7,7),mat(0x514a42,1)); campStone.position.set(70,groundY(70,18)+.35,16.5); scene.add(campStone);
-    for(const [x,z] of [[68,20],[72,20],[68,16],[72,16]]){const post=box(.16,1.15,.16,0x493527,1);post.position.set(x,groundY(x,z)+.57,z);scene.add(post);}
-    const fallen=new THREE.Group(); fallen.position.set(52,groundY(52,7),7); const trunk= new THREE.Mesh(new THREE.CylinderGeometry(.5,.62,7,8),new THREE.MeshLambertMaterial({map:barkTexture,color:0x4c392b})); trunk.rotation.z=Math.PI/2; trunk.position.y=.5; fallen.add(trunk); const cut=new THREE.Mesh(new THREE.CylinderGeometry(.53,.53,.12,12),mat(0x75644d,1)); cut.rotation.z=Math.PI/2; cut.position.set(3.5,.5,0); fallen.add(cut); scene.add(fallen);
-    for(let i=0;i<7;i++){const rune=new THREE.Mesh(new THREE.DodecahedronGeometry(.14,0),mat(0x697d72,1));const a=i/7*Math.PI*2;rune.position.set(67+Math.cos(a)*4,.12+groundY(67+Math.cos(a)*4,49+Math.sin(a)*4),49+Math.sin(a)*4);scene.add(rune);}
+    const campFire=fire(68,8,.75); campFire.scale.setScalar(.72);
+    const campStone=new THREE.Mesh(new THREE.CylinderGeometry(.65,.8,.7,7),mat(0x514a42,1)); campStone.position.set(68,groundY(68,8)+.35,6.5); scene.add(campStone);
+    for(const [x,z] of [[66,10],[70,10],[66,6],[70,6]]){const post=box(.16,1.15,.16,0x493527,1);post.position.set(x,groundY(x,z)+.57,z);scene.add(post);}
+    const fallen=new THREE.Group(); fallen.position.set(-30,groundY(-30,15),15); const trunk= new THREE.Mesh(new THREE.CylinderGeometry(.5,.62,7,8),new THREE.MeshLambertMaterial({map:barkTexture,color:0x4c392b})); trunk.rotation.z=Math.PI/2; trunk.position.y=.5; fallen.add(trunk); const cut=new THREE.Mesh(new THREE.CylinderGeometry(.53,.53,.12,12),mat(0x75644d,1)); cut.rotation.z=Math.PI/2; cut.position.set(3.5,.5,0); fallen.add(cut); scene.add(fallen);
+    for(let i=0;i<7;i++){const rune=new THREE.Mesh(new THREE.DodecahedronGeometry(.14,0),mat(0x697d72,1));const a=i/7*Math.PI*2;rune.position.set(-45+Math.cos(a)*4,.12+groundY(-45+Math.cos(a)*4,75+Math.sin(a)*4),75+Math.sin(a)*4);scene.add(rune);}
 
     // Dense forest ring uses varied, irregular firs.
     for(let i=0;i<95;i++){
       const a=midHash(i,77)*Math.PI*2;const r=68+midHash(i,91)*27;
       const x=Math.cos(a)*r,z=Math.sin(a)*r+2;
-      const reserved=[[ashGroveX,ashGroveZ,11],[39,70,13],[-64,36,11],[-43,62,10],[30,53,12],[61,78,10],[-15,58,7],[46,43,7],[-48,72,7],[-62,72,15],[70,18,11],[75,30,13],[67,49,12],[52,7,10]];
+      const reserved=[[ashGroveX,ashGroveZ,11],[18,55,13],[-65,5,11],[-60,-25,10],[43,32,12],[62,78,10],[-72,48,7],[50,-62,7],[58,-28,15],[68,8,11],[75,30,13],[-45,75,12],[-30,15,10],[5,-70,13],[-72,-48,11]];
       const reservedHit=reserved.some(([rx,rz,rr])=>Math.hypot(x-rx,z-rz)<rr);
       if(Math.abs(x+57)>9 && !reservedHit)firTree(x,z,.78+midHash(i,13)*.82);
     }
@@ -2454,9 +2387,10 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     const destinations=[
       {id:"house",label:"Дом старейшины",x:13,z:-18,r:5.2},{id:"forge",label:"Кузница",x:-10,z:-5,r:5.4},
-      {id:"mimir",label:"Колодец Мимира",x:18,z:15,r:4.8},{id:"norns",label:"Прядильня норн",x:-25,z:43,r:5.4},
-      {id:"rune",label:"Древний камень Феху",x:27,z:57,r:4.5},{id:"ritual",label:"Круг Силы",x:-43,z:62,r:6.8},{id:"port",label:"Речной причал",x:-46,z:-15,r:5},
-      {id:"ashgrove",label:"Роща Ясеня",x:-4,z:69,r:7.5},{id:"threeThreads",label:"Камень Трёх Нитей — Колодец Урд",x:-62,z:72,r:6.8},{id:"forestEvent",label:eventDone?"Камень Трёх Нитей — место выбора":"Камень Трёх Нитей",x:eventX,z:eventZ,r:4.8},{id:"forestCache",label:"Забытый тайник",x:-15,z:58,r:4.2},{id:"forestWhisper",label:"Камень Шёпота",x:46,z:43,r:4.2},{id:"forestThread",label:"Разорванная нить",x:-48,z:72,r:4.2},{id:"runefield",label:"Поле Рун",x:39,z:70,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-64,z:36,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:30,z:53,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:61,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:70,z:18,r:8.5},{id:"heroHome",label:"Дверь дома героя",x:75,z:32.75,r:2.8},{id:"deepGrove",label:"Глубокая роща",x:67,z:49,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:52,z:7,r:7.5},
+      {id:"mimir",label:"Колодец Мимира",x:18,z:15,r:4.8},{id:"norns",label:"Прядильня норн",x:-52,z:38,r:5.4},
+      {id:"rune",label:"Древний камень Феху",x:50,z:60,r:4.5},{id:"port",label:"Речной причал",x:-45,z:-48,r:5},
+      {id:"ashgrove",label:"Роща Ясеня",x:-5,z:75,r:7.5},{id:"threeThreads",label:"Камень Трёх Нитей — Колодец Урд",x:58,z:-28,r:6.8},{id:"forestCache",label:"Забытый тайник",x:-72,z:48,r:4.2},{id:"forestThread",label:"Разорванная нить",x:50,z:-62,r:4.2},
+      {id:"runefield",label:"Поле Рун",x:18,z:55,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-65,z:5,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:43,z:32,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:62,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:68,z:8,r:8.5},{id:"heroHome",label:"Дверь дома героя",x:75,z:32.75,r:2.8},{id:"deepGrove",label:"Глубокая роща",x:-45,z:75,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:-30,z:15,r:7.5},{id:"powerCircle",label:"Круг Силы — Монолит",x:5,z:-70,r:6.5},{id:"whisperStone",label:"Камень Шёпота",x:-72,z:-48,r:6.5},
       {id:"elder",label:"Старейшина",x:9,z:-8,r:3.2},{id:"blacksmith",label:"Кузнец",x:-6,z:-3,r:3.2},
       {id:"gate",label:"Ворота Мидгарда",x:0,z:-31,r:5},{id:"tower",label:"Сторожевая башня",x:29,z:25,r:4}
     ];
@@ -2580,7 +2514,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:ice")}}>❄️ Ледяной обет — ослабить первый удар врага</button>
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:ygg")}}>🌳 Зов Иггдрасиля — пережить смертельный удар</button>
     </div>}
-    {near&&!ritualOpen&&!forestEventOpen&&(()=>{const [label,id]=near.split("|");const home=id==="heroHome"||id==="heroHomeExit";return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода") : "Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="ritual")setRitualOpen(true);else if(id==="forestEvent")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else on(id);}}>{home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):"Взаимодействовать"}</button></div>;})()}
+    {near&&!ritualOpen&&!forestEventOpen&&(()=>{const [label,id]=near.split("|");const home=id==="heroHome"||id==="heroHomeExit";return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода") : "Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else on(id);}}>{home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):"Взаимодействовать"}</button></div>;})()}
     <div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-action" onPointerDown={e=>e.stopPropagation()} onClick={()=>on("event")}>ᚠ</button>
     <div className="mid3d-ui mid3d-hint">{insideHome?(moving?"Ты внутри дома":"Дом героя • отдых • сундук • выход"):moving?"Исследуй Мидгард":"Ворота • площадь • кузница • Мимир • норны • лес"}</div>
