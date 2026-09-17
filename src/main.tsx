@@ -1236,44 +1236,63 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     terrain.receiveShadow = true;
     scene.add(terrain);
 
-    // ===== REAL GLB TREES: load each model once, then clone lightweight instances =====
-    // All four tree assets live in public/img/models/. Each GLB is fetched only once.
-    // Instances share the loaded geometry/material resources instead of downloading the file again.
+    // ===== REAL GLB TREES: three available assets, loaded once and cloned =====
+    // Tree_1.glb is intentionally not used: the current repository has three confirmed tree models.
+    // Each confirmed GLB is fetched once; all visible copies share its geometry/material resources.
     const gltfLoader = new GLTFLoader();
     let glbTreesAlive = true;
     const glbTreeInstances: THREE.Object3D[] = [];
     const glbTreeLights: THREE.PointLight[] = [];
 
-    type TreeAsset = 'Tree.glb' | 'Tree2.glb' | 'Tree3.glb' | 'Tree_1.glb';
+    type TreeAsset = 'Tree.glb' | 'Tree2.glb' | 'Tree3.glb';
     type TreeSpot = { x:number; z:number; s:number; r:number; asset:TreeAsset; light?:boolean };
 
-    // Carefully spaced by hand so the models do not sit inside houses, landmarks or paths.
-    // s changes height; r changes the individual silhouette orientation.
+    // The trees are deliberately larger than the previous pass and spaced in natural groups.
+    // The village centre and the main paths stay open; the forest becomes denser toward the edges.
     const treeSpots: TreeSpot[] = [
-      { x: 3.2,  z: 0.4,   s: 0.92, r: 0.25, asset:'Tree.glb',   light:true },
-      { x: 7.2,  z: 3.8,   s: 0.78, r: 1.85, asset:'Tree2.glb' },
-      { x: -6.8, z: 3.9,   s: 1.05, r: 4.10, asset:'Tree3.glb' },
-      { x: 17.2, z: 4.6,   s: 0.88, r: 5.20, asset:'Tree_1.glb' },
-      { x: -18.0,z: -2.5,  s: 0.97, r: 2.70, asset:'Tree.glb' },
-      { x: 24.5, z: 11.5,  s: 1.12, r: 0.70, asset:'Tree2.glb' },
-      { x: -25.0,z: 12.5,  s: 0.84, r: 3.35, asset:'Tree3.glb' },
-      { x: 31.0, z: -11.0, s: 0.95, r: 5.65, asset:'Tree_1.glb' },
-      { x: -31.0,z: -16.0, s: 1.08, r: 1.25, asset:'Tree.glb' },
-      { x: 8.0,  z: 31.0,  s: 0.86, r: 4.55, asset:'Tree2.glb' },
-      { x: -15.0,z: 28.0,  s: 1.16, r: 2.05, asset:'Tree3.glb' },
-      { x: 36.0, z: 26.0,  s: 0.90, r: 0.95, asset:'Tree_1.glb' },
-      { x: -36.0,z: 30.0,  s: 1.02, r: 3.85, asset:'Tree.glb' },
-      { x: 44.0, z: 15.0,  s: 1.14, r: 5.05, asset:'Tree2.glb' },
-      { x: -43.0,z: -4.0,  s: 0.82, r: 1.70, asset:'Tree3.glb' },
-      { x: 42.0, z: -17.0, s: 0.98, r: 3.15, asset:'Tree_1.glb' },
-      { x: -43.0,z: -27.0, s: 1.12, r: 4.80, asset:'Tree.glb' },
-      { x: 23.0, z: -32.0, s: 0.87, r: 2.35, asset:'Tree2.glb' },
-      { x: -23.0,z: 39.0,  s: 1.06, r: 5.50, asset:'Tree3.glb' },
-      { x: 34.0, z: 42.0,  s: 0.93, r: 0.35, asset:'Tree_1.glb' },
-      { x: -37.0,z: 49.0,  s: 1.15, r: 3.60, asset:'Tree.glb' },
-      { x: 48.0, z: 47.0,  s: 0.84, r: 1.05, asset:'Tree2.glb' },
-      { x: -49.0,z: -42.0, s: 1.03, r: 4.35, asset:'Tree3.glb' },
-      { x: 52.0, z: -46.0, s: 0.91, r: 5.90, asset:'Tree_1.glb' },
+      // Around Mimir / village edge
+      { x: 3.4,  z: 1.2,   s: 0.98, r: 0.25, asset:'Tree.glb', light:true },
+      { x: 7.8,  z: 4.8,   s: 0.88, r: 1.85, asset:'Tree2.glb' },
+      { x: -7.6, z: 4.8,   s: 1.10, r: 4.10, asset:'Tree3.glb' },
+      { x: 18.5, z: 5.8,   s: 1.02, r: 5.20, asset:'Tree.glb' },
+      { x: -18.8,z: -2.0,  s: 1.12, r: 2.70, asset:'Tree2.glb' },
+      { x: 27.0, z: 12.0,  s: 1.18, r: 0.70, asset:'Tree3.glb' },
+      { x: -27.0,z: 13.5,  s: 0.94, r: 3.35, asset:'Tree.glb' },
+      { x: 32.0, z: -12.5, s: 1.05, r: 5.65, asset:'Tree2.glb' },
+      { x: -32.0,z: -17.0, s: 1.18, r: 1.25, asset:'Tree3.glb' },
+
+      // Middle forest / clearings
+      { x: 10.0,  z: 30.0,  s: 0.98, r: 4.55, asset:'Tree.glb' },
+      { x: -15.5, z: 29.0,  s: 1.22, r: 2.05, asset:'Tree2.glb' },
+      { x: 36.0,  z: 27.0,  s: 1.04, r: 0.95, asset:'Tree3.glb' },
+      { x: -36.0, z: 31.0,  s: 1.14, r: 3.85, asset:'Tree.glb' },
+      { x: 45.0,  z: 16.0,  s: 1.22, r: 5.05, asset:'Tree2.glb' },
+      { x: -45.0, z: -5.0,  s: 0.96, r: 1.70, asset:'Tree3.glb' },
+      { x: 43.0,  z: -19.0, s: 1.08, r: 3.15, asset:'Tree.glb' },
+      { x: -44.0, z: -29.0, s: 1.20, r: 4.80, asset:'Tree2.glb' },
+      { x: 24.0,  z: -34.0, s: 1.00, r: 2.35, asset:'Tree3.glb' },
+
+      // Far forest wall — taller silhouettes give Midgard depth
+      { x: -24.0, z: 41.0,  s: 1.16, r: 5.50, asset:'Tree.glb' },
+      { x: 35.0,  z: 44.0,  s: 1.04, r: 0.35, asset:'Tree2.glb' },
+      { x: -38.0, z: 51.0,  s: 1.28, r: 3.60, asset:'Tree3.glb' },
+      { x: 49.0,  z: 49.0,  s: 0.98, r: 1.05, asset:'Tree.glb' },
+      { x: -51.0, z: -44.0, s: 1.18, r: 4.35, asset:'Tree2.glb' },
+      { x: 54.0,  z: -48.0, s: 1.06, r: 5.90, asset:'Tree3.glb' },
+
+      // Additional natural clusters
+      { x: 13.0,  z: 38.0,  s: 0.90, r: 2.10, asset:'Tree2.glb' },
+      { x: 19.0,  z: 43.0,  s: 1.12, r: 4.70, asset:'Tree3.glb' },
+      { x: -10.0, z: 43.0,  s: 1.04, r: 1.30, asset:'Tree.glb' },
+      { x: -18.0, z: 48.0,  s: 1.24, r: 5.20, asset:'Tree2.glb' },
+      { x: 41.0,  z: 35.0,  s: 0.92, r: 2.90, asset:'Tree3.glb' },
+      { x: -43.0, z: 39.0,  s: 1.10, r: 0.55, asset:'Tree.glb' },
+      { x: 40.0,  z: -34.0, s: 1.16, r: 4.15, asset:'Tree2.glb' },
+      { x: -38.0, z: -39.0, s: 0.94, r: 1.90, asset:'Tree3.glb' },
+      { x: 17.0,  z: -43.0, s: 1.08, r: 5.35, asset:'Tree.glb' },
+      { x: -17.0, z: -45.0, s: 1.20, r: 3.25, asset:'Tree2.glb' },
+      { x: 56.0,  z: 5.0,   s: 1.02, r: 0.85, asset:'Tree3.glb' },
+      { x: -56.0, z: 9.0,   s: 1.14, r: 4.55, asset:'Tree.glb' },
     ];
 
     const prepareGLBTree = (source: THREE.Object3D, spot: TreeSpot) => {
@@ -1284,7 +1303,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       const size = new THREE.Vector3();
       box.getSize(size);
       const sourceHeight = Math.max(size.y, 0.001);
-      const targetHeight = 5.8 * spot.s;
+      // Previous pass looked too small. Base height is now 8 world units, with controlled variation.
+      const targetHeight = 8.0 * spot.s;
       tree.scale.setScalar(targetHeight / sourceHeight);
       tree.rotation.y = spot.r;
 
@@ -1339,16 +1359,16 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       }
       await Promise.all([...byAsset.entries()].map(([asset, spots]) => loadOneTreeAsset(asset, spots)));
 
-      // A single soft cold light near Mimir gives the closest spruce a northern dawn edge.
+      // A soft cold light near Mimir gives the nearest spruce a subtle northern edge.
       const wellSpot = treeSpots[0];
       const wellY = groundY(wellSpot.x, wellSpot.z);
       const light = new THREE.PointLight(0xb8d8e8, 0.72, 9.5, 2);
       light.position.set(wellSpot.x + 1.7, wellY + 3.2, wellSpot.z + 1.8);
-      light.castShadow = false; // the sun remains the main shadow caster; this keeps mobile rendering light.
+      light.castShadow = false;
       scene.add(light);
       glbTreeLights.push(light);
 
-      console.log(`[GLB TREES] ${glbTreeInstances.length} visible instances / 4 shared assets`);
+      console.log(`[GLB TREES] ${glbTreeInstances.length} visible instances / 3 shared assets`);
     };
 
     void placeAllGLBTrees();
