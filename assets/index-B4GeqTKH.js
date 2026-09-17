@@ -4031,7 +4031,7 @@ meshes: ${T}
 source height: ${k.toFixed(3)}
 scale: ${(X/k).toFixed(3)}
 position: 0,18
-If you see the tree + magenta box, Three.js GLB loading works.`)};(async()=>{const d=[`${Ed}img/model/Tree.glb`,`${Ed}img/model/Tree_1.glb`];for(const x of d)try{A(`FETCH
+If you see the tree + magenta box, Three.js GLB loading works.`)};(async()=>{const d=[`${Ed}img/models/Tree.glb`,`${Ed}img/models/Tree_1.glb`];for(const x of d)try{A(`FETCH
 ${x}`);const m=await fetch(x,{cache:"no-store"}),T=m.headers.get("content-type")||"";if(!m.ok){A(`HTTP FAILED
 ${x}
 status: ${m.status}
