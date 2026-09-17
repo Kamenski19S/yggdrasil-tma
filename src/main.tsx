@@ -454,16 +454,20 @@ function Midgard3D({ h, on, eventDone }: { h: Hero; on: (s: string) => void; eve
   }, []);
 
   return (
+    
     <div className="mid3d-scene" ref={mount} style={{ width: "100%", height: "100%", position: "relative" }}>
       <div className="mid3d-ui mid3d-top">
         <div className="mid3d-pill">
           <b>МИДГАРД · СЕЛО</b>
           <span>Исследуй мир, найди святилище или совет</span>
         </div>
-        export function App() {
+      </div>
+    </div>
+  );
+}
+
+export function App() {
   const [save, setSave] = useState<Save>(loadSave);
-  const [screen, setScreen] = useState<{ t: string; id?: string }>({ t: "tree" });
-  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     try { localStorage.setItem("yggdrasil", JSON.stringify(save)); } catch {}
