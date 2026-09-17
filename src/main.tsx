@@ -1260,72 +1260,100 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     terrain.receiveShadow = true;
     scene.add(terrain);
 
-    // ===== REAL GLB TREE: one Nordic spruce beside Mimir's well =====
+    // ===== REAL GLB TREES: one shared GLB, many lightweight clones =====
     const gltfLoader = new GLTFLoader();
     let glbTreeAlive = true;
-    let glbTree: THREE.Object3D | null = null;
+    const glbTreeInstances: THREE.Object3D[] = [];
     let glbTreeLight: THREE.PointLight | null = null;
 
-    const placeGLBTree = (gltf: any) => {
-      if (!glbTreeAlive) return;
+    // One loaded Tree.glb is reused for all trees. Geometry/material resources stay shared.
+    const treeSpots = [
+      { x: 3.2, z: 0.4, s: 1.00, r: 0.28 },   // beside Mimir's well
+      { x: 7.8, z: 7.0, s: 0.86, r: 1.12 },
+      { x: -7.0, z: 5.5, s: 0.94, r: 2.28 },
+      { x: 15.5, z: 6.5, s: 1.08, r: 0.74 },
+      { x: -17.0, z: -4.5, s: 0.90, r: 2.74 },
+      { x: 29.0, z: -10.0, s: 1.04, r: 1.86 },
+      { x: -28.0, z: 14.0, s: 0.82, r: 3.40 },
+      { x: 21.5, z: 28.0, s: 0.96, r: 5.05 },
+      { x: -24.0, z: -21.0, s: 1.10, r: 4.22 },
+      { x: 5.0, z: 34.0, s: 0.88, r: 5.72 },
+    ];
 
-      glbTree = markMeshes(gltf.scene);
+    const prepareGLBTree = (source: THREE.Object3D, spot: {x:number; z:number; s:number; r:number}) => {
+      const tree = source.clone(true);
+      markMeshes(tree);
 
-      // Real spruce beside Mimir's well at the village centre.
-      const tx = 3.2;
-      const tz = 0.4;
-      const ty = groundY(tx, tz);
-
-      // Tree.glb is about 5.284 units high; make it a natural ~5.8-unit village tree.
-      const box = new THREE.Box3().setFromObject(glbTree);
+      const box = new THREE.Box3().setFromObject(tree);
       const size = new THREE.Vector3();
       box.getSize(size);
       const sourceHeight = Math.max(size.y, 0.001);
-      const targetHeight = 5.8;
-      glbTree.scale.setScalar(targetHeight / sourceHeight);
-      glbTree.rotation.y = 0.28;
-      glbTree.position.set(tx, ty, tz);
+      const targetHeight = 5.8 * spot.s;
+      tree.scale.setScalar(targetHeight / sourceHeight);
+      tree.rotation.y = spot.r;
 
-      // Keep the roots exactly on the terrain after scaling.
-      const scaledBox = new THREE.Box3().setFromObject(glbTree);
-      glbTree.position.y += ty - scaledBox.min.y;
+      const ty = groundY(spot.x, spot.z);
+      tree.position.set(spot.x, ty, spot.z);
 
-      glbTree.traverse((o: any) => {
-        if (o.isMesh) {
-          o.castShadow = true;
-          o.receiveShadow = true;
-          if (o.material) {
-            const mats = Array.isArray(o.material) ? o.material : [o.material];
-            mats.forEach((m: any) => {
-              if ('roughness' in m) m.roughness = Math.max(m.roughness ?? 0.82, 0.78);
-            });
-          }
+      // Snap the model's lowest point to the terrain, even if the GLB origin is above/below its roots.
+      const scaledBox = new THREE.Box3().setFromObject(tree);
+      tree.position.y += ty - scaledBox.min.y;
+
+      tree.traverse((o: any) => {
+        if (!o.isMesh) return;
+        o.castShadow = true;
+        o.receiveShadow = true;
+        if (o.material) {
+          const mats = Array.isArray(o.material) ? o.material : [o.material];
+          mats.forEach((m: any) => {
+            if ('roughness' in m) m.roughness = Math.max(m.roughness ?? 0.82, 0.80);
+            if ('metalness' in m) m.metalness = Math.min(m.metalness ?? 0.0, 0.08);
+          });
         }
       });
 
-      scene.add(glbTree);
-
-      // Cold northern rim light: blue-white and soft, without a magical neon look.
-      glbTreeLight = new THREE.PointLight(0xb8d8e8, 1.05, 9.5, 2);
-      glbTreeLight.position.set(tx + 2.8, ty + 4.2, tz + 2.2);
-      scene.add(glbTreeLight);
-
-      console.log('Real GLB spruce loaded', { sourceHeight, targetHeight, position: [tx, tz] });
+      scene.add(tree);
+      glbTreeInstances.push(tree);
+      return tree;
     };
 
-    const tryLoadGLBTree = async () => {
+    const placeGLBTrees = (gltf: any) => {
+      if (!glbTreeAlive) return;
+
+      // gltf.scene is the only model resource loaded from the network.
+      // Every visible spruce below is a lightweight Object3D clone sharing the same buffers/materials.
+      const source = gltf.scene;
+      for (const spot of treeSpots) prepareGLBTree(source, spot);
+
+      // A subtle cold northern light near Mimir. The sun remains the main shadow caster;
+      // this local light gives the spruce a blue-white edge without turning it neon.
+      const wellSpot = treeSpots[0];
+      const wellY = groundY(wellSpot.x, wellSpot.z);
+      glbTreeLight = new THREE.PointLight(0xb8d8e8, 1.0, 10.5, 2);
+      glbTreeLight.position.set(wellSpot.x + 2.4, wellY + 4.0, wellSpot.z + 2.0);
+      glbTreeLight.castShadow = true;
+      glbTreeLight.shadow.mapSize.set(512, 512);
+      glbTreeLight.shadow.camera.near = 0.5;
+      glbTreeLight.shadow.camera.far = 12;
+      glbTreeLight.shadow.bias = -0.001;
+      scene.add(glbTreeLight);
+
+      console.log(`Real GLB spruces loaded: ${glbTreeInstances.length} visible / 1 shared asset`);
+    };
+
+    const tryLoadGLBTrees = async () => {
       const url = `${BASE}img/models/Tree.glb`;
       try {
         const response = await fetch(url, { cache: 'no-store' });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const buffer = await response.arrayBuffer();
-        gltfLoader.parse(buffer, '', placeGLBTree, (error) => console.error('Tree.glb parse failed:', error));
+        gltfLoader.parse(buffer, '', placeGLBTrees, (error) => console.error('Tree.glb parse failed:', error));
       } catch (error) {
         console.error('Tree.glb could not be loaded:', error);
       }
     };
 
-    void tryLoadGLBTree();
+    void tryLoadGLBTrees();
 
     // Distant world depth: soft mountain ridges and far forest silhouettes.
     // They stay well beyond the playable area, so the village and landmarks keep open space.
@@ -3150,7 +3178,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{glbTreeAlive=false;if(glbTree){scene.remove(glbTree);glbTree.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});}if(glbTreeLight){scene.remove(glbTreeLight);glbTreeLight.dispose();}cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
+    return()=>{glbTreeAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;if(glbTreeLight){scene.remove(glbTreeLight);glbTreeLight.dispose();glbTreeLight=null;}cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
   },[h.id,on,eventDone]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
