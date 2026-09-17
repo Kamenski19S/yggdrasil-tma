@@ -792,7 +792,6 @@ export function App() {
 
 export default App;
       </div>
-
       {near && (
         <div className="mid3d-ui mid3d-interact">
           <b>{near === "council" ? "Дом совета" : near === "shrine" ? "Рунное святилище" : "Тропа испытаний"}</b>
@@ -804,10 +803,8 @@ export default App;
           }}>Войти</button>
         </div>
       )}
-
       <div className="mid3d-ui mid3d-joy" ref={joy}>
         <div className="mid3d-knob" ref={knob} />
-      </div>
 
       <div className="mid3d-ui mid3d-hint">Используй джойстик слева для перемещения по Мидгарду</div>
 
@@ -830,9 +827,7 @@ export default App;
       )}
     </div>
   );
-      }
-/* Основные стили приложения */
-.app {
+        }
   width: 100vw;
   height: 100vh;
   background-color: #0c110e;
