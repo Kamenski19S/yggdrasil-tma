@@ -1244,7 +1244,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     let glbTreesAlive = true;
     const glbTreeInstances: THREE.Object3D[] = [];
 
-    const treeAsset = 'Midgard_Natural_Spruce_YUP.glb';
+    const treeAsset = 'Midgard_Natural_Spruce_V2_YUP.glb';
 
     const prepareNaturalTree = (source: THREE.Object3D) => {
       const tree = source.clone(true);
