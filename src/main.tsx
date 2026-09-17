@@ -999,7 +999,47 @@ function midHero3d(h: HeroDef) {
   g.userData.anim = { armL, armR, legL, legR, weapon, phase: h.id === "elf" ? 1.2 : h.id === "dwarf" ? 2.4 : 0 };
   return markMeshes(g);
 }
+function midTree(x: number, z: number, scale = 1, isPine = false): THREE.Group {
+  const group = new THREE.Group();
+  
+  // Ствол
+  const trunkGeo = new THREE.CylinderGeometry(0.3 * scale, 0.4 * scale, 2.5 * scale, 6);
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3020, roughness: 0.9 });
+  const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+  trunk.position.y = 1.25 * scale;
+  trunk.castShadow = true;
+  group.add(trunk);
 
+  // Крона
+  if (isPine) {
+    const pineGeo = new THREE.ConeGeometry(1.4 * scale, 3 * scale, 6);
+    const pineMat = new THREE.MeshStandardMaterial({ color: 0x2b4231, roughness: 0.85 });
+    const pine = new THREE.Mesh(pineGeo, pineMat);
+    pine.position.y = 3 * scale;
+    pine.castShadow = true;
+    group.add(pine);
+  } else {
+    const leavesGeo = new THREE.DodecahedronGeometry(1.5 * scale, 1);
+    const leavesMat = new THREE.MeshStandardMaterial({ color: 0x38593b, roughness: 0.85 });
+    const leaves = new THREE.Mesh(leavesGeo, leavesMat);
+    leaves.position.y = 3.2 * scale;
+    leaves.castShadow = true;
+    group.add(leaves);
+  }
+
+  group.position.set(x, 0, z);
+  return group;
+}
+
+function midRock(x: number, z: number, scale = 1): THREE.Mesh {
+  const rockGeo = new THREE.DodecahedronGeometry(0.8 * scale, 1);
+  const rockMat = new THREE.MeshStandardMaterial({ color: 0x5a6561, roughness: 0.95 });
+  const rock = new THREE.Mesh(rockGeo, rockMat);
+  rock.position.set(x, 0.4 * scale, z);
+  rock.scale.set(1, 0.7, 1.2);
+  rock.castShadow = true;
+  return rock;
+}
 function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void; eventDone: boolean }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
