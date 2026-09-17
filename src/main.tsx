@@ -1236,54 +1236,60 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     terrain.receiveShadow = true;
     scene.add(terrain);
 
-    // ===== REAL GLB TREES: three available assets, loaded once and cloned =====
-    // CUSTOM MIDGARD GLB FOREST — test pass.
-    // These three assets are the new hand-built Midgard trees.
-    // Their source files use Z-up coordinates, so they are rotated into Three.js Y-up here.
+    // ===== CUSTOM GLB TREE TEST — Y-UP assets =====
+    // These test files are exported directly in Three.js Y-up coordinates.
+    // One real scene per asset is loaded; no procedural firs and no old Tree.glb models.
     const gltfLoader = new GLTFLoader();
     let glbTreesAlive = true;
     const glbTreeInstances: THREE.Object3D[] = [];
 
-    type TreeAsset = 'Midgard_Nordic_Spruce_A.glb' | 'Midgard_Nordic_Spruce_B.glb' | 'Midgard_Nordic_Wind_Pine.glb';
+    type TreeAsset =
+      | 'Midgard_Nordic_Spruce_A_YUP.glb'
+      | 'Midgard_Nordic_Spruce_B_YUP.glb'
+      | 'Midgard_Nordic_Wind_Pine_YUP.glb';
+
     type TreeSpot = { x:number; z:number; h:number; r:number; asset:TreeAsset };
 
-    // Small, very visible test group around Mimir. No old Tree.glb/Tree2/Tree3 models here.
+    // Three deliberately visible test trees. The first one is near the village centre,
+    // the other two form a small group just behind it.
     const treeSpots: TreeSpot[] = [
-      { x: 4.2,  z: 1.8,  h: 8.0, r: 0.35, asset:'Midgard_Nordic_Spruce_A.glb' },
-      { x:-4.2,  z: 2.2,  h: 7.2, r: 4.15, asset:'Midgard_Nordic_Spruce_B.glb' },
-      { x: 8.0,  z:-3.8,  h: 8.5, r: 5.20, asset:'Midgard_Nordic_Wind_Pine.glb' },
-      { x:-8.0,  z:-4.2,  h: 8.8, r: 1.65, asset:'Midgard_Nordic_Spruce_A.glb' },
-      { x:12.5,  z: 6.5,  h: 7.4, r: 2.60, asset:'Midgard_Nordic_Spruce_B.glb' },
-      { x:-12.5, z: 6.8,  h: 8.2, r: 5.65, asset:'Midgard_Nordic_Wind_Pine.glb' },
+      { x: 0.0, z: 7.0,  h: 8.2, r: 0.25, asset:'Midgard_Nordic_Spruce_A_YUP.glb' },
+      { x: 5.2, z: 5.0,  h: 7.4, r: 4.15, asset:'Midgard_Nordic_Spruce_B_YUP.glb' },
+      { x:-5.2, z: 5.4,  h: 8.6, r: 1.55, asset:'Midgard_Nordic_Wind_Pine_YUP.glb' },
     ];
 
     const prepareGLBTree = (source: THREE.Object3D, spot: TreeSpot) => {
-      const tree = source.clone(true);
+      const tree = source;
       markMeshes(tree);
 
-      // The generated GLBs are Z-up. Convert to Three.js Y-up BEFORE fitting the height.
-      tree.rotation.x = -Math.PI / 2;
       const box = new THREE.Box3().setFromObject(tree);
       const size = new THREE.Vector3();
       box.getSize(size);
       const sourceHeight = Math.max(size.y, 0.001);
+
+      // Assets are already Y-up. Fit to the requested world height.
       tree.scale.setScalar(spot.h / sourceHeight);
       tree.rotation.y = spot.r;
 
       const ty = groundY(spot.x, spot.z);
       tree.position.set(spot.x, ty, spot.z);
+
+      // Put the bottom of the actual model exactly on the terrain.
+      tree.updateMatrixWorld(true);
       const fittedBox = new THREE.Box3().setFromObject(tree);
       tree.position.y += ty - fittedBox.min.y;
 
       tree.traverse((o:any) => {
         if (!o.isMesh) return;
+        o.visible = true;
+        o.frustumCulled = false;
         o.castShadow = true;
         o.receiveShadow = true;
         if (o.material) {
           const mats = Array.isArray(o.material) ? o.material : [o.material];
           mats.forEach((m:any) => {
-            if ('roughness' in m) m.roughness = Math.max(m.roughness ?? 0.9, 0.9);
-            if ('metalness' in m) m.metalness = Math.min(m.metalness ?? 0.0, 0.02);
+            if ('roughness' in m) m.roughness = 0.94;
+            if ('metalness' in m) m.metalness = 0.0;
           });
         }
       });
@@ -1292,29 +1298,25 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       glbTreeInstances.push(tree);
     };
 
-    const loadOneTreeAsset = (asset: TreeAsset, spots: TreeSpot[]) => {
+    const loadOneTreeAsset = (asset: TreeAsset, spot: TreeSpot) => {
       const url = `${BASE}img/models/${asset}`;
-      gltfLoader.load(url, (gltf:any) => {
-        if (!glbTreesAlive) return;
-        spots.forEach(spot => prepareGLBTree(gltf.scene, spot));
-        console.log(`[CUSTOM GLB] ${asset}: ${spots.length} instances`);
-      }, undefined, (error:any) => {
-        console.error(`[CUSTOM GLB] ${asset} failed:`, error);
-      });
+      gltfLoader.load(
+        url,
+        (gltf:any) => {
+          if (!glbTreesAlive) return;
+          prepareGLBTree(gltf.scene, spot);
+          console.log(`[CUSTOM GLB] loaded ${asset} -> ${url}`);
+        },
+        undefined,
+        (error:any) => {
+          console.error(`[CUSTOM GLB] FAILED ${asset} -> ${url}`, error);
+        }
+      );
     };
 
-    const placeAllGLBTrees = () => {
-      const byAsset = new Map<TreeAsset, TreeSpot[]>();
-      for (const spot of treeSpots) {
-        const list = byAsset.get(spot.asset) || [];
-        list.push(spot);
-        byAsset.set(spot.asset, list);
-      }
-      byAsset.forEach((spots, asset) => loadOneTreeAsset(asset, spots));
-    };
+    treeSpots.forEach(spot => loadOneTreeAsset(spot.asset, spot));
 
-    placeAllGLBTrees();
-
+    // No old Tree.glb/Tree2.glb/Tree3.glb and no procedural fir forest in this test.
     // Distant world depth: soft mountain ridges and far forest silhouettes.
     // They stay well beyond the playable area, so the village and landmarks keep open space.
     const makeHorizonRidge = (zBase: number, spread: number, height: number, seed: number, color: number) => {
