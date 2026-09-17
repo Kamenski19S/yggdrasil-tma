@@ -1249,12 +1249,12 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     // Small, very visible test group around Mimir. No old Tree.glb/Tree2/Tree3 models here.
     const treeSpots: TreeSpot[] = [
-      { x: 5.0,  z: 2.0,  h: 8.2, r: 0.35, asset:'Midgard_Nordic_Spruce_A.glb' },
-      { x:-5.0,  z: 3.0,  h: 7.4, r: 4.15, asset:'Midgard_Nordic_Spruce_B.glb' },
-      { x: 8.5,  z:-4.5,  h: 8.7, r: 5.20, asset:'Midgard_Nordic_Wind_Pine.glb' },
-      { x:-9.0,  z:-5.5,  h: 9.0, r: 1.65, asset:'Midgard_Nordic_Spruce_A.glb' },
-      { x:14.0,  z: 7.5,  h: 7.0, r: 2.60, asset:'Midgard_Nordic_Spruce_B.glb' },
-      { x:-14.0, z: 8.0,  h: 8.3, r: 5.65, asset:'Midgard_Nordic_Wind_Pine.glb' },
+      { x: 4.2,  z: 1.8,  h: 8.0, r: 0.35, asset:'Midgard_Nordic_Spruce_A.glb' },
+      { x:-4.2,  z: 2.2,  h: 7.2, r: 4.15, asset:'Midgard_Nordic_Spruce_B.glb' },
+      { x: 8.0,  z:-3.8,  h: 8.5, r: 5.20, asset:'Midgard_Nordic_Wind_Pine.glb' },
+      { x:-8.0,  z:-4.2,  h: 8.8, r: 1.65, asset:'Midgard_Nordic_Spruce_A.glb' },
+      { x:12.5,  z: 6.5,  h: 7.4, r: 2.60, asset:'Midgard_Nordic_Spruce_B.glb' },
+      { x:-12.5, z: 6.8,  h: 8.2, r: 5.65, asset:'Midgard_Nordic_Wind_Pine.glb' },
     ];
 
     const prepareGLBTree = (source: THREE.Object3D, spot: TreeSpot) => {
@@ -1292,35 +1292,28 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       glbTreeInstances.push(tree);
     };
 
-    const loadOneTreeAsset = async (asset: TreeAsset, spots: TreeSpot[]) => {
+    const loadOneTreeAsset = (asset: TreeAsset, spots: TreeSpot[]) => {
       const url = `${BASE}img/models/${asset}`;
-      try {
-        const response = await fetch(url, { cache:'no-store' });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const buffer = await response.arrayBuffer();
-        const gltf:any = await new Promise((resolve, reject) => {
-          gltfLoader.parse(buffer, '', resolve, reject);
-        });
+      gltfLoader.load(url, (gltf:any) => {
         if (!glbTreesAlive) return;
         spots.forEach(spot => prepareGLBTree(gltf.scene, spot));
         console.log(`[CUSTOM GLB] ${asset}: ${spots.length} instances`);
-      } catch (error) {
+      }, undefined, (error:any) => {
         console.error(`[CUSTOM GLB] ${asset} failed:`, error);
-      }
+      });
     };
 
-    const placeAllGLBTrees = async () => {
+    const placeAllGLBTrees = () => {
       const byAsset = new Map<TreeAsset, TreeSpot[]>();
       for (const spot of treeSpots) {
         const list = byAsset.get(spot.asset) || [];
         list.push(spot);
         byAsset.set(spot.asset, list);
       }
-      await Promise.all([...byAsset.entries()].map(([asset, spots]) => loadOneTreeAsset(asset, spots)));
-      console.log(`[CUSTOM GLB] ${glbTreeInstances.length} new trees visible`);
+      byAsset.forEach((spots, asset) => loadOneTreeAsset(asset, spots));
     };
 
-    void placeAllGLBTrees();
+    placeAllGLBTrees();
 
     // Distant world depth: soft mountain ridges and far forest silhouettes.
     // They stay well beyond the playable area, so the village and landmarks keep open space.
@@ -1360,37 +1353,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     makeHorizonRidge(-82, 1, 17, 2.1, 0x72857d);
     makeHorizonRidge(-72, 1, 11, 6.7, 0x81938a);
 
-    const makeFarFir = (x: number, z: number, h: number, r: number, color: number) => {
-      const g = new THREE.Group();
-      const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(r * 0.10, r * 0.14, h * 0.42, 5),
-        new THREE.MeshLambertMaterial({ color: 0x5a4a39 })
-      );
-      trunk.position.y = h * 0.21;
-      g.add(trunk);
-      for (let i = 0; i < 4; i++) {
-        const rr = r * (1 - i * 0.17);
-        const crown = new THREE.Mesh(
-          new THREE.ConeGeometry(rr, h * (0.48 - i * 0.035), 7, 1),
-          new THREE.MeshLambertMaterial({ color })
-        );
-        crown.position.y = h * (0.38 + i * 0.15);
-        crown.rotation.y = (i * 1.7 + x * 0.03) % Math.PI;
-        g.add(crown);
-      }
-      g.position.set(x, midHeight(x, z) - 0.2, z);
-      g.scale.setScalar(0.82 + midHash(x, z) * 0.34);
-      scene.add(markMeshes(g));
-    };
-
-    for (let i = 0; i < 26; i++) {
-      const x = -86 + i * 6.8;
-      makeFarFir(x, -67 - (i % 3) * 3, 9 + (i % 5) * 1.5, 2.7 + (i % 4) * 0.45, 0x526b58);
-    }
-    for (let i = 0; i < 20; i++) {
-      const x = -82 + i * 8.7;
-      makeFarFir(x, 68 + (i % 4) * 2.5, 7.5 + (i % 4) * 1.2, 2.4, 0x617765);
-    }
+    // Old procedural far-firs removed for the GLB tree test.
+    // This prevents the old cone-shaped forest from hiding the new models.
 
     const addMesh = (g: THREE.Object3D, interactive?: string, label?: string) => {
       if (interactive) g.userData = { id: interactive, label: label || interactive };
