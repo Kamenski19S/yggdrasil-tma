@@ -394,13 +394,6 @@ function markMeshes(g: THREE.Object3D) {
   return g;
 }
 
-function midTree(x: number, z: number, s = 1, autumn = false) {
-  const g = new THREE.Group();
-  const trunk = midCyl(0.34 * s, 2.5 * s, 0x4b3021, 8, 1);
-  trunk.position.y = 1.25 * s;
-  trunk.rotation.z = (midHash(x, z) - 0.5) * 0.08;
-  g.add(trunk);
-
   const greens = autumn ? [0x53623b, 0x697449, 0x7a7548] : [0x213f2a, 0x2d5132, 0x3a6040];
   for (let i = 0; i < 3; i++) {
     const r = (1.75 - i * 0.28) * s;
@@ -999,8 +992,6 @@ function midHero3d(h: HeroDef) {
   g.userData.anim = { armL, armR, legL, legR, weapon, phase: h.id === "elf" ? 1.2 : h.id === "dwarf" ? 2.4 : 0 };
   return markMeshes(g);
 }
-function midTree(x: number, z: number, scale = 1, isPine = false): THREE.Group {
-  const group = new THREE.Group();
   
   // Ствол
   const trunkGeo = new THREE.CylinderGeometry(0.3 * scale, 0.4 * scale, 2.5 * scale, 6);
