@@ -394,30 +394,6 @@ function markMeshes(g: THREE.Object3D) {
   return g;
 }
 
-function midTree(x: number, z: number, s = 1, autumn = false) {
-  const g = new THREE.Group();
-  const trunk = midCyl(0.34 * s, 2.5 * s, 0x4b3021, 8, 1);
-  trunk.position.y = 1.25 * s;
-  trunk.rotation.z = (midHash(x, z) - 0.5) * 0.08;
-  g.add(trunk);
-
-  const greens = autumn ? [0x53623b, 0x697449, 0x7a7548] : [0x213f2a, 0x2d5132, 0x3a6040];
-  for (let i = 0; i < 3; i++) {
-    const r = (1.75 - i * 0.28) * s;
-    const crownGeo = midWarpGeometry(
-      new THREE.ConeGeometry(r, (2.7 - i * 0.18) * s, 11, 5),
-      0.13 * s,
-      i + x * 0.17 + z * 0.11
-    );
-    const crown = new THREE.Mesh(crownGeo, midMat(greens[i], 1));
-    crown.position.y = (2.35 + i * 0.92) * s;
-    crown.rotation.y = midHash(x + i, z - i) * Math.PI;
-    g.add(crown);
-  }
-  g.position.set(x, midHeight(x, z), z);
-  return markMeshes(g);
-}
-
 function midRock(x: number, z: number, s = 1) {
   const g = new THREE.Group();
   const rock = new THREE.Mesh(
@@ -1260,27 +1236,47 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     terrain.receiveShadow = true;
     scene.add(terrain);
 
-    // ===== REAL GLB TREES: one shared GLB, many lightweight clones =====
+    // ===== REAL GLB TREES: load each model once, then clone lightweight instances =====
+    // All four tree assets live in public/img/models/. Each GLB is fetched only once.
+    // Instances share the loaded geometry/material resources instead of downloading the file again.
     const gltfLoader = new GLTFLoader();
-    let glbTreeAlive = true;
+    let glbTreesAlive = true;
     const glbTreeInstances: THREE.Object3D[] = [];
-    let glbTreeLight: THREE.PointLight | null = null;
+    const glbTreeLights: THREE.PointLight[] = [];
 
-    // One loaded Tree.glb is reused for all trees. Geometry/material resources stay shared.
-    const treeSpots = [
-      { x: 3.2, z: 0.4, s: 1.00, r: 0.28 },   // beside Mimir's well
-      { x: 7.8, z: 7.0, s: 0.86, r: 1.12 },
-      { x: -7.0, z: 5.5, s: 0.94, r: 2.28 },
-      { x: 15.5, z: 6.5, s: 1.08, r: 0.74 },
-      { x: -17.0, z: -4.5, s: 0.90, r: 2.74 },
-      { x: 29.0, z: -10.0, s: 1.04, r: 1.86 },
-      { x: -28.0, z: 14.0, s: 0.82, r: 3.40 },
-      { x: 21.5, z: 28.0, s: 0.96, r: 5.05 },
-      { x: -24.0, z: -21.0, s: 1.10, r: 4.22 },
-      { x: 5.0, z: 34.0, s: 0.88, r: 5.72 },
+    type TreeAsset = 'Tree.glb' | 'Tree2.glb' | 'Tree3.glb' | 'Tree_1.glb';
+    type TreeSpot = { x:number; z:number; s:number; r:number; asset:TreeAsset; light?:boolean };
+
+    // Carefully spaced by hand so the models do not sit inside houses, landmarks or paths.
+    // s changes height; r changes the individual silhouette orientation.
+    const treeSpots: TreeSpot[] = [
+      { x: 3.2,  z: 0.4,   s: 0.92, r: 0.25, asset:'Tree.glb',   light:true },
+      { x: 7.2,  z: 3.8,   s: 0.78, r: 1.85, asset:'Tree2.glb' },
+      { x: -6.8, z: 3.9,   s: 1.05, r: 4.10, asset:'Tree3.glb' },
+      { x: 17.2, z: 4.6,   s: 0.88, r: 5.20, asset:'Tree_1.glb' },
+      { x: -18.0,z: -2.5,  s: 0.97, r: 2.70, asset:'Tree.glb' },
+      { x: 24.5, z: 11.5,  s: 1.12, r: 0.70, asset:'Tree2.glb' },
+      { x: -25.0,z: 12.5,  s: 0.84, r: 3.35, asset:'Tree3.glb' },
+      { x: 31.0, z: -11.0, s: 0.95, r: 5.65, asset:'Tree_1.glb' },
+      { x: -31.0,z: -16.0, s: 1.08, r: 1.25, asset:'Tree.glb' },
+      { x: 8.0,  z: 31.0,  s: 0.86, r: 4.55, asset:'Tree2.glb' },
+      { x: -15.0,z: 28.0,  s: 1.16, r: 2.05, asset:'Tree3.glb' },
+      { x: 36.0, z: 26.0,  s: 0.90, r: 0.95, asset:'Tree_1.glb' },
+      { x: -36.0,z: 30.0,  s: 1.02, r: 3.85, asset:'Tree.glb' },
+      { x: 44.0, z: 15.0,  s: 1.14, r: 5.05, asset:'Tree2.glb' },
+      { x: -43.0,z: -4.0,  s: 0.82, r: 1.70, asset:'Tree3.glb' },
+      { x: 42.0, z: -17.0, s: 0.98, r: 3.15, asset:'Tree_1.glb' },
+      { x: -43.0,z: -27.0, s: 1.12, r: 4.80, asset:'Tree.glb' },
+      { x: 23.0, z: -32.0, s: 0.87, r: 2.35, asset:'Tree2.glb' },
+      { x: -23.0,z: 39.0,  s: 1.06, r: 5.50, asset:'Tree3.glb' },
+      { x: 34.0, z: 42.0,  s: 0.93, r: 0.35, asset:'Tree_1.glb' },
+      { x: -37.0,z: 49.0,  s: 1.15, r: 3.60, asset:'Tree.glb' },
+      { x: 48.0, z: 47.0,  s: 0.84, r: 1.05, asset:'Tree2.glb' },
+      { x: -49.0,z: -42.0, s: 1.03, r: 4.35, asset:'Tree3.glb' },
+      { x: 52.0, z: -46.0, s: 0.91, r: 5.90, asset:'Tree_1.glb' },
     ];
 
-    const prepareGLBTree = (source: THREE.Object3D, spot: {x:number; z:number; s:number; r:number}) => {
+    const prepareGLBTree = (source: THREE.Object3D, spot: TreeSpot) => {
       const tree = source.clone(true);
       markMeshes(tree);
 
@@ -1294,20 +1290,18 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
       const ty = groundY(spot.x, spot.z);
       tree.position.set(spot.x, ty, spot.z);
-
-      // Snap the model's lowest point to the terrain, even if the GLB origin is above/below its roots.
       const scaledBox = new THREE.Box3().setFromObject(tree);
       tree.position.y += ty - scaledBox.min.y;
 
-      tree.traverse((o: any) => {
+      tree.traverse((o:any) => {
         if (!o.isMesh) return;
         o.castShadow = true;
         o.receiveShadow = true;
         if (o.material) {
           const mats = Array.isArray(o.material) ? o.material : [o.material];
-          mats.forEach((m: any) => {
-            if ('roughness' in m) m.roughness = Math.max(m.roughness ?? 0.82, 0.80);
-            if ('metalness' in m) m.metalness = Math.min(m.metalness ?? 0.0, 0.08);
+          mats.forEach((m:any) => {
+            if ('roughness' in m) m.roughness = Math.max(m.roughness ?? 0.82, 0.82);
+            if ('metalness' in m) m.metalness = Math.min(m.metalness ?? 0.0, 0.05);
           });
         }
       });
@@ -1317,43 +1311,47 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       return tree;
     };
 
-    const placeGLBTrees = (gltf: any) => {
-      if (!glbTreeAlive) return;
-
-      // gltf.scene is the only model resource loaded from the network.
-      // Every visible spruce below is a lightweight Object3D clone sharing the same buffers/materials.
-      const source = gltf.scene;
-      for (const spot of treeSpots) prepareGLBTree(source, spot);
-
-      // A subtle cold northern light near Mimir. The sun remains the main shadow caster;
-      // this local light gives the spruce a blue-white edge without turning it neon.
-      const wellSpot = treeSpots[0];
-      const wellY = groundY(wellSpot.x, wellSpot.z);
-      glbTreeLight = new THREE.PointLight(0xb8d8e8, 1.0, 10.5, 2);
-      glbTreeLight.position.set(wellSpot.x + 2.4, wellY + 4.0, wellSpot.z + 2.0);
-      glbTreeLight.castShadow = true;
-      glbTreeLight.shadow.mapSize.set(512, 512);
-      glbTreeLight.shadow.camera.near = 0.5;
-      glbTreeLight.shadow.camera.far = 12;
-      glbTreeLight.shadow.bias = -0.001;
-      scene.add(glbTreeLight);
-
-      console.log(`Real GLB spruces loaded: ${glbTreeInstances.length} visible / 1 shared asset`);
-    };
-
-    const tryLoadGLBTrees = async () => {
-      const url = `${BASE}img/models/Tree.glb`;
+    const loadOneTreeAsset = async (asset: TreeAsset, spots: TreeSpot[]) => {
+      const url = `${BASE}img/models/${asset}`;
       try {
-        const response = await fetch(url, { cache: 'no-store' });
+        const response = await fetch(url, { cache:'no-store' });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const buffer = await response.arrayBuffer();
-        gltfLoader.parse(buffer, '', placeGLBTrees, (error) => console.error('Tree.glb parse failed:', error));
+        const gltf:any = await new Promise((resolve, reject) => {
+          gltfLoader.parse(buffer, '', resolve, reject);
+        });
+        if (!glbTreesAlive) return;
+
+        const source = gltf.scene;
+        spots.forEach(spot => prepareGLBTree(source, spot));
+        console.log(`[GLB TREES] ${asset}: ${spots.length} clones from 1 loaded asset`);
       } catch (error) {
-        console.error('Tree.glb could not be loaded:', error);
+        console.error(`[GLB TREES] ${asset} could not be loaded:`, error);
       }
     };
 
-    void tryLoadGLBTrees();
+    const placeAllGLBTrees = async () => {
+      const byAsset = new Map<TreeAsset, TreeSpot[]>();
+      for (const spot of treeSpots) {
+        const list = byAsset.get(spot.asset) || [];
+        list.push(spot);
+        byAsset.set(spot.asset, list);
+      }
+      await Promise.all([...byAsset.entries()].map(([asset, spots]) => loadOneTreeAsset(asset, spots)));
+
+      // A single soft cold light near Mimir gives the closest spruce a northern dawn edge.
+      const wellSpot = treeSpots[0];
+      const wellY = groundY(wellSpot.x, wellSpot.z);
+      const light = new THREE.PointLight(0xb8d8e8, 0.72, 9.5, 2);
+      light.position.set(wellSpot.x + 1.7, wellY + 3.2, wellSpot.z + 1.8);
+      light.castShadow = false; // the sun remains the main shadow caster; this keeps mobile rendering light.
+      scene.add(light);
+      glbTreeLights.push(light);
+
+      console.log(`[GLB TREES] ${glbTreeInstances.length} visible instances / 4 shared assets`);
+    };
+
+    void placeAllGLBTrees();
 
     // Distant world depth: soft mountain ridges and far forest silhouettes.
     // They stay well beyond the playable area, so the village and landmarks keep open space.
@@ -2022,50 +2020,6 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     // Realistic fantasy trees: firs for the forest + sacred ash trees around Midgard.
     // The ash is a deliberate visual echo of Yggdrasil rather than a generic oak.
-
-    const firTree=(x:number,z:number,s:number)=>{
-      const g=new THREE.Group(),y=groundY(x,z);
-      const bark=new THREE.MeshStandardMaterial({map:barkTexture,color:0xffffff,roughness:.98,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.034});
-      const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18*s,.38*s,5.2*s,9),bark);
-      trunk.position.y=2.6*s; trunk.rotation.z=(midHash(x,z)-.5)*.08; trunk.scale.x=1.08+midHash(x,z+4)*.22; g.add(trunk);
-      for(let b=0;b<9;b++){
-        const yy=(1.15+b*.47)*s, side=b%2?1:-1, len=(.9+b*.16)*s;
-        const br=new THREE.Mesh(new THREE.CylinderGeometry(.035*s,.095*s,len,7),bark);
-        br.position.set(side*(.28+b*.035)*s,yy,(midHash(b,z)-.5)*.38*s);
-        br.rotation.z=side*(.62-midHash(b,x)*.18); br.rotation.y=midHash(b+21,z)*Math.PI*2; g.add(br);
-      }
-      const fm=[0x2c5132,0x3b6840,0x4b7a49];
-      for(let i=0;i<12;i++){
-        const r=Math.max(.48,(1.42-i*.075))*s;
-        const crown=new THREE.Mesh(organicBlobGeometry(new THREE.SphereGeometry(r,10,7),.18*s, i+Math.round(x*3+z*5)),new THREE.MeshStandardMaterial({map:foliageTexture,color:fm[i%3],roughness:.995}));
-        crown.scale.set(1.0+midHash(i,x)*.25,.55+midHash(i,z)*.16,.82+midHash(i*2,x)*.22);
-        crown.position.set((midHash(i*4,x)-.5)*.58*s,(1.55+i*.37)*s,(midHash(i*5,z)-.5)*.55*s);
-        windFoliage.push({o:crown,baseX:crown.rotation.x,baseZ:crown.rotation.z,phase:midHash(i+41,x+z)*Math.PI*2,amp:.010+.008*midHash(i+42,z)});
-        g.add(crown);
-      }
-      for(let i=0;i<3;i++){
-        const moss=new THREE.Mesh(new THREE.SphereGeometry(.38*s,7,5),new THREE.MeshStandardMaterial({color:i%2?0x314d36:0x3d5d3d,roughness:1}));
-        moss.scale.set(1.5,.28,.85); moss.position.set((i-1)*.45*s,.55*s,(midHash(i,88)-.5)*.5*s); g.add(moss);
-      }
-
-      // Small bark knots break the perfectly smooth trunk silhouette.
-      for(let i=0;i<4;i++){
-        const knot=new THREE.Mesh(new THREE.SphereGeometry((.11+midHash(i,77)*.08)*s,7,5),bark);
-        knot.scale.set(1.35,.72,.82);
-        knot.position.set((i%2?1:-1)*.18*s,(1.0+i*.78)*s,.29*s);
-        knot.rotation.y=(i%2)*Math.PI;
-        g.add(knot);
-      }
-      // A few thin surface roots visually connect trunk and forest floor.
-      for(let i=0;i<4;i++){
-        const a=i/4*Math.PI*2+.4, len=(.55+midHash(i,79)*.7)*s;
-        const root=new THREE.Mesh(new THREE.CylinderGeometry(.045*s,.12*s,len,6),bark);
-        root.position.set(Math.cos(a)*len*.42,.14*s,Math.sin(a)*len*.42);
-        root.rotation.z=Math.cos(a)*.85; root.rotation.x=-Math.sin(a)*.85; root.rotation.y=-a;
-        g.add(root);
-      }
-      g.position.set(x,y,z); addMesh(g); if(s>=1.15)addCircleCollider(x,z,.46*s,.04);
-    };
 
     const ashTree=(x:number,z:number,s:number,ancient=false)=>{
       const g=new THREE.Group(), y=groundY(x,z);
@@ -2831,14 +2785,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const fallen=new THREE.Group(); fallen.position.set(-30,groundY(-30,15),15); const trunk= new THREE.Mesh(new THREE.CylinderGeometry(.5,.62,7,8),new THREE.MeshStandardMaterial({map:barkTexture,color:0x4c392b,roughness:1,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.034})); trunk.rotation.z=Math.PI/2; trunk.position.y=.5; fallen.add(trunk); const cut=new THREE.Mesh(new THREE.CylinderGeometry(.53,.53,.12,12),mat(0x75644d,1)); cut.rotation.z=Math.PI/2; cut.position.set(3.5,.5,0); fallen.add(cut); scene.add(fallen);
     for(let i=0;i<7;i++){const rune=new THREE.Mesh(new THREE.DodecahedronGeometry(.14,0),mat(0x697d72,1));const a=i/7*Math.PI*2;rune.position.set(-45+Math.cos(a)*4,.12+groundY(-45+Math.cos(a)*4,75+Math.sin(a)*4),75+Math.sin(a)*4);scene.add(rune);}
 
-    // Dense forest ring uses varied, irregular firs.
-    for(let i=0;i<95;i++){
-      const a=midHash(i,77)*Math.PI*2;const r=68+midHash(i,91)*27;
-      const x=Math.cos(a)*r,z=Math.sin(a)*r+2;
-      const reserved=[[ashGroveX,ashGroveZ,11],[18,55,13],[-65,5,11],[-60,-25,10],[43,32,12],[62,78,10],[-72,48,7],[50,-62,7],[58,-28,15],[68,8,11],[75,30,13],[-45,75,12],[-30,15,10],[5,-70,13],[-72,-48,11]];
-      const reservedHit=reserved.some(([rx,rz,rr])=>Math.hypot(x-rx,z-rz)<rr);
-      if(Math.abs(x+57)>9 && !reservedHit)firTree(x,z,.78+midHash(i,13)*.82);
-    }
+    // The old procedural fir forest has been removed. Real GLB trees above now form the visible spruce layer.
+    // Sacred ash trees remain temporarily because they are landmarks; they will be replaced by real assets later.
 
     // Three ash trees mark important places in Midgard; the largest is the village's
     // symbolic "ash of memory", a visual hint toward Yggdrasil.
@@ -3178,7 +3126,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{glbTreeAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;if(glbTreeLight){scene.remove(glbTreeLight);glbTreeLight.dispose();glbTreeLight=null;}cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
+    return()=>{glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;glbTreeLights.forEach((light)=>scene.remove(light));glbTreeLights.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
   },[h.id,on,eventDone]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
