@@ -1244,12 +1244,16 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const glbTreeInstances: THREE.Object3D[] = [];
     const glbTreeLights: THREE.PointLight[] = [];
 
-    type TreeAsset = 'Tree.glb' | 'Tree2.glb' | 'Tree3.glb';
+    type TreeAsset = 'Tree.glb' | 'Tree2.glb' | 'Tree3.glb' | 'Midgard_Nordic_Spruce_A.glb' | 'Midgard_Nordic_Spruce_B.glb' | 'Midgard_Nordic_Wind_Pine.glb';
     type TreeSpot = { x:number; z:number; s:number; r:number; asset:TreeAsset; light?:boolean };
 
     // The trees are deliberately larger than the previous pass and spaced in natural groups.
     // The village centre and the main paths stay open; the forest becomes denser toward the edges.
     const treeSpots: TreeSpot[] = [
+      // First custom Midgard tree test: just outside the Mimir stone circle.
+      // Keep this one easy to spot before we replace the rest of the forest.
+      { x: 6.0, z: 1.6, s: 1.00, r: 0.35, asset:'Midgard_Nordic_Spruce_A.glb', light:true },
+
       // Around Mimir / village edge
       { x: 3.4,  z: 1.2,   s: 0.98, r: 0.25, asset:'Tree.glb', light:true },
       { x: 7.8,  z: 4.8,   s: 0.88, r: 1.85, asset:'Tree2.glb' },
@@ -1362,13 +1366,13 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       // A soft cold light near Mimir gives the nearest spruce a subtle northern edge.
       const wellSpot = treeSpots[0];
       const wellY = groundY(wellSpot.x, wellSpot.z);
-      const light = new THREE.PointLight(0xb8d8e8, 0.72, 9.5, 2);
+      const light = new THREE.PointLight(0xb8d8e8, 0.62, 8.5, 2);
       light.position.set(wellSpot.x + 1.7, wellY + 3.2, wellSpot.z + 1.8);
       light.castShadow = false;
       scene.add(light);
       glbTreeLights.push(light);
 
-      console.log(`[GLB TREES] ${glbTreeInstances.length} visible instances / 3 shared assets`);
+      console.log(`[GLB TREES] ${glbTreeInstances.length} visible instances / custom + existing shared assets`);
     };
 
     void placeAllGLBTrees();
