@@ -1312,10 +1312,10 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
 
     const tryLoadDiagnosticGLB = async () => {
-      // These are the user's actual GitHub paths under public/img/model/.
+      // These are the user's actual GitHub paths under public/img/models/.
       const candidates = [
-        `${BASE}img/model/Tree.glb`,
-        `${BASE}img/model/Tree_1.glb`
+        `${BASE}img/models/Tree.glb`,
+        `${BASE}img/models/Tree_1.glb`
       ];
       for (const url of candidates) {
         try {
