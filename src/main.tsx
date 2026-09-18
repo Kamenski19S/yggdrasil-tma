@@ -1272,6 +1272,25 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         o.castShadow = true;
         o.receiveShadow = true;
 
+        // V3 cleanup: a few very small peripheral foliage pieces sit too far
+        // outside the upper crown and read as detached/floating leaves.
+        // Hide only those small outliers; keep the main crown and branches intact.
+        const partBox = new THREE.Box3().setFromObject(o);
+        const partSize = new THREE.Vector3();
+        const partCenter = new THREE.Vector3();
+        partBox.getSize(partSize);
+        partBox.getCenter(partCenter);
+        const maxPartSize = Math.max(partSize.x, partSize.y, partSize.z);
+        const isUpperPeripheralSpeck =
+          maxPartSize < 0.45 &&
+          partCenter.y > 5.7 &&
+          (Math.abs(partCenter.x) > 0.8 || Math.abs(partCenter.z) > 0.95);
+
+        if (isUpperPeripheralSpeck) {
+          o.visible = false;
+          return;
+        }
+
         if (o.material) {
           const mats = Array.isArray(o.material) ? o.material : [o.material];
           mats.forEach((m:any) => {
