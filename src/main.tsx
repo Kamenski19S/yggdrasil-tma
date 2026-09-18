@@ -1243,7 +1243,6 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const gltfLoader = new GLTFLoader();
     let glbTreesAlive = true;
     const glbTreeInstances: THREE.Object3D[] = [];
-    const glbTreeLights: THREE.PointLight[] = [];
 
     const treeAsset = 'Midgard_Natural_Spruce_V3_YUP.glb';
 
@@ -1279,22 +1278,15 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
             if ('roughness' in m) m.roughness = 0.94;
             if ('metalness' in m) m.metalness = 0.0;
 
-            // V3 tone pass: darken the imported bark and foliage by 25%.
+            // Very subtle V3 tone pass: darken the imported bark and foliage by 2%.
             // The model's textures remain intact; the material color acts as a global multiplier.
-            if (m.color?.isColor) m.color.multiplyScalar(0.75);
+            if (m.color?.isColor) m.color.multiplyScalar(0.98);
           });
         }
       });
 
       scene.add(tree);
       glbTreeInstances.push(tree);
-
-      // Soft warm key light on the tree: enough to reveal the bark and branch structure
-      // without turning it into a glowing object. Kept local for mobile performance.
-      const treeLight = new THREE.PointLight(0xffd9a3, 2.2, 12, 2);
-      treeLight.position.set(x + 1.8, ty + 4.8, z + 2.2);
-      scene.add(treeLight);
-      glbTreeLights.push(treeLight);
 
       const fitted = new THREE.Box3().setFromObject(tree);
       const fittedSize = new THREE.Vector3();
@@ -3070,7 +3062,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;glbTreeLights.forEach((light)=>scene.remove(light));glbTreeLights.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
+    return()=>{glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
   },[h.id,on,eventDone]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
