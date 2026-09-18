@@ -1345,7 +1345,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
             mats.forEach((m:any) => {
               if ('roughness' in m) m.roughness = 0.94;
               if ('metalness' in m) m.metalness = 0.0;
-              if (m.color?.isColor) m.color.multiplyScalar(0.95);
+              if (m.color?.isColor) m.color.multiplyScalar(0.75);
               if (m.color?.isColor) m.color.multiplyScalar(0.98);
             });
           }
