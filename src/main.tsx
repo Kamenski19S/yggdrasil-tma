@@ -1346,6 +1346,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
               if ('roughness' in m) m.roughness = 0.94;
               if ('metalness' in m) m.metalness = 0.0;
               if (m.color?.isColor) m.color.multiplyScalar(0.98);
+              if (m.color?.isColor) m.color.multiplyScalar(0.98);
             });
           }
         });
@@ -1414,6 +1415,32 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         const oakY = groundY(oakX, oakZ);
         const oakBox = new THREE.Box3().setFromObject(oak);
         oak.position.set(oakX, oakY - oakBox.min.y, oakZ);
+        oak.updateMatrixWorld(true);
+
+        // Soft contact-shadow bands at the three main trunk bends.
+        // These sit slightly inside the trunk silhouette and visually merge the
+        // separate tapered sections without changing the oak's overall shape.
+        const oakJointShadow = new THREE.MeshBasicMaterial({
+          color: 0x251a12,
+          transparent: true,
+          opacity: 0.22,
+          depthWrite: false
+        });
+
+        const addOakJointShadow = (y:number, radius:number) => {
+          const joint = new THREE.Mesh(
+            new THREE.CylinderGeometry(radius, radius * 1.04, 0.16, 8),
+            oakJointShadow
+          );
+          joint.position.set(0.02, y, 0.01);
+          joint.rotation.y = 0.08;
+          oak.add(joint);
+        };
+
+        addOakJointShadow(1.72, 0.88);
+        addOakJointShadow(3.32, 0.74);
+        addOakJointShadow(5.02, 0.60);
+
         oak.updateMatrixWorld(true);
 
         scene.add(oak);
