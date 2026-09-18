@@ -1237,100 +1237,142 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     scene.add(terrain);
 
     // ===== NATURAL SPRUCE TEST — Y-UP GLB =====
-    // One real custom tree only. The new GLB is already Y-up, so NO rotation.x.
-    // This test deliberately disables all other tree instances so we can judge
-    // the model itself without old/procedural trees confusing the result.
+    // V3 natural spruce: one shared GLB is cloned into a light mobile forest.
+    // The first tree stays near Mimir's well; the other 29 are spread across Midgard.
     const gltfLoader = new GLTFLoader();
     let glbTreesAlive = true;
     const glbTreeInstances: THREE.Object3D[] = [];
-
     const treeAsset = 'Midgard_Natural_Spruce_V3_YUP.glb';
 
-    const prepareNaturalTree = (source: THREE.Object3D) => {
-      const tree = source.clone(true);
-      markMeshes(tree);
+    const treePositions: Array<[number, number, number, number]> = [
+      // Near Mimir's well — just outside the central stone ring.
+      [9.0, 9.0, 1.00, 0.20],
 
-      // Y-up model: keep its native orientation.
-      tree.rotation.set(0, 0, 0);
-      tree.scale.setScalar(1.0);
-      tree.updateMatrixWorld(true);
+      // North / northwest.
+      [-24, 26, 0.92, 2.20], [-43, 43, 1.08, 5.10], [-67, 34, 0.82, 1.40],
+      [-78, 4, 1.12, 4.40], [-54, -18, 0.90, 0.70], [-72, -30, 1.04, 3.30],
+      [-43, -52, 0.86, 5.80], [-68, -62, 1.10, 2.70],
 
-      // Put the single test tree in an open, easy-to-find position.
-      const x = 0;
-      const z = 8;
+      // West / center.
+      [-30, 4, 1.00, 4.90], [-19, 39, 0.88, 0.30], [-8, 62, 1.07, 2.80],
+      [8, 79, 0.91, 5.60], [30, 72, 1.12, 1.10], [46, 82, 0.86, 3.90],
+
+      // East / northeast.
+      [63, 72, 1.03, 5.00], [80, 48, 0.90, 2.00], [72, 23, 1.08, 4.70],
+      [57, 10, 0.84, 0.90], [40, 42, 1.05, 3.60], [67, -8, 0.94, 5.40],
+
+      // South / southeast.
+      [45, -28, 1.10, 1.80], [67, -42, 0.87, 4.10], [28, -52, 1.03, 0.50],
+      [8, -63, 0.89, 3.00], [-18, -72, 1.06, 5.20], [-48, -77, 0.93, 2.40],
+      [79, -72, 1.11, 0.10], [82, -12, 0.88, 3.70], [25, 15, 0.97, 2.60]
+    ];
+
+    // Keep the village, paths and named landmarks readable.
+    const treeExclusionZones: Array<[number, number, number]> = [
+      [1, 0, 11.0], [-10, -5, 7.0], [13, -18, 7.0],
+      [-52, 38, 6.5], [50, 60, 6.0], [-45, -48, 6.0],
+      [-5, 75, 9.5], [58, -28, 8.5], [-72, 48, 6.0],
+      [50, -62, 6.0], [18, 55, 9.5], [-65, 5, 7.0],
+      [43, 32, 9.0], [62, 78, 8.0], [68, 8, 9.0],
+      [75, 32.75, 5.0], [-45, 75, 10.0], [-30, 15, 8.0],
+      [5, -70, 8.0], [-72, -48, 8.0]
+    ];
+
+    const tooCloseToLandmark = (x:number,z:number,extra:number=0) =>
+      treeExclusionZones.some(([cx,cz,r]) => Math.hypot(x-cx,z-cz) < r + extra);
+
+    const makeNaturalTree = (
+      template: THREE.Object3D,
+      x: number,
+      z: number,
+      scale: number,
+      rotationY: number
+    ) => {
+      const tree = template.clone(true);
+      tree.rotation.set(0, rotationY, 0);
+      tree.scale.setScalar(scale);
+
       const ty = groundY(x, z);
-
-      // Snap the lowest actual model point to the terrain.
       const box = new THREE.Box3().setFromObject(tree);
       tree.position.set(x, ty - box.min.y, z);
       tree.updateMatrixWorld(true);
 
-      tree.traverse((o:any) => {
-        if (!o.isMesh) return;
-        o.visible = true;
-        o.frustumCulled = false;
-        o.castShadow = true;
-        o.receiveShadow = true;
-
-        // V3 cleanup: a few very small peripheral foliage pieces sit too far
-        // outside the upper crown and read as detached/floating leaves.
-        // Hide only those small outliers; keep the main crown and branches intact.
-        const partBox = new THREE.Box3().setFromObject(o);
-        const partSize = new THREE.Vector3();
-        const partCenter = new THREE.Vector3();
-        partBox.getSize(partSize);
-        partBox.getCenter(partCenter);
-        const maxPartSize = Math.max(partSize.x, partSize.y, partSize.z);
-        const isUpperPeripheralSpeck =
-          maxPartSize < 0.45 &&
-          partCenter.y > 5.7 &&
-          (Math.abs(partCenter.x) > 0.8 || Math.abs(partCenter.z) > 0.95);
-
-        if (isUpperPeripheralSpeck) {
-          o.visible = false;
-          return;
-        }
-
-        if (o.material) {
-          const mats = Array.isArray(o.material) ? o.material : [o.material];
-          mats.forEach((m:any) => {
-            if ('roughness' in m) m.roughness = 0.94;
-            if ('metalness' in m) m.metalness = 0.0;
-
-            // Very subtle V3 tone pass: darken the imported bark and foliage by 2%.
-            // The model's textures remain intact; the material color acts as a global multiplier.
-            if (m.color?.isColor) m.color.multiplyScalar(0.98);
-          });
-        }
-      });
-
       scene.add(tree);
       glbTreeInstances.push(tree);
-
-      const fitted = new THREE.Box3().setFromObject(tree);
-      const fittedSize = new THREE.Vector3();
-      fitted.getSize(fittedSize);
-
-      console.log(
-        '[NATURAL TREE] loaded',
-        `${BASE}img/models/${treeAsset}`,
-        'size',
-        fittedSize.x,
-        fittedSize.y,
-        fittedSize.z
-      );
+      return tree;
     };
 
     gltfLoader.load(
       `${BASE}img/models/${treeAsset}`,
       (gltf:any) => {
         if (!glbTreesAlive) return;
-        prepareNaturalTree(gltf.scene);
+
+        // Prepare materials once. Clones then share the same GPU materials,
+        // avoiding 30x texture/material memory on mobile.
+        const template = gltf.scene.clone(true);
+        markMeshes(template);
+        template.rotation.set(0, 0, 0);
+        template.scale.setScalar(1);
+
+        template.traverse((o:any) => {
+          if (!o.isMesh) return;
+          o.visible = true;
+          o.frustumCulled = false;
+          o.castShadow = true;
+          o.receiveShadow = true;
+
+          // V3 cleanup: remove only tiny upper peripheral specks that read as
+          // detached leaves. Main crown layers and branches stay untouched.
+          const partBox = new THREE.Box3().setFromObject(o);
+          const partSize = new THREE.Vector3();
+          const partCenter = new THREE.Vector3();
+          partBox.getSize(partSize);
+          partBox.getCenter(partCenter);
+          const maxPartSize = Math.max(partSize.x, partSize.y, partSize.z);
+          const isUpperPeripheralSpeck =
+            maxPartSize < 0.45 &&
+            partCenter.y > 5.7 &&
+            (Math.abs(partCenter.x) > 0.8 || Math.abs(partCenter.z) > 0.95);
+
+          if (isUpperPeripheralSpeck) {
+            o.visible = false;
+            return;
+          }
+
+          if (o.material) {
+            const mats = Array.isArray(o.material) ? o.material : [o.material];
+            mats.forEach((m:any) => {
+              if ('roughness' in m) m.roughness = 0.94;
+              if ('metalness' in m) m.metalness = 0.0;
+              if (m.color?.isColor) m.color.multiplyScalar(0.98);
+            });
+          }
+        });
+
+        template.updateMatrixWorld(true);
+
+        // Place the requested 30 trees. If a hand-authored point ever falls
+        // into a landmark exclusion zone, skip it instead of covering gameplay.
+        let placed = 0;
+        for (const [x,z,s,r] of treePositions) {
+          if (tooCloseToLandmark(x,z,1.0)) continue;
+          makeNaturalTree(template, x, z, s, r);
+          placed++;
+        }
+
+        console.log(
+          '[NATURAL TREES] loaded',
+          `${BASE}img/models/${treeAsset}`,
+          'placed',
+          placed,
+          'of',
+          treePositions.length
+        );
       },
       undefined,
       (error:any) => {
         console.error(
-          '[NATURAL TREE] FAILED',
+          '[NATURAL TREES] FAILED',
           `${BASE}img/models/${treeAsset}`,
           error
         );
