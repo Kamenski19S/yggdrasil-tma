@@ -1240,6 +1240,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     // V3 natural spruce: one shared GLB is cloned into a light mobile forest.
     // The first tree stays near Mimir's well; the other 29 are spread across Midgard.
     const gltfLoader = new GLTFLoader();
+    const oakLoader = new GLTFLoader();
     let glbTreesAlive = true;
     const glbTreeInstances: THREE.Object3D[] = [];
     const treeAsset = 'Midgard_Natural_Spruce_V3_YUP.glb';
@@ -1374,6 +1375,63 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         console.error(
           '[NATURAL TREES] FAILED',
           `${BASE}img/models/${treeAsset}`,
+          error
+        );
+      }
+    );
+
+
+    // Massive oak V1 — single test instance near Mimir's well.
+    // Keep it separate from the spruce system so we can judge its silhouette first.
+    const oakAsset = 'Midgard_Massive_Oak_V1_YUP.glb';
+    oakLoader.load(
+      `${BASE}img/models/${oakAsset}`,
+      (gltf:any) => {
+        if (!glbTreesAlive) return;
+
+        const oak = gltf.scene.clone(true);
+        oak.traverse((o:any) => {
+          if (!o.isMesh) return;
+          o.frustumCulled = false;
+          o.castShadow = true;
+          o.receiveShadow = true;
+
+          if (o.material) {
+            const mats = Array.isArray(o.material) ? o.material : [o.material];
+            mats.forEach((m:any) => {
+              if ('roughness' in m) m.roughness = 0.94;
+              if ('metalness' in m) m.metalness = 0.0;
+            });
+          }
+        });
+
+        // Test position: close to the well, but outside the central stone ring.
+        const oakX = -7.5;
+        const oakZ = 8.0;
+        const oakScale = 0.92;
+        oak.scale.setScalar(oakScale);
+
+        const oakY = groundY(oakX, oakZ);
+        const oakBox = new THREE.Box3().setFromObject(oak);
+        oak.position.set(oakX, oakY - oakBox.min.y, oakZ);
+        oak.updateMatrixWorld(true);
+
+        scene.add(oak);
+        glbTreeInstances.push(oak);
+
+        console.log(
+          '[MASSIVE OAK] loaded',
+          `${BASE}img/models/${oakAsset}`,
+          'test position',
+          oakX,
+          oakZ
+        );
+      },
+      undefined,
+      (error:any) => {
+        console.error(
+          '[MASSIVE OAK] FAILED',
+          `${BASE}img/models/${oakAsset}`,
           error
         );
       }
