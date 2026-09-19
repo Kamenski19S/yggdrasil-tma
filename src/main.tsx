@@ -1246,9 +1246,22 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const treeAsset = 'Midgard_Natural_Spruce_V3_YUP.glb';
 
     const treePositions: Array<[number, number, number, number]> = [
-      // Near Mimir's well — just outside the central stone ring.
-      [9.0, 9.0, 1.00, 0.20],
-
+  [ 9.0,  9.0, 0.90, 0.20],
+  [-12.0,  6.5, 0.85, 1.10],
+  [ 14.5, -8.0, 0.95, 2.30],
+  [ -8.5,-13.0, 0.88, 0.60],
+  [ 18.0, 12.5, 0.92, 3.10],
+  [-16.0, -4.5, 0.87, 1.75],
+  [  6.5,-16.5, 0.90, 0.40],
+  [-14.0, 15.0, 0.93, 2.80],
+  [ 20.0, -2.0, 0.86, 1.40],
+  [ -5.0, 18.5, 0.91, 0.95],
+  [ 12.0, 18.0, 0.89, 2.05],
+  [-20.0,  9.0, 0.94, 3.50],
+  [  3.5,-20.0, 0.88, 1.25],
+  [ 22.0, 16.0, 0.90, 0.70],
+  [-10.0,-19.0, 0.92, 2.60],
+];
       // North / northwest.
       [-24, 26, 0.92, 2.20], [-43, 43, 1.08, 5.10], [-67, 34, 0.82, 1.40],
       [-78, 4, 1.12, 4.40], [-54, -18, 0.90, 0.70], [-72, -30, 1.04, 3.30],
@@ -1401,11 +1414,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
             mats.forEach((m:any) => {
               if ('roughness' in m) m.roughness = 0.94;
               if ('metalness' in m) m.metalness = 0.0;
-              if (m.color?.isColor) m.color.multiplyScalar(0.8625);
-            });
-          }
-        });
-
+           
+if (m.color?.isColor) m.color.multiplyScalar(0.8884);
         // Test position: close to the well, but outside the central stone ring.
         const oakX = -7.5;
         const oakZ = 8.0;
