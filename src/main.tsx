@@ -1222,6 +1222,9 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const hunterHouseAsset = 'Midgard_Hunter_House_V1_YUP.glb';
     const herbalistHouseAsset = 'Midgard_Herbalist_House_V1_YUP.glb';
     const craftsmanHouseAsset = 'Midgard_Craftsman_House_V1_YUP.glb';
+    const fallenAshAsset = 'Midgard_Fallen_Ash_V1_YUP.glb';
+    const oldFarmAsset = 'Midgard_Old_Farm_V1_YUP.glb';
+    const vikingGateAsset = 'Midgard_Viking_Gate_Tower_V1_YUP.glb';
 
     // Deterministic positions keep the village centre and major landmarks readable.
     const sprucePositions: Array<[number, number]> = [
@@ -1681,6 +1684,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       const cap=box(.72,.14,.72,0x302d29,1); cap.position.set(w*.25,6.08,-d*.10); g.add(cap);
 
       addMesh(g,id,label); objects.push(g); addRectCollider(x,z,w+.85,d+.85,rot,.05);
+      return g;
     };
 
     // Dense village core: buildings frame the roads and central square.
@@ -1992,7 +1996,27 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     // Old human settlement — a quiet abandoned farmstead beyond the village.
     // It is a game interpretation inspired by the human dwellings, barns, carts and hearths
     // described in Rígþula, not a claim that this exact place exists in the Edda.
-    house(-65,5,8,5,0.12,"Старый дом","oldfarm",0x63432f,0x2b2926);
+    const oldFarmFallback=house(-65,5,8,5,0.12,"Старый хутор","oldfarm",0x63432f,0x2b2926);
+    loadGlbWithFolderFallback(oldFarmAsset, (gltf:any) => {
+      if (!glbTreesAlive) return;
+      const oldFarmModel = gltf.scene.clone(true);
+      markMeshes(oldFarmModel);
+      oldFarmModel.traverse((o:any) => {
+        if (!o.isMesh) return;
+        o.visible = true;
+        o.castShadow = true;
+        o.receiveShadow = true;
+        o.frustumCulled = true;
+      });
+      oldFarmModel.scale.set(.85,.75,.62);
+      oldFarmModel.rotation.set(0,.12,0);
+      oldFarmModel.position.set(-65,groundY(-65,5),5);
+      oldFarmModel.userData={id:"oldfarm",label:"Старый хутор"};
+      oldFarmFallback.visible=false;
+      addMesh(oldFarmModel,"oldfarm","Старый хутор");
+      objects.push(oldFarmModel);
+      console.log('[OLD FARM] loaded', `${BASE}img/models/${oldFarmAsset}`);
+    }, 'OLD FARM');
     shed(-58,42,6,4,-0.12,"Старый амбар","oldbarn");
     fenceRun(-70,32,-60,32); fenceRun(-70,32,-70,43); fenceRun(-70,43,-61,43);
     hay(-68,8,.9); cart(-62,2,-.25); wellMarker(-58,4);
@@ -2093,6 +2117,26 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const palisade=(x1:number,z1:number,x2:number,z2:number)=>{const g=new THREE.Group();const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz),n=Math.floor(len/1.7);for(let i=0;i<=n;i++){const t=i/n;const px=x1+dx*t,pz=z1+dz*t;const p=new THREE.Mesh(new THREE.ConeGeometry(.24,.24+2.8+midHash(i,x1)*.5,6),mat(0x3c2a1c,1));p.position.set(px,groundY(px,pz)+1.45,pz);g.add(p);}const beam=box(.3,.35,len,0x2d2119,1);beam.rotation.y=Math.atan2(dx,dz);beam.position.set((x1+x2)/2,groundY((x1+x2)/2,(z1+z2)/2)+1.25,(z1+z2)/2);g.add(beam);scene.add(g);addSegmentCollider(x1,z1,x2,z2,.34,.08);};
     palisade(-30,-31,-8,-31);palisade(8,-31,30,-31);palisade(-30,-31,-30,-13);palisade(30,-31,30,16);
     const gate=new THREE.Group();gate.userData={id:"gate",label:"Ворота Мидгарда"};for(const x of [-4.2,4.2]){const p=box(.8,6,.8,0x35251a,1);p.position.set(x,3,-31);gate.add(p);}const top=box(10,.8,1,0x2d2018,1);top.position.set(0,6,-31);gate.add(top);for(let i=-3;i<=3;i++){const bar=box(1.0,4.2,.22,0x5b3a24,1);bar.position.set(i*1.15,2,-30.7);gate.add(bar);}addMesh(gate,"gate","Ворота Мидгарда");objects.push(gate);
+    loadGlbWithFolderFallback(vikingGateAsset, (gltf:any) => {
+      if (!glbTreesAlive) return;
+      const gateModel = gltf.scene.clone(true);
+      markMeshes(gateModel);
+      gateModel.traverse((o:any) => {
+        if (!o.isMesh) return;
+        o.visible = true;
+        o.castShadow = true;
+        o.receiveShadow = true;
+        o.frustumCulled = true;
+      });
+      gateModel.scale.set(.78,.82,.82);
+      gateModel.rotation.set(0,0,0);
+      gateModel.position.set(0,groundY(0,-31),-31);
+      gateModel.userData={id:"gate",label:"Ворота Мидгарда"};
+      gate.visible=false;
+      addMesh(gateModel,"gate","Ворота Мидгарда");
+      objects.push(gateModel);
+      console.log('[VIKING GATE] loaded', `${BASE}img/models/${vikingGateAsset}`);
+    }, 'VIKING GATE');
     addCircleCollider(-4.2,-31,.55,.05);addCircleCollider(4.2,-31,.55,.05);
     // Mimir's well now occupies the village central stone circle — one unique instance.
     const shrine=new THREE.Group();shrine.userData={id:"norns",label:"Прядильня норн"};shrine.position.set(-52,groundY(-52,38),38);
@@ -2463,13 +2507,14 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       const ring=new THREE.Mesh(new THREE.TorusGeometry(7.8,.07,8,64),new THREE.MeshStandardMaterial({color:0x8b9f87,emissive:0x334633,emissiveIntensity:1.0,transparent:true,opacity:.55}));ring.rotation.x=Math.PI/2;ring.position.y=.05;g.add(ring);
       const bark=new THREE.MeshStandardMaterial({map:barkTexture,color:0xffffff,roughness:1,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.034});
       // Hollow broken trunk with jagged crown.
-      const stump=new THREE.Mesh(new THREE.CylinderGeometry(1.45,2.15,4.8,10),bark);stump.position.set(0,2.4,.2);stump.rotation.z=-.04;g.add(stump);
-      const hollow=new THREE.Mesh(new THREE.SphereGeometry(.88,12,9),new THREE.MeshBasicMaterial({color:0x121513}));hollow.scale.set(1,.95,.55);hollow.position.set(0,1.75,1.72);g.add(hollow);
-      for(let i=0;i<7;i++){const a=-.9+i*.30,len=2.5+midHash(i,1500)*2.7;const br=new THREE.Mesh(new THREE.CylinderGeometry(.11,.28,len,7),bark);br.position.set(Math.sin(a)*len*.34,(4.0+midHash(i,1501)*2.8),.15+Math.cos(a)*len*.30);br.rotation.z=Math.sin(a)*.65;br.rotation.x=-Math.cos(a)*.55;br.rotation.y=a;g.add(br);}
+      const stump=new THREE.Mesh(new THREE.CylinderGeometry(1.45,2.15,4.8,10),bark);stump.userData.oldFallenAshVisual=true;stump.position.set(0,2.4,.2);stump.rotation.z=-.04;g.add(stump);
+      const hollow=new THREE.Mesh(new THREE.SphereGeometry(.88,12,9),new THREE.MeshBasicMaterial({color:0x121513}));hollow.userData.oldFallenAshVisual=true;hollow.scale.set(1,.95,.55);hollow.position.set(0,1.75,1.72);g.add(hollow);
+      for(let i=0;i<7;i++){const a=-.9+i*.30,len=2.5+midHash(i,1500)*2.7;const br=new THREE.Mesh(new THREE.CylinderGeometry(.11,.28,len,7),bark);br.userData.oldFallenAshVisual=true;br.position.set(Math.sin(a)*len*.34,(4.0+midHash(i,1501)*2.8),.15+Math.cos(a)*len*.30);br.rotation.z=Math.sin(a)*.65;br.rotation.x=-Math.cos(a)*.55;br.rotation.y=a;g.add(br);}
       for(let i=0;i<9;i++){const a=midHash(i,1510)*Math.PI*2,rr=1.7+midHash(i,1511)*5.6;irregularRock(g,Math.cos(a)*rr,.22,Math.sin(a)*rr,.3+midHash(i,1512)*.45,i%3?0x505852:0x5f645d,1513+i);}
       for(let i=0;i<8;i++)addGroundRune(g,(midHash(i,1520)-.5)*5.8,(midHash(i,1521)-.5)*5.8,['ᚦ','ᛉ','ᚱ','ᛟ'][i%4],0x9fd0c4,.42,midHash(i,1522)*Math.PI);
       const cache=new THREE.Mesh(new THREE.SphereGeometry(.45,10,7),mat(0x5b3b27,1));cache.scale.set(.9,1.2,.7);cache.position.set(0,1.55,1.25);g.add(cache);
       addMesh(g,'fallenAsh','Поверженный ясень');objects.push(g);addCircleCollider(x,z,1.8,.08);
+      return g;
     };
 
     const makeForgottenCamp=(x:number,z:number)=>{
@@ -2565,7 +2610,27 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     makeForgottenCamp(68,8);
     makeForestClearing(-45,75,9.5,'deepGrove','Глубокая роща',1);
-    makeFallenAsh(-30,15);
+    const fallenAshFallback=makeFallenAsh(-30,15);
+    loadGlbWithFolderFallback(fallenAshAsset, (gltf:any) => {
+      if (!glbTreesAlive) return;
+      const newAsh = gltf.scene.clone(true);
+      markMeshes(newAsh);
+      newAsh.traverse((o:any) => {
+        if (!o.isMesh) return;
+        o.visible = true;
+        o.castShadow = true;
+        o.receiveShadow = true;
+        o.frustumCulled = true;
+      });
+      newAsh.scale.setScalar(1.05);
+      newAsh.position.set(0,0,0);
+      newAsh.rotation.set(0,.22,0);
+      fallenAshFallback.traverse((o:any) => {
+        if (o.userData?.oldFallenAshVisual) o.visible=false;
+      });
+      fallenAshFallback.add(newAsh);
+      console.log('[FALLEN ASH] loaded', `${BASE}img/models/${fallenAshAsset}`);
+    }, 'FALLEN ASH');
 
     // ---------------------------------------------------------------------------
     // Three new sacred locations: Stone of Three Threads, Circle of Power,
