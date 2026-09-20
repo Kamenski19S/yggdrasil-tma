@@ -2842,102 +2842,125 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     addMesh(heroYard,'heroHomeYard','Двор домика героя'); objects.push(heroYard);
 
 
-    // ===== DENSE FOG-EDGE FOREST =====
-    // A dense mixed spruce/oak belt at the far edge of the clearing.
-    // Trees have deterministic varied sizes/rotations. Several angular gaps
-    // remain open so the forest reads naturally instead of as a solid wall.
-    const fogForestSlots: Array<[number,number,number]> = [];
-    for (let i=0; i<78; i++) {
-      const x = -82 + midHash(i,3101) * 164;
-      const z = 61 + midHash(i,3102) * 24;
+    // ===== DENSE FOG-EDGE FOREST — CORRECTED POSITION =====
+    // Mountains are at negative Z (around -94), so the dense forest belongs
+    // at the FAR/NORTH edge of Midgard, directly in front of the mountain fog.
+    // Each slot contains ONLY ONE tree: spruce OR oak, never both.
+    const fogForestSlots: Array<{x:number; z:number; seed:number; kind:'spruce'|'oak'}> = [];
 
-      // Natural openings through the forest.
-      const gapA = Math.abs(x + 38) < 5.5 && z < 79;
-      const gapB = Math.abs(x - 8) < 4.5 && z < 76;
-      const gapC = Math.abs(x - 51) < 6.0 && z < 81;
-      if (gapA || gapB || gapC) continue;
+    // Three staggered rows between the playable clearing and the mountains.
+    // Grid spacing prevents trunks from spawning inside each other.
+    const fogRows = [-69, -76, -83];
+    let fogSeed = 0;
 
-      // Avoid crowding the special ash-grove landmark.
-      if (Math.hypot(x + 5, z - 75) < 13) continue;
+    for (let row=0; row<fogRows.length; row++) {
+      const zBase = fogRows[row];
+      for (let col=0; col<29; col++) {
+        const seed = fogSeed++;
+        const xBase = -82 + col * 5.85 + (row % 2 ? 2.9 : 0);
+        const x = xBase + (midHash(seed, 4101) - .5) * 1.45;
+        const z = zBase + (midHash(seed, 4102) - .5) * 2.2;
 
-      fogForestSlots.push([x,z,i]);
+        if (x < -84 || x > 84) continue;
+
+        // Keep several irregular view corridors so the forest has natural gaps.
+        const gapLeft   = x > -42 && x < -33 && z > -80;
+        const gapMiddle = x >  3 && x <  12 && z < -72;
+        const gapRight  = x > 47 && x <  57 && z > -81;
+        if (gapLeft || gapMiddle || gapRight) continue;
+
+        // The river crosses this northern belt near x≈-57.
+        // Leave a wide wooded river opening instead of growing trees in water.
+        const riverX = -57 + Math.sin(((z + 94) / 6) * .42) * 4.2;
+        if (Math.abs(x - riverX) < 8.0) continue;
+
+        // One type per slot. Oaks are roughly one quarter of this distant forest.
+        const kind: 'spruce'|'oak' =
+          midHash(seed, 4103) < .27 ? 'oak' : 'spruce';
+
+        fogForestSlots.push({x,z,seed,kind});
+      }
     }
 
-    const addFogForestFromSource = (
+    const addCorrectFogForest = (
       source: THREE.Object3D,
-      kind: 'spruce' | 'oak',
-      every: number,
-      offset: number
+      kind: 'spruce'|'oak'
     ) => {
-      fogForestSlots.forEach(([x,z,seed], slot) => {
-        if ((slot + offset) % every !== 0) return;
+      fogForestSlots.forEach((slot) => {
+        if (slot.kind !== kind) return;
 
         const tree = source.clone(true);
         markMeshes(tree);
 
-        const n = midHash(seed, kind === 'spruce' ? 3110 : 3120);
-        // Spruces dominate; oaks are fewer, broader accents.
+        // Wide size variation, but distant oaks stay a little smaller so their
+        // crowns do not swallow the whole horizon.
+        const sizeRnd = midHash(slot.seed, kind === 'spruce' ? 4110 : 4120);
         const scale = kind === 'spruce'
-          ? 0.58 + n * 0.62
-          : 0.42 + n * 0.48;
+          ? 0.52 + sizeRnd * 0.56
+          : 0.38 + sizeRnd * 0.42;
 
         tree.scale.setScalar(scale);
-        tree.rotation.set(0, midHash(seed,3130) * Math.PI * 2, 0);
+        tree.rotation.set(0, midHash(slot.seed, 4130) * Math.PI * 2, 0);
 
         tree.traverse((o:any) => {
           if (!o.isMesh) return;
+          o.visible = true;
           o.castShadow = true;
           o.receiveShadow = true;
           o.frustumCulled = true;
         });
 
+        // Snap the actual model bottom to terrain after scaling.
         tree.position.set(0,0,0);
         tree.updateMatrixWorld(true);
         const b = new THREE.Box3().setFromObject(tree);
-        tree.position.set(x, groundY(x,z) - b.min.y, z);
+        tree.position.set(slot.x, groundY(slot.x,slot.z) - b.min.y, slot.z);
         tree.updateMatrixWorld(true);
+
         scene.add(tree);
         glbTreeInstances.push(tree);
       });
     };
 
-    // Dense spruce backbone.
+    // Spruces: dark distant backbone.
     loadGlbWithFolderFallback(treeAsset, (gltf:any) => {
       const source = gltf.scene.clone(true);
       source.traverse((o:any) => {
         if (!o.isMesh) return;
-        const darken = (m:any) => {
+        const adapt = (m:any) => {
           if (!m) return m;
           const mm = m.clone ? m.clone() : m;
           if (mm.color?.multiplyScalar) mm.color.multiplyScalar(0.72);
           if ('roughness' in mm) mm.roughness = 0.97;
+          if ('metalness' in mm) mm.metalness = 0;
           mm.needsUpdate = true;
           return mm;
         };
-        if (Array.isArray(o.material)) o.material = o.material.map(darken);
-        else o.material = darken(o.material);
+        if (Array.isArray(o.material)) o.material = o.material.map(adapt);
+        else o.material = adapt(o.material);
       });
-      addFogForestFromSource(source, 'spruce', 1, 0);
-    }, 'FOG FOREST SPRUCE');
+      addCorrectFogForest(source, 'spruce');
+    }, 'FAR FOG FOREST SPRUCE');
 
-    // Oaks are deliberately sparser so there are visible spruce masses and gaps.
+    // Oaks: fewer and broader, but never share coordinates with spruces.
     loadGlbWithFolderFallback(oakAsset, (gltf:any) => {
       const source = gltf.scene.clone(true);
       source.traverse((o:any) => {
         if (!o.isMesh) return;
-        const darken = (m:any) => {
+        const adapt = (m:any) => {
           if (!m) return m;
           const mm = m.clone ? m.clone() : m;
           if (mm.color?.multiplyScalar) mm.color.multiplyScalar(0.64);
           if ('roughness' in mm) mm.roughness = 0.98;
+          if ('metalness' in mm) mm.metalness = 0;
           mm.needsUpdate = true;
           return mm;
         };
-        if (Array.isArray(o.material)) o.material = o.material.map(darken);
-        else o.material = darken(o.material);
+        if (Array.isArray(o.material)) o.material = o.material.map(adapt);
+        else o.material = adapt(o.material);
       });
-      addFogForestFromSource(source, 'oak', 4, 1);
-    }, 'FOG FOREST OAK');
+      addCorrectFogForest(source, 'oak');
+    }, 'FAR FOG FOREST OAK');
 
     // Small landmarks inside the clearings.
     const campFire=fire(68,8,.75); campFire.scale.setScalar(.72);
