@@ -1159,34 +1159,20 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
           // Low forest mist: strongest near ground, smoothly disappears upward.
           float heightDensity = exp(-max(p.y + 0.10, 0.0) * 1.12);
 
-          // STATIC world-space fog shape.
-          // The scene itself must not look animated when fog moves across it.
+          // Almost completely static world-space fog.
+          // No drifting noise and no breathing: houses, ground and trees stay visually stable.
           float broadStatic = fbm(p.xz * 0.022);
           float detailStatic = fbm(p.xz * 0.070 + 9.0);
-          float staticN = broadStatic * 0.78 + detailStatic * 0.22;
+          float n = broadStatic * 0.78 + detailStatic * 0.22;
 
-          // Only a very small amount of motion is allowed in the FAR air.
-          // Nearby houses, ground, trees and the hero remain visually stable.
-          float camDist = length(p.xz - cameraWorldPos.xz);
-          float farMove = smoothstep(32.0, 72.0, camDist) * 0.10;
-
-          vec2 drift = vec2(time * 0.0014, time * 0.0008);
-          float broadMoving = fbm(p.xz * 0.022 + drift);
-          float movingN = broadMoving * 0.78 + detailStatic * 0.22;
-
-          float n = mix(staticN, movingN, farMove);
-
-          // Keep clear-air gaps, but soften their edges.
+          // Keep soft clear-air gaps without temporal motion.
           n = smoothstep(0.28, 0.84, n);
 
           // Slightly favor the distant/northern forest without making a wall.
           float northBoost = smoothstep(-28.0, -76.0, p.z);
           float region = mix(0.66, 1.14, northBoost);
 
-          // Very gentle "breathing" only in far fog; no crawling pattern on geometry.
-          float breathe = 1.0 + sin(time * 0.12) * 0.012 * farMove;
-
-          return heightDensity * n * region * breathe;
+          return heightDensity * n * region;
         }
 
         void main() {
@@ -3412,8 +3398,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       currentStreaks.forEach((r)=>{const drift=Math.sin(now*.00055*r.speed+r.phase)*.9;r.mesh.position.y=groundY(r.mesh.position.x,r.mesh.position.z)+.095+drift*.008;const m=r.mesh.material as THREE.MeshBasicMaterial;m.opacity=.045+.045*(.5+.5*Math.sin(now*.0011*r.speed+r.phase));});
 
       fires.forEach(f=>{f.light.intensity=2.0+Math.sin(now*.012+f.phase)*.5;f.flame.scale.y=.9+Math.sin(now*.009+f.phase)*.12;});
-      // Update depth-aware fog uniforms.
-      fogPostMat.uniforms.time.value = now * 0.00035;
+      // Update depth-aware fog uniforms. Fog motion is intentionally frozen.
+      fogPostMat.uniforms.time.value = 0.0;
       fogPostMat.uniforms.projectionMatrixInverse.value.copy(camera.projectionMatrixInverse);
       fogPostMat.uniforms.cameraMatrixWorld.value.copy(camera.matrixWorld);
       fogPostMat.uniforms.cameraWorldPos.value.setFromMatrixPosition(camera.matrixWorld);
