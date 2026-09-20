@@ -1237,238 +1237,78 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     scene.add(terrain);
 
     // ===== NATURAL SPRUCE TEST — Y-UP GLB =====
-    // V3 natural spruce: one shared GLB is cloned into a light mobile forest.
-    // The first tree stays near Mimir's well; the other 29 are spread across Midgard.
+    // One real custom tree only. The new GLB is already Y-up, so NO rotation.x.
+    // This test deliberately disables all other tree instances so we can judge
+    // the model itself without old/procedural trees confusing the result.
     const gltfLoader = new GLTFLoader();
-    const oakLoader = new GLTFLoader();
     let glbTreesAlive = true;
     const glbTreeInstances: THREE.Object3D[] = [];
-    const treeAsset = 'Midgard_Natural_Spruce_V3_YUP.glb';
 
-    const treePositions: Array<[number, number, number, number]> = [
-  [ 9.0,  9.0, 0.90, 0.20],
-  [-12.0,  6.5, 0.85, 1.10],
-  [ 14.5, -8.0, 0.95, 2.30],
-  [ -8.5,-13.0, 0.88, 0.60],
-  [ 18.0, 12.5, 0.92, 3.10],
-  [-16.0, -4.5, 0.87, 1.75],
-  [  6.5,-16.5, 0.90, 0.40],
-  [-14.0, 15.0, 0.93, 2.80],
-  [ 20.0, -2.0, 0.86, 1.40],
-  [ -5.0, 18.5, 0.91, 0.95],
-  [ 12.0, 18.0, 0.89, 2.05],
-  [-20.0,  9.0, 0.94, 3.50],
-  [  3.5,-20.0, 0.88, 1.25],
-  [ 22.0, 16.0, 0.90, 0.70],
-  [-10.0,-19.0, 0.92, 2.60],
-];
-      // North / northwest.
-      [-24, 26, 0.92, 2.20], [-43, 43, 1.08, 5.10], [-67, 34, 0.82, 1.40],
-      [-78, 4, 1.12, 4.40], [-54, -18, 0.90, 0.70], [-72, -30, 1.04, 3.30],
-      [-43, -52, 0.86, 5.80], [-68, -62, 1.10, 2.70],
+    const treeAsset = 'Midgard_Natural_Spruce_V2_YUP.glb';
 
-      // West / center.
-      [-30, 4, 1.00, 4.90], [-19, 39, 0.88, 0.30], [-8, 62, 1.07, 2.80],
-      [8, 79, 0.91, 5.60], [30, 72, 1.12, 1.10], [46, 82, 0.86, 3.90],
+    const prepareNaturalTree = (source: THREE.Object3D) => {
+      const tree = source.clone(true);
+      markMeshes(tree);
 
-      // East / northeast.
-      [63, 72, 1.03, 5.00], [80, 48, 0.90, 2.00], [72, 23, 1.08, 4.70],
-      [57, 10, 0.84, 0.90], [40, 42, 1.05, 3.60], [67, -8, 0.94, 5.40],
+      // Y-up model: keep its native orientation.
+      tree.rotation.set(0, 0, 0);
+      tree.scale.setScalar(1.0);
+      tree.updateMatrixWorld(true);
 
-      // South / southeast.
-      [45, -28, 1.10, 1.80], [67, -42, 0.87, 4.10], [28, -52, 1.03, 0.50],
-      [8, -63, 0.89, 3.00], [-18, -72, 1.06, 5.20], [-48, -77, 0.93, 2.40],
-      [79, -72, 1.11, 0.10], [82, -12, 0.88, 3.70], [25, 15, 0.97, 2.60]
-    ];
-
-    // Keep the village, paths and named landmarks readable.
-    const treeExclusionZones: Array<[number, number, number]> = [
-      [1, 0, 11.0], [-10, -5, 7.0], [13, -18, 7.0],
-      [-52, 38, 6.5], [50, 60, 6.0], [-45, -48, 6.0],
-      [-5, 75, 9.5], [58, -28, 8.5], [-72, 48, 6.0],
-      [50, -62, 6.0], [18, 55, 9.5], [-65, 5, 7.0],
-      [43, 32, 9.0], [62, 78, 8.0], [68, 8, 9.0],
-      [75, 32.75, 5.0], [-45, 75, 10.0], [-30, 15, 8.0],
-      [5, -70, 8.0], [-72, -48, 8.0]
-    ];
-
-    const tooCloseToLandmark = (x:number,z:number,extra:number=0) =>
-      treeExclusionZones.some(([cx,cz,r]) => Math.hypot(x-cx,z-cz) < r + extra);
-
-    const makeNaturalTree = (
-      template: THREE.Object3D,
-      x: number,
-      z: number,
-      scale: number,
-      rotationY: number
-    ) => {
-      const tree = template.clone(true);
-      tree.rotation.set(0, rotationY, 0);
-      tree.scale.setScalar(scale);
-
+      // Put the single test tree in an open, easy-to-find position.
+      const x = 0;
+      const z = 8;
       const ty = groundY(x, z);
+
+      // Snap the lowest actual model point to the terrain.
       const box = new THREE.Box3().setFromObject(tree);
       tree.position.set(x, ty - box.min.y, z);
       tree.updateMatrixWorld(true);
 
+      tree.traverse((o:any) => {
+        if (!o.isMesh) return;
+        o.visible = true;
+        o.frustumCulled = false;
+        o.castShadow = true;
+        o.receiveShadow = true;
+
+        if (o.material) {
+          const mats = Array.isArray(o.material) ? o.material : [o.material];
+          mats.forEach((m:any) => {
+            if ('roughness' in m) m.roughness = 0.94;
+            if ('metalness' in m) m.metalness = 0.0;
+          });
+        }
+      });
+
       scene.add(tree);
       glbTreeInstances.push(tree);
-      return tree;
+
+      const fitted = new THREE.Box3().setFromObject(tree);
+      const fittedSize = new THREE.Vector3();
+      fitted.getSize(fittedSize);
+
+      console.log(
+        '[NATURAL TREE] loaded',
+        `${BASE}img/models/${treeAsset}`,
+        'size',
+        fittedSize.x,
+        fittedSize.y,
+        fittedSize.z
+      );
     };
 
     gltfLoader.load(
       `${BASE}img/models/${treeAsset}`,
       (gltf:any) => {
         if (!glbTreesAlive) return;
-
-        // Prepare materials once. Clones then share the same GPU materials,
-        // avoiding 30x texture/material memory on mobile.
-        const template = gltf.scene.clone(true);
-        markMeshes(template);
-        template.rotation.set(0, 0, 0);
-        template.scale.setScalar(1);
-
-        template.traverse((o:any) => {
-          if (!o.isMesh) return;
-          o.visible = true;
-          o.frustumCulled = false;
-          o.castShadow = true;
-          o.receiveShadow = true;
-
-          // V3 cleanup: remove only tiny upper peripheral specks that read as
-          // detached leaves. Main crown layers and branches stay untouched.
-          const partBox = new THREE.Box3().setFromObject(o);
-          const partSize = new THREE.Vector3();
-          const partCenter = new THREE.Vector3();
-          partBox.getSize(partSize);
-          partBox.getCenter(partCenter);
-          const maxPartSize = Math.max(partSize.x, partSize.y, partSize.z);
-          const isUpperPeripheralSpeck =
-            maxPartSize < 0.45 &&
-            partCenter.y > 5.7 &&
-            (Math.abs(partCenter.x) > 0.8 || Math.abs(partCenter.z) > 0.95);
-
-          if (isUpperPeripheralSpeck) {
-            o.visible = false;
-            return;
-          }
-
-          if (o.material) {
-            const mats = Array.isArray(o.material) ? o.material : [o.material];
-            mats.forEach((m:any) => {
-              if ('roughness' in m) m.roughness = 0.94;
-              if ('metalness' in m) m.metalness = 0.0;
-              if (m.color?.isColor) m.color.multiplyScalar(0.98);
-            });
-          }
-        });
-
-        template.updateMatrixWorld(true);
-
-        // Place the requested 30 trees. If a hand-authored point ever falls
-        // into a landmark exclusion zone, skip it instead of covering gameplay.
-        let placed = 0;
-        for (const [x,z,s,r] of treePositions) {
-          if (tooCloseToLandmark(x,z,1.0)) continue;
-          makeNaturalTree(template, x, z, s, r);
-          placed++;
-        }
-
-        console.log(
-          '[NATURAL TREES] loaded',
-          `${BASE}img/models/${treeAsset}`,
-          'placed',
-          placed,
-          'of',
-          treePositions.length
-        );
+        prepareNaturalTree(gltf.scene);
       },
       undefined,
       (error:any) => {
         console.error(
-          '[NATURAL TREES] FAILED',
+          '[NATURAL TREE] FAILED',
           `${BASE}img/models/${treeAsset}`,
-          error
-        );
-      }
-    );
-
-
-    // Massive oak V1 — single test instance near Mimir's well.
-    // Keep it separate from the spruce system so we can judge its silhouette first.
-    const oakAsset = 'Midgard_Massive_Oak_V1_YUP.glb';
-    oakLoader.load(
-      `${BASE}img/models/${oakAsset}`,
-      (gltf:any) => {
-        if (!glbTreesAlive) return;
-
-        const oak = gltf.scene.clone(true);
-        oak.traverse((o:any) => {
-          if (!o.isMesh) return;
-          o.frustumCulled = false;
-          o.castShadow = true;
-          o.receiveShadow = true;
-
-          if (o.material) {
-            const mats = Array.isArray(o.material) ? o.material : [o.material];
-            mats.forEach((m:any) => {
-              if ('roughness' in m) m.roughness = 0.94;
-              if ('metalness' in m) m.metalness = 0.0;
-           
-if (m.color?.isColor) m.color.multiplyScalar(0.8884);
-        // Test position: close to the well, but outside the central stone ring.
-        const oakX = -7.5;
-        const oakZ = 8.0;
-        const oakScale = 0.92;
-        oak.scale.setScalar(oakScale);
-
-        const oakY = groundY(oakX, oakZ);
-        const oakBox = new THREE.Box3().setFromObject(oak);
-        oak.position.set(oakX, oakY - oakBox.min.y, oakZ);
-        oak.updateMatrixWorld(true);
-
-        // Soft contact-shadow bands at the three main trunk bends.
-        // These sit slightly inside the trunk silhouette and visually merge the
-        // separate tapered sections without changing the oak's overall shape.
-        const oakJointShadow = new THREE.MeshBasicMaterial({
-          color: 0x251a12,
-          transparent: true,
-          opacity: 0.22,
-          depthWrite: false
-        });
-
-        const addOakJointShadow = (y:number, radius:number) => {
-          const joint = new THREE.Mesh(
-            new THREE.CylinderGeometry(radius, radius * 1.04, 0.16, 8),
-            oakJointShadow
-          );
-          joint.position.set(0.02, y, 0.01);
-          joint.rotation.y = 0.08;
-          oak.add(joint);
-        };
-
-        addOakJointShadow(1.72, 0.88);
-        addOakJointShadow(3.32, 0.74);
-        addOakJointShadow(5.02, 0.60);
-
-        oak.updateMatrixWorld(true);
-
-        scene.add(oak);
-        glbTreeInstances.push(oak);
-
-        console.log(
-          '[MASSIVE OAK] loaded',
-          `${BASE}img/models/${oakAsset}`,
-          'test position',
-          oakX,
-          oakZ
-        );
-      },
-      undefined,
-      (error:any) => {
-        console.error(
-          '[MASSIVE OAK] FAILED',
-          `${BASE}img/models/${oakAsset}`,
           error
         );
       }
