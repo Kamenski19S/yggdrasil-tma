@@ -996,7 +996,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xa4b6ad);
-    scene.fog = new THREE.FogExp2(0xa4b3aa, 0.00165);
+    scene.fog = new THREE.FogExp2(0xa4b3aa, 0.00110);
 
     const camera = new THREE.PerspectiveCamera(54, 1, 0.1, 280);
     camera.position.set(0, 8.5, 17);
@@ -1065,140 +1065,167 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       lightPools.push(m);
     });
 
-    // ===== MOBILE VOLUMETRIC GROUND FOG =====
-    // This is intentionally not a GLB. Fog is rendered by several horizontal
-    // shader slices with animated procedural density. Every slice is depth-tested,
-    // so trees, stones and terrain can naturally cut through the haze.
-    // The noise fades at the map edges and vertically, so there are no flat white bands.
-    const fogLayerGeo = new THREE.PlaneGeometry(188, 188, 1, 1);
+    // ===== DEPTH-AWARE HEIGHT FOG =====
+    // No fog planes or GLB meshes. The scene is rendered once into a color +
+    // depth target, then a fullscreen shader reconstructs the world position
+    // of every visible pixel and integrates low fog along the camera ray.
+    // This removes the horizontal "sheet" crossing tree trunks.
 
-    const fogVertexShader = `
-      varying vec2 vUv;
-      varying vec3 vWorldPos;
+    const fogTarget = new THREE.WebGLRenderTarget(1, 1, {
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
+      format: THREE.RGBAFormat,
+      depthBuffer: true,
+      stencilBuffer: false
+    });
+    fogTarget.depthTexture = new THREE.DepthTexture(1, 1, THREE.UnsignedShortType);
+    fogTarget.depthTexture.format = THREE.DepthFormat;
+    fogTarget.depthTexture.minFilter = THREE.NearestFilter;
+    fogTarget.depthTexture.magFilter = THREE.NearestFilter;
 
-      void main() {
-        vUv = uv;
-        vec4 world = modelMatrix * vec4(position, 1.0);
-        vWorldPos = world.xyz;
-        gl_Position = projectionMatrix * viewMatrix * world;
-      }
-    `;
+    const fogPostScene = new THREE.Scene();
+    const fogPostCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const fogPostGeo = new THREE.PlaneGeometry(2, 2);
 
-    const fogFragmentShader = `
-      precision mediump float;
-
-      uniform float uTime;
-      uniform float uSeed;
-      uniform float uOpacity;
-      uniform float uScale;
-      uniform vec3 uFogColor;
-
-      varying vec2 vUv;
-      varying vec3 vWorldPos;
-
-      float hash21(vec2 p) {
-        p = fract(p * vec2(123.34, 456.21));
-        p += dot(p, p + 45.32);
-        return fract(p.x * p.y);
-      }
-
-      float noise2(vec2 p) {
-        vec2 i = floor(p);
-        vec2 f = fract(p);
-        f = f * f * (3.0 - 2.0 * f);
-
-        float a = hash21(i);
-        float b = hash21(i + vec2(1.0, 0.0));
-        float c = hash21(i + vec2(0.0, 1.0));
-        float d = hash21(i + vec2(1.0, 1.0));
-
-        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-      }
-
-      float fbm(vec2 p) {
-        float v = 0.0;
-        float a = 0.52;
-        for (int i = 0; i < 4; i++) {
-          v += noise2(p) * a;
-          p = p * 2.03 + vec2(17.1, 9.2);
-          a *= 0.5;
+    const fogPostMat = new THREE.ShaderMaterial({
+      uniforms: {
+        tColor: { value: fogTarget.texture },
+        tDepth: { value: fogTarget.depthTexture },
+        cameraNear: { value: camera.near },
+        cameraFar: { value: camera.far },
+        projectionMatrixInverse: { value: camera.projectionMatrixInverse.clone() },
+        cameraMatrixWorld: { value: camera.matrixWorld.clone() },
+        cameraWorldPos: { value: new THREE.Vector3() },
+        fogColor: { value: new THREE.Color(0xc3d0c8) },
+        time: { value: 0.0 }
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = vec4(position.xy, 0.0, 1.0);
         }
-        return v;
-      }
+      `,
+      fragmentShader: `
+        precision highp float;
 
-      void main() {
-        // Slow sideways drift. Different seed per slice prevents identical patterns.
-        vec2 p = vWorldPos.xz * uScale;
-        p += vec2(uTime * 0.016, uTime * 0.009);
-        p += vec2(uSeed * 11.7, uSeed * 7.3);
+        uniform sampler2D tColor;
+        uniform sampler2D tDepth;
+        uniform mat4 projectionMatrixInverse;
+        uniform mat4 cameraMatrixWorld;
+        uniform vec3 cameraWorldPos;
+        uniform vec3 fogColor;
+        uniform float time;
 
-        float largeShape = fbm(p * 0.58);
-        float detail = fbm(p * 1.55 + 7.0);
-        float density = largeShape * 0.78 + detail * 0.22;
+        varying vec2 vUv;
 
-        // Break up the sheet aggressively: clear air remains between fog pockets.
-        density = smoothstep(0.43, 0.76, density);
+        float hash21(vec2 p) {
+          p = fract(p * vec2(123.34, 345.45));
+          p += dot(p, p + 34.345);
+          return fract(p.x * p.y);
+        }
 
-        // Avoid a rectangular fog boundary at the edge of the world.
-        vec2 edgeUv = abs(vUv - 0.5) * 2.0;
-        float edge = 1.0 - smoothstep(0.78, 1.0, max(edgeUv.x, edgeUv.y));
+        float noise2(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          float a = hash21(i);
+          float b = hash21(i + vec2(1.0, 0.0));
+          float c = hash21(i + vec2(0.0, 1.0));
+          float d = hash21(i + vec2(1.0, 1.0));
+          return mix(mix(a,b,f.x), mix(c,d,f.x), f.y);
+        }
 
-        // Additional broad modulation produces larger natural clearings.
-        float clearings = smoothstep(
-          0.20, 0.88,
-          fbm(vWorldPos.xz * 0.010 + vec2(uSeed * 3.1, -uSeed * 2.4))
-        );
+        float fbm(vec2 p) {
+          float v = 0.0;
+          float a = 0.55;
+          for (int i=0; i<3; i++) {
+            v += noise2(p) * a;
+            p = p * 2.03 + vec2(11.7, 7.1);
+            a *= 0.48;
+          }
+          return v;
+        }
 
-        float alpha = density * edge * clearings * uOpacity;
-        if (alpha < 0.006) discard;
+        vec3 reconstructWorld(vec2 uv, float depth) {
+          vec4 clip = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+          vec4 view = projectionMatrixInverse * clip;
+          view /= max(view.w, 0.00001);
+          return (cameraMatrixWorld * view).xyz;
+        }
 
-        gl_FragColor = vec4(uFogColor, alpha);
-      }
-    `;
+        float fogDensityAt(vec3 p) {
+          // Low forest mist: strongest near ground, smoothly disappears upward.
+          float heightDensity = exp(-max(p.y + 0.15, 0.0) * 0.92);
 
-    const fogLayerMaterials: THREE.ShaderMaterial[] = [];
-    const fogLayers = new THREE.Group();
+          // Broad moving pockets + smaller detail. This breaks up uniform bands.
+          vec2 drift = vec2(time * 0.018, time * 0.010);
+          float broad = fbm(p.xz * 0.022 + drift);
+          float detail = fbm(p.xz * 0.070 - drift * 0.55 + 9.0);
+          float n = broad * 0.76 + detail * 0.24;
 
-    // Low layers are denser. Higher layers become progressively thinner.
-    const fogLayerSetup = [
-      { y: 0.18, opacity: 0.115, scale: 0.052 },
-      { y: 0.38, opacity: 0.100, scale: 0.049 },
-      { y: 0.62, opacity: 0.086, scale: 0.046 },
-      { y: 0.90, opacity: 0.070, scale: 0.043 },
-      { y: 1.24, opacity: 0.052, scale: 0.040 },
-      { y: 1.62, opacity: 0.037, scale: 0.037 },
-      { y: 2.05, opacity: 0.025, scale: 0.034 }
-    ];
+          // Keep clear-air gaps.
+          n = smoothstep(0.34, 0.76, n);
 
-    fogLayerSetup.forEach((cfg, i) => {
-      const mat = new THREE.ShaderMaterial({
-        vertexShader: fogVertexShader,
-        fragmentShader: fogFragmentShader,
-        uniforms: {
-          uTime: { value: 0 },
-          uSeed: { value: 0.37 + i * 1.913 },
-          uOpacity: { value: cfg.opacity },
-          uScale: { value: cfg.scale },
-          uFogColor: { value: new THREE.Color(0xc7d4cc) }
-        },
-        transparent: true,
-        depthWrite: false,
-        depthTest: true,
-        side: THREE.DoubleSide,
-        blending: THREE.NormalBlending
-      });
+          // Slightly favor the distant/northern forest without making a wall.
+          float northBoost = smoothstep(-28.0, -76.0, p.z);
+          float region = mix(0.66, 1.18, northBoost);
 
-      const layer = new THREE.Mesh(fogLayerGeo, mat);
-      layer.rotation.x = -Math.PI / 2;
-      layer.position.set(0, cfg.y, 0);
-      layer.renderOrder = 2 + i;
-      layer.frustumCulled = false;
+          return heightDensity * n * region;
+        }
 
-      fogLayers.add(layer);
-      fogLayerMaterials.push(mat);
+        void main() {
+          vec4 base = texture2D(tColor, vUv);
+          float depth = texture2D(tDepth, vUv).x;
+
+          // Sky/background has no geometry depth. Keep only the normal scene fog there.
+          if (depth >= 0.99998) {
+            gl_FragColor = base;
+            return;
+          }
+
+          vec3 worldPos = reconstructWorld(vUv, depth);
+          vec3 ray = worldPos - cameraWorldPos;
+          float rayLen = length(ray);
+
+          // Ignore very close pixels so the hero/camera never sit inside a white veil.
+          if (rayLen < 2.0) {
+            gl_FragColor = base;
+            return;
+          }
+
+          // 8 depth-aware samples from camera to the visible surface.
+          // No geometric layer exists, so there is no horizontal cut across trunks.
+          const int STEPS = 8;
+          float accum = 0.0;
+          for (int i=0; i<STEPS; i++) {
+            float t = (float(i) + 0.5) / float(STEPS);
+            vec3 p = cameraWorldPos + ray * t;
+            accum += fogDensityAt(p);
+          }
+
+          float stepLen = rayLen / float(STEPS);
+          float fogAmount = 1.0 - exp(-accum * stepLen * 0.085);
+
+          // Keep mobile scene readable and prevent complete whitening at long range.
+          fogAmount = clamp(fogAmount, 0.0, 0.56);
+
+          // Tiny distance ramp makes nearby grass mostly clear.
+          fogAmount *= smoothstep(3.0, 14.0, rayLen);
+
+          vec3 mixed = mix(base.rgb, fogColor, fogAmount);
+          gl_FragColor = vec4(mixed, base.a);
+        }
+      `,
+      depthTest: false,
+      depthWrite: false,
+      transparent: false,
+      toneMapped: false
     });
 
-    scene.add(fogLayers);
+    const fogPostQuad = new THREE.Mesh(fogPostGeo, fogPostMat);
+    fogPostQuad.frustumCulled = false;
+    fogPostScene.add(fogPostQuad);
 
     const canvasTex = (type: "ground" | "wood" | "roof" | "road" | "bark" | "foliage") => {
       const c = document.createElement("canvas");
@@ -3286,7 +3313,18 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       {id:"gate",label:"Ворота Мидгарда",x:0,z:-31,r:5},{id:"tower",label:"Сторожевая башня",x:29,z:25,r:4}
     ];
 
-    const resize=()=>{const w=Math.max(1,el.clientWidth),hh=Math.max(1,el.clientHeight);camera.aspect=w/hh;camera.updateProjectionMatrix();renderer.setSize(w,hh,false);};resize();const observer=new ResizeObserver(resize);observer.observe(el);
+    const resize=()=>{
+      const w=Math.max(1,el.clientWidth),hh=Math.max(1,el.clientHeight);
+      camera.aspect=w/hh;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w,hh,false);
+      const pr=Math.min(window.devicePixelRatio||1,1.35);
+      fogTarget.setSize(Math.max(1,Math.floor(w*pr)),Math.max(1,Math.floor(hh*pr)));
+      fogPostMat.uniforms.projectionMatrixInverse.value.copy(camera.projectionMatrixInverse);
+    };
+    resize();
+    const observer=new ResizeObserver(resize);
+    observer.observe(el);
     let raf=0,last=performance.now();
     const loop=(now:number)=>{
       const dt=Math.min(.05,(now-last)/1000);last=now;const q=state.current;const l=Math.hypot(q.dx,q.dz);
@@ -3350,11 +3388,11 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       currentStreaks.forEach((r)=>{const drift=Math.sin(now*.00055*r.speed+r.phase)*.9;r.mesh.position.y=groundY(r.mesh.position.x,r.mesh.position.z)+.095+drift*.008;const m=r.mesh.material as THREE.MeshBasicMaterial;m.opacity=.045+.045*(.5+.5*Math.sin(now*.0011*r.speed+r.phase));});
 
       fires.forEach(f=>{f.light.intensity=2.0+Math.sin(now*.012+f.phase)*.5;f.flame.scale.y=.9+Math.sin(now*.009+f.phase)*.12;});
-      // Animate the procedural volumetric fog.
-      const fogTime = now * 0.001;
-      fogLayerMaterials.forEach((m, i) => {
-        m.uniforms.uTime.value = fogTime * (0.72 + i * 0.035);
-      });
+      // Update depth-aware fog uniforms.
+      fogPostMat.uniforms.time.value = now * 0.001;
+      fogPostMat.uniforms.projectionMatrixInverse.value.copy(camera.projectionMatrixInverse);
+      fogPostMat.uniforms.cameraMatrixWorld.value.copy(camera.matrixWorld);
+      fogPostMat.uniforms.cameraWorldPos.value.setFromMatrixPosition(camera.matrixWorld);
 
       npcs.forEach((n,i)=>{const phase=n.userData.phase||0;const bx=n.userData.baseX,bz=n.userData.baseZ;const nx=bx+Math.sin(now*.00028+phase)*1.6,nz=bz+Math.cos(now*.00022+phase)*1.1;n.position.set(nx,groundY(nx,nz),nz);n.rotation.y=Math.sin(now*.0004+phase)*.5;});
       lightPools.forEach((m,i)=>{
@@ -3362,11 +3400,17 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         p.opacity = 0.48 + Math.sin(now*0.00055 + i*1.7)*0.07;
         m.rotation.z += Math.sin(now*0.00018+i)*0.00008;
       });
-      renderer.render(scene,camera);raf=requestAnimationFrame(loop);
+      renderer.setRenderTarget(fogTarget);
+      renderer.clear();
+      renderer.render(scene,camera);
+      renderer.setRenderTarget(null);
+      renderer.clear();
+      renderer.render(fogPostScene,fogPostCamera);
+      raf=requestAnimationFrame(loop);
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();fogLayerGeo.dispose();fogLayerMaterials.forEach(m=>m.dispose());lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
+    return()=>{glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();fogTarget.dispose();fogTarget.depthTexture?.dispose();fogPostGeo.dispose();fogPostMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
   },[h.id,on,eventDone]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
