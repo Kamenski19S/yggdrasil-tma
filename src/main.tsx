@@ -1244,6 +1244,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const glbTreeInstances: THREE.Object3D[] = [];
 
     const treeAsset = 'Midgard_Natural_Spruce_V2_YUP.glb';
+    const treeV3Asset = 'Midgard_Natural_Spruce_V3_YUP.glb';
     const oakAsset = 'Midgard_Massive_Oak_V1_YUP.glb';
 
     // Deterministic positions keep the village centre and major landmarks readable.
@@ -1313,6 +1314,53 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       if (!glbTreesAlive) return;
       prepareSpruceSource(gltf.scene);
     }, 'NATURAL SPRUCE');
+
+    // Add a small V3 comparison grove without replacing the successful V2 forest.
+    // 12 V3 spruces, all with slightly different size and rotation.
+    const spruceV3Positions: Array<[number,number]> = [
+      [-73,-57],[-54,-62],[-31,-61],[32,-62],[54,-58],[73,-48],
+      [-72,42],[-53,49],[-31,55],[32,53],[54,48],[72,55]
+    ];
+
+    loadGlbWithFolderFallback(treeV3Asset, (gltf:any) => {
+      if (!glbTreesAlive) return;
+      const source = gltf.scene.clone(true);
+      source.traverse((o:any) => {
+        if (!o.isMesh) return;
+        o.visible = true;
+        o.frustumCulled = false;
+        o.castShadow = true;
+        o.receiveShadow = true;
+        const darkenV3 = (m:any) => {
+          if (!m) return m;
+          const mm = m.clone ? m.clone() : m;
+          // Keep V3 close to the current dark V2 forest for a fair visual comparison.
+          if (mm.color?.multiplyScalar) mm.color.multiplyScalar(0.72);
+          if ('roughness' in mm) mm.roughness = 0.96;
+          if ('metalness' in mm) mm.metalness = 0.0;
+          mm.needsUpdate = true;
+          return mm;
+        };
+        if (Array.isArray(o.material)) o.material = o.material.map(darkenV3);
+        else o.material = darkenV3(o.material);
+      });
+
+      spruceV3Positions.forEach(([x,z], i) => {
+        const tree = source.clone(true);
+        markMeshes(tree);
+        tree.rotation.set(0, midHash(i, 2301) * Math.PI * 2, 0);
+        tree.scale.setScalar(0.72 + midHash(i, 2302) * 0.28);
+        tree.position.set(0,0,0);
+        tree.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(tree);
+        tree.position.set(x, groundY(x,z) - box.min.y, z);
+        tree.updateMatrixWorld(true);
+        scene.add(tree);
+        glbTreeInstances.push(tree);
+      });
+
+      console.log('[NATURAL SPRUCE V3] 12 comparison trees loaded', `${BASE}img/models/${treeV3Asset}`);
+    }, 'NATURAL SPRUCE V3');
 
     // Restore the GLB oak as a varied grove: 40 clones, while keeping the village centre readable.
     loadGlbWithFolderFallback(oakAsset, (gltf:any) => {
