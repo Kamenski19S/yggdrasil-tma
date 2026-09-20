@@ -1676,14 +1676,14 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
 
     // Dense village core: buildings frame the roads and central square.
-    // First GLB village-house test: replace the old procedural warrior house.
-    // Keep its original position, rotation, interaction id and collision footprint.
+    // Viking house GLB: use one loaded source and clone it for ordinary houses.
+    // Named core homes (elder, fisherman, hunter, herbalist, craftsman) stay untouched.
     loadGlbWithFolderFallback(vikingHouseAsset, (gltf:any) => {
       if (!glbTreesAlive) return;
-      const vikingHouse = gltf.scene.clone(true);
-      markMeshes(vikingHouse);
 
-      vikingHouse.traverse((o:any) => {
+      const source = gltf.scene.clone(true);
+      markMeshes(source);
+      source.traverse((o:any) => {
         if (!o.isMesh) return;
         o.visible = true;
         o.castShadow = true;
@@ -1691,17 +1691,27 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         o.frustumCulled = true;
       });
 
-      // The source is ~8.25 x 9.33 m on the ground.
-      // Compress depth slightly so it fits the old 9 x 7 m village plot.
-      vikingHouse.scale.set(1.02, 1.02, 0.78);
-      vikingHouse.rotation.set(0, .18, 0);
-      vikingHouse.position.set(-15, groundY(-15,-18), -18);
-      vikingHouse.userData = { id:"house", label:"Дом дружинника" };
+      const placements = [
+        {x:-15,z:-18,rot:.18, sx:1.02,sy:1.02,sz:.78, id:"house",    label:"Дом дружинника"},
+        {x:-31,z:  8,rot:.10, sx:.86,sy:.90,sz:.58, id:"fisher2",  label:"Дом рыбака"},
+        {x:-27,z: 20,rot:-.25,sx:.82,sy:.86,sz:.56, id:"carpenter",label:"Дом плотника"},
+        {x: 31,z: 18,rot:.32, sx:.88,sy:.92,sz:.58, id:"hunter2", label:"Дом охотницы"},
+        {x: 20,z: 24,rot:-.12,sx:.84,sy:.88,sz:.57, id:"family",  label:"Дом семьи"}
+      ];
 
-      addMesh(vikingHouse,"house","Дом дружинника");
-      objects.push(vikingHouse);
-      console.log('[VIKING HOUSE] loaded', `${BASE}img/models/${vikingHouseAsset}`);
+      placements.forEach((p, i) => {
+        const h = source.clone(true);
+        h.scale.set(p.sx,p.sy,p.sz);
+        h.rotation.set(0,p.rot,0);
+        h.position.set(p.x,groundY(p.x,p.z),p.z);
+        h.userData={id:p.id,label:p.label};
+        addMesh(h,p.id,p.label);
+        objects.push(h);
+      });
+
+      console.log('[VIKING HOUSE] 5 cloned houses loaded', `${BASE}img/models/${vikingHouseAsset}`);
     }, 'VIKING HOUSE');
+
     addRectCollider(-15,-18,9.0,7.0,.18,.05);
     house(13,-18,10,7,-.08,"Дом старейшины","house",0x765036,0x292725);
     house(23,-6,8,6,.72,"Дом рыбака","fisher",0x6e5039,0x30302d);
@@ -1851,11 +1861,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     fenceRun(29,-1,39,-1); fenceRun(39,-1,39,10); fenceRun(39,10,30,10);
     for(const p0 of [[-20,29,1.0],[-16,34,.85],[-20,35,.8],[18,31,.9],[21,37,.72],[31,5,.9]] as Array<[number,number,number]>) hay(p0[0],p0[1],p0[2]);
     cart(-17,24,.18); cart(29,-5,-.55); bench(-20,23,.18); bench(25,31,-.2);
-    // A second line of modest homes creates a believable village edge.
-    house(-31,8,7,5,.1,"Дом рыбака","fisher2",0x694832,0x2d2b29);
-    house(-27,20,7,5,-.25,"Дом плотника","carpenter",0x765039,0x302b27);
-    house(31,18,7,5,.32,"Дом охотницы","hunter2",0x63432f,0x292724);
-    house(20,24,7,5,-.12,"Дом семьи","family",0x79543a,0x2d2927);
+    // A second line of modest homes is now supplied by Viking GLB clones above.
     addRectCollider(-31,8,7.8,5.8,.1,.04);addRectCollider(-27,20,7.8,5.8,-.25,.04);addRectCollider(31,18,7.8,5.8,.32,.04);addRectCollider(20,24,7.8,5.8,-.12,.04);
     // Small market corner near the square.
     const stall=(x:number,z:number,rot:number)=>{
