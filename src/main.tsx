@@ -1082,6 +1082,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     fogTarget.depthTexture.format = THREE.DepthFormat;
     fogTarget.depthTexture.minFilter = THREE.NearestFilter;
     fogTarget.depthTexture.magFilter = THREE.NearestFilter;
+    fogTarget.texture.colorSpace = THREE.LinearSRGBColorSpace;
 
     const fogPostScene = new THREE.Scene();
     const fogPostCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -1156,7 +1157,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
         float fogDensityAt(vec3 p) {
           // Low forest mist: strongest near ground, smoothly disappears upward.
-          float heightDensity = exp(-max(p.y + 0.15, 0.0) * 0.92);
+          float heightDensity = exp(-max(p.y + 0.10, 0.0) * 1.12);
 
           // Broad moving pockets + smaller detail. This breaks up uniform bands.
           vec2 drift = vec2(time * 0.018, time * 0.010);
@@ -1198,8 +1199,12 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
           // No geometric layer exists, so there is no horizontal cut across trunks.
           const int STEPS = 8;
           float accum = 0.0;
+
+          // Jitter the sample positions per pixel. With only 8 mobile-friendly
+          // samples this hides the visible "flat slices" that can otherwise appear.
+          float jitter = hash21(gl_FragCoord.xy + floor(time * 7.0));
           for (int i=0; i<STEPS; i++) {
-            float t = (float(i) + 0.5) / float(STEPS);
+            float t = (float(i) + jitter) / float(STEPS);
             vec3 p = cameraWorldPos + ray * t;
             accum += fogDensityAt(p);
           }
@@ -1208,19 +1213,24 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
           float fogAmount = 1.0 - exp(-accum * stepLen * 0.085);
 
           // Keep mobile scene readable and prevent complete whitening at long range.
-          fogAmount = clamp(fogAmount, 0.0, 0.56);
+          fogAmount = clamp(fogAmount, 0.0, 0.46);
 
           // Tiny distance ramp makes nearby grass mostly clear.
           fogAmount *= smoothstep(3.0, 14.0, rayLen);
 
           vec3 mixed = mix(base.rgb, fogColor, fogAmount);
           gl_FragColor = vec4(mixed, base.a);
+
+          // The first pass is kept linear. Convert only once here, at the final
+          // screen output, so the postprocess does not turn the whole world dark.
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
         }
       `,
       depthTest: false,
       depthWrite: false,
       transparent: false,
-      toneMapped: false
+      toneMapped: true
     });
 
     const fogPostQuad = new THREE.Mesh(fogPostGeo, fogPostMat);
@@ -3394,16 +3404,67 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       fogPostMat.uniforms.cameraMatrixWorld.value.copy(camera.matrixWorld);
       fogPostMat.uniforms.cameraWorldPos.value.setFromMatrixPosition(camera.matrixWorld);
 
+      // Wildlife movement — restored after the fog postprocess rewrite.
+      wildlife.forEach((w,i)=>{
+        if(w.kind==='deer'){
+          const dx=w.g.position.x-hero.position.x, dz=w.g.position.z-hero.position.z, dist=Math.hypot(dx,dz);
+          if(dist<11){
+            const legJoints=(w.g.userData?.legJoints||[]) as THREE.Object3D[];
+            const gait=now*.014*(w.speed||1);
+            for(let li=0;li<4;li++){
+              const upper=legJoints[li*2], lower=legJoints[li*2+1];
+              if(upper) upper.rotation.z=Math.sin(gait+li*Math.PI)*.10;
+              if(lower) lower.rotation.z=Math.max(0,Math.sin(gait+li*Math.PI))*-.18;
+            }
+            const len=Math.max(.001,dist);
+            const step=dist<5.5?.115:.075;
+            const nx=w.g.position.x+(dx/len)*step, nz=w.g.position.z+(dz/len)*step;
+            const bx=nx-30,bz=nz-53,br=Math.hypot(bx,bz);
+            if(br<17){w.g.position.set(nx,groundY(nx,nz),nz);} else {
+              const ang=Math.atan2(bz,bx);
+              const rx=30+Math.cos(ang)*16, rz=53+Math.sin(ang)*10;
+              w.g.position.set(rx,groundY(rx,rz),rz);
+            }
+            w.g.rotation.y=Math.atan2(dz,dx);
+            w.g.position.y+=Math.sin(now*.008+i)*.025;
+            return;
+          }
+        }
+
+        const ang=now*.00105*w.speed+w.phase;
+        const nx=w.x+Math.cos(ang)*w.r;
+        const nz=w.z+Math.sin(ang*.83)*w.r*.62;
+        w.g.position.set(nx,groundY(nx,nz),nz);
+        w.g.rotation.y=Math.atan2(Math.cos(ang*.83),-Math.sin(ang));
+
+        if(w.kind==='deer'){
+          const legJoints=(w.g.userData?.legJoints||[]) as THREE.Object3D[];
+          const gait=now*.014*(w.speed||1);
+          for(let li=0;li<4;li++){
+            const upper=legJoints[li*2], lower=legJoints[li*2+1];
+            if(upper) upper.rotation.z=Math.sin(gait+li*Math.PI)*.10;
+            if(lower) lower.rotation.z=Math.max(0,Math.sin(gait+li*Math.PI))*-.18;
+          }
+          w.g.position.y+=Math.sin(now*.006+i)*.025;
+          w.g.rotation.x=Math.sin(now*.004+w.phase)*.018;
+        }
+      });
+
       npcs.forEach((n,i)=>{const phase=n.userData.phase||0;const bx=n.userData.baseX,bz=n.userData.baseZ;const nx=bx+Math.sin(now*.00028+phase)*1.6,nz=bz+Math.cos(now*.00022+phase)*1.1;n.position.set(nx,groundY(nx,nz),nz);n.rotation.y=Math.sin(now*.0004+phase)*.5;});
       lightPools.forEach((m,i)=>{
         const p=m.material as THREE.MeshBasicMaterial;
         p.opacity = 0.48 + Math.sin(now*0.00055 + i*1.7)*0.07;
         m.rotation.z += Math.sin(now*0.00018+i)*0.00008;
       });
+      const savedToneMapping = renderer.toneMapping;
+      renderer.toneMapping = THREE.NoToneMapping;
+
       renderer.setRenderTarget(fogTarget);
       renderer.clear();
       renderer.render(scene,camera);
+
       renderer.setRenderTarget(null);
+      renderer.toneMapping = savedToneMapping;
       renderer.clear();
       renderer.render(fogPostScene,fogPostCamera);
       raf=requestAnimationFrame(loop);
