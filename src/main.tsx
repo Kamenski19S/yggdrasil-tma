@@ -1005,6 +1005,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.35));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.autoUpdate = false;
+    renderer.shadowMap.needsUpdate = true;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.03;
@@ -3339,33 +3341,30 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         const step=6.2*dt;
         moveWithCollision(q,q.x+(q.dx/l)*step,q.z+(q.dz/l)*step);
         hero.rotation.y=Math.atan2(q.dx,q.dz);
-        cameraDir.current.x=q.dx/l;
-        cameraDir.current.z=q.dz/l;
         setMoving(true);
       }else setMoving(false);
       const hy=groundY(q.x,q.z);
       hero.position.set(q.x,hy+.04,q.z);
       if(heroAnim){
-        const walkT=now*.011+heroAnim.phase;
-        const stride=l>.05?Math.sin(walkT)*0.58:0;
-        const armSwing=l>.05?Math.sin(walkT+Math.PI)*0.42:0;
-        heroAnim.legL.rotation.x=stride;
-        heroAnim.legR.rotation.x=-stride;
-        heroAnim.armL.upper.rotation.x=armSwing;
-        heroAnim.armR.upper.rotation.x=-armSwing;
-        heroAnim.armL.elbow.rotation.x=-Math.abs(armSwing)*.35;
-        heroAnim.armR.elbow.rotation.x=-Math.abs(armSwing)*.35;
-        heroAnim.weapon.rotation.z=-0.12+(l>.05?Math.sin(walkT)*.035:0);
+        // Character pose is intentionally static: no walking limb animation.
+        heroAnim.legL.rotation.x=0;
+        heroAnim.legR.rotation.x=0;
+        heroAnim.armL.upper.rotation.x=0;
+        heroAnim.armR.upper.rotation.x=0;
+        heroAnim.armL.elbow.rotation.x=0;
+        heroAnim.armR.elbow.rotation.x=0;
+        heroAnim.weapon.rotation.z=-0.12;
       }
-      // Keep the camera direction stable when the thumb is released. The old camera
-      // used dx/dz directly, so stopping movement instantly changed its target and
-      // produced the visible screen jump/bounce on mobile.
+      // Completely calm camera: no lerp, no auto-rotation, no terrain bob.
+      // It follows the hero position directly from one fixed viewing direction.
       const cd=cameraDir.current;
-      const target=insideHomeRef.current
-        ? new THREE.Vector3(q.x-cd.x*1.0,hy+3.65,q.z-cd.z*1.0)
-        : new THREE.Vector3(q.x-cd.x*2.0,hy+7.2,q.z-cd.z*2.0+11.8);
-      camera.position.lerp(target,insideHomeRef.current?.09:.055);
-      camera.lookAt(q.x+(insideHomeRef.current?cd.x*.9:cd.x*1.9),hy+(insideHomeRef.current?1.25:1.2),q.z+(insideHomeRef.current?cd.z*.9:cd.z*1.9));
+      if(insideHomeRef.current){
+        camera.position.set(q.x-cd.x*1.0, 3.85, q.z-cd.z*1.0);
+        camera.lookAt(q.x+cd.x*.9, 1.25, q.z+cd.z*.9);
+      }else{
+        camera.position.set(q.x-cd.x*2.0, 7.65, q.z-cd.z*2.0+11.8);
+        camera.lookAt(q.x+cd.x*1.9, 1.20, q.z+cd.z*1.9);
+      }
       let found="",foundId="";
       if(insideHomeRef.current){
         if(q.z>heroHomeZ+1.72){found="Дверь — выйти из дома";foundId="heroHomeExit";}
@@ -3373,85 +3372,19 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         for(const d of destinations){if(Math.hypot(q.x-d.x,q.z-d.z)<d.r){found=d.label;foundId=d.id;break;}}
       }
       setNear(found?`${found}|${foundId}`:"");
-      // Slow, irregular wind keeps the vegetation subtly alive.
-      windFoliage.forEach((w,i)=>{
-        const sway=Math.sin(now*.00125+w.phase)*w.amp + Math.sin(now*.00063+w.phase*1.7+i)*w.amp*.45;
-        w.o.rotation.x=w.baseX+sway*.75; w.o.rotation.z=w.baseZ+sway;
-      });
-      windPlants.forEach((w,i)=>{
-        const sway=Math.sin(now*.0017+w.phase)*w.amp + Math.sin(now*.00091+w.phase*1.9+i)*w.amp*.5;
-        w.o.rotation.x=w.baseX+sway*.55; w.o.rotation.z=w.baseZ+sway;
-      });
-      for(let i=0;i<moteCount;i++){
-        const j=i*3,phase=i*.73;
-        motePos[j]+=Math.sin(now*.00022+phase)*.0018;
-        motePos[j+1]+=Math.sin(now*.00047+phase*1.3)*.0010;
-        motePos[j+2]+=Math.cos(now*.00019+phase)*.0015;
-      }
-      moteGeo.attributes.position.needsUpdate=true;
-      moteMat.opacity=.19+.07*(.5+.5*Math.sin(now*.00055));
+      // ALL AMBIENT WORLD ANIMATION DISABLED.
+      // Trees/plants, motes, water ripples/current, fire flicker and light pools
+      // remain visually static. Only direct player-controlled translation remains.
+      moteMat.opacity = .22;
 
-      ripples.forEach((r)=>{const pulse=.72+.28*Math.sin(now*.0016+r.phase);r.mesh.scale.set(pulse,pulse*.42,pulse);const m=r.mesh.material as THREE.MeshBasicMaterial;m.opacity=.055+.055*(.5+.5*Math.sin(now*.0016+r.phase));});
-      currentStreaks.forEach((r)=>{const drift=Math.sin(now*.00055*r.speed+r.phase)*.9;r.mesh.position.y=groundY(r.mesh.position.x,r.mesh.position.z)+.095+drift*.008;const m=r.mesh.material as THREE.MeshBasicMaterial;m.opacity=.045+.045*(.5+.5*Math.sin(now*.0011*r.speed+r.phase));});
-
-      fires.forEach(f=>{f.light.intensity=2.0+Math.sin(now*.012+f.phase)*.5;f.flame.scale.y=.9+Math.sin(now*.009+f.phase)*.12;});
       // Update only camera-dependent uniforms. Fog itself has no animation.
       fogPostMat.uniforms.projectionMatrixInverse.value.copy(camera.projectionMatrixInverse);
       fogPostMat.uniforms.cameraMatrixWorld.value.copy(camera.matrixWorld);
       fogPostMat.uniforms.cameraWorldPos.value.setFromMatrixPosition(camera.matrixWorld);
 
-      // Wildlife movement — restored after the fog postprocess rewrite.
-      wildlife.forEach((w,i)=>{
-        if(w.kind==='deer'){
-          const dx=w.g.position.x-hero.position.x, dz=w.g.position.z-hero.position.z, dist=Math.hypot(dx,dz);
-          if(dist<11){
-            const legJoints=(w.g.userData?.legJoints||[]) as THREE.Object3D[];
-            const gait=now*.014*(w.speed||1);
-            for(let li=0;li<4;li++){
-              const upper=legJoints[li*2], lower=legJoints[li*2+1];
-              if(upper) upper.rotation.z=Math.sin(gait+li*Math.PI)*.10;
-              if(lower) lower.rotation.z=Math.max(0,Math.sin(gait+li*Math.PI))*-.18;
-            }
-            const len=Math.max(.001,dist);
-            const step=dist<5.5?.115:.075;
-            const nx=w.g.position.x+(dx/len)*step, nz=w.g.position.z+(dz/len)*step;
-            const bx=nx-30,bz=nz-53,br=Math.hypot(bx,bz);
-            if(br<17){w.g.position.set(nx,groundY(nx,nz),nz);} else {
-              const ang=Math.atan2(bz,bx);
-              const rx=30+Math.cos(ang)*16, rz=53+Math.sin(ang)*10;
-              w.g.position.set(rx,groundY(rx,rz),rz);
-            }
-            w.g.rotation.y=Math.atan2(dz,dx);
-            w.g.position.y+=Math.sin(now*.008+i)*.025;
-            return;
-          }
-        }
+      // Automatic entity animation disabled as requested.
+      // Wildlife and NPCs stay at their placed positions; light pools do not pulse.
 
-        const ang=now*.00105*w.speed+w.phase;
-        const nx=w.x+Math.cos(ang)*w.r;
-        const nz=w.z+Math.sin(ang*.83)*w.r*.62;
-        w.g.position.set(nx,groundY(nx,nz),nz);
-        w.g.rotation.y=Math.atan2(Math.cos(ang*.83),-Math.sin(ang));
-
-        if(w.kind==='deer'){
-          const legJoints=(w.g.userData?.legJoints||[]) as THREE.Object3D[];
-          const gait=now*.014*(w.speed||1);
-          for(let li=0;li<4;li++){
-            const upper=legJoints[li*2], lower=legJoints[li*2+1];
-            if(upper) upper.rotation.z=Math.sin(gait+li*Math.PI)*.10;
-            if(lower) lower.rotation.z=Math.max(0,Math.sin(gait+li*Math.PI))*-.18;
-          }
-          w.g.position.y+=Math.sin(now*.006+i)*.025;
-          w.g.rotation.x=Math.sin(now*.004+w.phase)*.018;
-        }
-      });
-
-      npcs.forEach((n,i)=>{const phase=n.userData.phase||0;const bx=n.userData.baseX,bz=n.userData.baseZ;const nx=bx+Math.sin(now*.00028+phase)*1.6,nz=bz+Math.cos(now*.00022+phase)*1.1;n.position.set(nx,groundY(nx,nz),nz);n.rotation.y=Math.sin(now*.0004+phase)*.5;});
-      lightPools.forEach((m,i)=>{
-        const p=m.material as THREE.MeshBasicMaterial;
-        p.opacity = 0.48 + Math.sin(now*0.00055 + i*1.7)*0.07;
-        m.rotation.z += Math.sin(now*0.00018+i)*0.00008;
-      });
       const savedToneMapping = renderer.toneMapping;
       renderer.toneMapping = THREE.NoToneMapping;
 
