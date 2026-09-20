@@ -1213,6 +1213,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const oakAsset = 'Midgard_Massive_Oak_V1_YUP.glb';
     const mountainAsset = 'Midgard_Snow_Mountain_Range_V1_YUP.glb';
     const heroHouseAsset = 'Midgard_Hero_House_V1_YUP.glb';
+    const vikingHouseAsset = 'Midgard_Viking_House_V1_YUP.glb';
 
     // Deterministic positions keep the village centre and major landmarks readable.
     const sprucePositions: Array<[number, number]> = [
@@ -1675,7 +1676,33 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
 
     // Dense village core: buildings frame the roads and central square.
-    house(-15,-18,9,7,.18,"Дом дружинника","house",0x80583a,0x2c2927);
+    // First GLB village-house test: replace the old procedural warrior house.
+    // Keep its original position, rotation, interaction id and collision footprint.
+    loadGlbWithFolderFallback(vikingHouseAsset, (gltf:any) => {
+      if (!glbTreesAlive) return;
+      const vikingHouse = gltf.scene.clone(true);
+      markMeshes(vikingHouse);
+
+      vikingHouse.traverse((o:any) => {
+        if (!o.isMesh) return;
+        o.visible = true;
+        o.castShadow = true;
+        o.receiveShadow = true;
+        o.frustumCulled = true;
+      });
+
+      // The source is ~8.25 x 9.33 m on the ground.
+      // Compress depth slightly so it fits the old 9 x 7 m village plot.
+      vikingHouse.scale.set(1.02, 1.02, 0.78);
+      vikingHouse.rotation.set(0, .18, 0);
+      vikingHouse.position.set(-15, groundY(-15,-18), -18);
+      vikingHouse.userData = { id:"house", label:"Дом дружинника" };
+
+      addMesh(vikingHouse,"house","Дом дружинника");
+      objects.push(vikingHouse);
+      console.log('[VIKING HOUSE] loaded', `${BASE}img/models/${vikingHouseAsset}`);
+    }, 'VIKING HOUSE');
+    addRectCollider(-15,-18,9.0,7.0,.18,.05);
     house(13,-18,10,7,-.08,"Дом старейшины","house",0x765036,0x292725);
     house(23,-6,8,6,.72,"Дом рыбака","fisher",0x6e5039,0x30302d);
     house(17,9,8,6,-.35,"Дом охотника","hunter",0x6b4a32,0x292725);
