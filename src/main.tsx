@@ -996,7 +996,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xa4b6ad);
-    scene.fog = new THREE.FogExp2(0xa4b3aa, 0.00325);
+    scene.fog = new THREE.FogExp2(0xa4b3aa, 0.00275);
 
     const camera = new THREE.PerspectiveCamera(54, 1, 0.1, 280);
     camera.position.set(0, 8.5, 17);
@@ -1065,37 +1065,80 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       lightPools.push(m);
     });
 
-    // Мягкий туман: никаких больших плоскостей. Используем круглую градиентную текстуру
-    // на спрайтах, чтобы края растворялись в воздухе и не появлялись резкие "пластины".
+    // REALISTIC FOREST HAZE
+    // Вместо одной широкой "полосы" используем небольшие мягкие облака
+    // на разных высотах. Основная масса тумана остаётся у земли.
     const fogCanvas = document.createElement("canvas");
-    fogCanvas.width = fogCanvas.height = 128;
+    fogCanvas.width = fogCanvas.height = 192;
     const fogCtx = fogCanvas.getContext("2d")!;
-    const fogGrad = fogCtx.createRadialGradient(64,64,4,64,64,64);
-    fogGrad.addColorStop(0, "rgba(214,224,218,0.16)");
-    fogGrad.addColorStop(0.42, "rgba(210,222,216,0.075)");
-    fogGrad.addColorStop(0.76, "rgba(205,219,212,0.025)");
-    fogGrad.addColorStop(1, "rgba(205,219,212,0)");
+    const fogGrad = fogCtx.createRadialGradient(96,96,3,96,96,94);
+    fogGrad.addColorStop(0.00, "rgba(220,229,223,0.145)");
+    fogGrad.addColorStop(0.28, "rgba(216,226,220,0.105)");
+    fogGrad.addColorStop(0.58, "rgba(211,223,216,0.055)");
+    fogGrad.addColorStop(0.82, "rgba(207,220,213,0.018)");
+    fogGrad.addColorStop(1.00, "rgba(207,220,213,0)");
     fogCtx.fillStyle = fogGrad;
-    fogCtx.fillRect(0,0,128,128);
+    fogCtx.fillRect(0,0,192,192);
+
     const fogTex = new THREE.CanvasTexture(fogCanvas);
     fogTex.colorSpace = THREE.SRGBColorSpace;
+
     const fogSpriteMat = new THREE.SpriteMaterial({
-      map: fogTex, color: 0xd6e0da, transparent: true, opacity: 0.34,
-      depthWrite: false, depthTest: true, blending: THREE.NormalBlending
+      map: fogTex,
+      color: 0xd7e1db,
+      transparent: true,
+      opacity: 0.12,
+      depthWrite: false,
+      depthTest: true,
+      blending: THREE.NormalBlending
     });
+
+    // Средняя дымка между деревьями. Спрайты небольшие и разбросаны,
+    // поэтому из них не складывается ровная горизонтальная лента.
     const fogSprites: THREE.Sprite[] = [];
-    for(let i=0;i<26;i++){
+    for(let i=0;i<34;i++){
       const s = new THREE.Sprite(fogSpriteMat.clone());
-      const scale = 7 + midHash(i,821)*12;
-      s.scale.set(scale, scale*(0.42+midHash(i,822)*0.24), 1);
-      s.position.set(
-        -78 + midHash(i,823)*156,
-        1.2 + midHash(i,824)*3.0,
-        -62 + midHash(i,825)*124
-      );
-      (s.material as THREE.SpriteMaterial).opacity = 0.10 + midHash(i,826)*0.10;
+      const w = 4.8 + midHash(i,821)*8.8;
+      const h = w*(0.22 + midHash(i,822)*0.18);
+      s.scale.set(w,h,1);
+
+      const x = -80 + midHash(i,823)*160;
+      const z = -74 + midHash(i,825)*148;
+      const baseY = groundY(x,z) + 0.45 + midHash(i,824)*1.65;
+
+      s.position.set(x,baseY,z);
+      s.userData.baseX = x;
+      s.userData.baseY = baseY;
+      s.userData.baseZ = z;
+      s.userData.phase = midHash(i,827)*Math.PI*2;
+      (s.material as THREE.SpriteMaterial).opacity = 0.035 + midHash(i,826)*0.055;
+
       scene.add(s);
       fogSprites.push(s);
+    }
+
+    // Более высокая и очень слабая дымка только у дальнего леса/гор.
+    // Она связывает деревья с фоном, но не перекрывает низ сцены.
+    const farFogSprites: THREE.Sprite[] = [];
+    for(let i=0;i<18;i++){
+      const s = new THREE.Sprite(fogSpriteMat.clone());
+      const w = 8 + midHash(i,841)*13;
+      const h = w*(0.26 + midHash(i,842)*0.15);
+      s.scale.set(w,h,1);
+
+      const x = -82 + midHash(i,843)*164;
+      const z = -72 - midHash(i,844)*17;
+      const baseY = groundY(x,z) + 1.4 + midHash(i,845)*2.4;
+
+      s.position.set(x,baseY,z);
+      s.userData.baseX = x;
+      s.userData.baseY = baseY;
+      s.userData.baseZ = z;
+      s.userData.phase = midHash(i,846)*Math.PI*2;
+      (s.material as THREE.SpriteMaterial).opacity = 0.025 + midHash(i,847)*0.04;
+
+      scene.add(s);
+      farFogSprites.push(s);
     }
 
     const canvasTex = (type: "ground" | "wood" | "roof" | "road" | "bark" | "foliage") => {
@@ -3134,14 +3177,26 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const npc=(x:number,z:number,id:string,label:string,color:number,phase:number)=>{const g=new THREE.Group();g.userData={id,label,phase,baseX:x,baseZ:z};const body=new THREE.Mesh(new THREE.CapsuleGeometry(.32,.78,4,8),mat(color,.9));body.position.y=.85;g.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.25,12,8),mat(0xc99470,.9));head.position.y=1.58;g.add(head);const cloak=box(.7,.9,.15,0x27251f,1);cloak.position.set(0,.82,-.27);g.add(cloak);g.position.set(x,groundY(x,z),z);addMesh(g,id,label);objects.push(g);npcs.push(g);};
     npc(9,-8,"elder","Старейшина",0x73563f,.4);npc(-6,-3,"blacksmith","Кузнец",0x5c3b2b,1.5);npc(21,1,"hunter","Охотник",0x40523f,2.4);npc(5,10,"villager","Житель Мидгарда",0x59634d,3.4);npc(-16,4,"villager2","Житель деревни",0x654b3a,4.2);
 
-    // Дополнительный очень лёгкий приземный туман — отдельные мягкие пятна, без геометрических стен.
+    // Низкий приземный туман: много отдельных карманов на высоте травы.
+    // Он закрывает низ стволов местами, но оставляет чистые участки между облаками.
     const mist = new THREE.Group();
-    for(let i=0;i<18;i++){
+    for(let i=0;i<52;i++){
       const s = new THREE.Sprite(fogSpriteMat.clone());
-      const scale = 4.5 + midHash(i,831)*7.5;
-      s.scale.set(scale, scale*(0.30+midHash(i,832)*0.18), 1);
-      s.position.set(-82+midHash(i,833)*164, .35+midHash(i,834)*1.15, -66+midHash(i,835)*132);
-      (s.material as THREE.SpriteMaterial).opacity = 0.055 + midHash(i,836)*0.055;
+      const w = 3.0 + midHash(i,831)*6.7;
+      const h = w*(0.14 + midHash(i,832)*0.13);
+      s.scale.set(w,h,1);
+
+      const x = -84 + midHash(i,833)*168;
+      const z = -78 + midHash(i,835)*156;
+      const baseY = groundY(x,z) + 0.12 + midHash(i,834)*0.55;
+
+      s.position.set(x,baseY,z);
+      s.userData.baseX = x;
+      s.userData.baseY = baseY;
+      s.userData.baseZ = z;
+      s.userData.phase = midHash(i,838)*Math.PI*2;
+      (s.material as THREE.SpriteMaterial).opacity = 0.028 + midHash(i,836)*0.052;
+
       mist.add(s);
     }
     scene.add(mist);
@@ -3258,12 +3313,30 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       currentStreaks.forEach((r)=>{const drift=Math.sin(now*.00055*r.speed+r.phase)*.9;r.mesh.position.y=groundY(r.mesh.position.x,r.mesh.position.z)+.095+drift*.008;const m=r.mesh.material as THREE.MeshBasicMaterial;m.opacity=.045+.045*(.5+.5*Math.sin(now*.0011*r.speed+r.phase));});
 
       fires.forEach(f=>{f.light.intensity=2.0+Math.sin(now*.012+f.phase)*.5;f.flame.scale.y=.9+Math.sin(now*.009+f.phase)*.12;});
-      mist.children.forEach((m,i)=>{m.position.x+=Math.sin(now*.00012+i)*.003;m.position.z+=Math.cos(now*.0001+i)*.002;});
-      fogSprites.forEach((s,i)=>{
-        s.position.x += Math.sin(now*.00010+i*1.7)*.0025;
-        s.position.z += Math.cos(now*.00008+i*1.3)*.0020;
+      mist.children.forEach((m:any,i)=>{
+        const phase=m.userData.phase||0;
+        m.position.x=(m.userData.baseX||0)+Math.sin(now*.000075+phase)*0.42;
+        m.position.z=(m.userData.baseZ||0)+Math.cos(now*.000061+phase)*0.30;
+        m.position.y=(m.userData.baseY||0)+Math.sin(now*.00011+phase)*0.045;
+        const sm=m.material as THREE.SpriteMaterial;
+        sm.opacity=(0.026+midHash(i,836)*0.045)*(0.82+0.18*Math.sin(now*.00013+phase));
+      });
+
+      fogSprites.forEach((s:any,i)=>{
+        const phase=s.userData.phase||0;
+        s.position.x=(s.userData.baseX||0)+Math.sin(now*.000055+phase)*0.62;
+        s.position.z=(s.userData.baseZ||0)+Math.cos(now*.000048+phase)*0.44;
+        s.position.y=(s.userData.baseY||0)+Math.sin(now*.000072+phase)*0.08;
         const sm=s.material as THREE.SpriteMaterial;
-        sm.opacity = 0.075 + (0.045 + 0.02*midHash(i,837))*(0.5+0.5*Math.sin(now*.00022+i));
+        sm.opacity=(0.033+midHash(i,826)*0.050)*(0.84+0.16*Math.sin(now*.000105+phase));
+      });
+
+      farFogSprites.forEach((s:any,i)=>{
+        const phase=s.userData.phase||0;
+        s.position.x=(s.userData.baseX||0)+Math.sin(now*.000038+phase)*0.78;
+        s.position.z=(s.userData.baseZ||0)+Math.cos(now*.000031+phase)*0.34;
+        const sm=s.material as THREE.SpriteMaterial;
+        sm.opacity=(0.023+midHash(i,847)*0.036)*(0.86+0.14*Math.sin(now*.00008+phase));
       });
       wildlife.forEach((w,i)=>{
         if(w.kind==='deer'){
