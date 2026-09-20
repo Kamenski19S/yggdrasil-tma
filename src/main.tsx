@@ -1920,7 +1920,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       const g=new THREE.Group();g.position.set(x,groundY(x,z),z);g.rotation.y=rot;
       const top=box(3.0,.18,1.25,0x70462a,1);top.position.y=1.45;g.add(top);
       for(const px of [-1.25,1.25])for(const pz of [-.48,.48]){const p=box(.13,1.45,.13,0x412b1d,1);p.position.set(px,.72,pz);g.add(p);}
-      const canopy=new THREE.Mesh(new THREE.ConeGeometry(1.65,2.5,4,1,false,Math.PI/4),mat(0x49382e,1));canopy.scale.z=.55;canopy.position.y=2.15;g.add(canopy);addMesh(g);
+      // Triangular canopy removed; leave only the low market table/posts.
+      addMesh(g);
     };
     stall(-5,-7,.12);stall(8,-5,-.18);stall(6,7,.5);
     // Hearths, wood piles and small objects around homes.
@@ -3024,7 +3025,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const campFire=fire(68,8,.75); campFire.scale.setScalar(.72);
     const campStone=new THREE.Mesh(new THREE.CylinderGeometry(.65,.8,.7,7),mat(0x514a42,1)); campStone.position.set(68,groundY(68,8)+.35,6.5); scene.add(campStone);
     for(const [x,z] of [[66,10],[70,10],[66,6],[70,6]]){const post=box(.16,1.15,.16,0x493527,1);post.position.set(x,groundY(x,z)+.57,z);scene.add(post);}
-    const fallen=new THREE.Group(); fallen.position.set(-30,groundY(-30,15),15); const trunk= new THREE.Mesh(new THREE.CylinderGeometry(.5,.62,7,8),new THREE.MeshStandardMaterial({map:barkTexture,color:0x4c392b,roughness:1,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.034})); trunk.rotation.z=Math.PI/2; trunk.position.y=.5; fallen.add(trunk); const cut=new THREE.Mesh(new THREE.CylinderGeometry(.53,.53,.12,12),mat(0x75644d,1)); cut.rotation.z=Math.PI/2; cut.position.set(3.5,.5,0); fallen.add(cut); scene.add(fallen);
+    // Extra loose fallen trunk removed; the dedicated Fallen Ash landmark remains.
     for(let i=0;i<7;i++){const rune=new THREE.Mesh(new THREE.DodecahedronGeometry(.14,0),mat(0x697d72,1));const a=i/7*Math.PI*2;rune.position.set(-45+Math.cos(a)*4,.12+groundY(-45+Math.cos(a)*4,75+Math.sin(a)*4),75+Math.sin(a)*4);scene.add(rune);}
 
     // The old procedural fir forest has been removed. Real GLB trees above now form the visible spruce layer.
@@ -3065,15 +3066,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       rock.castShadow=true; rock.receiveShadow=true; scene.add(rock);
     }
 
-    for(let i=0;i<46;i++){
-      const x=-82+midHash(i,160)*164, z=-80+midHash(i,161)*160;
-      if(Math.hypot(x-1,z+1)<28) continue;
-      const len=.55+midHash(i,162)*1.15;
-      const twig=new THREE.Mesh(new THREE.CylinderGeometry(.025,.055,len,6),mat(0x463224,.98));
-      twig.position.set(x,groundY(x,z)+.045,z);
-      twig.rotation.set(.05+midHash(i,163)*.35,midHash(i,164)*Math.PI,Math.PI*.5+(midHash(i,165)-.5)*.5);
-      scene.add(twig);
-    }
+    // Fallen ground twigs removed to keep paths and house yards clean.
 
     // Step 4 — natural ground detail: moss, ferns, exposed roots and small woodland debris.
     // These are intentionally sparse and lightweight so the wide clearings remain readable.
@@ -3173,16 +3166,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       scene.add(g);
     }
 
-    for(let i=0;i<18;i++){
-      const a=midHash(i,970)*Math.PI*2,r=24+midHash(i,971)*58;
-      const x=Math.cos(a)*r,z=Math.sin(a)*r+3;
-      if(Math.abs(x)<14&&Math.abs(z)<21) continue;
-      const len=1.0+midHash(i,972)*2.0;
-      const branch=new THREE.Mesh(new THREE.CylinderGeometry(.045,.10,len,6),rootMat);
-      branch.position.set(x,groundY(x,z)+.07,z);
-      branch.rotation.set(.08+midHash(i,973)*.22,midHash(i,974)*Math.PI,Math.PI/2+(midHash(i,975)-.5)*.5);
-      scene.add(branch);
-    }
+    // Loose old branches removed from the ground around settlement paths.
 
     // A small watchtower gives vertical scale and a visible landmark.
     const tower=new THREE.Group();tower.position.set(29,groundY(29,25),25);tower.userData={id:"tower",label:"Сторожевая башня"};for(const px of [-2,2])for(const pz of [-2,2]){const p=box(.35,7,.35,0x3c291d,1);p.position.set(px,3.5,pz);tower.add(p);}const deck=box(5,.35,5,0x68472d,1);deck.position.y=5.8;tower.add(deck);const roofT=new THREE.Mesh(new THREE.ConeGeometry(3.8,2.7,4),mat(0x292522,1));roofT.position.y=8;tower.add(roofT);addMesh(tower,"tower","Сторожевая башня");objects.push(tower);
