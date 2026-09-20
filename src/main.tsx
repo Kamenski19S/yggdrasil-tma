@@ -1099,19 +1099,23 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     for(let i=0;i<34;i++){
       const s = new THREE.Sprite(fogSpriteMat.clone());
       const w = 4.8 + midHash(i,821)*8.8;
-      const h = w*(0.22 + midHash(i,822)*0.18);
+      const h = w*(0.18 + midHash(i,822)*0.22);
       s.scale.set(w,h,1);
 
       const x = -80 + midHash(i,823)*160;
       const z = -74 + midHash(i,825)*148;
-      const baseY = groundY(x,z) + 0.45 + midHash(i,824)*1.65;
+      // Anchor the cloud into the terrain. The lower half of the sprite
+      // intentionally sinks below ground and is hidden by depth testing, so
+      // the visible fog appears to grow naturally out of the grass instead
+      // of floating as a horizontal strip.
+      const baseY = groundY(x,z) + h * (0.20 + midHash(i,824)*0.08);
 
       s.position.set(x,baseY,z);
       s.userData.baseX = x;
       s.userData.baseY = baseY;
       s.userData.baseZ = z;
       s.userData.phase = midHash(i,827)*Math.PI*2;
-      (s.material as THREE.SpriteMaterial).opacity = 0.035 + midHash(i,826)*0.055;
+      (s.material as THREE.SpriteMaterial).opacity = 0.030 + midHash(i,826)*0.045;
 
       scene.add(s);
       fogSprites.push(s);
@@ -1123,19 +1127,21 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     for(let i=0;i<18;i++){
       const s = new THREE.Sprite(fogSpriteMat.clone());
       const w = 8 + midHash(i,841)*13;
-      const h = w*(0.26 + midHash(i,842)*0.15);
+      const h = w*(0.20 + midHash(i,842)*0.20);
       s.scale.set(w,h,1);
 
       const x = -82 + midHash(i,843)*164;
       const z = -72 - midHash(i,844)*17;
-      const baseY = groundY(x,z) + 1.4 + midHash(i,845)*2.4;
+      // The distant haze must also touch the terrain. Previously its
+      // absolute height created the pale floating band visible in screenshots.
+      const baseY = groundY(x,z) + h * (0.18 + midHash(i,845)*0.07);
 
       s.position.set(x,baseY,z);
       s.userData.baseX = x;
       s.userData.baseY = baseY;
       s.userData.baseZ = z;
       s.userData.phase = midHash(i,846)*Math.PI*2;
-      (s.material as THREE.SpriteMaterial).opacity = 0.025 + midHash(i,847)*0.04;
+      (s.material as THREE.SpriteMaterial).opacity = 0.020 + midHash(i,847)*0.032;
 
       scene.add(s);
       farFogSprites.push(s);
@@ -3328,7 +3334,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         s.position.z=(s.userData.baseZ||0)+Math.cos(now*.000048+phase)*0.44;
         s.position.y=(s.userData.baseY||0)+Math.sin(now*.000072+phase)*0.08;
         const sm=s.material as THREE.SpriteMaterial;
-        sm.opacity=(0.033+midHash(i,826)*0.050)*(0.84+0.16*Math.sin(now*.000105+phase));
+        sm.opacity=(0.029+midHash(i,826)*0.043)*(0.84+0.16*Math.sin(now*.000105+phase));
       });
 
       farFogSprites.forEach((s:any,i)=>{
@@ -3336,7 +3342,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         s.position.x=(s.userData.baseX||0)+Math.sin(now*.000038+phase)*0.78;
         s.position.z=(s.userData.baseZ||0)+Math.cos(now*.000031+phase)*0.34;
         const sm=s.material as THREE.SpriteMaterial;
-        sm.opacity=(0.023+midHash(i,847)*0.036)*(0.86+0.14*Math.sin(now*.00008+phase));
+        sm.opacity=(0.019+midHash(i,847)*0.030)*(0.86+0.14*Math.sin(now*.00008+phase));
       });
       wildlife.forEach((w,i)=>{
         if(w.kind==='deer'){
