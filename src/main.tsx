@@ -1098,7 +1098,6 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         cameraMatrixWorld: { value: camera.matrixWorld.clone() },
         cameraWorldPos: { value: new THREE.Vector3() },
         fogColor: { value: new THREE.Color(0xc3d0c8) },
-        time: { value: 0.0 }
       },
       vertexShader: `
         varying vec2 vUv;
@@ -1116,7 +1115,6 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         uniform mat4 cameraMatrixWorld;
         uniform vec3 cameraWorldPos;
         uniform vec3 fogColor;
-        uniform float time;
 
         varying vec2 vUv;
 
@@ -1197,14 +1195,13 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
           // 8 depth-aware samples from camera to the visible surface.
           // No geometric layer exists, so there is no horizontal cut across trunks.
-          const int STEPS = 8;
+          const int STEPS = 10;
           float accum = 0.0;
 
-          // Jitter the sample positions per pixel. With only 8 mobile-friendly
-          // samples this hides the visible "flat slices" that can otherwise appear.
-          float jitter = hash21(gl_FragCoord.xy * 0.37);
+          // Fully static sampling: no temporal or screen-space jitter.
+          // This avoids the impression that houses, trees and ground are "playing".
           for (int i=0; i<STEPS; i++) {
-            float t = (float(i) + jitter) / float(STEPS);
+            float t = (float(i) + 0.5) / float(STEPS);
             vec3 p = cameraWorldPos + ray * t;
             accum += fogDensityAt(p);
           }
@@ -3398,8 +3395,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       currentStreaks.forEach((r)=>{const drift=Math.sin(now*.00055*r.speed+r.phase)*.9;r.mesh.position.y=groundY(r.mesh.position.x,r.mesh.position.z)+.095+drift*.008;const m=r.mesh.material as THREE.MeshBasicMaterial;m.opacity=.045+.045*(.5+.5*Math.sin(now*.0011*r.speed+r.phase));});
 
       fires.forEach(f=>{f.light.intensity=2.0+Math.sin(now*.012+f.phase)*.5;f.flame.scale.y=.9+Math.sin(now*.009+f.phase)*.12;});
-      // Update depth-aware fog uniforms. Fog motion is intentionally frozen.
-      fogPostMat.uniforms.time.value = 0.0;
+      // Update only camera-dependent uniforms. Fog itself has no animation.
       fogPostMat.uniforms.projectionMatrixInverse.value.copy(camera.projectionMatrixInverse);
       fogPostMat.uniforms.cameraMatrixWorld.value.copy(camera.matrixWorld);
       fogPostMat.uniforms.cameraWorldPos.value.setFromMatrixPosition(camera.matrixWorld);
