@@ -1314,26 +1314,32 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       prepareSpruceSource(gltf.scene);
     }, 'NATURAL SPRUCE');
 
-    // Restore one massive oak close to Mimir's well. Keep it separate from the spruce.
+    // Restore the GLB oak as a varied grove: 40 clones, while keeping the village centre readable.
     loadGlbWithFolderFallback(oakAsset, (gltf:any) => {
       if (!glbTreesAlive) return;
-      const oak = gltf.scene.clone(true);
-      markMeshes(oak);
-      oak.rotation.set(0, -0.42, 0);
-      oak.scale.setScalar(0.90);
+      const oakSource = gltf.scene.clone(true);
+      markMeshes(oakSource);
 
-      oak.traverse((o:any) => {
+      // Another 20% darker than the previous oak pass.
+      // Recompute smooth normals where possible to soften the faceted/segmented trunk look.
+      oakSource.traverse((o:any) => {
         if (!o.isMesh) return;
         o.visible = true;
         o.frustumCulled = false;
         o.castShadow = true;
         o.receiveShadow = true;
+        if (o.geometry?.computeVertexNormals) {
+          o.geometry = o.geometry.clone();
+          o.geometry.computeVertexNormals();
+          o.geometry.attributes?.normal && (o.geometry.attributes.normal.needsUpdate = true);
+        }
         const darkenOak = (m:any) => {
           if (!m) return m;
           const mm = m.clone ? m.clone() : m;
-          if (mm.color?.multiplyScalar) mm.color.multiplyScalar(0.84);
-          if ('roughness' in mm) mm.roughness = Math.max(mm.roughness ?? 0.9, 0.92);
+          if (mm.color?.multiplyScalar) mm.color.multiplyScalar(0.672); // previous 0.84 × 0.80
+          if ('roughness' in mm) mm.roughness = Math.max(mm.roughness ?? 0.9, 0.96);
           if ('metalness' in mm) mm.metalness = 0.0;
+          if ('flatShading' in mm) mm.flatShading = false;
           mm.needsUpdate = true;
           return mm;
         };
@@ -1341,30 +1347,53 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         else o.material = darkenOak(o.material);
       });
 
-      const oakX = 9, oakZ = 6;
-      oak.position.set(0,0,0);
-      oak.updateMatrixWorld(true);
-      const oakBox = new THREE.Box3().setFromObject(oak);
-      oak.position.set(oakX, groundY(oakX,oakZ) - oakBox.min.y, oakZ);
+      // 40 deterministic positions. The first oak stays near Mimir; the rest form
+      // an irregular outer woodland and deliberately avoid the village centre.
+      const oakPositions: Array<[number,number]> = [
+        [9,6],[-78,-70],[-58,-73],[-37,-68],[-13,-76],[18,-74],[42,-70],[65,-72],[80,-57],
+        [-82,-47],[-64,-49],[-45,-53],[-24,-55],[28,-54],[50,-50],[71,-43],[84,-25],
+        [-83,-17],[-67,-23],[-48,-25],[48,-23],[67,-18],[83,-7],
+        [-82,13],[-64,17],[-46,14],[47,15],[65,12],[82,20],
+        [-78,42],[-59,39],[-39,46],[38,43],[58,39],[77,47],
+        [-68,69],[-43,66],[-18,74],[27,70],[55,67]
+      ];
 
-      // Preserve the three thin contact shadows that mask trunk-segment joints.
       const jointShadowMat = new THREE.MeshBasicMaterial({
-        color:0x17130f, transparent:true, opacity:0.28, depthWrite:false
-      });
-      [1.72, 3.32, 5.02].forEach((yy, i) => {
-        const ring = new THREE.Mesh(
-          new THREE.TorusGeometry(0.56 - i * 0.045, 0.028, 6, 28),
-          jointShadowMat.clone()
-        );
-        ring.rotation.x = Math.PI / 2;
-        ring.position.y = yy;
-        oak.add(ring);
+        color:0x120f0c, transparent:true, opacity:0.20, depthWrite:false
       });
 
-      oak.updateMatrixWorld(true);
-      scene.add(oak);
-      glbTreeInstances.push(oak);
-      console.log('[MASSIVE OAK] loaded near Mimir', `${BASE}img/models/${oakAsset}`);
+      oakPositions.forEach(([oakX,oakZ], i) => {
+        const oak = oakSource.clone(true);
+        markMeshes(oak);
+        oak.rotation.set(0, midHash(i, 2211) * Math.PI * 2, 0);
+
+        // Every oak has a different size. The Mimir oak stays moderately large;
+        // the rest range from young/small to old/large.
+        const oakScale = i === 0 ? 0.82 : 0.52 + midHash(i, 2212) * 0.43;
+        oak.scale.setScalar(oakScale);
+        oak.position.set(0,0,0);
+        oak.updateMatrixWorld(true);
+        const oakBox = new THREE.Box3().setFromObject(oak);
+        oak.position.set(oakX, groundY(oakX,oakZ) - oakBox.min.y, oakZ);
+
+        // Thin soft collars hide the three visible trunk-section seams without
+        // changing the silhouette of the model. They scale together with each oak.
+        [1.72, 3.32, 5.02].forEach((yy, j) => {
+          const ring = new THREE.Mesh(
+            new THREE.TorusGeometry(0.565 - j * 0.045, 0.040, 10, 36),
+            jointShadowMat.clone()
+          );
+          ring.rotation.x = Math.PI / 2;
+          ring.position.y = yy;
+          oak.add(ring);
+        });
+
+        oak.updateMatrixWorld(true);
+        scene.add(oak);
+        glbTreeInstances.push(oak);
+      });
+
+      console.log('[MASSIVE OAK] 40 varied, darker, smoothed oaks loaded', `${BASE}img/models/${oakAsset}`);
     }, 'MASSIVE OAK');
 
     // Distant world depth: soft mountain ridges and far forest silhouettes.
