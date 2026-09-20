@@ -1258,8 +1258,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const darkenSpruceMaterial = (m:any) => {
       if (!m) return m;
       const mm = m.clone ? m.clone() : m;
-      // About 15% darker than the GLB material while preserving its texture.
-      if (mm.color?.multiplyScalar) mm.color.multiplyScalar(0.85);
+      // 10% darker than the current spruce appearance.
+      if (mm.color?.multiplyScalar) mm.color.multiplyScalar(0.765);
       if ('roughness' in mm) mm.roughness = 0.96;
       if ('metalness' in mm) mm.metalness = 0.0;
       mm.needsUpdate = true;
@@ -1320,7 +1320,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       const oak = gltf.scene.clone(true);
       markMeshes(oak);
       oak.rotation.set(0, -0.42, 0);
-      oak.scale.setScalar(1.0);
+      oak.scale.setScalar(0.90);
 
       oak.traverse((o:any) => {
         if (!o.isMesh) return;
@@ -1328,17 +1328,17 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         o.frustumCulled = false;
         o.castShadow = true;
         o.receiveShadow = true;
-        const brighten = (m:any) => {
+        const darkenOak = (m:any) => {
           if (!m) return m;
           const mm = m.clone ? m.clone() : m;
-          if (mm.color?.multiplyScalar) mm.color.multiplyScalar(1.05);
+          if (mm.color?.multiplyScalar) mm.color.multiplyScalar(0.84);
           if ('roughness' in mm) mm.roughness = Math.max(mm.roughness ?? 0.9, 0.92);
           if ('metalness' in mm) mm.metalness = 0.0;
           mm.needsUpdate = true;
           return mm;
         };
-        if (Array.isArray(o.material)) o.material = o.material.map(brighten);
-        else o.material = brighten(o.material);
+        if (Array.isArray(o.material)) o.material = o.material.map(darkenOak);
+        else o.material = darkenOak(o.material);
       });
 
       const oakX = 9, oakZ = 6;
