@@ -1212,13 +1212,14 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const treeV3Asset = 'Midgard_Natural_Spruce_V3_YUP.glb';
     const oakAsset = 'Midgard_Massive_Oak_V1_YUP.glb';
     const mountainAsset = 'Midgard_Snow_Mountain_Range_V1_YUP.glb';
+    const heroHouseAsset = 'Midgard_Hero_House_V1_YUP.glb';
 
     // Deterministic positions keep the village centre and major landmarks readable.
     const sprucePositions: Array<[number, number]> = [
       [-72,-62],[-51,-68],[-27,-72],[24,-69],[49,-63],[72,-55],
       [-76,-34],[-56,-38],[-36,-43],[34,-42],[57,-36],[78,-27],
       [-80,-4],[-61,-10],[-43,-8],[46,-9],[65,-3],[81,5],
-      [-74,25],[-53,30],[-34,34],[39,29],[59,25],[76,34],
+      [-74,25],[-53,30],[-34,34],[39,29],[59,25],[71,39],
       [-68,57],[-45,61],[-24,66],[30,61],[52,57],[71,66]
     ];
 
@@ -2700,7 +2701,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     // The hero's home is deliberately a SMALL personal cabin just beyond the hunter camp.
     // It is visually distinct from the larger village houses: lower walls, a compact turf roof,
     // a short porch and a modest fenced yard. This is the hero's own dwelling, not another NPC house.
-    const heroHomeX=75, heroHomeZ=30;
+    const heroHomeX=80, heroHomeZ=30;
     const heroCabin=new THREE.Group();
     heroCabin.position.set(heroHomeX,groundY(heroHomeX,heroHomeZ),heroHomeZ);
     const cabinStoneMat=mat(0x5b5a53,1);
@@ -2738,6 +2739,37 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const porch=box(2.35,.18,1.0,0x65452d,1); porch.position.set(0,.62,3.15); heroCabin.add(porch);
     const porchStep=box(1.55,.16,.48,0x59402b,1); porchStep.position.set(0,.30,3.58); heroCabin.add(porchStep);
     addMesh(heroCabin,'heroHome','Домик героя'); objects.push(heroCabin);
+
+    // Reference-driven hero house GLB. The procedural cabin stays as a fallback
+    // until this asset loads successfully. The interactive hinged door is preserved.
+    let heroHouseModel: THREE.Object3D | null = null;
+    loadGlbWithFolderFallback(heroHouseAsset, (gltf:any) => {
+      if (!glbTreesAlive) return;
+
+      // Hide the old exterior only after the GLB is definitely available.
+      heroCabin.children.forEach((child) => {
+        if (child !== doorPivot) child.visible = false;
+      });
+
+      const house = gltf.scene.clone(true);
+      markMeshes(house);
+      house.traverse((o:any) => {
+        if (!o.isMesh) return;
+        o.visible = true;
+        o.castShadow = true;
+        o.receiveShadow = true;
+        o.frustumCulled = true;
+      });
+
+      // Model was built Y-up, front facing +Z, sized to the existing home footprint.
+      house.scale.setScalar(0.98);
+      house.position.set(0, 0, 0);
+      house.rotation.set(0, 0, 0);
+
+      heroCabin.add(house);
+      heroHouseModel = house;
+      console.log('[HERO HOUSE] loaded', `${BASE}img/models/${heroHouseAsset}`);
+    }, 'HERO HOUSE');
     // Exterior collision follows the actual walls and leaves the doorway open.
     addRectCollider(heroHomeX,heroHomeZ-2.72,7.4,.30,0,.05);
     addRectCollider(heroHomeX-3.72,heroHomeZ,.30,5.45,0,.05);
@@ -3100,8 +3132,14 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       setInsideHome(inside);
       setNear("");
       homeInterior.visible=inside;
-      // Roof and upper exterior are hidden while inside, making the room readable from the follow camera.
-      roofL.visible=!inside; roofR.visible=!inside; cabinRidge.visible=!inside; chimney.visible=!inside; chimneyCap.visible=!inside;
+      // Hide the GLB exterior while inside. If the GLB failed to load, preserve
+      // the original procedural roof behavior as a safe fallback.
+      if(heroHouseModel){
+        heroHouseModel.visible=!inside;
+        roofL.visible=false; roofR.visible=false; cabinRidge.visible=false; chimney.visible=false; chimneyCap.visible=false;
+      }else{
+        roofL.visible=!inside; roofR.visible=!inside; cabinRidge.visible=!inside; chimney.visible=!inside; chimneyCap.visible=!inside;
+      }
       if(inside){
         state.current.x=heroHomeX; state.current.z=heroHomeZ+0.95; cameraDir.current.x=0; cameraDir.current.z=-1;
         doorPivot.rotation.y=-Math.PI/2;
