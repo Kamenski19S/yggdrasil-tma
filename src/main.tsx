@@ -2841,6 +2841,104 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const homeHearth=fire(heroHomeX-2.4,heroHomeZ+4.8,.48); homeHearth.scale.setScalar(.72);
     addMesh(heroYard,'heroHomeYard','Двор домика героя'); objects.push(heroYard);
 
+
+    // ===== DENSE FOG-EDGE FOREST =====
+    // A dense mixed spruce/oak belt at the far edge of the clearing.
+    // Trees have deterministic varied sizes/rotations. Several angular gaps
+    // remain open so the forest reads naturally instead of as a solid wall.
+    const fogForestSlots: Array<[number,number,number]> = [];
+    for (let i=0; i<78; i++) {
+      const x = -82 + midHash(i,3101) * 164;
+      const z = 61 + midHash(i,3102) * 24;
+
+      // Natural openings through the forest.
+      const gapA = Math.abs(x + 38) < 5.5 && z < 79;
+      const gapB = Math.abs(x - 8) < 4.5 && z < 76;
+      const gapC = Math.abs(x - 51) < 6.0 && z < 81;
+      if (gapA || gapB || gapC) continue;
+
+      // Avoid crowding the special ash-grove landmark.
+      if (Math.hypot(x + 5, z - 75) < 13) continue;
+
+      fogForestSlots.push([x,z,i]);
+    }
+
+    const addFogForestFromSource = (
+      source: THREE.Object3D,
+      kind: 'spruce' | 'oak',
+      every: number,
+      offset: number
+    ) => {
+      fogForestSlots.forEach(([x,z,seed], slot) => {
+        if ((slot + offset) % every !== 0) return;
+
+        const tree = source.clone(true);
+        markMeshes(tree);
+
+        const n = midHash(seed, kind === 'spruce' ? 3110 : 3120);
+        // Spruces dominate; oaks are fewer, broader accents.
+        const scale = kind === 'spruce'
+          ? 0.58 + n * 0.62
+          : 0.42 + n * 0.48;
+
+        tree.scale.setScalar(scale);
+        tree.rotation.set(0, midHash(seed,3130) * Math.PI * 2, 0);
+
+        tree.traverse((o:any) => {
+          if (!o.isMesh) return;
+          o.castShadow = true;
+          o.receiveShadow = true;
+          o.frustumCulled = true;
+        });
+
+        tree.position.set(0,0,0);
+        tree.updateMatrixWorld(true);
+        const b = new THREE.Box3().setFromObject(tree);
+        tree.position.set(x, groundY(x,z) - b.min.y, z);
+        tree.updateMatrixWorld(true);
+        scene.add(tree);
+        glbTreeInstances.push(tree);
+      });
+    };
+
+    // Dense spruce backbone.
+    loadGlbWithFolderFallback(treeAsset, (gltf:any) => {
+      const source = gltf.scene.clone(true);
+      source.traverse((o:any) => {
+        if (!o.isMesh) return;
+        const darken = (m:any) => {
+          if (!m) return m;
+          const mm = m.clone ? m.clone() : m;
+          if (mm.color?.multiplyScalar) mm.color.multiplyScalar(0.72);
+          if ('roughness' in mm) mm.roughness = 0.97;
+          mm.needsUpdate = true;
+          return mm;
+        };
+        if (Array.isArray(o.material)) o.material = o.material.map(darken);
+        else o.material = darken(o.material);
+      });
+      addFogForestFromSource(source, 'spruce', 1, 0);
+    }, 'FOG FOREST SPRUCE');
+
+    // Oaks are deliberately sparser so there are visible spruce masses and gaps.
+    loadGlbWithFolderFallback(oakAsset, (gltf:any) => {
+      const source = gltf.scene.clone(true);
+      source.traverse((o:any) => {
+        if (!o.isMesh) return;
+        const darken = (m:any) => {
+          if (!m) return m;
+          const mm = m.clone ? m.clone() : m;
+          if (mm.color?.multiplyScalar) mm.color.multiplyScalar(0.64);
+          if ('roughness' in mm) mm.roughness = 0.98;
+          mm.needsUpdate = true;
+          return mm;
+        };
+        if (Array.isArray(o.material)) o.material = o.material.map(darken);
+        else o.material = darken(o.material);
+      });
+      addFogForestFromSource(source, 'oak', 4, 1);
+    }, 'FOG FOREST OAK');
+
     // Small landmarks inside the clearings.
     const campFire=fire(68,8,.75); campFire.scale.setScalar(.72);
     const campStone=new THREE.Mesh(new THREE.CylinderGeometry(.65,.8,.7,7),mat(0x514a42,1)); campStone.position.set(68,groundY(68,8)+.35,6.5); scene.add(campStone);
