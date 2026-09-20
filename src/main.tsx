@@ -3129,28 +3129,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       windPlants.push({o:g,baseX:0,baseZ:0,phase:midHash(i,941)*Math.PI*2,amp:.022+.018*midHash(i,942)});
     }
 
-    // Exposed roots around the three ancient ash trees. Each root is a tapered,
-    // slightly bent segment, visually tying the trunk into the soil.
-    const addRoot=(tx:number,tz:number,scale:number,seed:number)=>{
-      const baseY=groundY(tx,tz);
-      const g=new THREE.Group();g.position.set(tx,baseY,tz);
-      const count=5+Math.floor(midHash(seed,950)*3);
-      for(let i=0;i<count;i++){
-        const a=i/count*Math.PI*2+midHash(i,seed+951)*.32;
-        const len=(1.8+midHash(i,seed+952)*2.7)*scale;
-        const thick=(.11+midHash(i,seed+953)*.12)*scale;
-        const root=new THREE.Mesh(new THREE.CylinderGeometry(thick*.42,thick,len,7),rootMat);
-        root.position.set(Math.cos(a)*len*.46,.13*scale,Math.sin(a)*len*.46);
-        root.rotation.z=Math.PI/2;
-        root.rotation.y=-a;
-        root.rotation.x=(midHash(i,seed+954)-.5)*.16;
-        g.add(root);
-      }
-      scene.add(g);
-    };
-    addRoot(-10,18,1.55,11);
-    addRoot(13,24,1.70,23);
-    addRoot(-31,-12,2.15,37);
+    // Loose exposed-root clusters removed: without their old ash trunks they read as log debris.
 
     // A handful of low stumps and old branches add scale at the player's feet.
     for(let i=0;i<22;i++){
