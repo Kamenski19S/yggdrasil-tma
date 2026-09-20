@@ -1160,13 +1160,13 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
           float heightDensity = exp(-max(p.y + 0.10, 0.0) * 1.12);
 
           // Broad moving pockets + smaller detail. This breaks up uniform bands.
-          vec2 drift = vec2(time * 0.018, time * 0.010);
+          vec2 drift = vec2(time * 0.0060, time * 0.0032);
           float broad = fbm(p.xz * 0.022 + drift);
           float detail = fbm(p.xz * 0.070 - drift * 0.55 + 9.0);
           float n = broad * 0.76 + detail * 0.24;
 
           // Keep clear-air gaps.
-          n = smoothstep(0.34, 0.76, n);
+          n = smoothstep(0.30, 0.82, n);
 
           // Slightly favor the distant/northern forest without making a wall.
           float northBoost = smoothstep(-28.0, -76.0, p.z);
@@ -1202,7 +1202,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
           // Jitter the sample positions per pixel. With only 8 mobile-friendly
           // samples this hides the visible "flat slices" that can otherwise appear.
-          float jitter = hash21(gl_FragCoord.xy + floor(time * 7.0));
+          float jitter = hash21(gl_FragCoord.xy * 0.37);
           for (int i=0; i<STEPS; i++) {
             float t = (float(i) + jitter) / float(STEPS);
             vec3 p = cameraWorldPos + ray * t;
@@ -1210,10 +1210,10 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
           }
 
           float stepLen = rayLen / float(STEPS);
-          float fogAmount = 1.0 - exp(-accum * stepLen * 0.085);
+          float fogAmount = 1.0 - exp(-accum * stepLen * 0.070);
 
           // Keep mobile scene readable and prevent complete whitening at long range.
-          fogAmount = clamp(fogAmount, 0.0, 0.46);
+          fogAmount = clamp(fogAmount, 0.0, 0.40);
 
           // Tiny distance ramp makes nearby grass mostly clear.
           fogAmount *= smoothstep(3.0, 14.0, rayLen);
@@ -3399,7 +3399,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
       fires.forEach(f=>{f.light.intensity=2.0+Math.sin(now*.012+f.phase)*.5;f.flame.scale.y=.9+Math.sin(now*.009+f.phase)*.12;});
       // Update depth-aware fog uniforms.
-      fogPostMat.uniforms.time.value = now * 0.001;
+      fogPostMat.uniforms.time.value = now * 0.00072;
       fogPostMat.uniforms.projectionMatrixInverse.value.copy(camera.projectionMatrixInverse);
       fogPostMat.uniforms.cameraMatrixWorld.value.copy(camera.matrixWorld);
       fogPostMat.uniforms.cameraWorldPos.value.setFromMatrixPosition(camera.matrixWorld);
