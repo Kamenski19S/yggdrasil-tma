@@ -1211,6 +1211,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const treeAsset = 'Midgard_Natural_Spruce_V2_YUP.glb';
     const treeV3Asset = 'Midgard_Natural_Spruce_V3_YUP.glb';
     const oakAsset = 'Midgard_Massive_Oak_V1_YUP.glb';
+    const mountainAsset = 'Midgard_Snow_Mountain_Range_V1_YUP.glb';
 
     // Deterministic positions keep the village centre and major landmarks readable.
     const sprucePositions: Array<[number, number]> = [
@@ -1495,18 +1496,28 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       if(!blocked(q.x,z)) q.z=z;
     };
 
-    // Mountains and dark tree line create a real horizon instead of an empty plane.
-    const mountainMat = mat(0x34443f,1);
-    for(let i=0;i<22;i++){
-      const g=new THREE.Group();
-      const x=-105+i*10;
-      const r=8+midHash(i,7)*9;
-      const m=new THREE.Mesh(new THREE.ConeGeometry(r,18+midHash(i,8)*16,7),mountainMat);
-      m.position.y=8;
-      g.add(m);
-      g.position.set(x, -1, -94+midHash(i,9)*11);
-      addMesh(g);
-    }
+    // Snow mountain range — real GLB background, replacing the old cone mountains.
+    // The model is Y-up and faces +Z, so it sits beyond the northern forest.
+    loadGlbWithFolderFallback(mountainAsset, (gltf:any) => {
+      const mountainRange = gltf.scene.clone(true);
+
+      mountainRange.traverse((o:any) => {
+        if (!o.isMesh) return;
+        o.castShadow = false;
+        o.receiveShadow = false;
+        o.frustumCulled = false;
+      });
+
+      // Original GLB is ~115 wide x ~46 high.
+      // Stretch mostly in X so the ridge spans the whole Midgard horizon
+      // without becoming unrealistically tall.
+      mountainRange.scale.set(1.62, 0.90, 1.15);
+      mountainRange.position.set(0, -1.2, -104);
+      mountainRange.rotation.set(0, 0, 0);
+
+      scene.add(mountainRange);
+      console.log('[SNOW MOUNTAINS] loaded', `${BASE}img/models/${mountainAsset}`);
+    }, 'SNOW MOUNTAINS');
 
     // Living river: broad low-poly water ribbon with subtle surface displacement.
     const riverPts:{x:number;z:number}[]=[];
