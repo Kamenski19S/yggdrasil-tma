@@ -1215,6 +1215,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const heroHouseAsset = 'Midgard_Hero_House_V1_YUP.glb';
     const vikingHouseAsset = 'Midgard_Viking_House_V1_YUP.glb';
     const forgeAsset = 'Midgard_Forge_V1_YUP.glb';
+    const barnAsset = 'Midgard_Barn_V1_YUP.glb';
+    const shedAsset = 'Midgard_Shed_V1_YUP.glb';
     const elderHouseAsset = 'Midgard_Elder_House_V1_YUP.glb';
     const fisherHouseAsset = 'Midgard_Fisher_House_V1_YUP.glb';
     const hunterHouseAsset = 'Midgard_Hunter_House_V1_YUP.glb';
@@ -1905,8 +1907,50 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       addMesh(g);
     };
     // Northern farm quarter.
-    shed(-19,31,8,5,.08,"Амбар","barn");
-    shed(17,34,7,5,-.2,"Сарай","shed");
+    // Replace only the main village Barn and Shed with their GLB models.
+    // The fisherman's storage and old abandoned barn stay procedural for now.
+    loadGlbWithFolderFallback(barnAsset, (gltf:any) => {
+      if (!glbTreesAlive) return;
+      const barnModel = gltf.scene.clone(true);
+      markMeshes(barnModel);
+      barnModel.traverse((o:any) => {
+        if (!o.isMesh) return;
+        o.visible = true;
+        o.castShadow = true;
+        o.receiveShadow = true;
+        o.frustumCulled = true;
+      });
+      barnModel.scale.set(.84,.90,.70);
+      barnModel.rotation.set(0,.08,0);
+      barnModel.position.set(-19,groundY(-19,31),31);
+      barnModel.userData={id:"barn",label:"Амбар"};
+      addMesh(barnModel,"barn","Амбар");
+      objects.push(barnModel);
+      console.log('[BARN] loaded', `${BASE}img/models/${barnAsset}`);
+    }, 'BARN');
+    addRectCollider(-19,31,8.55,5.25,.08,.04);
+
+    loadGlbWithFolderFallback(shedAsset, (gltf:any) => {
+      if (!glbTreesAlive) return;
+      const shedModel = gltf.scene.clone(true);
+      markMeshes(shedModel);
+      shedModel.traverse((o:any) => {
+        if (!o.isMesh) return;
+        o.visible = true;
+        o.castShadow = true;
+        o.receiveShadow = true;
+        o.frustumCulled = true;
+      });
+      shedModel.scale.set(1.00,.92,.70);
+      shedModel.rotation.set(0,-.20,0);
+      shedModel.position.set(17,groundY(17,34),34);
+      shedModel.userData={id:"shed",label:"Сарай"};
+      addMesh(shedModel,"shed","Сарай");
+      objects.push(shedModel);
+      console.log('[SHED] loaded', `${BASE}img/models/${shedAsset}`);
+    }, 'SHED');
+    addRectCollider(17,34,7.45,5.20,-.20,.04);
+
     shed(27,13,6,4,.45,"Склад рыбака","fishshed");
     fenceRun(-25,27,-13,27); fenceRun(-25,27,-25,38); fenceRun(-25,38,-14,38);
     fenceRun(12,29,25,29); fenceRun(25,29,25,40); fenceRun(25,40,12,40);
