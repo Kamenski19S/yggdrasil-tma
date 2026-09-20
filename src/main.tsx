@@ -1214,6 +1214,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const mountainAsset = 'Midgard_Snow_Mountain_Range_V1_YUP.glb';
     const heroHouseAsset = 'Midgard_Hero_House_V1_YUP.glb';
     const vikingHouseAsset = 'Midgard_Viking_House_V1_YUP.glb';
+    const forgeAsset = 'Midgard_Forge_V1_YUP.glb';
 
     // Deterministic positions keep the village centre and major landmarks readable.
     const sprucePositions: Array<[number, number]> = [
@@ -1719,33 +1720,40 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     house(3,-25,8,6,.05,"Дом травницы","herbalist",0x755238,0x312b28);
     house(-22,-7,8,6,-.65,"Дом ремесленника","craftsman",0x704b32,0x282624);
 
-    // Blacksmith workshop is open on one side so it reads as a forge, not another house.
-    const forge=new THREE.Group(); forge.position.set(-10,groundY(-10,-5),-5); forge.userData={id:"forge",label:"Кузница"};
-    // Open smithy: dark round logs form the rear and left wall.
-    for(let row=0;row<7;row++){
-      const yy=.62+row*.47;
-      const rear=log(9,.27,0x432a1d); rear.position.set(0,yy,-2.85); forge.add(rear);
-      const left=log(6,.27,0x432a1d); left.rotation.y=Math.PI/2; left.position.set(-4.35,yy,0); forge.add(left);
-    }
-    for(const px of [-4.35,4.35]){const p=cyl(.34,4,0x2b1d15,9,1);p.position.set(px,2,-2.85);forge.add(p);}
-    const roofF=roofSlope(9.8,7,0x252321); roofF.position.y=4.45; forge.add(roofF);
-    const ridgeF=log(7.2,.18,0x211a16); ridgeF.rotation.y=Math.PI/2; ridgeF.position.y=5.42; forge.add(ridgeF);
-    for(const px of [-3.7,3.7]){const support=log(4.7,.13,0x2b1d16);support.rotation.z=px<0?-0.60:0.60;support.position.set(px*.48,3.15,.1);forge.add(support);}
+    // GLB blacksmith forge — replaces the old procedural smithy.
+    // Keep the same location, interaction id, collision footprint and warm fire light.
+    loadGlbWithFolderFallback(forgeAsset, (gltf:any) => {
+      if (!glbTreesAlive) return;
 
-    const furnaceBase=cyl(1.15,1.65,0x34312e,10,1); furnaceBase.position.set(-2,.83,1.15); forge.add(furnaceBase);
-    const furnaceTop=cyl(.88,.35,0x272725,10,1); furnaceTop.position.set(-2,1.83,1.15); forge.add(furnaceTop);
-    const glow=new THREE.Mesh(new THREE.CircleGeometry(.52,16),new THREE.MeshStandardMaterial({color:0xff7026,emissive:0xff3a08,emissiveIntensity:5,roughness:.4}));
-    glow.rotation.y=Math.PI; glow.position.set(-2,1.02,2.23); forge.add(glow);
+      const forgeModel = gltf.scene.clone(true);
+      markMeshes(forgeModel);
 
-    const anvilStem=cyl(.27,.85,0x292a2a,8,.45); anvilStem.position.set(1.15,.43,1.05); forge.add(anvilStem);
-    const anvilTop=box(1.45,.34,.58,0x25282a,.38); anvilTop.position.set(1.15,1,1.05); forge.add(anvilTop);
-    const horn=new THREE.Mesh(new THREE.ConeGeometry(.18,.72,8),mat(0x25282a,.38,.05)); horn.rotation.z=-Math.PI/2; horn.position.set(1.98,1,1.05); forge.add(horn);
-    for(let i=0;i<4;i++){const tool=log(1.25,.045,0xaaa9a4);tool.rotation.z=-.35+i*.18;tool.position.set(2.05+i*.18,1.12,1.34);forge.add(tool);}
-    const bellows=box(1.15,.42,.62,0x3b281d,1);bellows.position.set(2.15,.72,-.8);bellows.rotation.z=-.18;forge.add(bellows);
-    const nozzle=cyl(.07,.55,0x5b4333,8,1);nozzle.rotation.z=Math.PI/2;nozzle.position.set(1.55,.84,-.8);forge.add(nozzle);
+      forgeModel.traverse((o:any) => {
+        if (!o.isMesh) return;
+        o.visible = true;
+        o.castShadow = true;
+        o.receiveShadow = true;
+        o.frustumCulled = true;
+      });
 
-    addMesh(forge,"forge","Кузница"); objects.push(forge); addRectCollider(-10,-5,9.6,6.6,0,.05);
-    const forgeLight=new THREE.PointLight(0xff7a32,3.4,14,2);forgeLight.position.set(-12,groundY(-12,-5)+2.2,-4);scene.add(forgeLight);
+      // Source is compact (~6 x 6 m). Slightly widen it so it reads well
+      // on the existing smithy plot without becoming oversized.
+      forgeModel.scale.set(1.14, 1.08, 1.02);
+      forgeModel.rotation.set(0, 0, 0);
+      forgeModel.position.set(-10, groundY(-10,-5), -5);
+      forgeModel.userData = { id:"forge", label:"Кузница" };
+
+      addMesh(forgeModel,"forge","Кузница");
+      console.log('[FORGE] loaded', `${BASE}img/models/${forgeAsset}`);
+    }, 'FORGE');
+
+    addRectCollider(-10,-5,9.6,6.6,0,.05);
+
+    // Preserve the real point light so the fire glows on the surrounding ground
+    // even though the visible furnace itself is part of the GLB.
+    const forgeLight=new THREE.PointLight(0xff7a32,3.2,14,2);
+    forgeLight.position.set(-10,groundY(-10,-5)+1.75,-3.8);
+    scene.add(forgeLight);
 
     // Central square: stone edging, market tables, banners and a large bonfire.
     const square=new THREE.Mesh(new THREE.CircleGeometry(8.5,32),new THREE.MeshStandardMaterial({color:0x6b5a47,roughness:1}));square.rotation.x=-Math.PI/2;square.position.set(1,groundY(1,0)+.05,0);square.receiveShadow=true;scene.add(square);
