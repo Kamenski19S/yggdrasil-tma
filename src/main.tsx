@@ -1409,43 +1409,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       console.log('[MASSIVE OAK] 40 varied, darker, smoothed oaks loaded', `${BASE}img/models/${oakAsset}`);
     }, 'MASSIVE OAK');
 
-    // Distant world depth: soft mountain ridges and far forest silhouettes.
-    // They stay well beyond the playable area, so the village and landmarks keep open space.
-    const makeHorizonRidge = (zBase: number, spread: number, height: number, seed: number, color: number) => {
-      const verts: number[] = [];
-      const idx: number[] = [];
-      const count = 18;
-      for (let i = 0; i <= count; i++) {
-        const x = -95 + (190 / count) * i;
-        const n = Math.sin(i * 1.73 + seed) * 0.5 + Math.cos(i * 0.61 + seed * 1.9) * 0.28;
-        const h = height * (0.72 + n * 0.34);
-        verts.push(x, 0, 0);
-        verts.push(x + n * 2.2, h, 0);
-      }
-      for (let i = 0; i < count; i++) {
-        const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
-        idx.push(a, b, c, b, d, c);
-      }
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
-      geo.setIndex(idx);
-      geo.computeVertexNormals();
-      const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({
-        color,
-        transparent: true,
-        opacity: 0.72,
-        side: THREE.DoubleSide,
-        depthWrite: false
-      }));
-      mesh.rotation.x = Math.PI / 2;
-      mesh.position.set(0, 1.5, zBase);
-      mesh.scale.set(1, spread, 1);
-      scene.add(mesh);
-      return mesh;
-    };
-
-    makeHorizonRidge(-82, 1, 17, 2.1, 0x72857d);
-    makeHorizonRidge(-72, 1, 11, 6.7, 0x81938a);
+    // Horizon ridge sheets removed: they were the visible translucent plates.
+    // Real mountains and the distant GLB forest remain unchanged.
 
     // Old procedural far-firs removed for the GLB tree test.
     // This prevents the old cone-shaped forest from hiding the new models.
