@@ -996,8 +996,6 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xa4b6ad);
-    scene.fog = new THREE.FogExp2(0xa4b3aa, 0.00325);
-
     const camera = new THREE.PerspectiveCamera(54, 1, 0.1, 280);
     camera.position.set(0, 8.5, 17);
 
@@ -1064,39 +1062,6 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       scene.add(m);
       lightPools.push(m);
     });
-
-    // Мягкий туман: никаких больших плоскостей. Используем круглую градиентную текстуру
-    // на спрайтах, чтобы края растворялись в воздухе и не появлялись резкие "пластины".
-    const fogCanvas = document.createElement("canvas");
-    fogCanvas.width = fogCanvas.height = 128;
-    const fogCtx = fogCanvas.getContext("2d")!;
-    const fogGrad = fogCtx.createRadialGradient(64,64,4,64,64,64);
-    fogGrad.addColorStop(0, "rgba(214,224,218,0.16)");
-    fogGrad.addColorStop(0.42, "rgba(210,222,216,0.075)");
-    fogGrad.addColorStop(0.76, "rgba(205,219,212,0.025)");
-    fogGrad.addColorStop(1, "rgba(205,219,212,0)");
-    fogCtx.fillStyle = fogGrad;
-    fogCtx.fillRect(0,0,128,128);
-    const fogTex = new THREE.CanvasTexture(fogCanvas);
-    fogTex.colorSpace = THREE.SRGBColorSpace;
-    const fogSpriteMat = new THREE.SpriteMaterial({
-      map: fogTex, color: 0xd6e0da, transparent: true, opacity: 0.34,
-      depthWrite: false, depthTest: true, blending: THREE.NormalBlending
-    });
-    const fogSprites: THREE.Sprite[] = [];
-    for(let i=0;i<26;i++){
-      const s = new THREE.Sprite(fogSpriteMat.clone());
-      const scale = 7 + midHash(i,821)*12;
-      s.scale.set(scale, scale*(0.42+midHash(i,822)*0.24), 1);
-      s.position.set(
-        -78 + midHash(i,823)*156,
-        1.2 + midHash(i,824)*3.0,
-        -62 + midHash(i,825)*124
-      );
-      (s.material as THREE.SpriteMaterial).opacity = 0.10 + midHash(i,826)*0.10;
-      scene.add(s);
-      fogSprites.push(s);
-    }
 
     const canvasTex = (type: "ground" | "wood" | "roof" | "road" | "bark" | "foliage") => {
       const c = document.createElement("canvas");
@@ -3134,18 +3099,6 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const npc=(x:number,z:number,id:string,label:string,color:number,phase:number)=>{const g=new THREE.Group();g.userData={id,label,phase,baseX:x,baseZ:z};const body=new THREE.Mesh(new THREE.CapsuleGeometry(.32,.78,4,8),mat(color,.9));body.position.y=.85;g.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.25,12,8),mat(0xc99470,.9));head.position.y=1.58;g.add(head);const cloak=box(.7,.9,.15,0x27251f,1);cloak.position.set(0,.82,-.27);g.add(cloak);g.position.set(x,groundY(x,z),z);addMesh(g,id,label);objects.push(g);npcs.push(g);};
     npc(9,-8,"elder","Старейшина",0x73563f,.4);npc(-6,-3,"blacksmith","Кузнец",0x5c3b2b,1.5);npc(21,1,"hunter","Охотник",0x40523f,2.4);npc(5,10,"villager","Житель Мидгарда",0x59634d,3.4);npc(-16,4,"villager2","Житель деревни",0x654b3a,4.2);
 
-    // Дополнительный очень лёгкий приземный туман — отдельные мягкие пятна, без геометрических стен.
-    const mist = new THREE.Group();
-    for(let i=0;i<18;i++){
-      const s = new THREE.Sprite(fogSpriteMat.clone());
-      const scale = 4.5 + midHash(i,831)*7.5;
-      s.scale.set(scale, scale*(0.30+midHash(i,832)*0.18), 1);
-      s.position.set(-82+midHash(i,833)*164, .35+midHash(i,834)*1.15, -66+midHash(i,835)*132);
-      (s.material as THREE.SpriteMaterial).opacity = 0.055 + midHash(i,836)*0.055;
-      mist.add(s);
-    }
-    scene.add(mist);
-
     // Tiny pollen motes drift through the air. One shared Points object keeps draw calls low.
     const moteCount=72;
     const motePos=new Float32Array(moteCount*3);
@@ -3258,13 +3211,6 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       currentStreaks.forEach((r)=>{const drift=Math.sin(now*.00055*r.speed+r.phase)*.9;r.mesh.position.y=groundY(r.mesh.position.x,r.mesh.position.z)+.095+drift*.008;const m=r.mesh.material as THREE.MeshBasicMaterial;m.opacity=.045+.045*(.5+.5*Math.sin(now*.0011*r.speed+r.phase));});
 
       fires.forEach(f=>{f.light.intensity=2.0+Math.sin(now*.012+f.phase)*.5;f.flame.scale.y=.9+Math.sin(now*.009+f.phase)*.12;});
-      mist.children.forEach((m,i)=>{m.position.x+=Math.sin(now*.00012+i)*.003;m.position.z+=Math.cos(now*.0001+i)*.002;});
-      fogSprites.forEach((s,i)=>{
-        s.position.x += Math.sin(now*.00010+i*1.7)*.0025;
-        s.position.z += Math.cos(now*.00008+i*1.3)*.0020;
-        const sm=s.material as THREE.SpriteMaterial;
-        sm.opacity = 0.075 + (0.045 + 0.02*midHash(i,837))*(0.5+0.5*Math.sin(now*.00022+i));
-      });
       wildlife.forEach((w,i)=>{
         if(w.kind==='deer'){
           const dx=w.g.position.x-hero.position.x, dz=w.g.position.z-hero.position.z, dist=Math.hypot(dx,dz);
