@@ -996,7 +996,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xa4b6ad);
-    scene.fog = new THREE.FogExp2(0xa4b3aa, 0.00275);
+    scene.fog = new THREE.FogExp2(0xa4b3aa, 0.00165);
 
     const camera = new THREE.PerspectiveCamera(54, 1, 0.1, 280);
     camera.position.set(0, 8.5, 17);
@@ -1065,87 +1065,140 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       lightPools.push(m);
     });
 
-    // REALISTIC FOREST HAZE
-    // Вместо одной широкой "полосы" используем небольшие мягкие облака
-    // на разных высотах. Основная масса тумана остаётся у земли.
-    const fogCanvas = document.createElement("canvas");
-    fogCanvas.width = fogCanvas.height = 192;
-    const fogCtx = fogCanvas.getContext("2d")!;
-    const fogGrad = fogCtx.createRadialGradient(96,96,3,96,96,94);
-    fogGrad.addColorStop(0.00, "rgba(220,229,223,0.145)");
-    fogGrad.addColorStop(0.28, "rgba(216,226,220,0.105)");
-    fogGrad.addColorStop(0.58, "rgba(211,223,216,0.055)");
-    fogGrad.addColorStop(0.82, "rgba(207,220,213,0.018)");
-    fogGrad.addColorStop(1.00, "rgba(207,220,213,0)");
-    fogCtx.fillStyle = fogGrad;
-    fogCtx.fillRect(0,0,192,192);
+    // ===== MOBILE VOLUMETRIC GROUND FOG =====
+    // This is intentionally not a GLB. Fog is rendered by several horizontal
+    // shader slices with animated procedural density. Every slice is depth-tested,
+    // so trees, stones and terrain can naturally cut through the haze.
+    // The noise fades at the map edges and vertically, so there are no flat white bands.
+    const fogLayerGeo = new THREE.PlaneGeometry(188, 188, 1, 1);
 
-    const fogTex = new THREE.CanvasTexture(fogCanvas);
-    fogTex.colorSpace = THREE.SRGBColorSpace;
+    const fogVertexShader = `
+      varying vec2 vUv;
+      varying vec3 vWorldPos;
 
-    const fogSpriteMat = new THREE.SpriteMaterial({
-      map: fogTex,
-      color: 0xd7e1db,
-      transparent: true,
-      opacity: 0.12,
-      depthWrite: false,
-      depthTest: true,
-      blending: THREE.NormalBlending
+      void main() {
+        vUv = uv;
+        vec4 world = modelMatrix * vec4(position, 1.0);
+        vWorldPos = world.xyz;
+        gl_Position = projectionMatrix * viewMatrix * world;
+      }
+    `;
+
+    const fogFragmentShader = `
+      precision mediump float;
+
+      uniform float uTime;
+      uniform float uSeed;
+      uniform float uOpacity;
+      uniform float uScale;
+      uniform vec3 uFogColor;
+
+      varying vec2 vUv;
+      varying vec3 vWorldPos;
+
+      float hash21(vec2 p) {
+        p = fract(p * vec2(123.34, 456.21));
+        p += dot(p, p + 45.32);
+        return fract(p.x * p.y);
+      }
+
+      float noise2(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+
+        float a = hash21(i);
+        float b = hash21(i + vec2(1.0, 0.0));
+        float c = hash21(i + vec2(0.0, 1.0));
+        float d = hash21(i + vec2(1.0, 1.0));
+
+        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+      }
+
+      float fbm(vec2 p) {
+        float v = 0.0;
+        float a = 0.52;
+        for (int i = 0; i < 4; i++) {
+          v += noise2(p) * a;
+          p = p * 2.03 + vec2(17.1, 9.2);
+          a *= 0.5;
+        }
+        return v;
+      }
+
+      void main() {
+        // Slow sideways drift. Different seed per slice prevents identical patterns.
+        vec2 p = vWorldPos.xz * uScale;
+        p += vec2(uTime * 0.016, uTime * 0.009);
+        p += vec2(uSeed * 11.7, uSeed * 7.3);
+
+        float largeShape = fbm(p * 0.58);
+        float detail = fbm(p * 1.55 + 7.0);
+        float density = largeShape * 0.78 + detail * 0.22;
+
+        // Break up the sheet aggressively: clear air remains between fog pockets.
+        density = smoothstep(0.43, 0.76, density);
+
+        // Avoid a rectangular fog boundary at the edge of the world.
+        vec2 edgeUv = abs(vUv - 0.5) * 2.0;
+        float edge = 1.0 - smoothstep(0.78, 1.0, max(edgeUv.x, edgeUv.y));
+
+        // Additional broad modulation produces larger natural clearings.
+        float clearings = smoothstep(
+          0.20, 0.88,
+          fbm(vWorldPos.xz * 0.010 + vec2(uSeed * 3.1, -uSeed * 2.4))
+        );
+
+        float alpha = density * edge * clearings * uOpacity;
+        if (alpha < 0.006) discard;
+
+        gl_FragColor = vec4(uFogColor, alpha);
+      }
+    `;
+
+    const fogLayerMaterials: THREE.ShaderMaterial[] = [];
+    const fogLayers = new THREE.Group();
+
+    // Low layers are denser. Higher layers become progressively thinner.
+    const fogLayerSetup = [
+      { y: 0.18, opacity: 0.115, scale: 0.052 },
+      { y: 0.38, opacity: 0.100, scale: 0.049 },
+      { y: 0.62, opacity: 0.086, scale: 0.046 },
+      { y: 0.90, opacity: 0.070, scale: 0.043 },
+      { y: 1.24, opacity: 0.052, scale: 0.040 },
+      { y: 1.62, opacity: 0.037, scale: 0.037 },
+      { y: 2.05, opacity: 0.025, scale: 0.034 }
+    ];
+
+    fogLayerSetup.forEach((cfg, i) => {
+      const mat = new THREE.ShaderMaterial({
+        vertexShader: fogVertexShader,
+        fragmentShader: fogFragmentShader,
+        uniforms: {
+          uTime: { value: 0 },
+          uSeed: { value: 0.37 + i * 1.913 },
+          uOpacity: { value: cfg.opacity },
+          uScale: { value: cfg.scale },
+          uFogColor: { value: new THREE.Color(0xc7d4cc) }
+        },
+        transparent: true,
+        depthWrite: false,
+        depthTest: true,
+        side: THREE.DoubleSide,
+        blending: THREE.NormalBlending
+      });
+
+      const layer = new THREE.Mesh(fogLayerGeo, mat);
+      layer.rotation.x = -Math.PI / 2;
+      layer.position.set(0, cfg.y, 0);
+      layer.renderOrder = 2 + i;
+      layer.frustumCulled = false;
+
+      fogLayers.add(layer);
+      fogLayerMaterials.push(mat);
     });
 
-    // Средняя дымка между деревьями. Спрайты небольшие и разбросаны,
-    // поэтому из них не складывается ровная горизонтальная лента.
-    const fogSprites: THREE.Sprite[] = [];
-    for(let i=0;i<34;i++){
-      const s = new THREE.Sprite(fogSpriteMat.clone());
-      const w = 4.8 + midHash(i,821)*8.8;
-      const h = w*(0.18 + midHash(i,822)*0.22);
-      s.scale.set(w,h,1);
-
-      const x = -80 + midHash(i,823)*160;
-      const z = -74 + midHash(i,825)*148;
-      // Anchor the cloud into the terrain. The lower half of the sprite
-      // intentionally sinks below ground and is hidden by depth testing, so
-      // the visible fog appears to grow naturally out of the grass instead
-      // of floating as a horizontal strip.
-      const baseY = groundY(x,z) + h * (0.20 + midHash(i,824)*0.08);
-
-      s.position.set(x,baseY,z);
-      s.userData.baseX = x;
-      s.userData.baseY = baseY;
-      s.userData.baseZ = z;
-      s.userData.phase = midHash(i,827)*Math.PI*2;
-      (s.material as THREE.SpriteMaterial).opacity = 0.030 + midHash(i,826)*0.045;
-
-      scene.add(s);
-      fogSprites.push(s);
-    }
-
-    // Более высокая и очень слабая дымка только у дальнего леса/гор.
-    // Она связывает деревья с фоном, но не перекрывает низ сцены.
-    const farFogSprites: THREE.Sprite[] = [];
-    for(let i=0;i<18;i++){
-      const s = new THREE.Sprite(fogSpriteMat.clone());
-      const w = 8 + midHash(i,841)*13;
-      const h = w*(0.20 + midHash(i,842)*0.20);
-      s.scale.set(w,h,1);
-
-      const x = -82 + midHash(i,843)*164;
-      const z = -72 - midHash(i,844)*17;
-      // The distant haze must also touch the terrain. Previously its
-      // absolute height created the pale floating band visible in screenshots.
-      const baseY = groundY(x,z) + h * (0.18 + midHash(i,845)*0.07);
-
-      s.position.set(x,baseY,z);
-      s.userData.baseX = x;
-      s.userData.baseY = baseY;
-      s.userData.baseZ = z;
-      s.userData.phase = midHash(i,846)*Math.PI*2;
-      (s.material as THREE.SpriteMaterial).opacity = 0.020 + midHash(i,847)*0.032;
-
-      scene.add(s);
-      farFogSprites.push(s);
-    }
+    scene.add(fogLayers);
 
     const canvasTex = (type: "ground" | "wood" | "roof" | "road" | "bark" | "foliage") => {
       const c = document.createElement("canvas");
@@ -3183,29 +3236,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const npc=(x:number,z:number,id:string,label:string,color:number,phase:number)=>{const g=new THREE.Group();g.userData={id,label,phase,baseX:x,baseZ:z};const body=new THREE.Mesh(new THREE.CapsuleGeometry(.32,.78,4,8),mat(color,.9));body.position.y=.85;g.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.25,12,8),mat(0xc99470,.9));head.position.y=1.58;g.add(head);const cloak=box(.7,.9,.15,0x27251f,1);cloak.position.set(0,.82,-.27);g.add(cloak);g.position.set(x,groundY(x,z),z);addMesh(g,id,label);objects.push(g);npcs.push(g);};
     npc(9,-8,"elder","Старейшина",0x73563f,.4);npc(-6,-3,"blacksmith","Кузнец",0x5c3b2b,1.5);npc(21,1,"hunter","Охотник",0x40523f,2.4);npc(5,10,"villager","Житель Мидгарда",0x59634d,3.4);npc(-16,4,"villager2","Житель деревни",0x654b3a,4.2);
 
-    // Низкий приземный туман: много отдельных карманов на высоте травы.
-    // Он закрывает низ стволов местами, но оставляет чистые участки между облаками.
-    const mist = new THREE.Group();
-    for(let i=0;i<52;i++){
-      const s = new THREE.Sprite(fogSpriteMat.clone());
-      const w = 3.0 + midHash(i,831)*6.7;
-      const h = w*(0.14 + midHash(i,832)*0.13);
-      s.scale.set(w,h,1);
-
-      const x = -84 + midHash(i,833)*168;
-      const z = -78 + midHash(i,835)*156;
-      const baseY = groundY(x,z) + 0.12 + midHash(i,834)*0.55;
-
-      s.position.set(x,baseY,z);
-      s.userData.baseX = x;
-      s.userData.baseY = baseY;
-      s.userData.baseZ = z;
-      s.userData.phase = midHash(i,838)*Math.PI*2;
-      (s.material as THREE.SpriteMaterial).opacity = 0.028 + midHash(i,836)*0.052;
-
-      mist.add(s);
-    }
-    scene.add(mist);
+    // Ground fog is now handled by the volumetric shader slices above.
 
     // Tiny pollen motes drift through the air. One shared Points object keeps draw calls low.
     const moteCount=72;
@@ -3319,65 +3350,12 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       currentStreaks.forEach((r)=>{const drift=Math.sin(now*.00055*r.speed+r.phase)*.9;r.mesh.position.y=groundY(r.mesh.position.x,r.mesh.position.z)+.095+drift*.008;const m=r.mesh.material as THREE.MeshBasicMaterial;m.opacity=.045+.045*(.5+.5*Math.sin(now*.0011*r.speed+r.phase));});
 
       fires.forEach(f=>{f.light.intensity=2.0+Math.sin(now*.012+f.phase)*.5;f.flame.scale.y=.9+Math.sin(now*.009+f.phase)*.12;});
-      mist.children.forEach((m:any,i)=>{
-        const phase=m.userData.phase||0;
-        m.position.x=(m.userData.baseX||0)+Math.sin(now*.000075+phase)*0.42;
-        m.position.z=(m.userData.baseZ||0)+Math.cos(now*.000061+phase)*0.30;
-        m.position.y=(m.userData.baseY||0)+Math.sin(now*.00011+phase)*0.045;
-        const sm=m.material as THREE.SpriteMaterial;
-        sm.opacity=(0.026+midHash(i,836)*0.045)*(0.82+0.18*Math.sin(now*.00013+phase));
+      // Animate the procedural volumetric fog.
+      const fogTime = now * 0.001;
+      fogLayerMaterials.forEach((m, i) => {
+        m.uniforms.uTime.value = fogTime * (0.72 + i * 0.035);
       });
 
-      fogSprites.forEach((s:any,i)=>{
-        const phase=s.userData.phase||0;
-        s.position.x=(s.userData.baseX||0)+Math.sin(now*.000055+phase)*0.62;
-        s.position.z=(s.userData.baseZ||0)+Math.cos(now*.000048+phase)*0.44;
-        s.position.y=(s.userData.baseY||0)+Math.sin(now*.000072+phase)*0.08;
-        const sm=s.material as THREE.SpriteMaterial;
-        sm.opacity=(0.029+midHash(i,826)*0.043)*(0.84+0.16*Math.sin(now*.000105+phase));
-      });
-
-      farFogSprites.forEach((s:any,i)=>{
-        const phase=s.userData.phase||0;
-        s.position.x=(s.userData.baseX||0)+Math.sin(now*.000038+phase)*0.78;
-        s.position.z=(s.userData.baseZ||0)+Math.cos(now*.000031+phase)*0.34;
-        const sm=s.material as THREE.SpriteMaterial;
-        sm.opacity=(0.019+midHash(i,847)*0.030)*(0.86+0.14*Math.sin(now*.00008+phase));
-      });
-      wildlife.forEach((w,i)=>{
-        if(w.kind==='deer'){
-          const dx=w.g.position.x-hero.position.x, dz=w.g.position.z-hero.position.z, dist=Math.hypot(dx,dz);
-          if(dist<11){
-            const legJoints=(w.g.userData?.legJoints||[]) as THREE.Object3D[];
-            const gait=now*.014*(w.speed||1);
-            for(let li=0;li<4;li++){
-              const upper=legJoints[li*2], lower=legJoints[li*2+1];
-              if(upper) upper.rotation.z=Math.sin(gait+li*Math.PI)*.10;
-              if(lower) lower.rotation.z=Math.max(0,Math.sin(gait+li*Math.PI))*-.18;
-            }
-            const len=Math.max(.001,dist);
-            const step=dist<5.5?.115:.075;
-            const nx=w.g.position.x+(dx/len)*step, nz=w.g.position.z+(dz/len)*step;
-            const bx=nx-30,bz=nz-53,br=Math.hypot(bx,bz);
-            if(br<17){w.g.position.set(nx,groundY(nx,nz),nz);} else {
-              const ang=Math.atan2(bz,bx); const rx=30+Math.cos(ang)*16, rz=53+Math.sin(ang)*10; w.g.position.set(rx,groundY(rx,rz),rz);
-            }
-            w.g.rotation.y=Math.atan2(dz,dx); w.g.position.y+=Math.sin(now*.008+i)*.025; return;
-          }
-        }
-        const ang=now*.00105*w.speed+w.phase;const nx=w.x+Math.cos(ang)*w.r,nz=w.z+Math.sin(ang*.83)*w.r*.62;w.g.position.set(nx,groundY(nx,nz),nz);w.g.rotation.y=Math.atan2(Math.cos(ang*.83),-Math.sin(ang));
-        if(w.kind==='deer'){
-          const legJoints=(w.g.userData?.legJoints||[]) as THREE.Object3D[];
-          const gait=now*.014*(w.speed||1);
-          for(let li=0;li<4;li++){
-            const upper=legJoints[li*2], lower=legJoints[li*2+1];
-            if(upper) upper.rotation.z=Math.sin(gait+li*Math.PI)*.10;
-            if(lower) lower.rotation.z=Math.max(0,Math.sin(gait+li*Math.PI))*-.18;
-          }
-          w.g.position.y+=Math.sin(now*.006+i)*.025;
-          w.g.rotation.x=Math.sin(now*.004+w.phase)*.018;
-        }
-      });
       npcs.forEach((n,i)=>{const phase=n.userData.phase||0;const bx=n.userData.baseX,bz=n.userData.baseZ;const nx=bx+Math.sin(now*.00028+phase)*1.6,nz=bz+Math.cos(now*.00022+phase)*1.1;n.position.set(nx,groundY(nx,nz),nz);n.rotation.y=Math.sin(now*.0004+phase)*.5;});
       lightPools.forEach((m,i)=>{
         const p=m.material as THREE.MeshBasicMaterial;
@@ -3388,7 +3366,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
+    return()=>{glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();fogLayerGeo.dispose();fogLayerMaterials.forEach(m=>m.dispose());lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
   },[h.id,on,eventDone]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
