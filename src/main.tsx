@@ -1215,6 +1215,11 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const heroHouseAsset = 'Midgard_Hero_House_V1_YUP.glb';
     const vikingHouseAsset = 'Midgard_Viking_House_V1_YUP.glb';
     const forgeAsset = 'Midgard_Forge_V1_YUP.glb';
+    const elderHouseAsset = 'Midgard_Elder_House_V1_YUP.glb';
+    const fisherHouseAsset = 'Midgard_Fisher_House_V1_YUP.glb';
+    const hunterHouseAsset = 'Midgard_Hunter_House_V1_YUP.glb';
+    const herbalistHouseAsset = 'Midgard_Herbalist_House_V1_YUP.glb';
+    const craftsmanHouseAsset = 'Midgard_Craftsman_House_V1_YUP.glb';
 
     // Deterministic positions keep the village centre and major landmarks readable.
     const sprucePositions: Array<[number, number]> = [
@@ -1714,11 +1719,50 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     }, 'VIKING HOUSE');
 
     addRectCollider(-15,-18,9.0,7.0,.18,.05);
-    house(13,-18,10,7,-.08,"Дом старейшины","house",0x765036,0x292725);
-    house(23,-6,8,6,.72,"Дом рыбака","fisher",0x6e5039,0x30302d);
-    house(17,9,8,6,-.35,"Дом охотника","hunter",0x6b4a32,0x292725);
-    house(3,-25,8,6,.05,"Дом травницы","herbalist",0x755238,0x312b28);
-    house(-22,-7,8,6,-.65,"Дом ремесленника","craftsman",0x704b32,0x282624);
+
+    // Five named village homes are unique GLB assets.
+    // Their original map positions, rotations, interaction ids and collision plots are preserved.
+    const placeUniqueVillageHouse = (
+      asset:string,
+      x:number,z:number,rot:number,
+      sx:number,sy:number,sz:number,
+      id:string,label:string
+    ) => {
+      loadGlbWithFolderFallback(asset, (gltf:any) => {
+        if (!glbTreesAlive) return;
+
+        const model = gltf.scene.clone(true);
+        markMeshes(model);
+        model.traverse((o:any) => {
+          if (!o.isMesh) return;
+          o.visible = true;
+          o.castShadow = true;
+          o.receiveShadow = true;
+          o.frustumCulled = true;
+        });
+
+        model.scale.set(sx,sy,sz);
+        model.rotation.set(0,rot,0);
+        model.position.set(x,groundY(x,z),z);
+        model.userData={id,label};
+
+        addMesh(model,id,label);
+        console.log(`[${label}] loaded`, `${BASE}img/models/${asset}`);
+      }, label);
+    };
+
+    placeUniqueVillageHouse(elderHouseAsset,13,-18,-.08,1.02,.82,.90,"house","Дом старейшины");
+    placeUniqueVillageHouse(fisherHouseAsset,23,-6,.72,.95,.94,.65,"fisher","Дом рыбака");
+    placeUniqueVillageHouse(hunterHouseAsset,17,9,-.35,.94,.90,.64,"hunter","Дом охотника");
+    placeUniqueVillageHouse(herbalistHouseAsset,3,-25,.05,.91,.88,.62,"herbalist","Дом травницы");
+    placeUniqueVillageHouse(craftsmanHouseAsset,-22,-7,-.65,.86,.82,.64,"craftsman","Дом ремесленника");
+
+    // Same collision footprints as the procedural houses they replace.
+    addRectCollider(13,-18,10.85,7.85,-.08,.05);
+    addRectCollider(23,-6,8.85,6.85,.72,.05);
+    addRectCollider(17,9,8.85,6.85,-.35,.05);
+    addRectCollider(3,-25,8.85,6.85,.05,.05);
+    addRectCollider(-22,-7,8.85,6.85,-.65,.05);
 
     // GLB blacksmith forge — replaces the old procedural smithy.
     // Keep the same location, interaction id, collision footprint and warm fire light.
