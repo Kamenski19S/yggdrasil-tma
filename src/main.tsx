@@ -1236,83 +1236,136 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     terrain.receiveShadow = true;
     scene.add(terrain);
 
-    // ===== NATURAL SPRUCE TEST — Y-UP GLB =====
-    // One real custom tree only. The new GLB is already Y-up, so NO rotation.x.
-    // This test deliberately disables all other tree instances so we can judge
-    // the model itself without old/procedural trees confusing the result.
+    // ===== NATURAL SPRUCE FOREST + MASSIVE OAK — Y-UP GLB =====
+    // Restore the real GLB spruce layer: 30 trees spread around Midgard.
+    // The spruce is intentionally darkened; no procedural firs are re-enabled.
     const gltfLoader = new GLTFLoader();
     let glbTreesAlive = true;
     const glbTreeInstances: THREE.Object3D[] = [];
 
     const treeAsset = 'Midgard_Natural_Spruce_V2_YUP.glb';
+    const oakAsset = 'Midgard_Massive_Oak_V1_YUP.glb';
 
-    const prepareNaturalTree = (source: THREE.Object3D) => {
-      const tree = source.clone(true);
-      markMeshes(tree);
+    // Deterministic positions keep the village centre and major landmarks readable.
+    const sprucePositions: Array<[number, number]> = [
+      [-72,-62],[-51,-68],[-27,-72],[24,-69],[49,-63],[72,-55],
+      [-76,-34],[-56,-38],[-36,-43],[34,-42],[57,-36],[78,-27],
+      [-80,-4],[-61,-10],[-43,-8],[46,-9],[65,-3],[81,5],
+      [-74,25],[-53,30],[-34,34],[39,29],[59,25],[76,34],
+      [-68,57],[-45,61],[-24,66],[30,61],[52,57],[71,66]
+    ];
 
-      // Y-up model: keep its native orientation.
-      tree.rotation.set(0, 0, 0);
-      tree.scale.setScalar(1.0);
-      tree.updateMatrixWorld(true);
+    const darkenSpruceMaterial = (m:any) => {
+      if (!m) return m;
+      const mm = m.clone ? m.clone() : m;
+      // About 15% darker than the GLB material while preserving its texture.
+      if (mm.color?.multiplyScalar) mm.color.multiplyScalar(0.85);
+      if ('roughness' in mm) mm.roughness = 0.96;
+      if ('metalness' in mm) mm.metalness = 0.0;
+      mm.needsUpdate = true;
+      return mm;
+    };
 
-      // Put the single test tree in an open, easy-to-find position.
-      const x = 0;
-      const z = 8;
-      const ty = groundY(x, z);
-
-      // Snap the lowest actual model point to the terrain.
-      const box = new THREE.Box3().setFromObject(tree);
-      tree.position.set(x, ty - box.min.y, z);
-      tree.updateMatrixWorld(true);
-
-      tree.traverse((o:any) => {
+    const prepareSpruceSource = (source: THREE.Object3D) => {
+      source.traverse((o:any) => {
         if (!o.isMesh) return;
         o.visible = true;
         o.frustumCulled = false;
         o.castShadow = true;
         o.receiveShadow = true;
-
-        if (o.material) {
-          const mats = Array.isArray(o.material) ? o.material : [o.material];
-          mats.forEach((m:any) => {
-            if ('roughness' in m) m.roughness = 0.94;
-            if ('metalness' in m) m.metalness = 0.0;
-          });
-        }
+        if (Array.isArray(o.material)) o.material = o.material.map(darkenSpruceMaterial);
+        else o.material = darkenSpruceMaterial(o.material);
       });
 
-      scene.add(tree);
-      glbTreeInstances.push(tree);
+      sprucePositions.forEach(([x,z], i) => {
+        const tree = source.clone(true);
+        markMeshes(tree);
+        tree.rotation.set(0, midHash(i, 2101) * Math.PI * 2, 0);
+        tree.scale.setScalar(0.88 + midHash(i, 2102) * 0.22);
+        tree.position.set(0, 0, 0);
+        tree.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(tree);
+        tree.position.set(x, groundY(x,z) - box.min.y, z);
+        tree.updateMatrixWorld(true);
+        scene.add(tree);
+        glbTreeInstances.push(tree);
+      });
 
-      const fitted = new THREE.Box3().setFromObject(tree);
-      const fittedSize = new THREE.Vector3();
-      fitted.getSize(fittedSize);
-
-      console.log(
-        '[NATURAL TREE] loaded',
-        `${BASE}img/models/${treeAsset}`,
-        'size',
-        fittedSize.x,
-        fittedSize.y,
-        fittedSize.z
-      );
+      console.log('[NATURAL SPRUCE] 30 trees loaded', `${BASE}img/models/${treeAsset}`);
     };
 
-    gltfLoader.load(
-      `${BASE}img/models/${treeAsset}`,
-      (gltf:any) => {
-        if (!glbTreesAlive) return;
-        prepareNaturalTree(gltf.scene);
-      },
-      undefined,
-      (error:any) => {
-        console.error(
-          '[NATURAL TREE] FAILED',
-          `${BASE}img/models/${treeAsset}`,
-          error
+    const loadGlbWithFolderFallback = (
+      asset:string,
+      onLoad:(gltf:any)=>void,
+      label:string
+    ) => {
+      const paths = [`${BASE}img/models/${asset}`, `${BASE}img/model/${asset}`];
+      const tryPath = (index:number) => {
+        gltfLoader.load(paths[index], onLoad, undefined, (error:any) => {
+          if (index + 1 < paths.length) tryPath(index + 1);
+          else console.error(`[${label}] FAILED`, paths, error);
+        });
+      };
+      tryPath(0);
+    };
+
+    loadGlbWithFolderFallback(treeAsset, (gltf:any) => {
+      if (!glbTreesAlive) return;
+      prepareSpruceSource(gltf.scene);
+    }, 'NATURAL SPRUCE');
+
+    // Restore one massive oak close to Mimir's well. Keep it separate from the spruce.
+    loadGlbWithFolderFallback(oakAsset, (gltf:any) => {
+      if (!glbTreesAlive) return;
+      const oak = gltf.scene.clone(true);
+      markMeshes(oak);
+      oak.rotation.set(0, -0.42, 0);
+      oak.scale.setScalar(1.0);
+
+      oak.traverse((o:any) => {
+        if (!o.isMesh) return;
+        o.visible = true;
+        o.frustumCulled = false;
+        o.castShadow = true;
+        o.receiveShadow = true;
+        const brighten = (m:any) => {
+          if (!m) return m;
+          const mm = m.clone ? m.clone() : m;
+          if (mm.color?.multiplyScalar) mm.color.multiplyScalar(1.05);
+          if ('roughness' in mm) mm.roughness = Math.max(mm.roughness ?? 0.9, 0.92);
+          if ('metalness' in mm) mm.metalness = 0.0;
+          mm.needsUpdate = true;
+          return mm;
+        };
+        if (Array.isArray(o.material)) o.material = o.material.map(brighten);
+        else o.material = brighten(o.material);
+      });
+
+      const oakX = 9, oakZ = 6;
+      oak.position.set(0,0,0);
+      oak.updateMatrixWorld(true);
+      const oakBox = new THREE.Box3().setFromObject(oak);
+      oak.position.set(oakX, groundY(oakX,oakZ) - oakBox.min.y, oakZ);
+
+      // Preserve the three thin contact shadows that mask trunk-segment joints.
+      const jointShadowMat = new THREE.MeshBasicMaterial({
+        color:0x17130f, transparent:true, opacity:0.28, depthWrite:false
+      });
+      [1.72, 3.32, 5.02].forEach((yy, i) => {
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(0.56 - i * 0.045, 0.028, 6, 28),
+          jointShadowMat.clone()
         );
-      }
-    );
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = yy;
+        oak.add(ring);
+      });
+
+      oak.updateMatrixWorld(true);
+      scene.add(oak);
+      glbTreeInstances.push(oak);
+      console.log('[MASSIVE OAK] loaded near Mimir', `${BASE}img/models/${oakAsset}`);
+    }, 'MASSIVE OAK');
 
     // Distant world depth: soft mountain ridges and far forest silhouettes.
     // They stay well beyond the playable area, so the village and landmarks keep open space.
