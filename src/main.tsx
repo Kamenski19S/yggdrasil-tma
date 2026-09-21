@@ -3056,7 +3056,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const fallenAshFallback=makeFallenAsh(-30,15);
 
     // ---------------------------------------------------------------------------
-    // Three new sacred locations: Stone of Three Threads, Circle of Power,
+    // Sacred locations: Well of the Three Norns, Circle of Power,
     // and Whispering Stone. These are deliberately built from low-poly organic
     // forms, emissive rune planes, curves and point lights so they remain mobile
     // friendly while giving each place a strong magical identity.
@@ -3081,122 +3081,95 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       g.add(glow); return tube;
     };
 
-    // A small unique broken-thread shrine, kept separate from the Three Threads well.
-    const forestThreadX=50, forestThreadZ=-62;
-    const forestThreadShrine=new THREE.Group(); forestThreadShrine.position.set(forestThreadX,groundY(forestThreadX,forestThreadZ),forestThreadZ); forestThreadShrine.userData={id:'forestThread',label:'Разорванная нить'};
-    const ftRing=new THREE.Mesh(new THREE.TorusGeometry(2.4,.05,7,48),new THREE.MeshStandardMaterial({color:0x9c7190,emissive:0x5a3854,emissiveIntensity:1.5,transparent:true,opacity:.72})); ftRing.rotation.x=Math.PI/2; ftRing.position.y=.055; forestThreadShrine.add(ftRing);
-    const ftStone=new THREE.Mesh(new THREE.DodecahedronGeometry(1.0,1),mat(0x51484d,1)); ftStone.scale.set(.9,1.45,.72); ftStone.position.y=.95; forestThreadShrine.add(ftStone);
-    addFloatingRune(forestThreadShrine,'ᛏ',0,1.2,.76,0xc07cae,.9,0);
-    const ftThreadPts=[new THREE.Vector3(-.9,1.8,.3),new THREE.Vector3(0,3.1,.1),new THREE.Vector3(1.0,2.0,-.2)]; addMagicThread(forestThreadShrine,ftThreadPts,0xd9b8d6,.06);
-    addMesh(forestThreadShrine,'forestThread','Разорванная нить'); objects.push(forestThreadShrine); addCircleCollider(forestThreadX,forestThreadZ,1.1,.08);
+    // «Разорванная нить» удалена полностью.
 
 
-    // 1) STONE OF THREE THREADS — WELL OF URD + THREE NORNS --------------------
+
+    // 1) WELL OF THE THREE NORNS ------------------------------------------------
+    const threeNornsWellAsset='Midgard_Well_Three_Norns_V1_YUP.glb';
     const threeThreads=new THREE.Group();
     const threeThreadsX=58, threeThreadsZ=-28;
     threeThreads.position.set(threeThreadsX,groundY(threeThreadsX,threeThreadsZ),threeThreadsZ);
-    threeThreads.userData={id:"threeThreads",label:"Камень Трёх Нитей — Колодец Урд"};
+    threeThreads.userData={id:"threeThreads",label:"Колодец Трёх Норн"};
 
-    const urdStoneMat=new THREE.MeshStandardMaterial({color:0x59645e,roughness:.96,metalness:.04});
-    const urdDarkMat=new THREE.MeshStandardMaterial({color:0x343b38,roughness:.92,metalness:.08});
-    const urdWaterMat=new THREE.MeshStandardMaterial({color:0x2c6870,emissive:0x0d3b45,emissiveIntensity:1.15,roughness:.16,metalness:.05,transparent:true,opacity:.9});
+    // Soft sacred clearing under the GLB.
+    const nornsWellGround=new THREE.Mesh(
+      new THREE.CircleGeometry(9.2,48),
+      new THREE.MeshStandardMaterial({
+        color:0x344b32,
+        roughness:1,
+        transparent:true,
+        opacity:.72
+      })
+    );
+    nornsWellGround.rotation.x=-Math.PI/2;
+    nornsWellGround.position.y=.018;
+    threeThreads.add(nornsWellGround);
 
-    // Wide sacred clearing and a large engraved golden runic circle.
-    const urdGround=new THREE.Mesh(new THREE.CircleGeometry(13.2,52),new THREE.MeshStandardMaterial({color:0x527044,roughness:1,transparent:true,opacity:.94}));
-    urdGround.rotation.x=-Math.PI/2; urdGround.position.y=.018; threeThreads.add(urdGround);
-    for(const [r,w,op] of [[4.1,.07,.82],[7.2,.055,.72],[10.8,.045,.62]] as Array<[number,number,number]>){
-      const ring=new THREE.Mesh(new THREE.TorusGeometry(r,w,8,96),new THREE.MeshBasicMaterial({color:0xf0c95e,transparent:true,opacity:op,depthWrite:false}));
-      ring.rotation.x=Math.PI/2; ring.position.y=.065; threeThreads.add(ring);
-    }
-    const urdGlyphs=['ᚠ','ᚢ','ᚦ','ᚨ','ᚱ','ᚲ','ᚷ','ᚹ','ᚺ','ᚾ','ᛁ','ᛃ','ᛇ','ᛈ','ᛉ','ᛏ','ᛒ','ᛟ'];
-    for(let i=0;i<18;i++){
-      const a=i/18*Math.PI*2;
-      addGroundRune(threeThreads,Math.cos(a)*8.9,Math.sin(a)*8.9,urdGlyphs[i],0xf0c65e,.58,a+.15);
-    }
+    loadGlbWithFolderFallback(threeNornsWellAsset,(gltf:any)=>{
+      const well=gltf.scene;
+      markMeshes(well);
 
-    // Ancient moss-covered Well of Urd: irregular stones around dark living water.
-    const wellBase=new THREE.Mesh(new THREE.CylinderGeometry(3.15,3.45,.45,12),urdDarkMat);
-    wellBase.position.y=.24; threeThreads.add(wellBase);
-    for(let i=0;i<16;i++){
-      const a=i/16*Math.PI*2;
-      const rr=2.65+(midHash(i,2001)-.5)*.22;
-      const st=new THREE.Mesh(new THREE.DodecahedronGeometry(.72+midHash(i,2002)*.22,1),urdStoneMat);
-      st.scale.set(1.15+midHash(i,2003)*.25,.72+midHash(i,2004)*.22,.88+midHash(i,2005)*.24);
-      st.position.set(Math.cos(a)*rr,.55+midHash(i,2006)*.12,Math.sin(a)*rr);
-      st.rotation.set(midHash(i,2007)*.25,a+midHash(i,2008)*.4,midHash(i,2009)*.2); threeThreads.add(st);
-    }
-    const wellWater=new THREE.Mesh(new THREE.CircleGeometry(2.25,40),urdWaterMat);
-    wellWater.rotation.x=-Math.PI/2; wellWater.position.y=.72; threeThreads.add(wellWater);
-    for(let i=0;i<3;i++){
-      const ripple=new THREE.Mesh(new THREE.TorusGeometry(.65+i*.48,.025,6,48),new THREE.MeshBasicMaterial({color:i===0?0x8eeeff:0x6bc8d2,transparent:true,opacity:.3,depthWrite:false}));
-      ripple.rotation.x=Math.PI/2; ripple.position.y=.735; threeThreads.add(ripple);
-    }
+      well.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        o.castShadow=true;
+        o.receiveShadow=true;
 
-    // Three Norns: distinct silhouettes, wool/linen garments, shawls and wooden spindles.
-    const nornData=[
-      {x:-2.75,z:2.0,body:0x6b5a49,cloak:0x7b6a55,hair:0x382d27,light:0xe9e9df,thread:0xdfe8f2,phase:0},
-      {x:0,z:3.75,body:0x756046,cloak:0x5d725c,hair:0x4a3527,light:0xffd66b,thread:0xffd05e,phase:2.1},
-      {x:2.75,z:2.0,body:0x624d4a,cloak:0x5d536d,hair:0x302722,light:0xd85b68,thread:0xc94d58,phase:4.2}
-    ];
-    const nornHands:THREE.Vector3[]=[];
-    for(let i=0;i<3;i++){
-      const d=nornData[i]; const n=new THREE.Group(); n.position.set(d.x,0,d.z); n.rotation.y=i===0?.22:(i===2?-0.22:Math.PI);
-      const robe=new THREE.Mesh(new THREE.ConeGeometry(.72,.95,9),new THREE.MeshStandardMaterial({color:d.body,roughness:.98})); robe.position.y=.72; n.add(robe);
-      const apron=new THREE.Mesh(new THREE.ConeGeometry(.48,.72,8),new THREE.MeshStandardMaterial({color:d.cloak,roughness:.98})); apron.position.set(0,.86,.43); apron.rotation.x=.05; n.add(apron);
-      const shawl=new THREE.Mesh(new THREE.CylinderGeometry(.42,.58,.12,9),new THREE.MeshStandardMaterial({color:d.cloak,roughness:1})); shawl.position.set(0,1.23,0); shawl.rotation.z=.08; n.add(shawl);
-      const head=new THREE.Mesh(new THREE.SphereGeometry(.32,12,9),new THREE.MeshStandardMaterial({color:0xc79268,roughness:.9})); head.position.y=1.62; n.add(head);
-      const hair=new THREE.Mesh(new THREE.SphereGeometry(.38,10,8),new THREE.MeshStandardMaterial({color:d.hair,roughness:1})); hair.scale.set(1,.95,.9); hair.position.set(0,1.68,-.08); n.add(hair);
-      for(const side of [-1,1]){
-        const arm=new THREE.Mesh(new THREE.CylinderGeometry(.075,.105,.62,7),new THREE.MeshStandardMaterial({color:d.cloak,roughness:1}));
-        arm.position.set(side*.47,1.03,.18); arm.rotation.z=side*.42; arm.rotation.x=-.18; n.add(arm);
-      }
-      // Seated posture: a low stone/wood stool hidden beneath the robe.
-      const seat=new THREE.Mesh(new THREE.CylinderGeometry(.38,.44,.18,9),urdDarkMat); seat.position.y=.25; n.add(seat);
-      // Wooden spindle held forward.
-      const spindle=new THREE.Mesh(new THREE.CylinderGeometry(.035,.055,.9,8),new THREE.MeshStandardMaterial({color:0x6a4328,roughness:.9}));
-      spindle.position.set(.58,1.08,.38); spindle.rotation.z=.62; n.add(spindle);
-      const whorl=new THREE.Mesh(new THREE.TorusGeometry(.12,.025,6,14),new THREE.MeshStandardMaterial({color:0x8d633c,roughness:.85}));
-      whorl.rotation.x=Math.PI/2; whorl.position.set(.75,.82,.48); n.add(whorl);
-      n.position.y=.02; threeThreads.add(n);
-      nornHands.push(new THREE.Vector3(d.x+.72,1.25,d.z+.48));
-    }
+        const tune=(m:any)=>{
+          if(!m)return m;
+          const mm=m.clone?m.clone():m;
+          const mn=String(mm.name||'').toLowerCase();
 
-    // Three destiny threads leave the Norns' hands and braid into a celestial knot above the well.
-    const threadStreamColors=[0xdfe8f2,0xffd05e,0xc94d58];
-    for(let k=0;k<3;k++){
-      const h=nornHands[k], pts:THREE.Vector3[]=[];
-      for(let i=0;i<=30;i++){
-        const t=i/30;
-        const y=h.y+t*7.3;
-        const a=t*Math.PI*3.0+nornData[k].phase;
-        const rr=.35+.72*t;
-        pts.push(new THREE.Vector3(h.x*(1-t)+Math.cos(a)*rr*t,h.y*(1-t)+y*t,h.z*(1-t)+Math.sin(a)*rr*t));
-      }
-      addMagicThread(threeThreads,pts,threadStreamColors[k],.085);
-    }
-    // Celestial knotwork crown.
-    for(let k=0;k<3;k++){
-      const pts:THREE.Vector3[]=[];
-      for(let i=0;i<=32;i++){
-        const t=i/32,a=t*Math.PI*2,rr=1.65+.42*Math.sin(a*2+k*.9);
-        pts.push(new THREE.Vector3(Math.cos(a+k*2.094)*rr,8.35+.45*Math.sin(a*3+k),Math.sin(a+k*2.094)*rr));
-      }
-      addMagicThread(threeThreads,pts,threadStreamColors[k],.065);
-    }
-    const nornLight=new THREE.PointLight(0xffd878,1.25,11,2); nornLight.position.set(0,4.2,1); threeThreads.add(nornLight);
+          // Keep the reference palette: dark old stone, moss, warm amber light.
+          if(/ancient_stone/.test(mn) && mm.color){
+            mm.color.multiplyScalar(.82);
+            if('roughness' in mm) mm.roughness=Math.max(mm.roughness??.9,.94);
+          }
+          if(/moss/.test(mn) && mm.color){
+            mm.color.set(0x415d32);
+          }
+          if(/well_inner_glow|well_glow_hot|inner_glow_core/.test(mn)){
+            if('color' in mm) mm.color.set(/hot|core/.test(mn)?0xffc65a:0xff9a22);
+            if('emissive' in mm){
+              mm.emissive=new THREE.Color(/hot|core/.test(mn)?0xff9d1c:0xff6b10);
+              mm.emissiveIntensity=/hot|core/.test(mn)?2.5:1.7;
+            }
+          }
+          mm.needsUpdate=true;
+          return mm;
+        };
 
-    // Wildflowers, relics and small golden talismans in the open clearing.
-    for(let i=0;i<20;i++){
-      const a=midHash(i,2030)*Math.PI*2,rr=3.8+midHash(i,2031)*8.0,x=Math.cos(a)*rr,z=Math.sin(a)*rr;
-      const stem=new THREE.Mesh(new THREE.CylinderGeometry(.018,.028,.22,5),new THREE.MeshStandardMaterial({color:0x56753d,roughness:1})); stem.position.set(x,.11,z); threeThreads.add(stem);
-      const flower=new THREE.Mesh(new THREE.SphereGeometry(.07,7,5),new THREE.MeshBasicMaterial({color:i%3===0?0xffe4a0:(i%3===1?0xf3b9d0:0xdcecff)})); flower.position.set(x,.25,z); threeThreads.add(flower);
-    }
-    for(let i=0;i<10;i++){
-      const a=midHash(i,2040)*Math.PI*2,rr=4.0+midHash(i,2041)*8.0;
-      const relic=new THREE.Mesh(new THREE.DodecahedronGeometry(.12+midHash(i,2042)*.08,0),new THREE.MeshStandardMaterial({color:0x9b7b3f,metalness:.65,roughness:.4}));
-      relic.position.set(Math.cos(a)*rr,.1,Math.sin(a)*rr); threeThreads.add(relic);
-    }
-    addMesh(threeThreads,"threeThreads","Камень Трёх Нитей — Колодец Урд"); objects.push(threeThreads); addCircleCollider(threeThreadsX,threeThreadsZ,3.4,.1);
+        if(Array.isArray(o.material))o.material=o.material.map(tune);
+        else o.material=tune(o.material);
+      });
+
+      well.scale.setScalar(.95);
+      well.rotation.y=.18;
+      well.position.set(0,0,0);
+      well.updateMatrixWorld(true);
+
+      const bb=new THREE.Box3().setFromObject(well);
+      well.position.y-=bb.min.y;
+      well.updateMatrixWorld(true);
+
+      threeThreads.add(well);
+
+      // The model materials glow, and this warm point light makes the well itself
+      // cast a visible amber light onto nearby stone and ground.
+      const innerLight=new THREE.PointLight(0xff8a1f,2.2,12,2);
+      innerLight.position.set(0,2.0,0);
+      threeThreads.add(innerLight);
+
+      const softLight=new THREE.PointLight(0xffd36b,.65,7,2);
+      softLight.position.set(0,3.8,0);
+      threeThreads.add(softLight);
+
+      console.log('[THREE NORNS WELL] GLB loaded',threeNornsWellAsset);
+    },'THREE NORNS WELL');
+
+    scene.add(threeThreads);
+    objects.push(threeThreads);
+    addCircleCollider(threeThreadsX,threeThreadsZ,3.4,.1);
 
     // 2) CIRCLE OF POWER --------------------------------------------------------
     const powerCircle=new THREE.Group();
@@ -3770,7 +3743,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       {id:"house",label:"Дом старейшины",x:13,z:-18,r:5.2},{id:"forge",label:"Кузница",x:-10,z:-5,r:5.4},
       {id:"mimir",label:"Колодец Мимира",x:1,z:0,r:4.8},{id:"norns",label:"Прядильня норн",x:-52,z:38,r:5.4},
       {id:"rune",label:"Древний камень Феху",x:50,z:60,r:4.5},{id:"port",label:"Речной мост",x:-57,z:-48,r:6},
-      {id:"ashgrove",label:"Роща Ясеня",x:-5,z:75,r:7.5},{id:"threeThreads",label:"Камень Трёх Нитей — Колодец Урд",x:58,z:-28,r:6.8},{id:"forestCache",label:"Забытый тайник",x:-72,z:48,r:4.2},{id:"forestThread",label:"Разорванная нить",x:50,z:-62,r:4.2},
+      {id:"ashgrove",label:"Роща Ясеня",x:-5,z:75,r:7.5},{id:"threeThreads",label:"Колодец Трёх Норн",x:58,z:-28,r:6.8},{id:"forestCache",label:"Забытый тайник",x:-72,z:48,r:4.2},
       {id:"runefield",label:"Поле Рун",x:18,z:55,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-65,z:5,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:43,z:32,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:62,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:68,z:8,r:8.5},{id:"heroHome",label:"Дверь дома героя",x:75,z:32.75,r:2.8},{id:"deepGrove",label:"Глубокая роща",x:-45,z:75,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:-30,z:15,r:7.5},{id:"powerCircle",label:"Круг Силы — Монолит",x:5,z:-70,r:6.5},{id:"whisperStone",label:"Камень Шёпота",x:-72,z:-48,r:6.5},
       {id:"elder",label:"Старейшина",x:9,z:-8,r:3.2},{id:"blacksmith",label:"Кузнец",x:-6,z:-3,r:3.2},
       {id:"gate",label:"Ворота Мидгарда",x:0,z:44,r:6},{id:"tower",label:"Сторожевая башня",x:29,z:25,r:4}
@@ -3910,14 +3883,14 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
   return <div className="content mid3d-scene" ref={mount} style={{touchAction:"none",userSelect:"none",WebkitUserSelect:"none"}} onPointerDown={startJoyFromZone} onPointerMove={moveJoyFromZone} onPointerUp={endJoyFromZone} onPointerCancel={endJoyFromZone} onContextMenu={e=>e.preventDefault()}>
     <div className="mid3d-ui mid3d-top"><div className="mid3d-pill"><b>МИДГАРД</b><span>Деревня • река • лес • святилища</span></div><div className="mid3d-pill"><b>ᛟ</b><span>Мир живёт вокруг тебя</span></div></div>
     {forestEventOpen&&!eventDone&&<div className="mid3d-ui mid3d-interact" style={{bottom:"14%",left:"50%",transform:"translateX(-50%)",width:"min(92vw,390px)",zIndex:31}}>
-      <b>ᛟ Камень Трёх Нитей</b>
-      <span>На камне проступают три линии. Одна ведёт назад. Вторая — к тому, что происходит сейчас. Третья исчезает в тумане будущего.</span>
+      <b>ᛟ Колодец Трёх Норн</b>
+      <span>В глубине колодца горит тёплое сияние. Серебряная, золотая и алая нити сходятся над водой, связывая прошлое, настоящее и будущее.</span>
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setForestEventOpen(false);on("forestEvent:past")}}>ᛁ Прошлое — узнать, что здесь произошло</button>
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setForestEventOpen(false);on("forestEvent:present")}}>ᛏ Настоящее — принять знак таким, какой он есть</button>
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setForestEventOpen(false);on("forestEvent:future")}}>ᛉ Будущее — последовать за нитью, которую ещё не видно</button>
     </div>}
     {forestEventOpen&&eventDone&&<div className="mid3d-ui mid3d-interact" style={{bottom:"18%",left:"50%",transform:"translateX(-50%)",width:"min(92vw,360px)",zIndex:30}}>
-      <b>Камень Трёх Нитей</b><span>Ты уже выбрал свою нить. Камень помнит этот выбор.</span>
+      <b>Колодец Трёх Норн</b><span>Ты уже выбрал свою нить. Вода и три нити помнят этот выбор.</span>
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>setForestEventOpen(false)}>Продолжить путь</button>
     </div>}
     {ritualOpen&&<div className="mid3d-ui mid3d-interact" style={{bottom:"18%",left:"50%",transform:"translateX(-50%)",width:"min(92vw,360px)",zIndex:30}}>
@@ -4165,7 +4138,7 @@ const [roadT, setRoadT] = useState(0.06);
         return;
       }
       if (id === "threeThreads") {
-        say('У колодца Урд три Норны прядут нити судьбы. Серебряная, золотая и алая нить сплетаются над водой в знак того, что прошлое, настоящее и будущее связаны.');
+        say('Колодец Трёх Норн светится изнутри. Серебряная, золотая и алая нити сходятся над водой — прошлое, настоящее и будущее здесь связаны воедино.');
         return;
       }
       if (id === "forge" || id === "blacksmith") {
@@ -4220,14 +4193,6 @@ const [roadT, setRoadT] = useState(0.06);
           haptic("success");
           say("Камень шепчет: «Не всякая весть должна быть услышана сразу». Внутри трещины мерцает руна. +16 ✨");
         } else say("Шёпот стих. Но теперь ты знаешь, что этот камень когда-нибудь может заговорить снова.");
-        return;
-      }
-      if (id === "forestThread") {
-        if (!save.done.includes("forest:thread")) {
-          setSave(s => ({ ...s, sparks: s.sparks + 22, done: [...new Set([...s.done, "forest:thread"])] }));
-          haptic("success");
-          say("На ветке висит оборванная нить. Ты не знаешь, кому она принадлежала, но рядом лежит руна судьбы. +22 ✨");
-        } else say("Оборванная нить всё ещё висит на ветке. Второго знака она не даёт.");
         return;
       }
       if (id === "heroHome") {
