@@ -2226,44 +2226,54 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
 
     addCircleCollider(-4.2,gateFrontZ,.55,.05);addCircleCollider(4.2,gateFrontZ,.55,.05);
-    // Mimir's well now occupies the village central stone circle — one unique instance.
-    const shrine=new THREE.Group();shrine.userData={id:"norns",label:"Прядильня норн"};shrine.position.set(-52,groundY(-52,38),38);
-    const loomWood=mat(0x4b3022,1); const loomDark=mat(0x2b211b,1);
-    // Large carved loom frame.
-    const loomTop=box(5.7,.28,.28,0x593a28,1); loomTop.position.set(0,3.8,0); shrine.add(loomTop);
-    const loomBottom=box(5.0,.25,.32,0x3b291f,1); loomBottom.position.set(0,.65,.15); shrine.add(loomBottom);
-    for(const x of [-2.45,2.45]){const p=box(.28,3.55,.3,0x513423,1);p.position.set(x,2.15,0);p.rotation.z=x>0?.08:-.08;shrine.add(p);}
-    // Spinning wheel behind the fate stones.
-    const wheel=new THREE.Mesh(new THREE.TorusGeometry(2.05,.18,8,32),loomWood); wheel.rotation.y=Math.PI/2; wheel.position.set(0,2.25,-.8); shrine.add(wheel);
-    const hub=new THREE.Mesh(new THREE.CylinderGeometry(.28,.32,.38,10),loomDark); hub.rotation.z=Math.PI/2; hub.position.set(0,2.25,-.8); shrine.add(hub);
-    for(let i=0;i<10;i++){const a=i/10*Math.PI*2; const spoke=box(.08,.08,1.85,0x5a3b28,1); spoke.position.set(Math.cos(a)*.92,2.25+Math.sin(a)*.92,-.8); spoke.rotation.z=-a; shrine.add(spoke);}
-    // Three symbolic rough-hewn stones: Urd, Verdandi, Skuld.
-    const fateNames=['URD','VERDANDI','SKULD']; const fateColors=[0x83d8ff,0xe7e7e1,0xe37b88];
-    for(let i=0;i<3;i++){
-      const x=(i-1)*2.0; const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(.78,1),new THREE.MeshStandardMaterial({color:0x454b49,roughness:.92,metalness:.05}));
-      stone.scale.set(.9,1.18+midHash(i,1290)*.2,.72); stone.position.set(x,1.35,.18); stone.rotation.set(0,(i-1)*.16,0); shrine.add(stone);
-      const tex=runeGroundTexture(i===0?'ᚢ':(i===1?'ᚹ':'ᛋ'),i===0?'#8fe6ff':(i===1?'#f1f1ec':'#ef8d9a'));
-      const rune=new THREE.Mesh(new THREE.PlaneGeometry(.48,.62),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide})); rune.position.set(x,1.42,.86); rune.rotation.y=Math.PI; shrine.add(rune);
-      const lc=document.createElement("canvas"); lc.width=320; lc.height=96; const lctx=lc.getContext("2d")!; lctx.clearRect(0,0,320,96); lctx.textAlign="center"; lctx.textBaseline="middle"; lctx.font="bold 34px serif"; lctx.fillStyle=i===0?"#9fe9ff":(i===1?"#f4f4ef":"#ef91a0"); lctx.shadowColor=lctx.fillStyle; lctx.shadowBlur=12; lctx.fillText(fateNames[i],160,48);
-      const lt=new THREE.CanvasTexture(lc); lt.colorSpace=THREE.SRGBColorSpace;
-      const label=new THREE.Mesh(new THREE.PlaneGeometry(1.55,.46),new THREE.MeshBasicMaterial({map:lt,transparent:true,depthWrite:false,side:THREE.DoubleSide})); label.position.set(x,0.55,.86); label.rotation.y=Math.PI; shrine.add(label);
-      const light=new THREE.PointLight(fateColors[i],.45,4.5,2);light.position.set(x,1.55,1.0);shrine.add(light);
-    }
-    // Three luminous threads rise from the stones and weave into a knotwork crown.
-    const threadColors=[0xe6c45f,0xe8e8e5,0xd95f74];
-    for(let i=0;i<3;i++){
-      const pts:THREE.Vector3[]=[];
-      for(let k=0;k<=18;k++){const t=k/18; const y=1.9+t*4.6; const xx=(i-1)*2.0 + Math.sin(t*Math.PI*2+i*1.7)*(.45+.5*t); const zz=.35 + Math.cos(t*Math.PI*2+i)*.45; pts.push(new THREE.Vector3(xx,y,zz));}
-      shrine.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:threadColors[i],transparent:true,opacity:.9})));
-    }
-    // Knotwork loops at the top.
-    for(let i=0;i<3;i++){const knot=new THREE.Mesh(new THREE.TorusGeometry(1.15+i*.18,.045,6,32),new THREE.MeshBasicMaterial({color:threadColors[i],transparent:true,opacity:.75,depthWrite:false}));knot.position.set((i-1)*.38,6.15,.15);knot.rotation.set(.4,i*.65,.2);shrine.add(knot);}
-    // Ritual floor and weaving debris.
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(4.6,.065,8,72),new THREE.MeshBasicMaterial({color:0x9ddcf0,transparent:true,opacity:.72,depthWrite:false}));ring.rotation.x=Math.PI/2;ring.position.y=.05;shrine.add(ring);
-    for(let i=0;i<18;i++){const a=midHash(i,1300)*Math.PI*2,rr=2.5+midHash(i,1301)*3.1;const spool=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.16,9),new THREE.MeshStandardMaterial({color:[0x9b6548,0x6d7790,0x8d5367,0x77724d][i%4],roughness:.8}));spool.rotation.x=Math.PI/2;spool.position.set(Math.cos(a)*rr,.12,Math.sin(a)*rr);shrine.add(spool);}
-    for(let i=0;i<9;i++)addGroundRune(shrine,(midHash(i,1315)-.5)*7.5,(midHash(i,1316)-.5)*6.2,['ᚠ','ᚱ','ᛟ','ᛉ','ᚦ'][i%5],i%2?0x8fdff0:0xd7ae61,.34,midHash(i,1317)*Math.PI);
-    addMesh(shrine,"norns","Прядильня норн");objects.push(shrine);
+    // Norns' weaving place — three Norns together with the threads of fate.
+    // Replaces the old procedural loom/stones while preserving the same interaction id/location.
+    const nornsAsset='Midgard_Three_Norns_Weaving_V1_YUP.glb';
+    const shrine=new THREE.Group();
+    shrine.userData={id:"norns",label:"Прядильня норн"};
+    shrine.position.set(-52,groundY(-52,38),38);
+    scene.add(shrine);
+    objects.push(shrine);
+
+    loadGlbWithFolderFallback(nornsAsset,(gltf:any)=>{
+      const nornsModel=gltf.scene;
+      markMeshes(nornsModel);
+      nornsModel.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        o.castShadow=true;
+        o.receiveShadow=true;
+        const tune=(m:any)=>{
+          if(!m)return m;
+          const mm=m.clone?m.clone():m;
+          // Keep skin/hair soft and the bronze/thread accents readable without a plastic shine.
+          if('roughness' in mm){
+            if(/skin|hair|robe|table/i.test(String(mm.name||''))) mm.roughness=Math.max(mm.roughness??.75,.74);
+            if(/bronze/i.test(String(mm.name||''))) mm.roughness=.48;
+          }
+          if('metalness' in mm && /bronze/i.test(String(mm.name||''))) mm.metalness=.66;
+          mm.needsUpdate=true;
+          return mm;
+        };
+        if(Array.isArray(o.material))o.material=o.material.map(tune);else o.material=tune(o.material);
+      });
+      nornsModel.scale.setScalar(.88);
+      nornsModel.rotation.y=2.20;
+      nornsModel.position.set(0,0,0);
+      nornsModel.updateMatrixWorld(true);
+      const bb=new THREE.Box3().setFromObject(nornsModel);
+      nornsModel.position.y-=bb.min.y;
+      nornsModel.updateMatrixWorld(true);
+      shrine.add(nornsModel);
+
+      // Gentle local light so the three fate threads remain visible at night,
+      // without changing the lighting of the surrounding village.
+      const fateGlow=new THREE.PointLight(0xd7b87a,.42,7,2);
+      fateGlow.position.set(0,2.1,1.2);
+      shrine.add(fateGlow);
+      console.log('[NORNS] GLB loaded',nornsAsset);
+    },'NORNS');
     addCircleCollider(-52,38,3.0,.1);
+
 
     // Ancient rune altar.
     const rune=new THREE.Group();rune.userData={id:"rune",label:"Древний камень Феху"};rune.position.set(50,groundY(50,60),60);const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(1.45,1),mat(0x4c534f,1));stone.position.y=1.2;rune.add(stone);const rr=new THREE.Mesh(new THREE.TorusGeometry(1.05,.07,8,30),new THREE.MeshStandardMaterial({color:0xffd76a,emissive:0x996313,emissiveIntensity:3}));rr.rotation.x=Math.PI/2;rr.position.y=1.2;rune.add(rr);addMesh(rune,"rune","Древний камень Феху");objects.push(rune);
@@ -2542,57 +2552,44 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const deerRing=new THREE.Mesh(new THREE.TorusGeometry(5.8,.045,7,48),new THREE.MeshStandardMaterial({color:0x7e8b72,emissive:0x303d2a,emissiveIntensity:.8,transparent:true,opacity:.48}));deerRing.rotation.x=Math.PI/2;deerRing.position.set(deerClearingX,groundY(deerClearingX,deerClearingZ)+.035,deerClearingZ);scene.add(deerRing);
     squirrel(ashGroveX+5,ashGroveZ+1);
 
-    // Forgotten Cache — a colossal hollow oak with a hidden leather pouch inside.
-    const makeForgottenCache=(x:number,z:number)=>{
-      const g=new THREE.Group(); g.position.set(x,groundY(x,z),z); g.userData={id:'forestCache',label:'Забытый тайник'};
-      const bark= new THREE.MeshStandardMaterial({map:barkTexture,color:0x6a543d,roughness:1});
-      const darkBark=new THREE.MeshStandardMaterial({color:0x2a211b,roughness:1});
-      const stump=new THREE.Mesh(new THREE.CylinderGeometry(2.0,2.65,4.9,11),bark);
-      stump.position.y=2.45; stump.rotation.z=-.035; g.add(stump);
-      // Jagged broken crown.
-      for(let i=0;i<7;i++){
-        const h=1.3+midHash(i,1250)*2.7;
-        const shard=new THREE.Mesh(new THREE.ConeGeometry(.32+midHash(i,1251)*.3,h,6),bark);
-        const a=midHash(i,1252)*Math.PI*2; const rr=.55+midHash(i,1253)*1.35;
-        shard.position.set(Math.cos(a)*rr,4.75+h*.42,Math.sin(a)*rr);
-        shard.rotation.z=(midHash(i,1254)-.5)*.55; shard.rotation.x=(midHash(i,1255)-.5)*.55; g.add(shard);
-      }
-      // Deep black hollow, with a subtle inner rim.
-      const hollow=new THREE.Mesh(new THREE.SphereGeometry(1.18,16,10),darkBark);
-      hollow.scale.set(1.0,1.18,.46); hollow.position.set(0,2.0,2.08); g.add(hollow);
-      const innerRim=new THREE.Mesh(new THREE.TorusGeometry(1.05,.16,8,28),new THREE.MeshStandardMaterial({color:0x4b3b2d,roughness:1}));
-      innerRim.rotation.x=Math.PI/2; innerRim.position.set(0,2.0,2.12); innerRim.scale.y=1.15; g.add(innerRim);
-      // Silver spiderweb strands.
-      const webMat=new THREE.LineBasicMaterial({color:0xd8d8d0,transparent:true,opacity:.45});
-      for(let i=0;i<6;i++){
-        const pts=[new THREE.Vector3(-.95+i*.38,1.15+(i%3)*.55,2.15),new THREE.Vector3((i-2.5)*.2,2.0+(i%2)*.3,2.48),new THREE.Vector3(-.8+i*.32,2.95+(i%3)*.25,2.12)];
-        g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),webMat));
-      }
-      // Hidden traveler's pouch and glowing runic tokens.
-      const pouch=new THREE.Mesh(new THREE.SphereGeometry(.46,10,8),new THREE.MeshStandardMaterial({color:0x5b3a26,roughness:1}));
-      pouch.scale.set(.9,1.15,.62); pouch.position.set(.05,1.45,2.34); g.add(pouch);
-      const clasp=new THREE.Mesh(new THREE.SphereGeometry(.07,7,5),new THREE.MeshStandardMaterial({color:0xd5b15d,metalness:.7,roughness:.35,emissive:0x6f4b17,emissiveIntensity:1.4}));
-      clasp.position.set(.05,1.72,2.77); g.add(clasp);
-      for(let i=0;i<5;i++){
-        const tok=new THREE.Mesh(new THREE.DodecahedronGeometry(.11,0),new THREE.MeshStandardMaterial({color:0xe1b95c,emissive:0xa46d1e,emissiveIntensity:2.1,roughness:.5}));
-        tok.position.set(-.38+i*.19,1.02+(i%2)*.08,2.5); g.add(tok);
-      }
-      // Runes carved around the opening.
-      const cacheGlyphs=['ᚠ','ᚱ','ᛉ','ᛟ','ᚦ','ᚨ'];
-      for(let i=0;i<6;i++){
-        const a=-1.05+i*.42; const tex=runeGroundTexture(cacheGlyphs[i],i%2?'#e7bd61':'#7ce5ef');
-        const q=new THREE.Mesh(new THREE.PlaneGeometry(.45,.62),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));
-        q.position.set(Math.sin(a)*1.55,1.2+i*.42,1.93+Math.cos(a)*.22); q.rotation.y=Math.PI; g.add(q);
-      }
-      // Golden protection glyph on the moss.
-      const ring=new THREE.Mesh(new THREE.TorusGeometry(4.15,.06,8,64),new THREE.MeshBasicMaterial({color:0xe4bf63,transparent:true,opacity:.78,depthWrite:false}));
-      ring.rotation.x=Math.PI/2; ring.position.y=.05; g.add(ring);
-      for(let i=0;i<10;i++){const a=i/10*Math.PI*2;addGroundRune(g,Math.cos(a)*3.65,Math.sin(a)*3.65,['ᚠ','ᚢ','ᚦ','ᚨ','ᚱ','ᚲ','ᚷ','ᛟ','ᛉ','ᛏ'][i],0xe2bd61,.38,a+.2);}
-      for(let i=0;i<12;i++){const a=midHash(i,1270)*Math.PI*2,rr=1.8+midHash(i,1271)*3.3; const c=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,.025,9),new THREE.MeshStandardMaterial({color:0x9b7d43,metalness:.55,roughness:.45}));c.rotation.x=Math.PI/2;c.position.set(Math.cos(a)*rr,.09,Math.sin(a)*rr);g.add(c);}
-      for(let i=0;i<4;i++){const b=box(.08,.08,.75,0x9e9784,1);b.position.set((midHash(i,1280)-.5)*5,.12,(midHash(i,1281)-.5)*5);b.rotation.y=midHash(i,1282)*Math.PI;g.add(b);}
-      addMesh(g,'forestCache','Забытый тайник'); objects.push(g); addCircleCollider(x,z,1.75,.08);
-    };
-    makeForgottenCache(-72,48);
+    // Forgotten Cache — ornate cyan/gold fantasy chest GLB.
+    // Keeps the original interaction id/location while replacing the old hollow-oak visual.
+    const forgottenCacheAsset='Midgard_Forgotten_Cache_Chest_V1_YUP.glb';
+    const forgottenCacheRoot=new THREE.Group();
+    forgottenCacheRoot.userData={id:'forestCache',label:'Забытый тайник'};
+    forgottenCacheRoot.position.set(-72,groundY(-72,48),48);
+    scene.add(forgottenCacheRoot);
+    objects.push(forgottenCacheRoot);
+
+    loadGlbWithFolderFallback(forgottenCacheAsset,(gltf:any)=>{
+      const chest=gltf.scene;
+      markMeshes(chest);
+      chest.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        o.castShadow=true;
+        o.receiveShadow=true;
+        const tune=(m:any)=>{
+          if(!m)return m;
+          const mm=m.clone?m.clone():m;
+          if('roughness' in mm && /gold|iron|cyan|crystal|metal/i.test(String(mm.name||''))) mm.roughness=Math.min(mm.roughness??.55,.48);
+          if('metalness' in mm && /gold|iron|metal/i.test(String(mm.name||''))) mm.metalness=Math.max(mm.metalness??0,.58);
+          mm.needsUpdate=true;
+          return mm;
+        };
+        if(Array.isArray(o.material))o.material=o.material.map(tune);else o.material=tune(o.material);
+      });
+      chest.scale.setScalar(.72);
+      chest.rotation.y=2.15;
+      chest.position.set(0,0,0);
+      chest.updateMatrixWorld(true);
+      const bb=new THREE.Box3().setFromObject(chest);
+      chest.position.y-=bb.min.y;
+      chest.updateMatrixWorld(true);
+      forgottenCacheRoot.add(chest);
+      console.log('[FORGOTTEN CACHE] GLB loaded',forgottenCacheAsset);
+    },'FORGOTTEN CACHE');
+    addCircleCollider(-72,48,2.15,.08);
+
     // Right forest expansion: detailed landmark clearings. The goal is a cinematic
     // handcrafted look rather than a ring of identical primitive stones.
     const plankBetween=(a:THREE.Vector3,b:THREE.Vector3,w:number,h:number,material:THREE.Material)=>{
