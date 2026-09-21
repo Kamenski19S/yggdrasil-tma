@@ -2226,53 +2226,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
 
     addCircleCollider(-4.2,gateFrontZ,.55,.05);addCircleCollider(4.2,gateFrontZ,.55,.05);
-    // Norns' weaving place — three Norns together with the threads of fate.
-    // Replaces the old procedural loom/stones while preserving the same interaction id/location.
-    const nornsAsset='Midgard_Three_Norns_Weaving_V1_YUP.glb';
-    const shrine=new THREE.Group();
-    shrine.userData={id:"norns",label:"Прядильня норн"};
-    shrine.position.set(-52,groundY(-52,38),38);
-    scene.add(shrine);
-    objects.push(shrine);
+    // Norns location removed for now. The clearing stays empty until a new concept is approved.
 
-    loadGlbWithFolderFallback(nornsAsset,(gltf:any)=>{
-      const nornsModel=gltf.scene;
-      markMeshes(nornsModel);
-      nornsModel.traverse((o:any)=>{
-        if(!o.isMesh)return;
-        o.castShadow=true;
-        o.receiveShadow=true;
-        const tune=(m:any)=>{
-          if(!m)return m;
-          const mm=m.clone?m.clone():m;
-          // Keep skin/hair soft and the bronze/thread accents readable without a plastic shine.
-          if('roughness' in mm){
-            if(/skin|hair|robe|table/i.test(String(mm.name||''))) mm.roughness=Math.max(mm.roughness??.75,.74);
-            if(/bronze/i.test(String(mm.name||''))) mm.roughness=.48;
-          }
-          if('metalness' in mm && /bronze/i.test(String(mm.name||''))) mm.metalness=.66;
-          mm.needsUpdate=true;
-          return mm;
-        };
-        if(Array.isArray(o.material))o.material=o.material.map(tune);else o.material=tune(o.material);
-      });
-      nornsModel.scale.setScalar(.88);
-      nornsModel.rotation.y=2.20;
-      nornsModel.position.set(0,0,0);
-      nornsModel.updateMatrixWorld(true);
-      const bb=new THREE.Box3().setFromObject(nornsModel);
-      nornsModel.position.y-=bb.min.y;
-      nornsModel.updateMatrixWorld(true);
-      shrine.add(nornsModel);
-
-      // Gentle local light so the three fate threads remain visible at night,
-      // without changing the lighting of the surrounding village.
-      const fateGlow=new THREE.PointLight(0xd7b87a,.42,7,2);
-      fateGlow.position.set(0,2.1,1.2);
-      shrine.add(fateGlow);
-      console.log('[NORNS] GLB loaded',nornsAsset);
-    },'NORNS');
-    addCircleCollider(-52,38,3.0,.1);
 
 
     // Ancient rune altar.
@@ -2554,6 +2509,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     // Forgotten Cache — ornate cyan/gold fantasy chest GLB.
     // Keeps the original interaction id/location while replacing the old hollow-oak visual.
+    // This filename is intentionally stable: replace the GLB to iterate on the chest without touching code.
     const forgottenCacheAsset='Midgard_Forgotten_Cache_Chest_V1_YUP.glb';
     const forgottenCacheRoot=new THREE.Group();
     forgottenCacheRoot.userData={id:'forestCache',label:'Забытый тайник'};
