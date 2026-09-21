@@ -2234,8 +2234,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const rune=new THREE.Group();rune.userData={id:"rune",label:"Древний камень Феху"};rune.position.set(50,groundY(50,60),60);const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(1.45,1),mat(0x4c534f,1));stone.position.y=1.2;rune.add(stone);const rr=new THREE.Mesh(new THREE.TorusGeometry(1.05,.07,8,30),new THREE.MeshStandardMaterial({color:0xffd76a,emissive:0x996313,emissiveIntensity:3}));rr.rotation.x=Math.PI/2;rr.position.y=1.2;rune.add(rr);addMesh(rune,"rune","Древний камень Феху");objects.push(rune);
     addCircleCollider(50,60,1.7,.1);
 
-    // Bridge and dock.
-    const bridge=new THREE.Group();bridge.userData={id:"port",label:"Мост к причалу"};for(let i=-5;i<=5;i++){const plank=box(3.6,.28,.82,0x60402a,1);plank.position.set(-53,groundY(-53,i*1.0)+.5,i);bridge.add(plank);}addMesh(bridge,"port","Мост к причалу");objects.push(bridge);
+    // Old floating dock/platform removed. Only the straight river bridge remains.
     // Straight river bridge replaces the old floating dock.
     const riverBridge=new THREE.Group();
     riverBridge.userData={id:"port",label:"Речной мост"};
@@ -2562,7 +2561,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
           if('metalness' in mm && /gold|iron|metal/i.test(mn)) mm.metalness=Math.max(mm.metalness??0,.58);
           if('emissive' in mm && /cyan|crystal|runic|gem|inner/i.test(mn)){
             mm.emissive=new THREE.Color(0x39ccec);
-            mm.emissiveIntensity=3.2;
+            mm.emissiveIntensity=5.12;
           }
           mm.needsUpdate=true;
           return mm;
@@ -2577,7 +2576,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       chest.position.y-=bb.min.y;
       chest.updateMatrixWorld(true);
       forgottenCacheRoot.add(chest);
-      const cacheGlow=new THREE.PointLight(0x38cfee,1.35,5.5,2);
+      const cacheGlow=new THREE.PointLight(0x38cfee,2.16,6.5,2);
       cacheGlow.position.set(0,1.15,.45);
       forgottenCacheRoot.add(cacheGlow);
       console.log('[FORGOTTEN CACHE] GLB loaded',forgottenCacheAsset);
@@ -2902,42 +2901,73 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     addMesh(powerCircle,"powerCircle","Круг Силы"); objects.push(powerCircle); addCircleCollider(powerX,powerZ,2.2,.1);
 
     // 3) WHISPERING STONE -------------------------------------------------------
+    // The old black stone is replaced by a bright amber crystal cluster.
+    const whisperCrystalAsset='Midgard_Whisper_Amber_Crystal_V1_YUP.glb';
     const whisperStone=new THREE.Group();
     const whisperX=-72, whisperZ=-48;
     whisperStone.position.set(whisperX,groundY(whisperX,whisperZ),whisperZ);
     whisperStone.userData={id:"whisperStone",label:"Камень Шёпота"};
-    const whisperGround=new THREE.Mesh(new THREE.CircleGeometry(8.6,40),new THREE.MeshStandardMaterial({color:0x17251e,roughness:1,transparent:true,opacity:.95}));
-    whisperGround.rotation.x=-Math.PI/2; whisperGround.position.y=.02; whisperStone.add(whisperGround);
-    const whisperRing=new THREE.Mesh(new THREE.TorusGeometry(5.8,.09,8,96),new THREE.MeshBasicMaterial({color:0xa96cff,transparent:true,opacity:.78,depthWrite:false}));
-    whisperRing.rotation.x=Math.PI/2; whisperRing.position.y=.075; whisperStone.add(whisperRing);
-    const whisperBase=new THREE.Mesh(new THREE.DodecahedronGeometry(2.1,1),new THREE.MeshStandardMaterial({color:0x15171b,roughness:.8,metalness:.35}));
-    whisperBase.scale.set(1.15,1.35,.82); whisperBase.position.y=1.75; whisperBase.rotation.set(.05,.25,-.08); whisperStone.add(whisperBase);
-    // Ram-like curved horns, built as low-poly tubes.
-    for(const side of [-1,1]){
-      const pts:THREE.Vector3[]=[];
-      for(let i=0;i<=14;i++){
-        const t=i/14, a=t*Math.PI*1.15;
-        pts.push(new THREE.Vector3(side*(1.35+.72*Math.sin(a)),2.45+.85*t+.38*Math.sin(a),-.15+.78*Math.cos(a)-.78));
-      }
-      addMagicThread(whisperStone,pts,0x343744,.18);
-    }
-    const whisperGlyphs=["ᚨ","ᚱ","ᛉ","ᚷ","ᛟ","ᚦ","ᛏ","ᚢ","ᚺ","ᚾ"];
-    whisperGlyphs.forEach((ch,i)=>{
-      const a=i/whisperGlyphs.length*Math.PI*2;
-      addFloatingRune(whisperStone,ch,Math.cos(a)*3.5,1.0,Math.sin(a)*3.5,i%2?0x6edcff:0xb874ff,.46,a+Math.PI/2);
-    });
-    // Floating whisper-runes rising from the stone.
-    for(let i=0;i<9;i++){
-      const a=midHash(i,1901)*Math.PI*2,rr=.7+midHash(i,1902)*1.7;
-      const q=addFloatingRune(whisperStone,whisperGlyphs[i%whisperGlyphs.length],Math.cos(a)*rr,3.4+i*.48,Math.sin(a)*rr,i%2?0x79e6ff:0xc07cff,.42+midHash(i,1903)*.22,a);
-      q.rotation.x=(midHash(i,1904)-.5)*.35;
-    }
-    const whisperLight=new THREE.PointLight(0x9c55ff,1.5,9,2); whisperLight.position.set(0,2.2,.5); whisperStone.add(whisperLight);
+
+    const whisperGround=new THREE.Mesh(
+      new THREE.CircleGeometry(8.6,40),
+      new THREE.MeshStandardMaterial({color:0x241b14,roughness:1,transparent:true,opacity:.92})
+    );
+    whisperGround.rotation.x=-Math.PI/2;
+    whisperGround.position.y=.02;
+    whisperStone.add(whisperGround);
+
+    const whisperRing=new THREE.Mesh(
+      new THREE.TorusGeometry(5.8,.09,8,96),
+      new THREE.MeshBasicMaterial({color:0xffa52f,transparent:true,opacity:.72,depthWrite:false})
+    );
+    whisperRing.rotation.x=Math.PI/2;
+    whisperRing.position.y=.075;
+    whisperStone.add(whisperRing);
+
+    // Outer stones stay as a landmark threshold around the new crystal.
     for(let i=0;i<11;i++){
       const a=midHash(i,1920)*Math.PI*2,rr=4.8+midHash(i,1921)*2.6;
-      irregularRock(whisperStone,Math.cos(a)*rr,.2,Math.sin(a)*rr,.28+midHash(i,1922)*.38,0x454b4a,1923+i);
+      irregularRock(whisperStone,Math.cos(a)*rr,.2,Math.sin(a)*rr,.28+midHash(i,1922)*.38,0x45433f,1923+i);
     }
-    addMesh(whisperStone,"whisperStone","Камень Шёпота"); objects.push(whisperStone); addCircleCollider(whisperX,whisperZ,2.5,.1);
+
+    loadGlbWithFolderFallback(whisperCrystalAsset,(gltf:any)=>{
+      const crystal=gltf.scene;
+      markMeshes(crystal);
+      crystal.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        o.castShadow=true;
+        o.receiveShadow=true;
+        const tune=(m:any)=>{
+          if(!m)return m;
+          const mm=m.clone?m.clone():m;
+          const mn=String(mm.name||'');
+          if('roughness' in mm && /amber|crystal|core/i.test(mn)) mm.roughness=Math.min(mm.roughness??.25,.24);
+          if('emissive' in mm && /amber|crystal|core/i.test(mn)){
+            mm.emissive=new THREE.Color(/core|hot/i.test(mn)?0xffc24d:0xff7a18);
+            mm.emissiveIntensity=/core|hot/i.test(mn)?5.8:4.3;
+          }
+          mm.needsUpdate=true;
+          return mm;
+        };
+        if(Array.isArray(o.material))o.material=o.material.map(tune);else o.material=tune(o.material);
+      });
+      crystal.scale.setScalar(1.05);
+      crystal.rotation.y=.42;
+      crystal.position.set(0,0,0);
+      crystal.updateMatrixWorld(true);
+      const bb=new THREE.Box3().setFromObject(crystal);
+      crystal.position.y-=bb.min.y;
+      whisperStone.add(crystal);
+
+      const crystalLight=new THREE.PointLight(0xff8b24,3.4,11,2);
+      crystalLight.position.set(0,2.5,.35);
+      whisperStone.add(crystalLight);
+      console.log('[WHISPER CRYSTAL] GLB loaded',whisperCrystalAsset);
+    },'WHISPER CRYSTAL');
+
+    addMesh(whisperStone,"whisperStone","Камень Шёпота");
+    objects.push(whisperStone);
+    addCircleCollider(whisperX,whisperZ,2.5,.1);
 
     // STEP 9 — LANDMARK IDENTITY -------------------------------------------------
     // Give each major sacred place a distinct visual "threshold" so landmarks feel
