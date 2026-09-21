@@ -1967,7 +1967,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     }, 'SHED');
     addRectCollider(17,34,7.45,5.20,-.20,.04);
 
-    shed(27,13,6,4,.45,"Склад рыбака","fishshed");
+    // Legacy procedural fisher storage removed; it duplicated the newer village buildings.
     for(const p0 of [[-20,29,1.0],[-16,34,.85],[-20,35,.8],[18,31,.9],[21,37,.72],[31,5,.9]] as Array<[number,number,number]>) hay(p0[0],p0[1],p0[2]);
     cart(-17,24,.18); cart(29,-5,-.55); bench(-20,23,.18); bench(25,31,-.2);
     // A second line of modest homes is now supplied by Viking GLB clones above.
@@ -2026,7 +2026,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       objects.push(oldFarmModel);
       console.log('[OLD FARM] loaded', `${BASE}img/models/${oldFarmAsset}`);
     }, 'OLD FARM');
-    shed(-58,42,6,4,-0.12,"Старый амбар","oldbarn");
+    // Legacy procedural old barn removed; the Old Farm GLB is now the sole farmstead structure here.
     hay(-68,8,.9); cart(-62,2,-.25); wellMarker(-58,4);
     const oldField=new THREE.Group();
     oldField.position.set(-63,groundY(-63,47),47);
@@ -2129,8 +2129,9 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       [-30,-31,30,-31],
       // Side walls.
       [-30,-31,-30,44],[30,-31,30,44],
-      // Main/front wall: leave a wide central opening for the working gate.
-      [-30,44,-8,44],[8,44,30,44]
+      // Main/front wall: run the large palisade right up to the gate posts.
+      // Only the actual opening between the two working gate leaves remains passable.
+      [-30,44,-4.25,44],[4.25,44,30,44]
     ];
     const palisade=(x1:number,z1:number,x2:number,z2:number)=>{
       const g=new THREE.Group();const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz),n=Math.max(1,Math.floor(len/1.7));
