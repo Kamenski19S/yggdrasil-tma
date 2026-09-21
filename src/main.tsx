@@ -2522,15 +2522,53 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const groveDoorMat=new THREE.MeshStandardMaterial({color:0x7a1830,roughness:.86,metalness:.03});
     const groveStoneMat=new THREE.MeshStandardMaterial({color:0x77766b,roughness:1});
 
-    // Rounded mound. Two flattened spheres give a natural grassy hill without heavy geometry.
-    const moundBase=new THREE.Mesh(new THREE.SphereGeometry(5.6,18,12),groveEarthMat);
-    moundBase.scale.set(1.0,.46,.88);
-    moundBase.position.set(0,1.05,0);
-    ashGrove.add(moundBase);
-    const moundGrass=new THREE.Mesh(new THREE.SphereGeometry(5.48,18,12),groveGrassMat);
-    moundGrass.scale.set(1.0,.43,.88);
-    moundGrass.position.set(0,1.24,0);
-    ashGrove.add(moundGrass);
+    // Broad earthen embankment — deliberately NOT a half-sphere.
+    // Three overlapping tapered terraces make the hill read as packed ground rising
+    // naturally from the terrain, so the ash no longer looks as if it sits on a balloon.
+    const moundLower=new THREE.Mesh(
+      new THREE.CylinderGeometry(4.55,6.15,1.05,24,2,false),
+      groveEarthMat
+    );
+    moundLower.scale.set(1.08,1,.90);
+    moundLower.position.set(0,.50,0);
+    moundLower.rotation.y=.08;
+    ashGrove.add(moundLower);
+
+    const moundMid=new THREE.Mesh(
+      new THREE.CylinderGeometry(3.75,5.25,1.05,24,2,false),
+      groveGrassMat
+    );
+    moundMid.scale.set(1.06,1,.90);
+    moundMid.position.set(-.08,1.18,-.05);
+    moundMid.rotation.y=-.06;
+    ashGrove.add(moundMid);
+
+    const moundTop=new THREE.Mesh(
+      new THREE.CylinderGeometry(2.85,4.30,.82,24,2,false),
+      groveGrassMat
+    );
+    moundTop.scale.set(1.05,1,.88);
+    moundTop.position.set(.08,1.87,-.18);
+    moundTop.rotation.y=.10;
+    ashGrove.add(moundTop);
+
+    // Small irregular shoulders soften the terrace edges without turning the mound
+    // back into a sphere.
+    for(let i=0;i<9;i++){
+      const a=i/9*Math.PI*2+.18;
+      const shoulder=new THREE.Mesh(
+        new THREE.DodecahedronGeometry(.72+midHash(i,1319)*.34,1),
+        i%3===0?groveEarthMat:groveGrassMat
+      );
+      shoulder.scale.set(1.35,.46,1.05);
+      shoulder.position.set(
+        Math.cos(a)*(4.15+midHash(i,1320)*.75),
+        .52+midHash(i,1321)*.38,
+        Math.sin(a)*(3.45+midHash(i,1322)*.55)
+      );
+      shoulder.rotation.y=midHash(i,1323)*Math.PI;
+      ashGrove.add(shoulder);
+    }
 
     // Recessed entrance cut visually into the front of the mound.
     const groveDoorShadow=new THREE.Mesh(new THREE.BoxGeometry(2.0,2.6,.22),new THREE.MeshBasicMaterial({color:0x120c0b}));
@@ -2556,7 +2594,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     // Ancient ash growing directly from the mound.
     const groveTrunk=new THREE.Mesh(new THREE.CylinderGeometry(.72,1.05,5.9,11),groveBarkMat);
-    groveTrunk.position.set(0,5.15,-.20);
+    groveTrunk.position.set(0,4.72,-.20);
     groveTrunk.rotation.z=-.045;
     ashGrove.add(groveTrunk);
     for(let i=0;i<8;i++){
@@ -2836,23 +2874,16 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
 
     makeForgottenCamp(68,8);
-    // Deep Grove / Ash Grove — green mound with an ancient ash and a cherry-red door.
-    // Kept at the existing remote sacred-location coordinates so it does not block Midgard's main entrance.
-    const deepGroveAsset='Midgard_Ash_Grove_Mound_V1_YUP.glb';
+    // Deep Grove — restore the treehouse version.
+    const deepGroveAsset='Midgard_Deep_Grove_Treehouse_V1_YUP.glb';
     const deepGroveX=-45,deepGroveZ=75;
     const deepGroveRoot=new THREE.Group();
     deepGroveRoot.userData={id:'deepGrove',label:'Глубокая роща'};
     deepGroveRoot.position.set(deepGroveX,groundY(deepGroveX,deepGroveZ),deepGroveZ);
 
-    // Soft ground patch under the GLB so the mound blends into the terrain.
     const deepGroveFloor=new THREE.Mesh(
-      new THREE.CircleGeometry(8.0,44),
-      new THREE.MeshStandardMaterial({
-        color:0x31462f,
-        roughness:1,
-        transparent:true,
-        opacity:.68
-      })
+      new THREE.CircleGeometry(8.8,44),
+      new THREE.MeshStandardMaterial({color:0x2f412e,roughness:1,transparent:true,opacity:.78})
     );
     deepGroveFloor.rotation.x=-Math.PI/2;
     deepGroveFloor.position.y=.02;
@@ -2861,44 +2892,56 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     loadGlbWithFolderFallback(deepGroveAsset,(gltf:any)=>{
       const grove=gltf.scene;
       markMeshes(grove);
-
       grove.traverse((o:any)=>{
         if(!o.isMesh)return;
         o.castShadow=true;
         o.receiveShadow=true;
 
-        // Keep the authored GLB look: dark ash, green mound, cherry-red door.
-        // Only make sure materials remain matte enough for the Midgard scene.
-        const tune=(m:any)=>{
+        const applyDeepGroveLook=(m:any)=>{
           if(!m)return m;
           const mm=m.clone?m.clone():m;
           const mn=String(mm.name||'').toLowerCase();
 
-          if('roughness' in mm){
-            if(/mound|grass|moss|ash_bark|bark/.test(mn)) mm.roughness=Math.max(mm.roughness??.9,.92);
-            if(/cherry_door/.test(mn)) mm.roughness=Math.max(mm.roughness??.82,.86);
+          // Ancient ash: 50% darker trunk / bark.
+          if(/bark|trunk|root|branch/.test(mn) && mm.color){
+            mm.color.multiplyScalar(.50);
+            if('roughness' in mm) mm.roughness=Math.max(mm.roughness??.9,.92);
+          }
+
+          // Tree house: about 30% darker overall.
+          if(/cabin|house|wood|platform|balcony|ladder|foundation/.test(mn) && mm.color){
+            mm.color.multiplyScalar(.70);
+          }
+
+          // Deep natural green roof.
+          if(/roof|shingle/.test(mn) && mm.color){
+            mm.color.set(0x2f6b3a);
+            if('roughness' in mm) mm.roughness=Math.max(mm.roughness??.85,.90);
+          }
+
+          // Dark red door.
+          if(/door/.test(mn) && mm.color){
+            mm.color.set(0x8f2f26);
+            if('roughness' in mm) mm.roughness=Math.max(mm.roughness??.8,.88);
+            if('metalness' in mm) mm.metalness=0;
           }
 
           mm.needsUpdate=true;
           return mm;
         };
 
-        if(Array.isArray(o.material))o.material=o.material.map(tune);
-        else o.material=tune(o.material);
+        if(Array.isArray(o.material))o.material=o.material.map(applyDeepGroveLook);
+        else o.material=applyDeepGroveLook(o.material);
       });
 
-      grove.scale.setScalar(.82);
+      grove.scale.setScalar(.86);
       grove.rotation.y=-.38;
       grove.position.set(0,0,0);
-
-      // Snap the model to the local terrain.
       grove.updateMatrixWorld(true);
       const bb=new THREE.Box3().setFromObject(grove);
       grove.position.y-=bb.min.y;
-      grove.updateMatrixWorld(true);
-
       deepGroveRoot.add(grove);
-      console.log('[DEEP GROVE] Ash mound GLB loaded',deepGroveAsset);
+      console.log('[DEEP GROVE] Treehouse GLB restored',deepGroveAsset);
     },'DEEP GROVE');
 
     scene.add(deepGroveRoot);
