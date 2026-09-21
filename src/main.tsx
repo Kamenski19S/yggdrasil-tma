@@ -1504,7 +1504,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         return x<heroHomeX-2.72 || x>heroHomeX+2.72 || z<heroHomeZ-2.05 || z>heroHomeZ+2.30;
       }
       // The front gate physically blocks the opening until the leaves have swung far enough.
-      if(villageGateProgress < .78 && hits(x,z,{kind:"segment",x1:-3.15,z1:-31,x2:3.15,z2:-31,r:.20})) return true;
+      if(villageGateProgress < .78 && hits(x,z,{kind:"segment",x1:-3.15,z1:gateFrontZ,x2:3.15,z2:gateFrontZ,r:.20})) return true;
       return colliders.some(c=>hits(x,z,c));
     };
     const moveWithCollision=(q:{x:number;z:number},nx:number,nz:number)=>{
@@ -2125,10 +2125,12 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     // Procedural stakes stay visible only as a fallback if the GLB is unavailable.
     const proceduralPalisades:THREE.Group[]=[];
     const palisadeRuns:Array<[number,number,number,number]>=[
-      // South wall with a 16 m opening for the main gate.
-      [-30,-31,-8,-31],[8,-31,30,-31],
-      // Full west/east walls and the northern back wall.
-      [-30,-31,-30,44],[30,-31,30,44],[-30,44,30,44]
+      // Rear wall is now fully closed.
+      [-30,-31,30,-31],
+      // Side walls.
+      [-30,-31,-30,44],[30,-31,30,44],
+      // Main/front wall: leave a wide central opening for the working gate.
+      [-30,44,-8,44],[8,44,30,44]
     ];
     const palisade=(x1:number,z1:number,x2:number,z2:number)=>{
       const g=new THREE.Group();const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz),n=Math.max(1,Math.floor(len/1.7));
@@ -2160,7 +2162,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       });
       console.log('[PALISADE] all settlement walls loaded',`${BASE}img/models/${vikingPalisadeAsset}`);
     },'PALISADE');
-    const gate=new THREE.Group();gate.userData={id:"gate",label:"Ворота Мидгарда"};for(const x of [-4.2,4.2]){const p=box(.8,6,.8,0x35251a,1);p.position.set(x,3,-31);gate.add(p);}const top=box(10,.8,1,0x2d2018,1);top.position.set(0,6,-31);gate.add(top);for(let i=-3;i<=3;i++){const bar=box(1.0,4.2,.22,0x5b3a24,1);bar.position.set(i*1.15,2,-30.7);gate.add(bar);}addMesh(gate,"gate","Ворота Мидгарда");objects.push(gate);
+    const gateFrontZ=44;
+    const gate=new THREE.Group();gate.userData={id:"gate",label:"Ворота Мидгарда"};for(const x of [-4.2,4.2]){const p=box(.8,6,.8,0x2b1a11,1);p.position.set(x,3,gateFrontZ);gate.add(p);}const top=box(10,.8,1,0x24160f,1);top.position.set(0,6,gateFrontZ);gate.add(top);for(let i=-3;i<=3;i++){const bar=box(1.0,4.2,.22,0x3a2115,1);bar.position.set(i*1.15,2,gateFrontZ+.3);gate.add(bar);}addMesh(gate,"gate","Ворота Мидгарда");objects.push(gate);
     loadGlbWithFolderFallback(vikingGateAsset, (gltf:any) => {
       if (!glbTreesAlive) return;
       const gateModel = gltf.scene.clone(true);
@@ -2174,7 +2177,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       });
       gateModel.scale.set(.78,.82,.82);
       gateModel.rotation.set(0,0,0);
-      gateModel.position.set(0,groundY(0,-31),-31);
+      gateModel.position.set(0,groundY(0,gateFrontZ),gateFrontZ);
       gateModel.userData={id:"gate",label:"Ворота Мидгарда"};
       gate.visible=false;
       addMesh(gateModel,"gate","Ворота Мидгарда");
@@ -2184,12 +2187,12 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     // Working old-style village doors: first lift/slide the heavy crossbar,
     // then swing the two leaves open on their side hinges.
-    const gateWood=new THREE.MeshStandardMaterial({color:0x4a2f1f,roughness:1});
-    const gateIron=new THREE.MeshStandardMaterial({color:0x3b3d3d,roughness:.78,metalness:.35});
+    const gateWood=new THREE.MeshStandardMaterial({color:0x2b180f,roughness:1});
+    const gateIron=new THREE.MeshStandardMaterial({color:0x262728,roughness:.78,metalness:.35});
     const gateLeftPivot=new THREE.Group();
     const gateRightPivot=new THREE.Group();
-    gateLeftPivot.position.set(-3.12,groundY(-3.12,-31),-30.62);
-    gateRightPivot.position.set(3.12,groundY(3.12,-31),-30.62);
+    gateLeftPivot.position.set(-3.12,groundY(-3.12,gateFrontZ),gateFrontZ+.38);
+    gateRightPivot.position.set(3.12,groundY(3.12,gateFrontZ),gateFrontZ+.38);
 
     const makeGateLeaf=(side:number)=>{
       const leaf=new THREE.Group();
@@ -2213,7 +2216,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     scene.add(gateLeftPivot,gateRightPivot);
 
     const villageGateBar=new THREE.Mesh(new THREE.BoxGeometry(6.7,.32,.34),gateWood);
-    villageGateBar.position.set(0,groundY(0,-31)+2.32,-30.28);
+    villageGateBar.position.set(0,groundY(0,gateFrontZ)+2.32,gateFrontZ+.72);
     villageGateBar.castShadow=true;villageGateBar.receiveShadow=true;scene.add(villageGateBar);
 
     gateActionRef.current=()=>{
@@ -2221,7 +2224,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       setVillageGateOpen(villageGateOpenRef.current);
     };
 
-    addCircleCollider(-4.2,-31,.55,.05);addCircleCollider(4.2,-31,.55,.05);
+    addCircleCollider(-4.2,gateFrontZ,.55,.05);addCircleCollider(4.2,gateFrontZ,.55,.05);
     // Mimir's well now occupies the village central stone circle — one unique instance.
     const shrine=new THREE.Group();shrine.userData={id:"norns",label:"Прядильня норн"};shrine.position.set(-52,groundY(-52,38),38);
     const loomWood=mat(0x4b3022,1); const loomDark=mat(0x2b211b,1);
@@ -3415,7 +3418,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       {id:"ashgrove",label:"Роща Ясеня",x:-5,z:75,r:7.5},{id:"threeThreads",label:"Камень Трёх Нитей — Колодец Урд",x:58,z:-28,r:6.8},{id:"forestCache",label:"Забытый тайник",x:-72,z:48,r:4.2},{id:"forestThread",label:"Разорванная нить",x:50,z:-62,r:4.2},
       {id:"runefield",label:"Поле Рун",x:18,z:55,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-65,z:5,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:43,z:32,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:62,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:68,z:8,r:8.5},{id:"heroHome",label:"Дверь дома героя",x:75,z:32.75,r:2.8},{id:"deepGrove",label:"Глубокая роща",x:-45,z:75,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:-30,z:15,r:7.5},{id:"powerCircle",label:"Круг Силы — Монолит",x:5,z:-70,r:6.5},{id:"whisperStone",label:"Камень Шёпота",x:-72,z:-48,r:6.5},
       {id:"elder",label:"Старейшина",x:9,z:-8,r:3.2},{id:"blacksmith",label:"Кузнец",x:-6,z:-3,r:3.2},
-      {id:"gate",label:"Ворота Мидгарда",x:0,z:-31,r:5},{id:"tower",label:"Сторожевая башня",x:29,z:25,r:4}
+      {id:"gate",label:"Ворота Мидгарда",x:0,z:44,r:6},{id:"tower",label:"Сторожевая башня",x:29,z:25,r:4}
     ];
 
     const resize=()=>{const w=Math.max(1,el.clientWidth),hh=Math.max(1,el.clientHeight);camera.aspect=w/hh;camera.updateProjectionMatrix();renderer.setSize(w,hh,false);};resize();const observer=new ResizeObserver(resize);observer.observe(el);
@@ -3431,8 +3434,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       gateLeftPivot.rotation.y=-doorT*1.42;
       gateRightPivot.rotation.y=doorT*1.42;
       villageGateBar.position.x=-barT*5.05;
-      villageGateBar.position.y=groundY(0,-31)+2.32-barT*.78;
-      villageGateBar.position.z=-30.28+barT*.52;
+      villageGateBar.position.y=groundY(0,gateFrontZ)+2.32-barT*.78;
+      villageGateBar.position.z=gateFrontZ+.72+barT*.52;
       villageGateBar.rotation.z=-barT*.28;
       if(l>.05){
         const step=6.2*dt;
