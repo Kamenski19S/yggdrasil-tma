@@ -2764,6 +2764,41 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         if(!o.isMesh)return;
         o.castShadow=true;
         o.receiveShadow=true;
+
+        const tune=(m:any)=>{
+          if(!m)return m;
+          const mm=m.clone?m.clone():m;
+          const mn=String(mm.name||'').toLowerCase();
+          const on=String(o.name||'').toLowerCase();
+
+          // Ancient ash/tree trunk: 50% darker.
+          if('color' in mm && /ancient_bark|bark_shadow/.test(mn)){
+            mm.color.multiplyScalar(.50);
+          }
+
+          // Treehouse wood: 30% darker.
+          if('color' in mm && /cabin_wood|cabin_dark/.test(mn)){
+            mm.color.multiplyScalar(.70);
+          }
+
+          // Green roof.
+          if('color' in mm && /shingle_roof/.test(mn)){
+            mm.color.set(0x2f6b3a);
+            if('roughness' in mm)mm.roughness=.92;
+          }
+
+          // Red door — target the actual Door mesh so other dark wooden pieces stay brown.
+          if('color' in mm && on==='door'){
+            mm.color.set(0x8f2f26);
+            if('roughness' in mm)mm.roughness=.88;
+          }
+
+          mm.needsUpdate=true;
+          return mm;
+        };
+
+        if(Array.isArray(o.material))o.material=o.material.map(tune);
+        else o.material=tune(o.material);
       });
       grove.scale.setScalar(.86);
       grove.rotation.y=-.38;
