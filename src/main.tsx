@@ -2072,9 +2072,21 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     altarBody.scale.set(1.0,1.65,.72); altarBody.position.y=1.38; altarBody.rotation.y=.18; runeField.add(altarBody);
     const altarCrown=new THREE.Mesh(new THREE.DodecahedronGeometry(.78,1),fieldStoneMat);
     altarCrown.scale.set(.72,1.15,.55); altarCrown.position.set(0,2.72,.02); altarCrown.rotation.z=.06; runeField.add(altarCrown);
-    const altarRune=addGroundRune(runeField,0,0,"ᚠ",0x9feeff,1.15,0);
-    altarRune.position.y=2.55; altarRune.rotation.x=0;
-    const altarGlow=new THREE.PointLight(0x76eaff,1.7,9,2); altarGlow.position.set(0,2.0,.8); runeField.add(altarGlow);
+    // Multiple neon runes on the central altar face.
+    const altarRuneColors=[
+      {glyph:'ᚠ',color:0x58bfff,y:2.62,size:1.02},
+      {glyph:'ᛉ',color:0xffd36a,y:1.83,size:.72},
+      {glyph:'ᛟ',color:0x63ff86,y:1.18,size:.62},
+    ];
+    altarRuneColors.forEach((rc,idx)=>{
+      const ar=addGroundRune(runeField,0,0,rc.glyph,rc.color,rc.size,0);
+      ar.position.set(0,rc.y,.82);
+      ar.rotation.x=0;
+      ar.material.blending=THREE.AdditiveBlending;
+      (ar.material as THREE.MeshBasicMaterial).toneMapped=false;
+      ar.renderOrder=5+idx;
+    });
+    const altarGlow=new THREE.PointLight(0x76eaff,1.35,8,2); altarGlow.position.set(0,2.0,.8); runeField.add(altarGlow);
 
     // Two concentric golden ritual rings.
     for(const [r,w] of [[3.0,.075],[7.1,.065],[10.1,.045]] as Array<[number,number]>) {
@@ -2091,7 +2103,17 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       addGroundRune(runeField,Math.cos(a)*5.45,Math.sin(a)*5.45,fieldGlyphs[(i+5)%fieldGlyphs.length],i%2?0x74dff2:0xc18bed,.38,a);
     }
 
-    // Outer ring of irregular monolithic menhirs, each with a visible glowing rune.
+    // Outer ring of irregular monolithic menhirs.
+    // Every large stone now carries several neon-painted runes in different colours.
+    const runeNeonColors=[
+      {hex:'#58bfff',light:0x58bfff}, // blue
+      {hex:'#63ff86',light:0x63ff86}, // green
+      {hex:'#ff4f55',light:0xff4f55}, // red
+      {hex:'#fff15a',light:0xfff15a}, // yellow
+      {hex:'#ffffff',light:0xffffff}, // white
+      {hex:'#ffd36a',light:0xffd36a}, // gold
+      {hex:'#cfd8df',light:0xcfd8df}, // silver
+    ];
     for(let i=0;i<10;i++){
       const a=i/10*Math.PI*2+.16; const rr=9.15+(.5-midHash(i,1202))*1.0;
       const h=2.4+midHash(i,1203)*2.0; const w=.72+midHash(i,1204)*.48;
@@ -2100,12 +2122,44 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       st.position.set(Math.cos(a)*rr,st.scale.y*.58,Math.sin(a)*rr);
       st.rotation.set((midHash(i,1207)-.5)*.22,a+(midHash(i,1208)-.5)*.3,(midHash(i,1209)-.5)*.18);
       runeField.add(st);
-      const glyph=fieldGlyphs[i%fieldGlyphs.length];
-      const tex=runeGroundTexture(glyph,i%3===0?'#8eeeff':(i%3===1?'#c08cff':'#ffd86b'));
-      const mark=new THREE.Mesh(new THREE.PlaneGeometry(.62,.92),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));
-      mark.position.set(st.position.x+Math.cos(a)*.68,st.position.y*.76,st.position.z+Math.sin(a)*.68); mark.rotation.y=-a+Math.PI*.5; runeField.add(mark);
-      const gl=new THREE.PointLight(i%3===1?0xb16dff:(i%3===0?0x62ddff:0xe5b95b),.35,3.6,2);
-      gl.position.set(st.position.x,st.position.y*.72,st.position.z); runeField.add(gl);
+
+      // Three runes per stone, vertically staggered. MeshBasicMaterial keeps the
+      // paint bright like neon without adding a costly light for every glyph.
+      const faceX=st.position.x+Math.cos(a)*(.70+st.scale.z*.08);
+      const faceZ=st.position.z+Math.sin(a)*(.70+st.scale.z*.08);
+      const runeCount=3;
+      for(let r=0;r<runeCount;r++){
+        const glyph=fieldGlyphs[(i*2+r*5)%fieldGlyphs.length];
+        const cc=runeNeonColors[(i+r*2)%runeNeonColors.length];
+        const tex=runeGroundTexture(glyph,cc.hex);
+        const mark=new THREE.Mesh(
+          new THREE.PlaneGeometry(.46+r*.035,.62+r*.04),
+          new THREE.MeshBasicMaterial({
+            map:tex,
+            color:0xffffff,
+            transparent:true,
+            opacity:.98,
+            depthWrite:false,
+            blending:THREE.AdditiveBlending,
+            side:THREE.DoubleSide,
+            toneMapped:false
+          })
+        );
+        mark.position.set(
+          faceX,
+          st.position.y*(.48+.18*r),
+          faceZ
+        );
+        mark.rotation.y=-a+Math.PI*.5;
+        mark.renderOrder=5;
+        runeField.add(mark);
+      }
+
+      // One soft coloured halo per stone (not per rune) for atmosphere and mobile performance.
+      const primary=runeNeonColors[i%runeNeonColors.length];
+      const gl=new THREE.PointLight(primary.light,.28,3.2,2);
+      gl.position.set(st.position.x,st.position.y*.68,st.position.z);
+      runeField.add(gl);
     }
     // Small boundary stones and sparse ritual debris.
     for(let i=0;i<18;i++){
@@ -2516,7 +2570,17 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     ashGrove.position.set(ashGroveX,groundY(ashGroveX,ashGroveZ),ashGroveZ);
 
     const groveEarthMat=new THREE.MeshStandardMaterial({color:0x4a3a28,roughness:1});
-    const groveGrassMat=new THREE.MeshStandardMaterial({color:0x496f3b,roughness:1});
+    // Use the SAME terrain texture/material response as the surrounding Midgard ground,
+    // so the mound visually grows out of the landscape instead of looking painted green.
+    const groveGrassMat=terrainMat.clone();
+    groveGrassMat.map=groundTexture;
+    groveGrassMat.color.set(0xffffff);
+    groveGrassMat.roughness=.985;
+    groveGrassMat.metalness=0;
+    groveGrassMat.roughnessMap=surfaceMaps.rough;
+    groveGrassMat.bumpMap=surfaceMaps.height;
+    groveGrassMat.bumpScale=.018;
+    groveGrassMat.needsUpdate=true;
     const groveBarkMat=new THREE.MeshStandardMaterial({map:barkTexture,color:0x5a3b27,roughness:1,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.035});
     const groveLeafMat=new THREE.MeshStandardMaterial({map:foliageTexture,color:0x4f7a43,roughness:1});
     const groveDoorMat=new THREE.MeshStandardMaterial({color:0x7a1830,roughness:.86,metalness:.03});
