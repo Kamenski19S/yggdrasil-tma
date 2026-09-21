@@ -2072,21 +2072,17 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     altarBody.scale.set(1.0,1.65,.72); altarBody.position.y=1.38; altarBody.rotation.y=.18; runeField.add(altarBody);
     const altarCrown=new THREE.Mesh(new THREE.DodecahedronGeometry(.78,1),fieldStoneMat);
     altarCrown.scale.set(.72,1.15,.55); altarCrown.position.set(0,2.72,.02); altarCrown.rotation.z=.06; runeField.add(altarCrown);
-    // Multiple neon runes on the central altar face.
-    const altarRuneColors=[
-      {glyph:'ᚠ',color:0x58bfff,y:2.62,size:1.02},
-      {glyph:'ᛉ',color:0xffd36a,y:1.83,size:.72},
-      {glyph:'ᛟ',color:0x63ff86,y:1.18,size:.62},
-    ];
-    altarRuneColors.forEach((rc,idx)=>{
-      const ar=addGroundRune(runeField,0,0,rc.glyph,rc.color,rc.size,0);
-      ar.position.set(0,rc.y,.82);
-      ar.rotation.x=0;
-      ar.material.blending=THREE.AdditiveBlending;
-      (ar.material as THREE.MeshBasicMaterial).toneMapped=false;
-      ar.renderOrder=5+idx;
-    });
-    const altarGlow=new THREE.PointLight(0x76eaff,1.35,8,2); altarGlow.position.set(0,2.0,.8); runeField.add(altarGlow);
+    // Central stone: one large glowing Eihwaz rune (ᛇ).
+    const eihwaz=addGroundRune(runeField,0,0,'ᛇ',0x8fe8ff,1.62,0);
+    eihwaz.position.set(0,1.92,.84);
+    eihwaz.rotation.x=0;
+    eihwaz.scale.set(1.0,1.34,1.0);
+    eihwaz.material.blending=THREE.AdditiveBlending;
+    (eihwaz.material as THREE.MeshBasicMaterial).toneMapped=false;
+    eihwaz.renderOrder=7;
+    const altarGlow=new THREE.PointLight(0x73dfff,1.45,8.5,2);
+    altarGlow.position.set(0,2.0,.9);
+    runeField.add(altarGlow);
 
     // Two concentric golden ritual rings.
     for(const [r,w] of [[3.0,.075],[7.1,.065],[10.1,.045]] as Array<[number,number]>) {
@@ -2133,7 +2129,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         const cc=runeNeonColors[(i+r*2)%runeNeonColors.length];
         const tex=runeGroundTexture(glyph,cc.hex);
         const mark=new THREE.Mesh(
-          new THREE.PlaneGeometry(.46+r*.035,.62+r*.04),
+          new THREE.PlaneGeometry(.68+r*.055,.92+r*.055),
           new THREE.MeshBasicMaterial({
             map:tex,
             color:0xffffff,
@@ -2322,9 +2318,53 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
 
 
-    // Ancient rune altar.
-    const rune=new THREE.Group();rune.userData={id:"rune",label:"Древний камень Феху"};rune.position.set(50,groundY(50,60),60);const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(1.45,1),mat(0x4c534f,1));stone.position.y=1.2;rune.add(stone);const rr=new THREE.Mesh(new THREE.TorusGeometry(1.05,.07,8,30),new THREE.MeshStandardMaterial({color:0xffd76a,emissive:0x996313,emissiveIntensity:3}));rr.rotation.x=Math.PI/2;rr.position.y=1.2;rune.add(rr);addMesh(rune,"rune","Древний камень Феху");objects.push(rune);
-    addCircleCollider(50,60,1.7,.1);
+    // Ancient Fehu stone — tall, flat and golden, with a large green Fehu rune.
+    const rune=new THREE.Group();
+    rune.userData={id:"rune",label:"Древний камень Феху"};
+    rune.position.set(50,groundY(50,60),60);
+
+    const fehuStoneMat=new THREE.MeshStandardMaterial({
+      color:0xb9933f,
+      roughness:.72,
+      metalness:.16,
+      emissive:0x3a2606,
+      emissiveIntensity:.22
+    });
+
+    const stone=new THREE.Mesh(
+      new THREE.DodecahedronGeometry(1.45,1),
+      fehuStoneMat
+    );
+    stone.scale.set(.86,2.15,.30);
+    stone.position.y=2.05;
+    stone.rotation.z=.035;
+    rune.add(stone);
+
+    // Large green Fehu on the front face.
+    const fehuTex=runeGroundTexture('ᚠ','#58ff74');
+    const fehuMark=new THREE.Mesh(
+      new THREE.PlaneGeometry(1.34,2.02),
+      new THREE.MeshBasicMaterial({
+        map:fehuTex,
+        transparent:true,
+        opacity:1,
+        depthWrite:false,
+        blending:THREE.AdditiveBlending,
+        side:THREE.DoubleSide,
+        toneMapped:false
+      })
+    );
+    fehuMark.position.set(0,2.08,.47);
+    fehuMark.renderOrder=8;
+    rune.add(fehuMark);
+
+    const fehuGlow=new THREE.PointLight(0x58ff74,.85,5.5,2);
+    fehuGlow.position.set(0,2.0,.75);
+    rune.add(fehuGlow);
+
+    addMesh(rune,"rune","Древний камень Феху");
+    objects.push(rune);
+    addCircleCollider(50,60,1.55,.1);
 
     // Old floating dock/platform removed. Only the straight river bridge remains.
     // Straight river bridge replaces the old floating dock.
@@ -2473,29 +2513,29 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
       // Torso: broad ribcage tapering toward the rump.
       const body=new THREE.Mesh(new THREE.SphereGeometry(.68,14,10),fur);
-      body.scale.set(1.35,.78,.72);
-      body.position.set(0,.98*s,0); body.scale.multiplyScalar(s); g.add(body);
+      body.scale.set(1.48,.66,.62);
+      body.position.set(0,1.14*s,0); body.scale.multiplyScalar(s); g.add(body);
 
       const chest=new THREE.Mesh(new THREE.SphereGeometry(.42,12,9),furLight);
-      chest.scale.set(1,.9,.86); chest.position.set(.49*s,1.04*s,0); g.add(chest);
+      chest.scale.set(.92,1.05,.76); chest.position.set(.52*s,1.20*s,0); g.add(chest);
 
       // Long sloping neck and a distinct deer head.
-      const neck=new THREE.Mesh(new THREE.CylinderGeometry(.20*s,.34*s,.98*s,10),fur);
-      neck.position.set(.50*s,1.46*s,0); neck.rotation.z=-.30; g.add(neck);
+      const neck=new THREE.Mesh(new THREE.CylinderGeometry(.17*s,.30*s,1.18*s,10),fur);
+      neck.position.set(.58*s,1.72*s,0); neck.rotation.z=-.36; g.add(neck);
 
       const head=new THREE.Mesh(new THREE.SphereGeometry(.34*s,12,9),furLight);
-      head.scale.set(1.18,.92,.78); head.position.set(.86*s,1.82*s,0); g.add(head);
+      head.scale.set(1.12,.82,.70); head.position.set(.96*s,2.14*s,0); g.add(head);
 
       const muzzle=new THREE.Mesh(new THREE.SphereGeometry(.17*s,10,7),furLight);
-      muzzle.scale.set(1.15,.72,.72); muzzle.position.set(1.16*s,1.72*s,0); g.add(muzzle);
+      muzzle.scale.set(1.28,.60,.62); muzzle.position.set(1.31*s,2.04*s,0); g.add(muzzle);
 
       const nose=new THREE.Mesh(new THREE.SphereGeometry(.075*s,8,6),dark);
-      nose.scale.set(1,.72,.85); nose.position.set(1.30*s,1.72*s,0); g.add(nose);
+      nose.scale.set(1,.68,.82); nose.position.set(1.47*s,2.04*s,0); g.add(nose);
 
       // Visible ears.
       for(const side of [-1,1]){
         const ear=new THREE.Mesh(new THREE.ConeGeometry(.095*s,.30*s,7),furLight);
-        ear.position.set(.77*s,2.10*s,side*.20*s);
+        ear.position.set(.86*s,2.43*s,side*.18*s);
         ear.rotation.z=-.28; ear.rotation.x=side*.18;
         g.add(ear);
       }
@@ -2503,9 +2543,9 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       // Eyes with a tiny highlight.
       for(const side of [-1,1]){
         const eye=new THREE.Mesh(new THREE.SphereGeometry(.035*s,8,6),eyeMat);
-        eye.position.set(1.05*s,1.91*s,side*.235*s); g.add(eye);
+        eye.position.set(1.16*s,2.23*s,side*.215*s); g.add(eye);
         const glint=new THREE.Mesh(new THREE.SphereGeometry(.009*s,6,4),new THREE.MeshBasicMaterial({color:0xffffff}));
-        glint.position.set(1.075*s,1.925*s,side*.257*s); g.add(glint);
+        glint.position.set(1.19*s,2.245*s,side*.235*s); g.add(glint);
       }
 
       // Four articulated legs: upper limb, lower limb and small hoof.
@@ -2513,17 +2553,17 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       for(const zSide of [-1,1]){
         for(const xSide of [-1,1]){
           const upper=new THREE.Group();
-          upper.position.set(xSide*.43*s,.76*s,zSide*.34*s);
-          const upperMesh=new THREE.Mesh(new THREE.CylinderGeometry(.085*s,.11*s,.43*s,7),fur);
-          upperMesh.position.y=-.20*s; upper.add(upperMesh);
+          upper.position.set(xSide*.46*s,.95*s,zSide*.30*s);
+          const upperMesh=new THREE.Mesh(new THREE.CylinderGeometry(.070*s,.095*s,.56*s,7),fur);
+          upperMesh.position.y=-.27*s; upper.add(upperMesh);
 
           const lower=new THREE.Group();
-          lower.position.y=-.40*s;
-          const lowerMesh=new THREE.Mesh(new THREE.CylinderGeometry(.055*s,.075*s,.43*s,7),dark);
-          lowerMesh.position.y=-.20*s; lower.add(lowerMesh);
+          lower.position.y=-.54*s;
+          const lowerMesh=new THREE.Mesh(new THREE.CylinderGeometry(.045*s,.062*s,.56*s,7),dark);
+          lowerMesh.position.y=-.27*s; lower.add(lowerMesh);
 
           const hoof=new THREE.Mesh(new THREE.SphereGeometry(.075*s,7,5),dark);
-          hoof.scale.set(1.15,.55,1.25); hoof.position.y=-.43*s; lower.add(hoof);
+          hoof.scale.set(1.25,.48,1.45); hoof.position.y=-.56*s; lower.add(hoof);
 
           upper.add(lower); g.add(upper); legJoints.push(upper,lower);
         }
@@ -2531,21 +2571,21 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
       // Short white-ish tail.
       const tail=new THREE.Mesh(new THREE.SphereGeometry(.16*s,9,7),furLight);
-      tail.scale.set(.75,1.25,.72); tail.position.set(-.90*s,1.18*s,0); g.add(tail);
+      tail.scale.set(.68,1.12,.66); tail.position.set(-.98*s,1.38*s,0); g.add(tail);
 
       // More natural branched antlers, with a main beam and 3 tines per side.
       for(const side of [-1,1]){
         const beam=new THREE.Mesh(new THREE.CylinderGeometry(.040*s,.060*s,.68*s,7),ant);
-        beam.position.set(.69*s,2.25*s,side*.14*s);
+        beam.position.set(.78*s,2.55*s,side*.13*s);
         beam.rotation.z=side*.22; g.add(beam);
         for(let k=0;k<3;k++){
           const tine=new THREE.Mesh(new THREE.CylinderGeometry(.020*s,.038*s,.34*s,6),ant);
-          tine.position.set((.56+.11*k)*s,(2.48+.15*k)*s,side*(.14+.045*k)*s);
+          tine.position.set((.62+.12*k)*s,(2.79+.17*k)*s,side*(.13+.05*k)*s);
           tine.rotation.z=side*(.55-.08*k); g.add(tine);
         }
       }
 
-      g.scale.setScalar(1.10);
+      g.scale.setScalar(1.24);
       g.position.set(x,groundY(x,z),z);
       g.userData={phase,legJoints};
       addMesh(g);
@@ -2723,7 +2763,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     // The four deer are a deliberate Yggdrasil reference: they roam a separate clearing.    // The four deer are a deliberate Yggdrasil reference: they roam a separate clearing.
     const deerClearingX=43, deerClearingZ=32;
-    for(let i=0;i<4;i++) deer(deerClearingX+(i-1.5)*2.6,deerClearingZ+(i%2?2.6:-2.6),1.12+midHash(i,1440)*.16,10+i);
+    for(let i=0;i<4;i++) deer(deerClearingX+(i-1.5)*2.8,deerClearingZ+(i%2?2.8:-2.8),1.20+midHash(i,1440)*.18,10+i);
     const deerStone=new THREE.Mesh(new THREE.DodecahedronGeometry(.72,1),mat(0x575d56,1));deerStone.position.set(deerClearingX,groundY(deerClearingX,deerClearingZ)+.5,deerClearingZ);scene.add(deerStone);
     const deerRing=new THREE.Mesh(new THREE.TorusGeometry(5.8,.045,7,48),new THREE.MeshStandardMaterial({color:0x7e8b72,emissive:0x303d2a,emissiveIntensity:.8,transparent:true,opacity:.48}));deerRing.rotation.x=Math.PI/2;deerRing.position.set(deerClearingX,groundY(deerClearingX,deerClearingZ)+.035,deerClearingZ);scene.add(deerRing);
     squirrel(ashGroveX+5,ashGroveZ+1);
