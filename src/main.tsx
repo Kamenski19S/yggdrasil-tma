@@ -2942,9 +2942,13 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
           const mm=m.clone?m.clone():m;
           const mn=String(mm.name||'');
           if('roughness' in mm && /amber|crystal|core/i.test(mn)) mm.roughness=Math.min(mm.roughness??.25,.24);
-          if('emissive' in mm && /amber|crystal|core/i.test(mn)){
-            mm.emissive=new THREE.Color(/core|hot/i.test(mn)?0xffc24d:0xff7a18);
-            mm.emissiveIntensity=/core|hot/i.test(mn)?5.8:4.3;
+          if(/amber|crystal|core/i.test(mn)){
+            // Keep the crystal visibly ORANGE instead of blowing out toward white.
+            if('color' in mm) mm.color=new THREE.Color(/core|hot/i.test(mn)?0xff8a18:0xe9680e);
+            if('emissive' in mm){
+              mm.emissive=new THREE.Color(/core|hot/i.test(mn)?0xff6a00:0xd94d00);
+              mm.emissiveIntensity=/core|hot/i.test(mn)?1.65:1.15;
+            }
           }
           mm.needsUpdate=true;
           return mm;
@@ -2959,7 +2963,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       crystal.position.y-=bb.min.y;
       whisperStone.add(crystal);
 
-      const crystalLight=new THREE.PointLight(0xff8b24,3.4,11,2);
+      const crystalLight=new THREE.PointLight(0xff6a00,1.65,9,2);
       crystalLight.position.set(0,2.5,.35);
       whisperStone.add(crystalLight);
       console.log('[WHISPER CRYSTAL] GLB loaded',whisperCrystalAsset);
