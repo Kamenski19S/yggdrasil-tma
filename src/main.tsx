@@ -1233,7 +1233,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     // Deterministic positions keep the village centre and major landmarks readable.
     const sprucePositions: Array<[number, number]> = [
-      [-72,-62],[-51,-68],[-27,-72],[24,-69],[49,-63],[72,-55],
+      [-72,-62],[-51,-68],[-27,-72],[31,-67],[49,-63],[72,-55],
       [-76,-34],[-56,-38],[-36,-43],[34,-42],[57,-36],[78,-27],
       [-80,-4],[-61,-10],[-43,-8],[46,-9],[65,-3],[81,5],
       [-74,25],[-53,30],[-34,34],[39,29],[59,25],[71,39],
@@ -1302,7 +1302,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     // Add a small V3 comparison grove without replacing the successful V2 forest.
     // 12 V3 spruces, all with slightly different size and rotation.
     const spruceV3Positions: Array<[number,number]> = [
-      [-73,-57],[-54,-62],[-31,-61],[32,-62],[54,-58],[73,-48],
+      [-73,-57],[-54,-62],[-31,-61],[38,-60],[54,-58],[73,-48],
       [-72,42],[-53,49],[-31,55],[32,53],[54,48],[72,55]
     ];
 
@@ -2072,16 +2072,39 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     altarBody.scale.set(1.0,1.65,.72); altarBody.position.y=1.38; altarBody.rotation.y=.18; runeField.add(altarBody);
     const altarCrown=new THREE.Mesh(new THREE.DodecahedronGeometry(.78,1),fieldStoneMat);
     altarCrown.scale.set(.72,1.15,.55); altarCrown.position.set(0,2.72,.02); altarCrown.rotation.z=.06; runeField.add(altarCrown);
-    // Central stone: one large glowing Eihwaz rune (ᛇ).
-    const eihwaz=addGroundRune(runeField,0,0,'ᛇ',0x8fe8ff,1.62,0);
-    eihwaz.position.set(0,1.92,.84);
-    eihwaz.rotation.x=0;
-    eihwaz.scale.set(1.0,1.34,1.0);
-    eihwaz.material.blending=THREE.AdditiveBlending;
-    (eihwaz.material as THREE.MeshBasicMaterial).toneMapped=false;
-    eihwaz.renderOrder=7;
-    const altarGlow=new THREE.PointLight(0x73dfff,1.45,8.5,2);
-    altarGlow.position.set(0,2.0,.9);
+    // Central stone: one large glowing Eihwaz rune (ᛇ), pushed clearly
+    // in front of the altar face so it cannot disappear inside the mesh.
+    const eihwazTex=runeGroundTexture('ᛇ','#8fe8ff');
+    const eihwaz=new THREE.Mesh(
+      new THREE.PlaneGeometry(1.42,2.25),
+      new THREE.MeshBasicMaterial({
+        map:eihwazTex,
+        color:0xffffff,
+        transparent:true,
+        opacity:1,
+        depthWrite:false,
+        blending:THREE.AdditiveBlending,
+        side:THREE.DoubleSide,
+        toneMapped:false
+      })
+    );
+    const altarFaceRot=.18;
+    const altarFaceDepth=1.16;
+    eihwaz.position.set(
+      Math.sin(altarFaceRot)*altarFaceDepth,
+      1.92,
+      Math.cos(altarFaceRot)*altarFaceDepth
+    );
+    eihwaz.rotation.y=altarFaceRot;
+    eihwaz.renderOrder=8;
+    runeField.add(eihwaz);
+
+    const altarGlow=new THREE.PointLight(0x73dfff,1.55,8.5,2);
+    altarGlow.position.set(
+      Math.sin(altarFaceRot)*1.45,
+      2.0,
+      Math.cos(altarFaceRot)*1.45
+    );
     runeField.add(altarGlow);
 
     // Two concentric golden ritual rings.
@@ -3188,8 +3211,19 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     }
     const monolith=new THREE.Mesh(new THREE.DodecahedronGeometry(1.25,1),new THREE.MeshStandardMaterial({color:0x25292b,roughness:.9,metalness:.16}));
     monolith.scale.set(.9,2.8,.7); monolith.position.y=2.45; monolith.rotation.set(.05,.2,-.08); powerCircle.add(monolith);
-    const monolithRune=addFloatingRune(powerCircle,"ᛟ",0,2.55,.78,0xffd55e,1.35,0); monolithRune.rotation.x=0;
-    const powerLight=new THREE.PointLight(0x9c6cff,1.7,10,2); powerLight.position.set(0,2.5,.8); powerCircle.add(powerLight);
+
+    // Large golden Sowilo/Sowilo rune on the central monolith.
+    const monolithRune=addFloatingRune(powerCircle,"ᛊ",.18,2.65,1.03,0xffd34f,1.82,.20);
+    monolithRune.scale.set(1.0,1.30,1.0);
+    monolithRune.material.blending=THREE.AdditiveBlending;
+    (monolithRune.material as THREE.MeshBasicMaterial).toneMapped=false;
+    monolithRune.renderOrder=9;
+
+    const monolithRuneLight=new THREE.PointLight(0xffc83d,.95,5.5,2);
+    monolithRuneLight.position.set(.18,2.7,1.25);
+    powerCircle.add(monolithRuneLight);
+
+    const powerLight=new THREE.PointLight(0x9c6cff,1.45,10,2); powerLight.position.set(0,2.5,.8); powerCircle.add(powerLight);
     for(let i=0;i<12;i++){
       const a=i/12*Math.PI*2,rr=4.1+midHash(i,1801)*4.5;
       const r=irregularRock(powerCircle,Math.cos(a)*rr,.3,Math.sin(a)*rr,.42+midHash(i,1802)*.42,i%3===0?0x59635d:0x4a514c,1803+i);
@@ -3457,8 +3491,17 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       for (let col=0; col<29; col++) {
         const seed = fogSeed++;
         const xBase = -82 + col * 5.85 + (row % 2 ? 2.9 : 0);
-        const x = xBase + (midHash(seed, 4101) - .5) * 1.45;
-        const z = zBase + (midHash(seed, 4102) - .5) * 2.2;
+        let x = xBase + (midHash(seed, 4101) - .5) * 1.45;
+        let z = zBase + (midHash(seed, 4102) - .5) * 2.2;
+
+        // Keep the Circle of Power visually open: any fog-forest tree that would
+        // stand directly in front of the central monolith is transplanted sideways,
+        // not deleted.
+        const powerTreeDist=Math.hypot(x-5,z+70);
+        if(powerTreeDist<7.6){
+          x += x<5 ? -10.5 : 10.5;
+          z += 1.8;
+        }
 
         if (x < -84 || x > 84) continue;
 
