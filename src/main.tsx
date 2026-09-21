@@ -1225,7 +1225,6 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const hunterHouseAsset = 'Midgard_Hunter_House_V1_YUP.glb';
     const herbalistHouseAsset = 'Midgard_Herbalist_House_V1_YUP.glb';
     const craftsmanHouseAsset = 'Midgard_Craftsman_House_V1_YUP.glb';
-    const fallenAshAsset = 'Midgard_Fallen_Ash_V1_YUP.glb';
     const oldFarmAsset = 'Midgard_Old_Farm_V1_YUP.glb';
     const vikingGateAsset = 'Midgard_Viking_Gate_Tower_V1_YUP.glb';
     const vikingPalisadeAsset = 'Midgard_Viking_Palisade_Segment_V1_YUP.glb';
@@ -2509,27 +2508,79 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       wildlife.push({g,x,z,r:2.2,speed:.7,phase:1.7,kind:'squirrel'});
     };
 
-    // Grove of Ash — a cathedral-like natural chamber built from huge living roots.
+    // Grove of Ash — a secluded grass-covered mound with an ancient ash growing from the crown.
+    // Kept away from the main Midgard entrance so the silhouette does not block the village gate.
     const ashGroveX=-5, ashGroveZ=75;
-    const ashGrove=new THREE.Group(); ashGrove.userData={id:'ashgrove',label:'Роща Ясеня'};
-    const groveFloor=new THREE.Mesh(new THREE.CircleGeometry(10.5,40),new THREE.MeshStandardMaterial({color:0x26382b,roughness:1,transparent:true,opacity:.82}));
-    groveFloor.rotation.x=-Math.PI/2; groveFloor.position.set(ashGroveX,groundY(ashGroveX,ashGroveZ)+.02,ashGroveZ); scene.add(groveFloor);
-    const grovePositions=[[-6,1,1.7,false],[-1,0,1.55,false],[-8,5,1.45,false],[2,5,1.45,false],[-2,8,2.45,true],[5,2,1.35,false],[4,8,1.55,false]] as Array<[number,number,number,boolean]>;
-    // Procedural ash trees are disabled in this GLB test pass.
+    const ashGrove=new THREE.Group();
+    ashGrove.userData={id:'ashgrove',label:'Роща Ясеня'};
+    ashGrove.position.set(ashGroveX,groundY(ashGroveX,ashGroveZ),ashGroveZ);
 
-    const groveRing=new THREE.Mesh(new THREE.TorusGeometry(6.4,.07,8,64),new THREE.MeshStandardMaterial({color:0x78b4a0,emissive:0x214c3d,emissiveIntensity:1.8,transparent:true,opacity:.7}));
-    groveRing.rotation.x=Math.PI/2; groveRing.position.set(ashGroveX,groundY(ashGroveX,ashGroveZ)+.05,ashGroveZ); scene.add(groveRing);
-    const groveAltar=new THREE.Mesh(new THREE.DodecahedronGeometry(1.05,1),mat(0x555b55,1)); groveAltar.scale.set(1.3,.7,1.05); groveAltar.position.set(ashGroveX,groundY(ashGroveX,ashGroveZ)+.65,ashGroveZ); scene.add(groveAltar);
-    addGroundRune(ashGrove,0,0,'ᚱ',0x8fe6a4,1.25,0);
-    // Bioluminescent mushrooms and small artifacts make the foreground richer.
-    for(let i=0;i<26;i++){
-      const a=midHash(i,1310)*Math.PI*2, rr=2.5+midHash(i,1311)*7.2, x=ashGroveX+Math.cos(a)*rr,z=ashGroveZ+Math.sin(a)*rr;
-      const stem=new THREE.Mesh(new THREE.CylinderGeometry(.025,.045,.22+midHash(i,1312)*.28,6),mat(0xb7b59b,1)); stem.position.set(x,groundY(x,z)+.12,z); scene.add(stem);
-      const cap=new THREE.Mesh(new THREE.SphereGeometry(.13+midHash(i,1313)*.08,8,5),new THREE.MeshStandardMaterial({color:0x8ddfd0,emissive:0x3bb7aa,emissiveIntensity:2.5,roughness:.6})); cap.scale.y=.48; cap.position.set(x,groundY(x,z)+.34,z); scene.add(cap);
+    const groveEarthMat=new THREE.MeshStandardMaterial({color:0x4a3a28,roughness:1});
+    const groveGrassMat=new THREE.MeshStandardMaterial({color:0x496f3b,roughness:1});
+    const groveBarkMat=new THREE.MeshStandardMaterial({map:barkTexture,color:0x5a3b27,roughness:1,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.035});
+    const groveLeafMat=new THREE.MeshStandardMaterial({map:foliageTexture,color:0x4f7a43,roughness:1});
+    const groveDoorMat=new THREE.MeshStandardMaterial({color:0x7a1830,roughness:.86,metalness:.03});
+    const groveStoneMat=new THREE.MeshStandardMaterial({color:0x77766b,roughness:1});
+
+    // Rounded mound. Two flattened spheres give a natural grassy hill without heavy geometry.
+    const moundBase=new THREE.Mesh(new THREE.SphereGeometry(5.6,18,12),groveEarthMat);
+    moundBase.scale.set(1.0,.46,.88);
+    moundBase.position.set(0,1.05,0);
+    ashGrove.add(moundBase);
+    const moundGrass=new THREE.Mesh(new THREE.SphereGeometry(5.48,18,12),groveGrassMat);
+    moundGrass.scale.set(1.0,.43,.88);
+    moundGrass.position.set(0,1.24,0);
+    ashGrove.add(moundGrass);
+
+    // Recessed entrance cut visually into the front of the mound.
+    const groveDoorShadow=new THREE.Mesh(new THREE.BoxGeometry(2.0,2.6,.22),new THREE.MeshBasicMaterial({color:0x120c0b}));
+    groveDoorShadow.position.set(0,1.55,4.56);
+    ashGrove.add(groveDoorShadow);
+    const groveDoor=new THREE.Mesh(new THREE.BoxGeometry(1.48,2.12,.18),groveDoorMat);
+    groveDoor.position.set(0,1.48,4.70);
+    ashGrove.add(groveDoor);
+    const groveDoorFrame=mat(0x4a2c22,1);
+    const doorTop=new THREE.Mesh(new THREE.BoxGeometry(1.95,.18,.30),groveDoorFrame);
+    doorTop.position.set(0,2.62,4.68); ashGrove.add(doorTop);
+    [-.90,.90].forEach(px=>{const side=new THREE.Mesh(new THREE.BoxGeometry(.18,2.45,.30),groveDoorFrame);side.position.set(px,1.48,4.68);ashGrove.add(side);});
+    const doorKnob=new THREE.Mesh(new THREE.SphereGeometry(.09,8,6),mat(0xb3894c,.55,.45));
+    doorKnob.position.set(.46,1.48,4.82); ashGrove.add(doorKnob);
+
+    // Short stepping-stone path so the entrance reads clearly from a distance.
+    for(let i=0;i<5;i++){
+      const st=new THREE.Mesh(new THREE.DodecahedronGeometry(.44-.035*i,1),groveStoneMat);
+      st.scale.set(1.25,.20,.78);
+      st.position.set((i%2?-.10:.10),.12,5.05+i*.72);
+      ashGrove.add(st);
     }
-    for(let i=0;i<16;i++){ const a=midHash(i,1320)*Math.PI*2,rr=2.0+midHash(i,1321)*7.5,x=ashGroveX+Math.cos(a)*rr,z=ashGroveZ+Math.sin(a)*rr; const c=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.025,10),mat(0x8d7445,.5,.55)); c.rotation.x=Math.PI/2;c.position.set(x,groundY(x,z)+.05,z);scene.add(c); }
-    objects.push(ashGrove); addCircleCollider(ashGroveX,ashGroveZ,1.0,.08);
 
+    // Ancient ash growing directly from the mound.
+    const groveTrunk=new THREE.Mesh(new THREE.CylinderGeometry(.72,1.05,5.9,11),groveBarkMat);
+    groveTrunk.position.set(0,5.15,-.20);
+    groveTrunk.rotation.z=-.045;
+    ashGrove.add(groveTrunk);
+    for(let i=0;i<8;i++){
+      const a=i/8*Math.PI*2+.20;
+      const len=2.9+midHash(i,1330)*1.9;
+      const br=new THREE.Mesh(new THREE.CylinderGeometry(.10,.28,len,7),groveBarkMat);
+      br.position.set(Math.cos(a)*len*.30,7.1+midHash(i,1331)*1.0,Math.sin(a)*len*.30-.20);
+      br.rotation.z=Math.cos(a)*.76;
+      br.rotation.x=Math.sin(a)*.76;
+      br.rotation.y=-a;
+      ashGrove.add(br);
+      for(let k=0;k<3;k++){
+        const leaf=new THREE.Mesh(new THREE.SphereGeometry(.78+midHash(i,k+1332)*.34,9,6),groveLeafMat.clone());
+        (leaf.material as THREE.MeshStandardMaterial).color.offsetHSL((midHash(i,k+1333)-.5)*.025,0,(midHash(i,k+1334)-.5)*.07);
+        leaf.scale.set(1.25,.62,1.0);
+        leaf.position.set(Math.cos(a)*len*(.44+.11*k)+(midHash(k,i)-.5)*.65,7.7+k*.32+midHash(i,k)*.85,Math.sin(a)*len*(.44+.11*k)-.20+(midHash(k+4,i)-.5)*.65);
+        ashGrove.add(leaf);
+      }
+    }
+
+    markMeshes(ashGrove);
+    scene.add(ashGrove);
+    objects.push(ashGrove);
+    addCircleCollider(ashGroveX,ashGroveZ,2.6,.08);
     // Hoddmímir's Holt — a sacred refuge beneath a smaller world-tree.
     const hoddFallbackStart=scene.children.length;
     const hoddX=62,hoddZ=78;
@@ -2636,17 +2687,60 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     }
 
     const makeFallenAsh=(x:number,z:number)=>{
-      const g=new THREE.Group();g.position.set(x,groundY(x,z),z);g.userData={id:'fallenAsh',label:'Поверженный ясень'};
-      const ring=new THREE.Mesh(new THREE.TorusGeometry(7.8,.07,8,64),new THREE.MeshStandardMaterial({color:0x8b9f87,emissive:0x334633,emissiveIntensity:1.0,transparent:true,opacity:.55}));ring.rotation.x=Math.PI/2;ring.position.y=.05;g.add(ring);
-      const bark=new THREE.MeshStandardMaterial({map:barkTexture,color:0xffffff,roughness:1,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.034});
-      // Hollow broken trunk with jagged crown.
-      const stump=new THREE.Mesh(new THREE.CylinderGeometry(1.45,2.15,4.8,10),bark);stump.userData.oldFallenAshVisual=true;stump.position.set(0,2.4,.2);stump.rotation.z=-.04;g.add(stump);
-      const hollow=new THREE.Mesh(new THREE.SphereGeometry(.88,12,9),new THREE.MeshBasicMaterial({color:0x121513}));hollow.userData.oldFallenAshVisual=true;hollow.scale.set(1,.95,.55);hollow.position.set(0,1.75,1.72);g.add(hollow);
-      for(let i=0;i<7;i++){const a=-.9+i*.30,len=2.5+midHash(i,1500)*2.7;const br=new THREE.Mesh(new THREE.CylinderGeometry(.11,.28,len,7),bark);br.userData.oldFallenAshVisual=true;br.position.set(Math.sin(a)*len*.34,(4.0+midHash(i,1501)*2.8),.15+Math.cos(a)*len*.30);br.rotation.z=Math.sin(a)*.65;br.rotation.x=-Math.cos(a)*.55;br.rotation.y=a;g.add(br);}
-      for(let i=0;i<9;i++){const a=midHash(i,1510)*Math.PI*2,rr=1.7+midHash(i,1511)*5.6;irregularRock(g,Math.cos(a)*rr,.22,Math.sin(a)*rr,.3+midHash(i,1512)*.45,i%3?0x505852:0x5f645d,1513+i);}
-      for(let i=0;i<8;i++)addGroundRune(g,(midHash(i,1520)-.5)*5.8,(midHash(i,1521)-.5)*5.8,['ᚦ','ᛉ','ᚱ','ᛟ'][i%4],0x9fd0c4,.42,midHash(i,1522)*Math.PI);
-      const cache=new THREE.Mesh(new THREE.SphereGeometry(.45,10,7),mat(0x5b3b27,1));cache.scale.set(.9,1.2,.7);cache.position.set(0,1.55,1.25);g.add(cache);
-      addMesh(g,'fallenAsh','Поверженный ясень');objects.push(g);addCircleCollider(x,z,1.8,.08);
+      const g=new THREE.Group();
+      g.position.set(x,groundY(x,z),z);
+      g.userData={id:'fallenAsh',label:'Поверженный ясень'};
+
+      const ring=new THREE.Mesh(
+        new THREE.TorusGeometry(7.8,.07,8,64),
+        new THREE.MeshStandardMaterial({color:0x8b9f87,emissive:0x334633,emissiveIntensity:1.0,transparent:true,opacity:.55})
+      );
+      ring.rotation.x=Math.PI/2;
+      ring.position.y=.05;
+      g.add(ring);
+
+      // Brown broken ash stump: low-poly, heavy and old, without the three plank-like pieces on top.
+      const fallenBark=new THREE.MeshStandardMaterial({
+        map:barkTexture,color:0x6b4128,roughness:1,
+        roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.04
+      });
+      const stump=new THREE.Mesh(new THREE.CylinderGeometry(1.45,2.15,4.9,11),fallenBark);
+      stump.position.set(0,2.45,.2);
+      stump.rotation.z=-.035;
+      g.add(stump);
+
+      // Irregular shattered crown only — no long boards/branches across the top.
+      for(let i=0;i<6;i++){
+        const a=i/6*Math.PI*2+.15;
+        const shard=new THREE.Mesh(new THREE.ConeGeometry(.30,.95+midHash(i,1500)*.75,6),fallenBark);
+        shard.position.set(Math.cos(a)*.88,4.95+midHash(i,1501)*.34,.2+Math.sin(a)*.88);
+        shard.rotation.z=(midHash(i,1502)-.5)*.32;
+        shard.rotation.x=(midHash(i,1503)-.5)*.22;
+        g.add(shard);
+      }
+
+      // Dark entrance cut into the base of the stump.
+      const entrance=new THREE.Mesh(new THREE.BoxGeometry(1.38,2.08,.24),new THREE.MeshBasicMaterial({color:0x080808}));
+      entrance.position.set(0,1.20,1.93);
+      g.add(entrance);
+      const door=new THREE.Mesh(new THREE.BoxGeometry(1.08,1.82,.16),new THREE.MeshStandardMaterial({color:0x050505,roughness:.95}));
+      door.position.set(0,1.18,2.08);
+      g.add(door);
+      const jambMat=mat(0x3f2619,1);
+      const lintel=new THREE.Mesh(new THREE.BoxGeometry(1.48,.16,.28),jambMat);lintel.position.set(0,2.10,2.05);g.add(lintel);
+      [-.68,.68].forEach(px=>{const j=new THREE.Mesh(new THREE.BoxGeometry(.15,2.04,.28),jambMat);j.position.set(px,1.20,2.05);g.add(j);});
+      const handle=new THREE.Mesh(new THREE.SphereGeometry(.07,7,5),mat(0x8a6b3a,.6,.35));
+      handle.position.set(.34,1.18,2.18);g.add(handle);
+
+      for(let i=0;i<9;i++){
+        const a=midHash(i,1510)*Math.PI*2,rr=1.7+midHash(i,1511)*5.6;
+        irregularRock(g,Math.cos(a)*rr,.22,Math.sin(a)*rr,.3+midHash(i,1512)*.45,i%3?0x505852:0x5f645d,1513+i);
+      }
+      for(let i=0;i<8;i++) addGroundRune(g,(midHash(i,1520)-.5)*5.8,(midHash(i,1521)-.5)*5.8,['ᚦ','ᛉ','ᚱ','ᛟ'][i%4],0x9fd0c4,.42,midHash(i,1522)*Math.PI);
+
+      addMesh(g,'fallenAsh','Поверженный ясень');
+      objects.push(g);
+      addCircleCollider(x,z,1.8,.08);
       return g;
     };
 
@@ -2742,16 +2836,23 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
 
     makeForgottenCamp(68,8);
-    // Deep Grove — dense sacred tree with a small house built into it.
-    const deepGroveAsset='Midgard_Deep_Grove_Treehouse_V1_YUP.glb';
+    // Deep Grove / Ash Grove — green mound with an ancient ash and a cherry-red door.
+    // Kept at the existing remote sacred-location coordinates so it does not block Midgard's main entrance.
+    const deepGroveAsset='Midgard_Ash_Grove_Mound_V1_YUP.glb';
     const deepGroveX=-45,deepGroveZ=75;
     const deepGroveRoot=new THREE.Group();
     deepGroveRoot.userData={id:'deepGrove',label:'Глубокая роща'};
     deepGroveRoot.position.set(deepGroveX,groundY(deepGroveX,deepGroveZ),deepGroveZ);
 
+    // Soft ground patch under the GLB so the mound blends into the terrain.
     const deepGroveFloor=new THREE.Mesh(
-      new THREE.CircleGeometry(8.8,44),
-      new THREE.MeshStandardMaterial({color:0x2f412e,roughness:1,transparent:true,opacity:.78})
+      new THREE.CircleGeometry(8.0,44),
+      new THREE.MeshStandardMaterial({
+        color:0x31462f,
+        roughness:1,
+        transparent:true,
+        opacity:.68
+      })
     );
     deepGroveFloor.rotation.x=-Math.PI/2;
     deepGroveFloor.position.y=.02;
@@ -2760,37 +2861,22 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     loadGlbWithFolderFallback(deepGroveAsset,(gltf:any)=>{
       const grove=gltf.scene;
       markMeshes(grove);
+
       grove.traverse((o:any)=>{
         if(!o.isMesh)return;
         o.castShadow=true;
         o.receiveShadow=true;
 
+        // Keep the authored GLB look: dark ash, green mound, cherry-red door.
+        // Only make sure materials remain matte enough for the Midgard scene.
         const tune=(m:any)=>{
           if(!m)return m;
           const mm=m.clone?m.clone():m;
           const mn=String(mm.name||'').toLowerCase();
-          const on=String(o.name||'').toLowerCase();
 
-          // Ancient ash/tree trunk: 50% darker.
-          if('color' in mm && /ancient_bark|bark_shadow/.test(mn)){
-            mm.color.multiplyScalar(.50);
-          }
-
-          // Treehouse wood: 30% darker.
-          if('color' in mm && /cabin_wood|cabin_dark/.test(mn)){
-            mm.color.multiplyScalar(.70);
-          }
-
-          // Green roof.
-          if('color' in mm && /shingle_roof/.test(mn)){
-            mm.color.set(0x2f6b3a);
-            if('roughness' in mm)mm.roughness=.92;
-          }
-
-          // Red door — target the actual Door mesh so other dark wooden pieces stay brown.
-          if('color' in mm && on==='door'){
-            mm.color.set(0x8f2f26);
-            if('roughness' in mm)mm.roughness=.88;
+          if('roughness' in mm){
+            if(/mound|grass|moss|ash_bark|bark/.test(mn)) mm.roughness=Math.max(mm.roughness??.9,.92);
+            if(/cherry_door/.test(mn)) mm.roughness=Math.max(mm.roughness??.82,.86);
           }
 
           mm.needsUpdate=true;
@@ -2800,40 +2886,27 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         if(Array.isArray(o.material))o.material=o.material.map(tune);
         else o.material=tune(o.material);
       });
-      grove.scale.setScalar(.86);
+
+      grove.scale.setScalar(.82);
       grove.rotation.y=-.38;
       grove.position.set(0,0,0);
+
+      // Snap the model to the local terrain.
       grove.updateMatrixWorld(true);
       const bb=new THREE.Box3().setFromObject(grove);
       grove.position.y-=bb.min.y;
+      grove.updateMatrixWorld(true);
+
       deepGroveRoot.add(grove);
-      console.log('[DEEP GROVE] GLB loaded',deepGroveAsset);
+      console.log('[DEEP GROVE] Ash mound GLB loaded',deepGroveAsset);
     },'DEEP GROVE');
 
     scene.add(deepGroveRoot);
     objects.push(deepGroveRoot);
     addCircleCollider(deepGroveX,deepGroveZ,2.7,.08);
+    // Fallen Ash now uses the controlled procedural stump above.
+    // The older GLB is intentionally not loaded because its upper pieces read as wooden planks.
     const fallenAshFallback=makeFallenAsh(-30,15);
-    loadGlbWithFolderFallback(fallenAshAsset, (gltf:any) => {
-      if (!glbTreesAlive) return;
-      const newAsh = gltf.scene.clone(true);
-      markMeshes(newAsh);
-      newAsh.traverse((o:any) => {
-        if (!o.isMesh) return;
-        o.visible = true;
-        o.castShadow = true;
-        o.receiveShadow = true;
-        o.frustumCulled = true;
-      });
-      newAsh.scale.setScalar(1.05);
-      newAsh.position.set(0,0,0);
-      newAsh.rotation.set(0,.22,0);
-      fallenAshFallback.traverse((o:any) => {
-        if (o.userData?.oldFallenAshVisual) o.visible=false;
-      });
-      fallenAshFallback.add(newAsh);
-      console.log('[FALLEN ASH] loaded', `${BASE}img/models/${fallenAshAsset}`);
-    }, 'FALLEN ASH');
 
     // ---------------------------------------------------------------------------
     // Three new sacred locations: Stone of Three Threads, Circle of Power,
