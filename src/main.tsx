@@ -2510,7 +2510,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     // Forgotten Cache — ornate cyan/gold fantasy chest GLB.
     // Keeps the original interaction id/location while replacing the old hollow-oak visual.
     // This filename is intentionally stable: replace the GLB to iterate on the chest without touching code.
-    const forgottenCacheAsset='Midgard_Forgotten_Cache_Chest_V1_YUP.glb';
+    const forgottenCacheAsset='Midgard_Forgotten_Cache_Chest_V2_YUP.glb';
     const forgottenCacheRoot=new THREE.Group();
     forgottenCacheRoot.userData={id:'forestCache',label:'Забытый тайник'};
     forgottenCacheRoot.position.set(-72,groundY(-72,48),48);
