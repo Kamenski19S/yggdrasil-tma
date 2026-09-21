@@ -1225,6 +1225,9 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const fallenAshAsset = 'Midgard_Fallen_Ash_V1_YUP.glb';
     const oldFarmAsset = 'Midgard_Old_Farm_V1_YUP.glb';
     const vikingGateAsset = 'Midgard_Viking_Gate_Tower_V1_YUP.glb';
+    const vikingPalisadeAsset = 'Midgard_Viking_Palisade_Segment_V1_YUP.glb';
+    const mimirWellAsset = 'Midgard_Mimir_Well_V1_YUP.glb';
+    const hoddmimirAsset = 'Midgard_Hoddmimir_Holt_V1_YUP.glb';
 
     // Deterministic positions keep the village centre and major landmarks readable.
     const sprucePositions: Array<[number, number]> = [
@@ -1854,10 +1857,23 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     villageWellHalo.rotation.x=Math.PI/2; villageWellHalo.position.y=.54; villageMimir.add(villageWellHalo);
 
     addMesh(villageMimir,"mimir","Колодец Мимира"); objects.push(villageMimir);
-    addCircleCollider(1,0,2.0,.08);
+    addCircleCollider(1,0,3.8,.08);
 
-    const villageMimirLight=new THREE.PointLight(0x72e8a0,2.0,10,2);
-    villageMimirLight.position.set(1,groundY(1,0)+1.5,0); scene.add(villageMimirLight);
+    const villageMimirLight=new THREE.PointLight(0x72d9ee,2.0,12,2);
+    villageMimirLight.position.set(1,groundY(1,0)+2.2,0); scene.add(villageMimirLight);
+
+    loadGlbWithFolderFallback(mimirWellAsset,(gltf:any)=>{
+      if(!glbTreesAlive)return;
+      const model=gltf.scene.clone(true);markMeshes(model);
+      model.traverse((o:any)=>{if(!o.isMesh)return;o.visible=true;o.castShadow=true;o.receiveShadow=true;o.frustumCulled=true;});
+      model.scale.setScalar(.76);
+      model.rotation.set(0,0,0);
+      model.position.set(1,groundY(1,0),0);
+      model.userData={id:"mimir",label:"Колодец Мимира"};
+      villageMimir.visible=false;
+      addMesh(model,"mimir","Колодец Мимира");objects.push(model);
+      console.log('[MIMIR WELL] loaded',`${BASE}img/models/${mimirWellAsset}`);
+    },'MIMIR WELL');
 
     fire(18,-15,.72);
 
@@ -2113,9 +2129,42 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     addMesh(runeField,"runefield","Поле Рун"); objects.push(runeField);
     addCircleCollider(runeFieldX,runeFieldZ,1.8,.08);
 
-    // Palisade and gate: the player enters a settlement, not an isolated field.
-    const palisade=(x1:number,z1:number,x2:number,z2:number)=>{const g=new THREE.Group();const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz),n=Math.floor(len/1.7);for(let i=0;i<=n;i++){const t=i/n;const px=x1+dx*t,pz=z1+dz*t;const p=new THREE.Mesh(new THREE.ConeGeometry(.24,.24+2.8+midHash(i,x1)*.5,6),mat(0x3c2a1c,1));p.position.set(px,groundY(px,pz)+1.45,pz);g.add(p);}const beam=box(.3,.35,len,0x2d2119,1);beam.rotation.y=Math.atan2(dx,dz);beam.position.set((x1+x2)/2,groundY((x1+x2)/2,(z1+z2)/2)+1.25,(z1+z2)/2);g.add(beam);scene.add(g);addSegmentCollider(x1,z1,x2,z2,.34,.08);};
-    palisade(-30,-31,-8,-31);palisade(8,-31,30,-31);palisade(-30,-31,-30,-13);palisade(30,-31,30,16);
+    // Palisade and gate: use one GLB segment for ALL four settlement walls.
+    // Procedural stakes stay visible only as a fallback if the GLB is unavailable.
+    const proceduralPalisades:THREE.Group[]=[];
+    const palisadeRuns:Array<[number,number,number,number]>=[
+      [-30,-31,-8,-31],[8,-31,30,-31],[-30,-31,-30,-13],[30,-31,30,16]
+    ];
+    const palisade=(x1:number,z1:number,x2:number,z2:number)=>{
+      const g=new THREE.Group();const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz),n=Math.max(1,Math.floor(len/1.7));
+      for(let i=0;i<=n;i++){const t=i/n;const px=x1+dx*t,pz=z1+dz*t;const p=new THREE.Mesh(new THREE.ConeGeometry(.24,.24+2.8+midHash(i,x1)*.5,6),mat(0x3c2a1c,1));p.position.set(px,groundY(px,pz)+1.45,pz);g.add(p);}
+      const beam=box(.3,.35,len,0x2d2119,1);beam.rotation.y=Math.atan2(dx,dz);beam.position.set((x1+x2)/2,groundY((x1+x2)/2,(z1+z2)/2)+1.25,(z1+z2)/2);g.add(beam);
+      scene.add(g);proceduralPalisades.push(g);addSegmentCollider(x1,z1,x2,z2,.34,.08);
+    };
+    palisadeRuns.forEach(r=>palisade(...r));
+
+    loadGlbWithFolderFallback(vikingPalisadeAsset,(gltf:any)=>{
+      if(!glbTreesAlive)return;
+      const source=gltf.scene.clone(true);
+      markMeshes(source);
+      source.traverse((o:any)=>{if(!o.isMesh)return;o.visible=true;o.castShadow=true;o.receiveShadow=true;o.frustumCulled=true;});
+      proceduralPalisades.forEach(g=>g.visible=false);
+
+      palisadeRuns.forEach(([x1,z1,x2,z2],runIndex)=>{
+        const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz);
+        const n=Math.max(1,Math.ceil(len/3.10));
+        const each=len/n;
+        for(let i=0;i<n;i++){
+          const t=(i+.5)/n,px=x1+dx*t,pz=z1+dz*t;
+          const seg=source.clone(true);
+          seg.scale.set(each/3.2,.96+midHash(i,runIndex+2600)*.08,1);
+          seg.rotation.set(0,Math.atan2(-dz,dx),0);
+          seg.position.set(px,groundY(px,pz),pz);
+          scene.add(seg);
+        }
+      });
+      console.log('[PALISADE] all settlement walls loaded',`${BASE}img/models/${vikingPalisadeAsset}`);
+    },'PALISADE');
     const gate=new THREE.Group();gate.userData={id:"gate",label:"Ворота Мидгарда"};for(const x of [-4.2,4.2]){const p=box(.8,6,.8,0x35251a,1);p.position.set(x,3,-31);gate.add(p);}const top=box(10,.8,1,0x2d2018,1);top.position.set(0,6,-31);gate.add(top);for(let i=-3;i<=3;i++){const bar=box(1.0,4.2,.22,0x5b3a24,1);bar.position.set(i*1.15,2,-30.7);gate.add(bar);}addMesh(gate,"gate","Ворота Мидгарда");objects.push(gate);
     loadGlbWithFolderFallback(vikingGateAsset, (gltf:any) => {
       if (!glbTreesAlive) return;
@@ -2410,6 +2459,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     objects.push(ashGrove); addCircleCollider(ashGroveX,ashGroveZ,1.0,.08);
 
     // Hoddmímir's Holt — a sacred refuge beneath a smaller world-tree.
+    const hoddFallbackStart=scene.children.length;
     const hoddX=62,hoddZ=78;
     const hodd=new THREE.Group(); hodd.userData={id:'hoddmimir',label:'Лес Ходдмимира'};
     const hoddGround=new THREE.Mesh(new THREE.CircleGeometry(11.5,44),new THREE.MeshStandardMaterial({color:0x203b2b,roughness:1,transparent:true,opacity:.86})); hoddGround.rotation.x=-Math.PI/2; hoddGround.position.set(hoddX,groundY(hoddX,hoddZ)+.025,hoddZ);scene.add(hoddGround);
@@ -2429,7 +2479,22 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     for(let i=0;i<22;i++){const a=midHash(i,1410)*Math.PI*2,rr=1.8+midHash(i,1411)*8.2,x=hoddX+Math.cos(a)*rr,z=hoddZ+Math.sin(a)*rr;addGroundRune(hodd,(x-hoddX),(z-hoddZ),['ᚱ','ᛉ','ᛟ','ᚦ','ᚨ','ᚠ'][i%6],i%2?0x67d3df:0xe0b55a,.35,midHash(i,1412)*Math.PI);}
     // Floating rune motes are intentionally sparse for mobile performance.
     for(let i=0;i<18;i++){const glyph=['ᚱ','ᚨ','ᛟ','ᚦ'][i%4];const tex=runeGroundTexture(glyph,i%2?'#63d9ef':'#e4bd65');const q=new THREE.Mesh(new THREE.PlaneGeometry(.34,.44),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));q.position.set(hoddX+(midHash(i,1420)-.5)*12,1.4+midHash(i,1421)*7,hoddZ+(midHash(i,1422)-.5)*12);q.userData.floatPhase=midHash(i,1423)*6;scene.add(q);}
-    addMesh(hodd,'hoddmimir','Лес Ходдмимира');objects.push(hodd);addCircleCollider(hoddX,hoddZ,1.2,.08);
+    addMesh(hodd,'hoddmimir','Лес Ходдмимира');objects.push(hodd);addCircleCollider(hoddX,hoddZ,4.7,.08);
+    const hoddFallbackVisuals=scene.children.slice(hoddFallbackStart);
+
+    loadGlbWithFolderFallback(hoddmimirAsset,(gltf:any)=>{
+      if(!glbTreesAlive)return;
+      const model=gltf.scene.clone(true);markMeshes(model);
+      model.traverse((o:any)=>{if(!o.isMesh)return;o.visible=true;o.castShadow=true;o.receiveShadow=true;o.frustumCulled=true;});
+      model.scale.setScalar(.76);
+      model.rotation.set(0,.18,0);
+      model.position.set(hoddX,groundY(hoddX,hoddZ),hoddZ);
+      model.userData={id:'hoddmimir',label:'Лес Ходдмимира'};
+      hoddFallbackVisuals.forEach((o:any)=>o.visible=false);
+      addMesh(model,'hoddmimir','Лес Ходдмимира');objects.push(model);
+      const glow=new THREE.PointLight(0xffb13c,2.4,18,2);glow.position.set(hoddX,groundY(hoddX,hoddZ)+5,hoddZ+1.5);scene.add(glow);
+      console.log('[HODDMIMIR] loaded',`${BASE}img/models/${hoddmimirAsset}`);
+    },'HODDMIMIR');
 
     // The four deer are a deliberate Yggdrasil reference: they roam a separate clearing.    // The four deer are a deliberate Yggdrasil reference: they roam a separate clearing.
     const deerClearingX=43, deerClearingZ=32;
