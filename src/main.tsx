@@ -2236,7 +2236,37 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     // Bridge and dock.
     const bridge=new THREE.Group();bridge.userData={id:"port",label:"Мост к причалу"};for(let i=-5;i<=5;i++){const plank=box(3.6,.28,.82,0x60402a,1);plank.position.set(-53,groundY(-53,i*1.0)+.5,i);bridge.add(plank);}addMesh(bridge,"port","Мост к причалу");objects.push(bridge);
-    const dock=new THREE.Group();dock.position.set(-45,groundY(-45,-48),-48);for(let i=0;i<7;i++){const p=box(2.8,.24,.72,0x6b472d,1);p.position.set(0,.3,i*.85);dock.add(p);}for(const px of [-1.2,1.2])for(let i=0;i<3;i++){const p=box(.22,1.5,.22,0x3f291c,1);p.position.set(px,-.2,i*2.5);dock.add(p);}const hull=box(2.2,.55,4.8,0x4b2c1d,1);hull.position.set(3,-.15,2.5);dock.add(hull);addMesh(dock,"port","Речной причал");objects.push(dock);
+    // Straight river bridge replaces the old floating dock.
+    const riverBridge=new THREE.Group();
+    riverBridge.userData={id:"port",label:"Речной мост"};
+    const bridgeX=-57, bridgeZ=-48, bridgeY=groundY(bridgeX,bridgeZ)+.58;
+    riverBridge.position.set(bridgeX,bridgeY,bridgeZ);
+    const bridgeWood=mat(0x5b3a25,1), bridgeDark=mat(0x332219,1);
+    const span=13.6, deckW=3.6;
+    for(let i=0;i<17;i++){
+      const plank=box(.78,.24,deckW,0x67432b,1);
+      plank.position.set(-span/2+.48+i*.80,0,0);
+      riverBridge.add(plank);
+    }
+    for(const zSide of [-1,1]){
+      const railZ=zSide*(deckW/2-.18);
+      for(let i=0;i<6;i++){
+        const x=-span/2+.55+i*(span-1.1)/5;
+        const post=box(.18,1.55,.18,0x3d281c,1);
+        post.position.set(x,.82,railZ);
+        riverBridge.add(post);
+      }
+      const topRail=box(span-.8,.16,.16,0x3d281c,1);
+      topRail.position.set(0,1.45,railZ);
+      riverBridge.add(topRail);
+      const midRail=box(span-.8,.12,.12,0x4b3020,1);
+      midRail.position.set(0,.92,railZ);
+      riverBridge.add(midRail);
+    }
+    const beamA=box(span-.4,.28,.24,0x332219,1);beamA.position.set(0,-.26,-1.25);riverBridge.add(beamA);
+    const beamB=beamA.clone();beamB.position.z=1.25;riverBridge.add(beamB);
+    addMesh(riverBridge,"port","Речной мост");objects.push(riverBridge);
+    addRectCollider(bridgeX,bridgeZ,span,deckW,0,.02);
 
     // Utility clutter makes the village feel inhabited.
     const barrel=(x:number,z:number)=>{const b=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,1,12),mat(0x65432c,1));b.position.set(x,groundY(x,z)+.5,z);scene.add(b);for(const y of [.25,.76]){const r=new THREE.Mesh(new THREE.TorusGeometry(.51,.045,6,18),mat(0x302824,.7,.1));r.rotation.x=Math.PI/2;r.position.set(x,groundY(x,z)+y,z);scene.add(r);}};
@@ -2527,8 +2557,13 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         const tune=(m:any)=>{
           if(!m)return m;
           const mm=m.clone?m.clone():m;
-          if('roughness' in mm && /gold|iron|cyan|crystal|metal/i.test(String(mm.name||''))) mm.roughness=Math.min(mm.roughness??.55,.48);
-          if('metalness' in mm && /gold|iron|metal/i.test(String(mm.name||''))) mm.metalness=Math.max(mm.metalness??0,.58);
+          const mn=String(mm.name||'');
+          if('roughness' in mm && /gold|iron|cyan|crystal|metal/i.test(mn)) mm.roughness=Math.min(mm.roughness??.55,.48);
+          if('metalness' in mm && /gold|iron|metal/i.test(mn)) mm.metalness=Math.max(mm.metalness??0,.58);
+          if('emissive' in mm && /cyan|crystal|runic|gem|inner/i.test(mn)){
+            mm.emissive=new THREE.Color(0x39ccec);
+            mm.emissiveIntensity=3.2;
+          }
           mm.needsUpdate=true;
           return mm;
         };
@@ -2542,6 +2577,9 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       chest.position.y-=bb.min.y;
       chest.updateMatrixWorld(true);
       forgottenCacheRoot.add(chest);
+      const cacheGlow=new THREE.PointLight(0x38cfee,1.35,5.5,2);
+      cacheGlow.position.set(0,1.15,.45);
+      forgottenCacheRoot.add(cacheGlow);
       console.log('[FORGOTTEN CACHE] GLB loaded',forgottenCacheAsset);
     },'FORGOTTEN CACHE');
     addCircleCollider(-72,48,2.15,.08);
@@ -3368,7 +3406,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const destinations=[
       {id:"house",label:"Дом старейшины",x:13,z:-18,r:5.2},{id:"forge",label:"Кузница",x:-10,z:-5,r:5.4},
       {id:"mimir",label:"Колодец Мимира",x:1,z:0,r:4.8},{id:"norns",label:"Прядильня норн",x:-52,z:38,r:5.4},
-      {id:"rune",label:"Древний камень Феху",x:50,z:60,r:4.5},{id:"port",label:"Речной причал",x:-45,z:-48,r:5},
+      {id:"rune",label:"Древний камень Феху",x:50,z:60,r:4.5},{id:"port",label:"Речной мост",x:-57,z:-48,r:6},
       {id:"ashgrove",label:"Роща Ясеня",x:-5,z:75,r:7.5},{id:"threeThreads",label:"Камень Трёх Нитей — Колодец Урд",x:58,z:-28,r:6.8},{id:"forestCache",label:"Забытый тайник",x:-72,z:48,r:4.2},{id:"forestThread",label:"Разорванная нить",x:50,z:-62,r:4.2},
       {id:"runefield",label:"Поле Рун",x:18,z:55,r:8.0},{id:"oldfarm",label:"Старый хутор",x:-65,z:5,r:6.0},{id:"deer",label:"Поляна Четырёх Оленей",x:43,z:32,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:62,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:68,z:8,r:8.5},{id:"heroHome",label:"Дверь дома героя",x:75,z:32.75,r:2.8},{id:"deepGrove",label:"Глубокая роща",x:-45,z:75,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:-30,z:15,r:7.5},{id:"powerCircle",label:"Круг Силы — Монолит",x:5,z:-70,r:6.5},{id:"whisperStone",label:"Камень Шёпота",x:-72,z:-48,r:6.5},
       {id:"elder",label:"Старейшина",x:9,z:-8,r:3.2},{id:"blacksmith",label:"Кузнец",x:-6,z:-3,r:3.2},
