@@ -69,9 +69,26 @@ const REALMS: Realm[] = [
 
 const NAV = [{ id: "tree", ic: "ᚱ", t: "Путь" }, { id: "hero", ic: "ᛗ", t: "Герой" }, { id: "gift", ic: "ᚷ", t: "Дар" }, { id: "hall", ic: "ᛟ", t: "Чертог" }];
 type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" } | { t: "hero" } | { t: "gift" } | { t: "hall" } | { t: "trial"; id: string } | { t: "fight"; id: string };
-type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[] };
-const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [] };
-const loadSave = (): Save => { try { const s = { ...DEF, ...JSON.parse(localStorage.getItem("yggdrasil") || "") }; if (!Array.isArray(s.powers)) s.powers = []; if (!s.watch) s.watch = Date.now(); return s; } catch { return { ...DEF, watch: Date.now() }; } };
+type HeroSkin = "viking" | "valkyrie";
+type HeroWeapon = "default";
+type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; ownedWeapons: string[] };
+const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", ownedWeapons: ["default"] };
+const loadSave = (): Save => {
+  try {
+    const s:any = { ...DEF, ...JSON.parse(localStorage.getItem("yggdrasil") || "") };
+    if (!Array.isArray(s.powers)) s.powers = [];
+    if (!Array.isArray(s.ownedWeapons)) s.ownedWeapons = ["default"];
+    if (s.heroSkin !== "viking" && s.heroSkin !== "valkyrie") {
+      const hd = s.hero ? HEROES.find((x:any)=>x.id===s.hero.id) : null;
+      s.heroSkin = hd?.gender === "f" ? "valkyrie" : "viking";
+    }
+    if (!s.heroWeapon) s.heroWeapon = "default";
+    if (!s.watch) s.watch = Date.now();
+    return s as Save;
+  } catch {
+    return { ...DEF, watch: Date.now() };
+  }
+};
 const today = () => new Date().toISOString().slice(0, 10);
 const rank = (n: number) => (n >= 500 ? "Всеотец" : n >= 300 ? "Мудрец Древа" : n >= 150 ? "Хранитель рун" : n >= 50 ? "Странник рун" : "Путник");
 const LADDER = [3, 5, 8, 12, 18, 25, 40];
@@ -976,7 +993,7 @@ function midHero3d(h: HeroDef) {
   return markMeshes(g);
 }
 
-function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void; eventDone: boolean }) {
+function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; on: (id: string) => void; eventDone: boolean }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -3751,8 +3768,67 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const motes=new THREE.Points(moteGeo,moteMat);
     scene.add(motes);
 
-    const hero=midHero3d(h);scene.add(hero);
-    const heroAnim:any=hero.userData.anim;
+    // Real GLB hero. Keep the old procedural figure only as a safe loading fallback.
+    const hero=new THREE.Group();
+    scene.add(hero);
+
+    const heroFallback=midHero3d(h);
+    hero.add(heroFallback);
+    let heroAnim:any=heroFallback.userData.anim;
+
+    const heroAsset=skin==="valkyrie"
+      ? "Midgard_Hero_Valkyrie_Skin_V1_YUP.glb"
+      : "Midgard_Hero_Viking_Skin_V1_YUP.glb";
+
+    loadGlbWithFolderFallback(heroAsset,(gltf:any)=>{
+      const model=gltf.scene;
+      markMeshes(model);
+      model.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        o.castShadow=true;
+        o.receiveShadow=true;
+
+        // Default weapon is already a separate named part in each GLB.
+        if(/^DefaultWeapon_/.test(String(o.name||""))){
+          o.visible=weapon==="default";
+        }
+      });
+
+      // About twice the old on-screen hero height while keeping a human silhouette.
+      model.scale.setScalar(1.28);
+      model.rotation.y=0;
+      model.position.set(0,0,0);
+      model.updateMatrixWorld(true);
+
+      // Snap feet to the hero root.
+      const bb=new THREE.Box3().setFromObject(model);
+      model.position.y-=bb.min.y;
+      model.updateMatrixWorld(true);
+
+      hero.add(model);
+      heroFallback.visible=false;
+
+      const armL=model.getObjectByName("Arm_L_Pivot") as THREE.Object3D | null;
+      const armR=model.getObjectByName("Arm_R_Pivot") as THREE.Object3D | null;
+      const legL=model.getObjectByName("Leg_L_Pivot") as THREE.Object3D | null;
+      const legR=model.getObjectByName("Leg_R_Pivot") as THREE.Object3D | null;
+      const weaponSocket=model.getObjectByName("WeaponSocket_R") as THREE.Object3D | null;
+
+      if(armL&&armR&&legL&&legR){
+        const dummyL=new THREE.Object3D();
+        const dummyR=new THREE.Object3D();
+        heroAnim={
+          armL:{upper:armL,elbow:dummyL},
+          armR:{upper:armR,elbow:dummyR},
+          legL,
+          legR,
+          weapon:weaponSocket||new THREE.Object3D(),
+          phase:skin==="valkyrie"?1.2:0
+        };
+      }
+
+      console.log("[HERO GLB] loaded",heroAsset);
+    },"HERO GLB");
 
     const ray=new THREE.Raycaster();const pointer=new THREE.Vector2();
     const click=(e:PointerEvent)=>{if((e.target as HTMLElement)?.closest?.(".mid3d-ui"))return;const r=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-r.left)/r.width)*2-1;pointer.y=-((e.clientY-r.top)/r.height)*2+1;ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects(objects,true)[0];if(hit){let o:any=hit.object;while(o.parent&&!o.userData?.id)o=o.parent;if(o.userData?.id){if(o.userData.id==="gate")gateActionRef.current?.();else on(o.userData.id);}}};
@@ -4340,7 +4416,7 @@ const [roadT, setRoadT] = useState(0.06);
       }
     };
 
-    return <Midgard3D h={heroDef} on={interact} eventDone={save.done.includes("forest:choice")} />;
+    return <Midgard3D h={heroDef} skin={save.heroSkin} weapon={save.heroWeapon} on={interact} eventDone={save.done.includes("forest:choice")} />;
   }
 
   return (
@@ -4465,7 +4541,27 @@ const [roadT, setRoadT] = useState(0.06);
               <div className="stat"><b>✨ {heroDef.en}</b><span>энергия</span></div>
               <div className="stat"><b>❤ {heroDef.hp}</b><span>здоровье</span></div>
             </div>
-            <div className="hrow">🗡 Оружие: <b>{heroDef.weapon}</b></div>
+            <div className="hrow">🎭 Облик героя</div>
+            <div className="chips">
+              <button
+                className={"chip"+(save.heroSkin==="viking"?" on":"")}
+                onClick={()=>{setSave(s=>({...s,heroSkin:"viking"}));haptic();}}
+              >Викинг</button>
+              <button
+                className={"chip"+(save.heroSkin==="valkyrie"?" on":"")}
+                onClick={()=>{setSave(s=>({...s,heroSkin:"valkyrie"}));haptic();}}
+              >Валькирия</button>
+            </div>
+            <div className="hrow">🗡 Оружие в руке</div>
+            <div className="chips">
+              <button
+                className={"chip"+(save.heroWeapon==="default"?" on":"")}
+                onClick={()=>{setSave(s=>({...s,heroWeapon:"default"}));haptic();}}
+              >{save.heroSkin==="valkyrie"?"Меч валькирии":"Секира викинга"}</button>
+            </div>
+            <div className="dim" style={{marginTop:8}}>
+              Новое оружие будет добавляться в склад и появляться здесь для экипировки.
+            </div>
             <div className="hrow">🌀 {heroDef.ability}: {heroDef.abilityDesc}</div>
             <div className="hrow">✨ Искр: <b>{save.sparks}</b> • 🏺 Артефактов: <b>{save.artifacts.length}/9</b></div>
             {save.artifacts.length > 0 && <div className="hrow">🏺 {save.artifacts.map(a => ARTIFACTS[a]).join(", ")}</div>}
@@ -4492,11 +4588,31 @@ const [roadT, setRoadT] = useState(0.06);
       })()}
 
       {screen.t === "hall" && (
-        <div className="scroll"><div className="card center"><div className="big">🏛️</div><div className="qhead2">Чертог путника</div>
-          <div className="stats"><div className="stat"><b>✨ {save.sparks}</b><span>Искр</span></div><div className="stat"><b>🏺 {save.artifacts.length}/9</b><span>артефакты</span></div></div>
-          <div className="rank">🏆 Ранг: {rank(save.sparks)}</div>
-          {save.hero && heroDef && <p className="dim">Герой: {save.hero.name} • {heroDef.race} • испытаний пройдено: {save.trials.length}</p>}
-        </div></div>
+        <div className="scroll">
+          <div className="card center">
+            <div className="big">🏛️</div>
+            <div className="qhead2">Склад Чертога</div>
+            <div className="stats">
+              <div className="stat"><b>✨ {save.sparks}</b><span>Искр</span></div>
+              <div className="stat"><b>🏺 {save.artifacts.length}/9</b><span>артефакты</span></div>
+            </div>
+            <div className="rank">🏆 Ранг: {rank(save.sparks)}</div>
+            {save.hero && heroDef && <p className="dim">Герой: {save.hero.name} • {heroDef.race} • испытаний пройдено: {save.trials.length}</p>}
+          </div>
+
+          <div className="card">
+            <div className="qhead2">⚔ Оружие</div>
+            <div className="hrow">
+              {save.heroSkin==="valkyrie"?"Меч валькирии":"Секира викинга"} • экипировано
+            </div>
+            <p className="dim">Найденное по ходу игры оружие будет храниться здесь. Экипировать его можно в разделе «Герой».</p>
+          </div>
+
+          <div className="card">
+            <div className="qhead2">🧪 Эликсиры и зелья</div>
+            <p className="dim">Склад подготовлен. Найденные эликсиры, лечебные зелья и другие расходники появятся здесь.</p>
+          </div>
+        </div>
       )}
 
       {save.hero && (
