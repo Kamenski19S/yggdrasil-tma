@@ -2226,7 +2226,46 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
 
     addCircleCollider(-4.2,gateFrontZ,.55,.05);addCircleCollider(4.2,gateFrontZ,.55,.05);
-    // Norns location removed for now. The clearing stays empty until a new concept is approved.
+    // Norns' fate wheel — antique wooden wheel with an original yarn ball below.
+    const nornsWheelAsset='Midgard_Norns_Fate_Wheel_V1_YUP.glb';
+    const nornsRoot=new THREE.Group();
+    nornsRoot.userData={id:"norns",label:"Прядильня норн"};
+    const nornsX=-52,nornsZ=38;
+    nornsRoot.position.set(nornsX,groundY(nornsX,nornsZ),nornsZ);
+
+    // A shallow dark-blue pool beneath the wheel so the yarn rests visually "by the water".
+    const nornsWater=new THREE.Mesh(
+      new THREE.CircleGeometry(3.8,40),
+      new THREE.MeshStandardMaterial({
+        color:0x315b61,roughness:.28,metalness:.04,transparent:true,opacity:.86
+      })
+    );
+    nornsWater.rotation.x=-Math.PI/2;
+    nornsWater.position.y=.025;
+    nornsRoot.add(nornsWater);
+
+    loadGlbWithFolderFallback(nornsWheelAsset,(gltf:any)=>{
+      const wheel=gltf.scene;
+      markMeshes(wheel);
+      wheel.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        o.castShadow=true;
+        o.receiveShadow=true;
+      });
+      wheel.scale.setScalar(.90);
+      wheel.rotation.y=.22;
+      wheel.position.set(0,.03,0);
+      wheel.updateMatrixWorld(true);
+      const bb=new THREE.Box3().setFromObject(wheel);
+      wheel.position.y-=bb.min.y-.03;
+      nornsRoot.add(wheel);
+      console.log('[NORNS WHEEL] GLB loaded',nornsWheelAsset);
+    },'NORNS WHEEL');
+
+    scene.add(nornsRoot);
+    objects.push(nornsRoot);
+    addCircleCollider(nornsX,nornsZ,2.4,.08);
+
 
 
 
@@ -2703,7 +2742,42 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
 
     makeForgottenCamp(68,8);
-    makeForestClearing(-45,75,9.5,'deepGrove','Глубокая роща',1);
+    // Deep Grove — dense sacred tree with a small house built into it.
+    const deepGroveAsset='Midgard_Deep_Grove_Treehouse_V1_YUP.glb';
+    const deepGroveX=-45,deepGroveZ=75;
+    const deepGroveRoot=new THREE.Group();
+    deepGroveRoot.userData={id:'deepGrove',label:'Глубокая роща'};
+    deepGroveRoot.position.set(deepGroveX,groundY(deepGroveX,deepGroveZ),deepGroveZ);
+
+    const deepGroveFloor=new THREE.Mesh(
+      new THREE.CircleGeometry(8.8,44),
+      new THREE.MeshStandardMaterial({color:0x2f412e,roughness:1,transparent:true,opacity:.78})
+    );
+    deepGroveFloor.rotation.x=-Math.PI/2;
+    deepGroveFloor.position.y=.02;
+    deepGroveRoot.add(deepGroveFloor);
+
+    loadGlbWithFolderFallback(deepGroveAsset,(gltf:any)=>{
+      const grove=gltf.scene;
+      markMeshes(grove);
+      grove.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        o.castShadow=true;
+        o.receiveShadow=true;
+      });
+      grove.scale.setScalar(.86);
+      grove.rotation.y=-.38;
+      grove.position.set(0,0,0);
+      grove.updateMatrixWorld(true);
+      const bb=new THREE.Box3().setFromObject(grove);
+      grove.position.y-=bb.min.y;
+      deepGroveRoot.add(grove);
+      console.log('[DEEP GROVE] GLB loaded',deepGroveAsset);
+    },'DEEP GROVE');
+
+    scene.add(deepGroveRoot);
+    objects.push(deepGroveRoot);
+    addCircleCollider(deepGroveX,deepGroveZ,2.7,.08);
     const fallenAshFallback=makeFallenAsh(-30,15);
     loadGlbWithFolderFallback(fallenAshAsset, (gltf:any) => {
       if (!glbTreesAlive) return;
