@@ -989,6 +989,9 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
   const cameraDir = useRef({ x: 0, z: 1 });
   const insideHomeRef = useRef(false);
   const homeActionRef = useRef<((inside:boolean)=>void)|null>(null);
+  const [villageGateOpen, setVillageGateOpen] = useState(false);
+  const villageGateOpenRef = useRef(false);
+  const gateActionRef = useRef<(()=>void)|null>(null);
 
   useEffect(() => {
     const el = mount.current;
@@ -1227,7 +1230,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const vikingGateAsset = 'Midgard_Viking_Gate_Tower_V1_YUP.glb';
     const vikingPalisadeAsset = 'Midgard_Viking_Palisade_Segment_V1_YUP.glb';
     const mimirWellAsset = 'Midgard_Mimir_Well_V1_YUP.glb';
-    const hoddmimirAsset = 'Midgard_Hoddmimir_Holt_V1_YUP.glb';
+    const hoddmimirAsset = 'Midgard_Hoddmimir_Holt_V2_YUP.glb';
 
     // Deterministic positions keep the village centre and major landmarks readable.
     const sprucePositions: Array<[number, number]> = [
@@ -1477,6 +1480,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       | { kind:"segment"; x1:number; z1:number; x2:number; z2:number; r:number };
     const colliders: Collider[] = [];
     const HERO_RADIUS = 0.62;
+    // 0 = barred shut, 1 = fully open. Used both by the visual gate and collision passage.
+    let villageGateProgress = villageGateOpenRef.current ? 1 : 0;
     const addRectCollider=(x:number,z:number,w:number,d:number,rot=0,pad=0.12)=>colliders.push({kind:"rect",x,z,w:w+pad*2,d:d+pad*2,rot});
     const addCircleCollider=(x:number,z:number,r:number,pad=0.12)=>colliders.push({kind:"circle",x,z,r:r+pad});
     const addSegmentCollider=(x1:number,z1:number,x2:number,z2:number,r:number,pad=0.12)=>colliders.push({kind:"segment",x1,z1,x2,z2,r:r+pad});
@@ -1498,6 +1503,8 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
         // Interior bounds leave a clear opening toward the door at the front (positive Z).
         return x<heroHomeX-2.72 || x>heroHomeX+2.72 || z<heroHomeZ-2.05 || z>heroHomeZ+2.30;
       }
+      // The front gate physically blocks the opening until the leaves have swung far enough.
+      if(villageGateProgress < .78 && hits(x,z,{kind:"segment",x1:-3.15,z1:-31,x2:3.15,z2:-31,r:.20})) return true;
       return colliders.some(c=>hits(x,z,c));
     };
     const moveWithCollision=(q:{x:number;z:number},nx:number,nz:number)=>{
@@ -1879,18 +1886,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
 
     // Outer settlement: farms, workshops and service yards make the village read as a place,
     // not a handful of buildings. These are deliberately lightweight so the scene remains mobile-friendly.
-    const fenceRun=(x1:number,z1:number,x2:number,z2:number,h=1.25)=>{
-      const g=new THREE.Group(); const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz),n=Math.max(1,Math.floor(len/1.55));
-      for(let i=0;i<=n;i++){
-        const t=i/n,px=x1+dx*t,pz=z1+dz*t;
-        const post=box(.18,h,.18,0x49301f,1); post.position.set(px,groundY(px,pz)+h/2,pz); g.add(post);
-      }
-      for(const off of [-.28,.38]){
-        const rail=box(.14,.14,len,0x5b3b25,1); rail.rotation.y=Math.atan2(dx,dz);
-        rail.position.set((x1+x2)/2,groundY((x1+x2)/2,(z1+z2)/2)+h*off,(z1+z2)/2); g.add(rail);
-      }
-      scene.add(g); addSegmentCollider(x1,z1,x2,z2,.12,.02);
-    };
+    // Small yard fences removed. The village boundary is now defined by the main palisade.
     const shed=(x:number,z:number,w:number,d:number,rot:number,label:string,id:string)=>{
       const g=new THREE.Group(); g.position.set(x,groundY(x,z),z); g.rotation.y=rot; g.userData={id,label};
       const base=box(w+.25,.35,d+.25,0x555148,1);base.position.y=.18;g.add(base);
@@ -1972,9 +1968,6 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     addRectCollider(17,34,7.45,5.20,-.20,.04);
 
     shed(27,13,6,4,.45,"Склад рыбака","fishshed");
-    fenceRun(-25,27,-13,27); fenceRun(-25,27,-25,38); fenceRun(-25,38,-14,38);
-    fenceRun(12,29,25,29); fenceRun(25,29,25,40); fenceRun(25,40,12,40);
-    fenceRun(29,-1,39,-1); fenceRun(39,-1,39,10); fenceRun(39,10,30,10);
     for(const p0 of [[-20,29,1.0],[-16,34,.85],[-20,35,.8],[18,31,.9],[21,37,.72],[31,5,.9]] as Array<[number,number,number]>) hay(p0[0],p0[1],p0[2]);
     cart(-17,24,.18); cart(29,-5,-.55); bench(-20,23,.18); bench(25,31,-.2);
     // A second line of modest homes is now supplied by Viking GLB clones above.
@@ -2034,7 +2027,6 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       console.log('[OLD FARM] loaded', `${BASE}img/models/${oldFarmAsset}`);
     }, 'OLD FARM');
     shed(-58,42,6,4,-0.12,"Старый амбар","oldbarn");
-    fenceRun(-70,32,-60,32); fenceRun(-70,32,-70,43); fenceRun(-70,43,-61,43);
     hay(-68,8,.9); cart(-62,2,-.25); wellMarker(-58,4);
     const oldField=new THREE.Group();
     oldField.position.set(-63,groundY(-63,47),47);
@@ -2133,7 +2125,10 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     // Procedural stakes stay visible only as a fallback if the GLB is unavailable.
     const proceduralPalisades:THREE.Group[]=[];
     const palisadeRuns:Array<[number,number,number,number]>=[
-      [-30,-31,-8,-31],[8,-31,30,-31],[-30,-31,-30,-13],[30,-31,30,16]
+      // South wall with a 16 m opening for the main gate.
+      [-30,-31,-8,-31],[8,-31,30,-31],
+      // Full west/east walls and the northern back wall.
+      [-30,-31,-30,44],[30,-31,30,44],[-30,44,30,44]
     ];
     const palisade=(x1:number,z1:number,x2:number,z2:number)=>{
       const g=new THREE.Group();const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz),n=Math.max(1,Math.floor(len/1.7));
@@ -2186,6 +2181,46 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       objects.push(gateModel);
       console.log('[VIKING GATE] loaded', `${BASE}img/models/${vikingGateAsset}`);
     }, 'VIKING GATE');
+
+    // Working old-style village doors: first lift/slide the heavy crossbar,
+    // then swing the two leaves open on their side hinges.
+    const gateWood=new THREE.MeshStandardMaterial({color:0x4a2f1f,roughness:1});
+    const gateIron=new THREE.MeshStandardMaterial({color:0x3b3d3d,roughness:.78,metalness:.35});
+    const gateLeftPivot=new THREE.Group();
+    const gateRightPivot=new THREE.Group();
+    gateLeftPivot.position.set(-3.12,groundY(-3.12,-31),-30.62);
+    gateRightPivot.position.set(3.12,groundY(3.12,-31),-30.62);
+
+    const makeGateLeaf=(side:number)=>{
+      const leaf=new THREE.Group();
+      const leafW=3.05,leafH=4.05;
+      for(let i=0;i<5;i++){
+        const plank=new THREE.Mesh(new THREE.BoxGeometry(.56,leafH,.24),gateWood);
+        plank.position.set(side*(.33+i*.60),2.05,0);
+        plank.castShadow=true;plank.receiveShadow=true;leaf.add(plank);
+      }
+      const brace1=new THREE.Mesh(new THREE.BoxGeometry(3.0,.18,.30),gateWood);
+      brace1.position.set(side*1.48,1.18,.05);leaf.add(brace1);
+      const brace2=brace1.clone();brace2.position.y=2.95;leaf.add(brace2);
+      const diag=new THREE.Mesh(new THREE.BoxGeometry(3.25,.16,.27),gateWood);
+      diag.position.set(side*1.48,2.05,.08);diag.rotation.z=side*.70;leaf.add(diag);
+      const hinge=new THREE.Mesh(new THREE.BoxGeometry(.18,3.65,.34),gateIron);
+      hinge.position.set(side*.12,2.05,.08);leaf.add(hinge);
+      return leaf;
+    };
+    gateLeftPivot.add(makeGateLeaf(1));
+    gateRightPivot.add(makeGateLeaf(-1));
+    scene.add(gateLeftPivot,gateRightPivot);
+
+    const villageGateBar=new THREE.Mesh(new THREE.BoxGeometry(6.7,.32,.34),gateWood);
+    villageGateBar.position.set(0,groundY(0,-31)+2.32,-30.28);
+    villageGateBar.castShadow=true;villageGateBar.receiveShadow=true;scene.add(villageGateBar);
+
+    gateActionRef.current=()=>{
+      villageGateOpenRef.current=!villageGateOpenRef.current;
+      setVillageGateOpen(villageGateOpenRef.current);
+    };
+
     addCircleCollider(-4.2,-31,.55,.05);addCircleCollider(4.2,-31,.55,.05);
     // Mimir's well now occupies the village central stone circle — one unique instance.
     const shrine=new THREE.Group();shrine.userData={id:"norns",label:"Прядильня норн"};shrine.position.set(-52,groundY(-52,38),38);
@@ -3346,7 +3381,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     const heroAnim:any=hero.userData.anim;
 
     const ray=new THREE.Raycaster();const pointer=new THREE.Vector2();
-    const click=(e:PointerEvent)=>{if((e.target as HTMLElement)?.closest?.(".mid3d-ui"))return;const r=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-r.left)/r.width)*2-1;pointer.y=-((e.clientY-r.top)/r.height)*2+1;ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects(objects,true)[0];if(hit){let o:any=hit.object;while(o.parent&&!o.userData?.id)o=o.parent;if(o.userData?.id)on(o.userData.id);}};
+    const click=(e:PointerEvent)=>{if((e.target as HTMLElement)?.closest?.(".mid3d-ui"))return;const r=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-r.left)/r.width)*2-1;pointer.y=-((e.clientY-r.top)/r.height)*2+1;ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects(objects,true)[0];if(hit){let o:any=hit.object;while(o.parent&&!o.userData?.id)o=o.parent;if(o.userData?.id){if(o.userData.id==="gate")gateActionRef.current?.();else on(o.userData.id);}}};
     renderer.domElement.addEventListener("pointerup",click);
 
     const setHomeMode=(inside:boolean)=>{
@@ -3387,6 +3422,18 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     let raf=0,last=performance.now();
     const loop=(now:number)=>{
       const dt=Math.min(.05,(now-last)/1000);last=now;const q=state.current;const l=Math.hypot(q.dx,q.dz);
+
+      // Gate sequence: remove the crossbar first, then swing both leaves.
+      const gateTarget=villageGateOpenRef.current?1:0;
+      villageGateProgress=THREE.MathUtils.clamp(villageGateProgress+(gateTarget>villageGateProgress?1:-1)*dt*.72,0,1);
+      const barT=THREE.MathUtils.smoothstep(villageGateProgress,0,.42);
+      const doorT=THREE.MathUtils.smoothstep(villageGateProgress,.32,1);
+      gateLeftPivot.rotation.y=-doorT*1.42;
+      gateRightPivot.rotation.y=doorT*1.42;
+      villageGateBar.position.x=-barT*5.05;
+      villageGateBar.position.y=groundY(0,-31)+2.32-barT*.78;
+      villageGateBar.position.z=-30.28+barT*.52;
+      villageGateBar.rotation.z=-barT*.28;
       if(l>.05){
         const step=6.2*dt;
         moveWithCollision(q,q.x+(q.dx/l)*step,q.z+(q.dz/l)*step);
@@ -3491,7 +3538,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;};
+    return()=>{glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;gateActionRef.current=null;};
   },[h.id,on,eventDone]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
@@ -3525,7 +3572,7 @@ function Midgard3D({ h, on, eventDone }: { h: HeroDef; on: (id: string) => void;
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:ice")}}>❄️ Ледяной обет — ослабить первый удар врага</button>
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:ygg")}}>🌳 Зов Иггдрасиля — пережить смертельный удар</button>
     </div>}
-    {near&&!ritualOpen&&!forestEventOpen&&(()=>{const [label,id]=near.split("|");const home=id==="heroHome"||id==="heroHomeExit";return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода") : "Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else on(id);}}>{home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):"Взаимодействовать"}</button></div>;})()}
+    {near&&!ritualOpen&&!forestEventOpen&&(()=>{const [label,id]=near.split("|");const home=id==="heroHome"||id==="heroHomeExit";const villageGate=id==="gate";return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{villageGate?(villageGateOpen?"Створки открыты, тяжёлый засов снят":"Ворота заперты большим деревянным засовом"):home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода"):"Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else if(id==="gate")gateActionRef.current?.();else on(id);}}>{villageGate?(villageGateOpen?"Закрыть ворота и поставить засов":"Снять засов и открыть ворота"):home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):"Взаимодействовать"}</button></div>;})()}
     <div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-action" onPointerDown={e=>e.stopPropagation()} onClick={()=>on("event")}>ᚠ</button>
     <div className="mid3d-ui mid3d-hint">{insideHome?(moving?"Ты внутри дома":"Дом героя • отдых • сундук • выход"):moving?"Исследуй Мидгард":"Ворота • площадь • кузница • Мимир • норны • лес"}</div>
