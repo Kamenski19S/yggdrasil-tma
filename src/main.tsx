@@ -3794,7 +3794,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     const attackGlowMats:THREE.MeshStandardMaterial[]=[];
     attackActionRef.current=()=>{
       const now=performance.now();
-      if(now-attackStartedAt<330)return;
+      if(now-attackStartedAt<650)return;
       attackStartedAt=now;
     };
 
@@ -3965,17 +3965,41 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       if(heroAnim){
         const walkT=now*.011+heroAnim.phase;
         const attackAge=now-attackStartedAt;
-        const attackActive=attackAge>=0&&attackAge<430;
-        const attackP=attackActive?attackAge/430:0;
-        const attackSwing=attackActive?Math.sin(attackP*Math.PI):0;
-        attackGlowMats.forEach(m=>{m.emissiveIntensity=attackActive ? .25+attackSwing*2.15 : .05;});
+        const attackActive=attackAge>=0&&attackAge<680;
+        const attackP=attackActive?attackAge/680:0;
+        const easeStrike=(v:number)=>v*v*(3-2*v);
+        let attackArmX=0,attackElbowX=0,attackWeaponZ=0,attackBodyX=0;
+        if(attackActive&&attackP<.38){
+          // Readable preparation: lift the weapon behind and above the shoulder.
+          const t=easeStrike(attackP/.38);
+          attackArmX=-2.28*t;
+          attackElbowX=-.88*t;
+          attackWeaponZ=.62*t;
+          attackBodyX=-.07*t;
+        }else if(attackActive&&attackP<.64){
+          // Fast overhead cut. The arm passes from above the head to below the chest.
+          const t=easeStrike((attackP-.38)/.26);
+          attackArmX=THREE.MathUtils.lerp(-2.28,.76,t);
+          attackElbowX=THREE.MathUtils.lerp(-.88,-.08,t);
+          attackWeaponZ=THREE.MathUtils.lerp(.62,-.48,t);
+          attackBodyX=THREE.MathUtils.lerp(-.07,.12,t);
+        }else if(attackActive){
+          // Controlled recovery back to the normal walk/idle pose.
+          const t=easeStrike((attackP-.64)/.36);
+          attackArmX=THREE.MathUtils.lerp(.76,0,t);
+          attackElbowX=THREE.MathUtils.lerp(-.08,0,t);
+          attackWeaponZ=THREE.MathUtils.lerp(-.48,0,t);
+          attackBodyX=THREE.MathUtils.lerp(.12,0,t);
+        }
+        const impact=attackActive?Math.max(0,1-Math.abs(attackP-.57)/.17):0;
+        attackGlowMats.forEach(m=>{m.emissiveIntensity=attackActive ? .22+impact*2.45 : .05;});
         if(heroAnim.mode==="projected" || heroAnim.mode==="multiview"){
           // Very small vertical step + body sway: enough to read as walking
           // without deforming the projected artwork.
           heroAnim.model.position.y=heroAnim.baseY+(moving?Math.abs(Math.sin(walkT))*0.035:0);
           heroAnim.model.rotation.z=moving?Math.sin(walkT)*0.018:0;
-          heroAnim.weapon.rotation.z=-0.12+(moving?Math.sin(walkT)*.035:0)-attackSwing*1.5;
-          heroAnim.model.rotation.x=attackSwing*.08;
+          heroAnim.weapon.rotation.z=-0.12+(moving?Math.sin(walkT)*.035:0)+attackWeaponZ*2.25;
+          heroAnim.model.rotation.x=attackBodyX;
         }else{
           const cycle=moving?Math.sin(walkT):0;
           const stride=cycle*.58;
@@ -3985,16 +4009,16 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
           heroAnim.legL.knee.rotation.x=moving?Math.max(0,-cycle)*.68:0;
           heroAnim.legR.knee.rotation.x=moving?Math.max(0,cycle)*.68:0;
           heroAnim.armL.upper.rotation.x=armSwing;
-          heroAnim.armR.upper.rotation.x=-armSwing-attackSwing*1.55;
+          heroAnim.armR.upper.rotation.x=-armSwing+attackArmX;
           heroAnim.armL.elbow.rotation.x=moving?-.12-Math.max(0,armSwing)*.30:0;
-          heroAnim.armR.elbow.rotation.x=(moving?-.12-Math.max(0,-armSwing)*.30:0)-attackSwing*.42;
+          heroAnim.armR.elbow.rotation.x=(moving?-.12-Math.max(0,-armSwing)*.30:0)+attackElbowX;
           // Expressive low-cost eye animation: a short natural blink and a
           // subtle side-to-side glance, with no texture or extra draw calls.
           const blinkT=(now+heroAnim.phase*613)%4200;
           const blink=blinkT<110?Math.max(.10,Math.abs(blinkT-55)/55):1;
           heroAnim.eyes.scale.y=blink;
           heroAnim.eyes.rotation.y=Math.sin(now*.00115+heroAnim.phase)*.10;
-          heroAnim.weapon.rotation.z=-0.12+(moving?Math.sin(walkT)*.035:0)-attackSwing*.72;
+          heroAnim.weapon.rotation.z=-0.12+(moving?Math.sin(walkT)*.035:0)+attackWeaponZ*.72;
           hero.position.y+=moving?Math.abs(Math.sin(walkT*2))*.018:0;
         }
       }
