@@ -92,6 +92,8 @@ const loadSave = (): Save => {
 const today = () => new Date().toISOString().slice(0, 10);
 const rank = (n: number) => (n >= 500 ? "Всеотец" : n >= 300 ? "Мудрец Древа" : n >= 150 ? "Хранитель рун" : n >= 50 ? "Странник рун" : "Путник");
 const LADDER = [3, 5, 8, 12, 18, 25, 40];
+const COMBAT_ENERGY = 5;
+const combatEnergyColor = (n:number) => n>=5?"#35d06f":n===4?"#91df4f":n===3?"#328bea":n===2?"#68d8ee":n===1?"#e34c43":"#26302a";
 
 const NAMES_F = ["Астрид", "Фрейдис", "Гудрун", "Сигрид", "Хельга", "Ингрид", "Ирса", "Сольвейг"];
 const NAMES_M = ["Сигурд", "Рагнар", "Эйнар", "Лейф", "Бьорн", "Харальд", "Ульф", "Гудмунд"];
@@ -99,7 +101,7 @@ const NAMES_M = ["Сигурд", "Рагнар", "Эйнар", "Лейф", "Бь
 const HEROES: HeroDef[] = [
   { id: "elf", race: "Эльфийка", gender: "f", sym: "ᛊ", color: "#e8f4ff", str: 6, en: 10, hp: 90, weapon: "Лук Лунного Света", ability: "Шёпот ветров", abilityDesc: "1 раз в мире убирает один неверный ответ загадки.", img: "hero_elf.png" },
   { id: "viking", race: "Викинг", gender: "m", sym: "ᛉ", color: "#ffd76a", str: 9, en: 7, hp: 110, weapon: "Копьё Молний", ability: "Крылья бури", abilityDesc: "1 раз за бой щитом поглощает удар врага.", img: "hero_viking.png" },
-  { id: "dwarf", race: "Гном", gender: "m", sym: "ᚲ", color: "#ff9d5c", str: 10, en: 5, hp: 130, weapon: "Молот Глубин", ability: "Каменная кожа", abilityDesc: "Получает на 25% меньше урона; сундуки дают +50% искр.", img: "hero_dwarf.png" },
+  { id: "dwarf", race: "Гном", gender: "m", sym: "ᚲ", color: "#ff9d5c", str: 10, en: 5, hp: 130, weapon: "Молот Глубин", ability: "Каменная кожа", abilityDesc: "Получает на 25% меньше урона; сундуки дают +50% Капель силы.", img: "hero_dwarf.png" },
   { id: "berserk", race: "Берсерк", gender: "m", sym: "ᚦ", color: "#ff6b4a", str: 12, en: 4, hp: 100, weapon: "Секира «Клык Зверя»", ability: "Медвежья ярость", abilityDesc: "Когда здоровье ниже половины — урон удваивается.", img: "hero_berserk.png" },
 ];
 
@@ -302,9 +304,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .dname{font-size:10px;font-weight:700;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dnum{font-size:9px;color:#8fa39a}
 .dvs{font-size:15px;font-weight:700;color:#ffd76a;text-shadow:0 0 8px rgba(255,215,106,.55)}
-.denergy{display:flex;gap:3px;justify-content:center;flex-wrap:wrap}
-.pip{width:6px;height:6px;border-radius:50%;background:#233028}
-.pip.on{background:#b678ff;box-shadow:0 0 5px #b678ff}
+.denergy{display:flex;gap:5px;justify-content:center;align-items:center;flex-wrap:nowrap;margin-top:3px}.energy-label{font-size:7px;color:#84968a;text-transform:uppercase;letter-spacing:.6px}
+.pip{width:11px;height:11px;border-radius:50%;background:#1c2420;border:1px solid #344039;transition:background .25s,box-shadow .25s,opacity .25s}.pip.on{border-color:rgba(255,255,255,.48)}
 .flog{min-height:34px;font-size:12px;font-style:italic;color:#cfe3d2;line-height:1.45;text-align:center;margin:8px 4px}
 .acts{display:flex;flex-direction:column;gap:8px;padding:0 6px}
 .btn.rune{background:linear-gradient(135deg,#b678ff,#8a4fd6);color:#fff}
@@ -356,7 +357,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 
 .hall-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.hall-section{min-height:126px;padding:12px;border-radius:15px;text-align:left;background:linear-gradient(145deg,#18221b,#0d130f);border:1px solid #2b3c30;box-shadow:0 7px 16px rgba(0,0,0,.28)}
 .hall-section:active{transform:scale(.98)}.hall-section h3{font-size:13px;color:#ffd76a;margin:4px 0}.hall-section p{font-size:9px;line-height:1.35;color:#91a598}.hall-section .hall-icon{font-size:29px;display:block}.hall-count{display:inline-block;margin-top:7px;padding:3px 6px;border-radius:7px;background:#0a0e0b;border:1px solid #34473a;font-size:9px;color:#d6e3d8}
-.hall-slots{display:flex;gap:5px;margin-top:8px}.hall-slot{width:27px;height:27px;border-radius:7px;border:1px solid #4b5d4e;background:#090d0a;display:flex;align-items:center;justify-content:center;font-size:14px}.hall-slot.on{border-color:#ffd76a;box-shadow:0 0 7px rgba(255,215,106,.35)}
+.hall-slots{display:flex;gap:4px;margin-top:10px}.hall-slot{width:42px;height:42px;flex:0 0 42px;border-radius:10px;border:1px solid #4b5d4e;background:#090d0a;display:flex;align-items:center;justify-content:center;font-size:20px}.hall-slot.on{border-color:#ffd76a;box-shadow:0 0 9px rgba(255,215,106,.42)}.hall-slot:active{transform:scale(.91);background:#1b271e}
 .vial{position:relative;width:13px;height:21px;border:1px solid rgba(235,249,255,.72);border-radius:3px 3px 7px 7px;background:linear-gradient(180deg,rgba(255,255,255,.35) 0 35%,var(--vial) 38% 100%);box-shadow:0 0 8px var(--vial)}
 .craft-entry{width:100%;padding:13px;border-radius:15px;background:linear-gradient(135deg,#5f321b,#1c1712);border:1px solid #d68b38;text-align:left;box-shadow:inset 0 0 18px rgba(255,119,37,.12)}.craft-entry b{display:block;color:#ffc45e;font-size:14px}.craft-entry span{font-size:10px;color:#d7b891}
 .craft-screen{background:radial-gradient(circle at 50% 28%,#62331d,#18120e 58%,#090b09);padding-top:18px}.craft-fire{font-size:48px;filter:drop-shadow(0 0 15px #ff6a21)}.craft-recipe{display:grid;grid-template-columns:1fr 34px 1fr 34px 1fr;align-items:center;gap:5px;margin:16px 0}.craft-slot{aspect-ratio:1;border-radius:12px;border:1px solid #725336;background:rgba(8,10,8,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#8e806c;font-size:9px}.craft-slot b{font-size:24px;color:#d7b06a}.craft-op{text-align:center;color:#ffbe55;font-size:20px;font-weight:900}
@@ -3811,6 +3812,22 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     let heroAnim:any=heroFallback.userData.anim;
     let attackStartedAt=-10000;
     const attackGlowMats:THREE.MeshStandardMaterial[]=[];
+    const strikeColor=skin==="valkyrie"?0x91ddff:0xff8538;
+    const strikeMat=new THREE.MeshBasicMaterial({color:strikeColor,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide});
+    const strikeFlash=new THREE.Mesh(new THREE.RingGeometry(.12,.42,24),strikeMat);
+    strikeFlash.position.set(0,1.35,1.28);
+    strikeFlash.visible=false;
+    hero.add(strikeFlash);
+    const strikeLight=new THREE.PointLight(strikeColor,0,4.8,2);
+    strikeLight.position.set(0,1.35,1.15);
+    hero.add(strikeLight);
+    const boltGeo=new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(.18,1.92,1.31),new THREE.Vector3(-.10,1.62,1.31),new THREE.Vector3(.12,1.39,1.31),new THREE.Vector3(-.18,1.02,1.31)
+    ]);
+    const boltMat=new THREE.LineBasicMaterial({color:0xc9f3ff,transparent:true,opacity:0,blending:THREE.AdditiveBlending});
+    const strikeBolt=new THREE.Line(boltGeo,boltMat);
+    strikeBolt.visible=false;
+    hero.add(strikeBolt);
     attackActionRef.current=()=>{
       const now=performance.now();
       if(now-attackStartedAt<650)return;
@@ -3863,7 +3880,11 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       const kneeL=model.getObjectByName("Knee_L_Pivot") as THREE.Object3D | null;
       const kneeR=model.getObjectByName("Knee_R_Pivot") as THREE.Object3D | null;
       const eyesPivot=model.getObjectByName("Eyes_Pivot") as THREE.Object3D | null;
-      const weaponSocket=model.getObjectByName("WeaponSocket_R") as THREE.Object3D | null;
+      const weaponSocketL=model.getObjectByName("WeaponSocket_L") as THREE.Object3D | null;
+      const weaponSocketR=model.getObjectByName("WeaponSocket_R") as THREE.Object3D | null;
+      // The Valkyrie's sword is in her left hand, while the shield is on the right.
+      // Animate the actual weapon arm so she never appears to strike with the shield.
+      const weaponSocket=skin==="valkyrie"?(weaponSocketL||weaponSocketR):(weaponSocketR||weaponSocketL);
       if(weaponSocket){
         weaponSocket.traverse((o:any)=>{
           if(!o.isMesh)return;
@@ -3909,6 +3930,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
           legR:{upper:legR,knee:kneeR||dummyKR},
           eyes:eyesPivot||dummyEyes,
           weapon:weaponSocket||new THREE.Object3D(),
+          attackSide:skin==="valkyrie"?"left":"right",
           phase:skin==="valkyrie"?1.2:0
         };
       }
@@ -4012,6 +4034,14 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
         }
         const impact=attackActive?Math.max(0,1-Math.abs(attackP-.57)/.17):0;
         attackGlowMats.forEach(m=>{m.emissiveIntensity=attackActive ? .22+impact*2.45 : .05;});
+        strikeFlash.visible=impact>0;
+        strikeBolt.visible=skin==="valkyrie"&&impact>0;
+        const fxScale=.65+impact*(.72+h.str*.035);
+        strikeFlash.scale.setScalar(fxScale);
+        strikeFlash.rotation.z=now*.018;
+        strikeMat.opacity=impact*.9;
+        boltMat.opacity=impact*.92;
+        strikeLight.intensity=impact*(1.35+h.str*.16);
         if(heroAnim.mode==="projected" || heroAnim.mode==="multiview"){
           // Very small vertical step + body sway: enough to read as walking
           // without deforming the projected artwork.
@@ -4027,10 +4057,10 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
           heroAnim.legR.upper.rotation.x=-stride;
           heroAnim.legL.knee.rotation.x=moving?Math.max(0,-cycle)*.68:0;
           heroAnim.legR.knee.rotation.x=moving?Math.max(0,cycle)*.68:0;
-          heroAnim.armL.upper.rotation.x=armSwing;
-          heroAnim.armR.upper.rotation.x=-armSwing+attackArmX;
-          heroAnim.armL.elbow.rotation.x=moving?-.12-Math.max(0,armSwing)*.30:0;
-          heroAnim.armR.elbow.rotation.x=(moving?-.12-Math.max(0,-armSwing)*.30:0)+attackElbowX;
+          heroAnim.armL.upper.rotation.x=armSwing+(heroAnim.attackSide==="left"?attackArmX:0);
+          heroAnim.armR.upper.rotation.x=-armSwing+(heroAnim.attackSide==="right"?attackArmX:0);
+          heroAnim.armL.elbow.rotation.x=(moving?-.12-Math.max(0,armSwing)*.30:0)+(heroAnim.attackSide==="left"?attackElbowX:0);
+          heroAnim.armR.elbow.rotation.x=(moving?-.12-Math.max(0,-armSwing)*.30:0)+(heroAnim.attackSide==="right"?attackElbowX:0);
           // Expressive low-cost eye animation: a short natural blink and a
           // subtle side-to-side glance, with no texture or extra draw calls.
           const blinkT=(now+heroAnim.phase*613)%4200;
@@ -4123,7 +4153,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;};
+    return()=>{glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});boltGeo.dispose();boltMat.dispose();renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;};
   },[h.id,on,eventDone]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
@@ -4203,6 +4233,7 @@ function App() {
   const [mhp, setMhp] = useState(0);
   const [hhp, setHhp] = useState(0);
   const [hen, setHen] = useState(0);
+  const [men, setMen] = useState(0);
   const [flog, setFlog] = useState("");
   const [shield, setShield] = useState(false);
   const [valk, setValk] = useState(false);
@@ -4223,7 +4254,7 @@ const [roadT, setRoadT] = useState(0.06);
   const go = (s: Screen) => setScreen(s);
   const openRealm = (r: Realm) => { haptic(); setScreen({ t: "realm", id: r.id }); };
   const watchGain = () => Math.floor(Math.min(12, (Date.now() - save.watch) / 3600000) * 3);
-  const collectWatch = () => { const g = watchGain(); if (g <= 0) { say("Дозор только начался — искры ещё копятся."); return; } setSave(s => ({ ...s, sparks: s.sparks + g, watch: Date.now() })); haptic("success"); say("Дозор завершён: +" + g + " ✨"); };
+  const collectWatch = () => { const g = watchGain(); if (g <= 0) { say("Дозор только начался — Капли силы ещё собираются."); return; } setSave(s => ({ ...s, sparks: s.sparks + g, watch: Date.now() })); haptic("success"); say("Дозор завершён: +" + g + " Капель силы"); };
   const claimGift = () => { if (save.gift === today()) return; const d = save.gift ? Math.round((Date.parse(today()) - Date.parse(save.gift)) / 86400000) : 99; const next = d <= 2 ? (save.streak % 7) + 1 : 1; const rew = LADDER[next - 1]; setSave(s => ({ ...s, sparks: s.sparks + rew, gift: today(), streak: next })); haptic("success"); say("Дар Древа, день " + next + ": +" + rew + " ✨"); };
   const confirmHero = () => { if (!pick || !pickName) return; setSave(s => ({ ...s, hero: { id: pick, name: pickName } })); haptic("success"); say("Путь начинается, " + pickName + "!"); setScreen({ t: "tree" }); };
   const heroDef = save.hero ? HEROES.find(h => h.id === save.hero!.id)! : null;
@@ -4268,45 +4299,49 @@ const [roadT, setRoadT] = useState(0.06);
     const ash = save.powers.includes("ashBreath");
     setMhp(m.hp);
     setHhp(heroDef!.hp + (ash ? 25 : 0));
-    setHen(heroDef!.en + (ash ? 2 : 0));
+    setHen(COMBAT_ENERGY);
+    setMen(COMBAT_ENERGY);
     setOver(""); setShield(false); setValk(false);
-    setFlog(ash ? "Дыхание Ясеня хранит тебя: +25 здоровья, +2 энергии." : m.name + " поднимает оружие!");
+    setFlog(ash ? "Дыхание Ясеня хранит тебя: +25 здоровья и полный запас энергии." : m.name + " поднимает оружие!");
     if (ash) setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "ashBreath") }));
     setScreen({ t: "fight", id });
   };
-  const fightAct = (id: string, kind: "hit" | "rune" | "shield") => {
+  const fightAct = (id: string, kind: "hit" | "rune" | "shield" | "restore") => {
     if (over) return;
     const m = MASTERS[id]; const idx = trialIdx(id);
-    let dmg = 0; let log = ""; let nhen = hen; let nshield = shield;
+    let dmg = 0; let log = ""; let nhen = hen; let nmen = men; let nshield = shield;
     if (kind === "hit") {
       dmg = heroDef!.str + rnd(4);
-      if (save.powers.includes("fireOath")) { dmg += 5; setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "fireOath") })); log = "Огненный обет! "; }
+      if(hen>0)nhen=Math.max(0,hen-1);else{dmg=Math.ceil(dmg*.55);log="Силы иссякли — удар слабее. ";}
+      if (save.powers.includes("fireOath")) { dmg += 5; setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "fireOath") })); log += "Огненный обет! "; }
       if (heroDef!.id === "berserk" && hhp <= heroDef!.hp / 2) { dmg *= 2; log += "Медвежья ярость! "; }
       log += "Ты бьёшь: " + heroDef!.weapon + " — −" + dmg + " хозяину.";
     }
     if (kind === "rune") {
-      if (hen < 4) { say("Мало энергии для заклинания!"); return; }
-      nhen = hen - 4; dmg = heroDef!.en + 2 + rnd(5);
+      if (hen < 2) { say("Для рунического удара нужно 2 деления энергии."); return; }
+      nhen = hen - 2; dmg = heroDef!.en + 2 + rnd(5);
       log = "Руническое заклинание вспыхивает: −" + dmg + " хозяину.";
     }
-    if (kind === "shield") { nshield = true; log = "Ты поднимаешь щит — удар ослабнет."; }
+    if (kind === "shield") { if(hen<1){say("Нет энергии, чтобы удержать щит.");return;} nhen=hen-1;nshield = true; log = "Ты поднимаешь щит — удар ослабнет."; }
+    if (kind === "restore") { nhen=Math.min(COMBAT_ENERGY,hen+2);log="Ты переводишь дыхание и восстанавливаешь 2 деления энергии."; }
     const nm = mhp - dmg;
-    if (nm <= 0) { setMhp(0); setHen(nhen); setOver("win"); const add = 8 + idx * 2; setFlog("Хозяин повержен! Награда: +" + add + " ✨"); finishTrial(id, idx, add); return; }
+    if (nm <= 0) { setMhp(0); setHen(nhen); setMen(nmen); setOver("win"); const add = 8 + idx * 2; setFlog("Хозяин повержен! Награда: +" + add + " Капель силы"); finishTrial(id, idx, add); return; }
     let md = m.atk + rnd(3); let mlog = "";
-    if (nshield) { md = Math.ceil(md * 0.3); mlog = " Щит принял большую часть удара."; }
+    if(nmen<=0){md=0;nmen=2;mlog=" "+m.name+" вынужден перевести дыхание и восстанавливает энергию.";}else nmen=Math.max(0,nmen-1);
+    if (nshield) { md = Math.ceil(md * 0.3); mlog += " Щит принял большую часть удара."; }
     if (save.powers.includes("iceOath")) { md = Math.ceil(md * 0.65); setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "iceOath") })); mlog += " Ледяной обет сковал удар врага."; }
     if (heroDef!.id === "dwarf") md = Math.ceil(md * 0.75);
     let nh = hhp;
     if (heroDef!.id === "viking" && !valk && nh - md <= 0) { setValk(true); md = 0; mlog = " Крылья бури поглотили смертельный удар!"; }
     nh = nh - md;
-    setMhp(nm); setHhp(Math.max(0, nh)); setHen(nhen); setShield(false);
+    setMhp(nm); setHhp(Math.max(0, nh)); setHen(nhen); setMen(nmen); setShield(false);
     if (nh <= 0 && save.powers.includes("yggdrasilCall")) {
       setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "yggdrasilCall") }));
       setHhp(30); setFlog(log + " Корни Иггдрасиля удержали тебя над смертью. Ты возвращён с 30 здоровья.");
       return;
     }
     if (nh <= 0) { setOver("lose"); setSave(s => ({ ...s, sparks: Math.max(0, s.sparks - 10) })); setFlog(log + " " + m.name + " бьёт... Ты пал. Древо возрождает тебя (−10 ✨)."); return; }
-    setFlog(log + mlog + " " + m.name + " отвечает: −" + md + ".");
+    setFlog(md>0?log + mlog + " " + m.name + " отвечает: −" + md + ".":log+mlog);
   };
   const nextStep = (id: string) => { if (trialIdx(id) >= 3 || save.artifacts.includes(id)) setScreen({ t: "realm", id }); else setScreen({ t: "trial", id }); };
   const isNav = (id: string) => (id === "tree" ? screen.t === "tree" || screen.t === "realm" : id === "hall" ? screen.t === "hall" || screen.t === "craft" : screen.t === id);
@@ -4326,7 +4361,7 @@ const [roadT, setRoadT] = useState(0.06);
         {screen.t === "craft" && <button className="back" onClick={() => go({ t: "hall" })}>← Чертог · Крафт</button>}
         {screen.t === "trial" && <div className="title">🗝 Испытание</div>}
         {screen.t === "fight" && <div className="title">⚔ Бой</div>}
-        <div className="sparks">✨ {save.sparks} Искр</div>
+        <div className="sparks">🔥 {save.sparks} Капель силы</div>
       </div>
 
       {screen.t === "choose" && (
@@ -4672,20 +4707,24 @@ const [roadT, setRoadT] = useState(0.06);
                 <span className="dname" style={{ color: realm.color }}>{m.name}</span>
                 <span className="dhp"><span className="dhpfill" style={{ width: Math.max(0, (mhp / m.hp) * 100) + "%", background: realm.color }} /></span>
                 <span className="dnum">{mhp}/{m.hp}</span>
+                <span className="energy-label">энергия</span>
+                <span className="denergy">{Array.from({ length: COMBAT_ENERGY }).map((_, i) => {const c=combatEnergyColor(men);return <span key={i} className={"pip"+(i<men?" on":"")} style={i<men?{background:c,boxShadow:`0 0 7px ${c}`}:{}}/>;})}</span>
               </div>
               <span className="dvs">⚔</span>
               <div className="dside">
                 <span className="dface" style={{ borderColor: heroDef!.color, color: heroDef!.color }}><BgImg name={heroDef!.img} className="himg" />{heroDef!.sym}</span>
                 <span className="dname" style={{ color: heroDef!.color }}>{save.hero!.name}</span>
                 <span className="dhp"><span className="dhpfill" style={{ width: Math.max(0, (hhp / heroDef!.hp) * 100) + "%", background: "#7ee787" }} /></span>
-                <span className="denergy">{Array.from({ length: heroDef!.en }).map((_, i) => (<span key={i} className={"pip" + (i < hen ? " on" : "")} />))}</span>
+                <span className="energy-label">энергия</span>
+                <span className="denergy">{Array.from({ length: COMBAT_ENERGY }).map((_, i) => {const c=combatEnergyColor(hen);return <span key={i} className={"pip"+(i<hen?" on":"")} style={i<hen?{background:c,boxShadow:`0 0 7px ${c}`}:{}}/>;})}</span>
               </div>
             </div>
             <div className="flog">{flog}</div>
             {!over && (<div className="acts">
-              <button className="btn gold" onClick={() => fightAct(realm.id, "hit")}>⚔ Удар: {heroDef!.weapon}</button>
-              <button className="btn rune" onClick={() => fightAct(realm.id, "rune")}>🌀 Руническое заклинание (−4 ✨)</button>
-              <button className="btn shield" onClick={() => fightAct(realm.id, "shield")}>🛡 Щит</button>
+              <button className="btn gold" onClick={() => fightAct(realm.id, "hit")}>⚔ Удар: {heroDef!.weapon} (−1 энергия)</button>
+              <button className="btn rune" onClick={() => fightAct(realm.id, "rune")}>🌀 Руническое заклинание (−2 энергии)</button>
+              <button className="btn shield" onClick={() => fightAct(realm.id, "shield")}>🛡 Щит (−1 энергия)</button>
+              <button className="btn ghost" onClick={() => fightAct(realm.id, "restore")}>🌿 Перевести дыхание (+2 энергии)</button>
             </div>)}
             {over === "win" && <button className="btn gold" onClick={() => nextStep(realm.id)}>Забрать награду →</button>}
             {over === "lose" && <button className="btn ghost" onClick={() => go({ t: "tree" })}>Древо возрождает тебя</button>}
@@ -4725,7 +4764,7 @@ const [roadT, setRoadT] = useState(0.06);
               Новое оружие будет добавляться в склад и появляться здесь для экипировки.
             </div>
             <div className="hrow">🌀 {heroDef.ability}: {heroDef.abilityDesc}</div>
-            <div className="hrow">✨ Искр: <b>{save.sparks}</b> • 🏺 Артефактов: <b>{save.artifacts.length}/9</b></div>
+            <div className="hrow">🔥 Капель силы: <b>{save.sparks}</b> • 🏺 Артефактов: <b>{save.artifacts.length}/9</b></div>
             {save.artifacts.length > 0 && <div className="hrow">🏺 {save.artifacts.map(a => ARTIFACTS[a]).join(", ")}</div>}
           </div>
         </div>
@@ -4742,8 +4781,8 @@ const [roadT, setRoadT] = useState(0.06);
               <div className="days">{LADDER.map((v, i) => (<span key={i} className={"day" + (i + 1 === hl ? " on" : i + 1 < hl && claimed ? " done" : "")}><b>{v}</b>день {i + 1}</span>))}</div>
               {claimed ? <button className="btn" disabled>Дар получен • вернись завтра</button> : <button className="btn gold" onClick={claimGift}>Забрать дар +{LADDER[next - 1]} ✨</button>}
             </div>
-            <div className="card center"><div className="big">⏳</div><div className="qhead2">Дозор героя</div><p className="dim">Искры капают, даже когда приложение закрыто: 3 в час, до 12 часов.</p>
-              <button className="btn gold" onClick={collectWatch}>Завершить дозор · +{watchGain()} ✨</button>
+            <div className="card center"><div className="big">⏳</div><div className="qhead2">Дозор героя</div><p className="dim">Капли силы собираются, даже когда приложение закрыто: 3 в час, до 12 часов.</p>
+              <button className="btn gold" onClick={collectWatch}>Завершить дозор · +{watchGain()} 🔥</button>
             </div>
           </div>
         );
@@ -4755,25 +4794,25 @@ const [roadT, setRoadT] = useState(0.06);
             <div className="big">🏛️</div>
             <div className="qhead2">Чертог героя</div>
             <div className="stats">
-              <div className="stat"><b>✨ {save.sparks}</b><span>Искр</span></div>
+              <div className="stat"><b>🔥 {save.sparks}</b><span>Капли силы</span></div>
               <div className="stat"><b>🏺 {save.artifacts.length}/9</b><span>артефакты</span></div>
             </div>
             <div className="rank">🏆 Ранг: {rank(save.sparks)}</div>
             {save.hero && heroDef && <p className="dim">Герой: {save.hero.name} • {heroDef.race} • испытаний пройдено: {save.trials.length}</p>}
           </div>
           <div className="hall-grid">
-            <button className="hall-section" onClick={()=>go({t:"hero"})}>
+            <div className="hall-section">
               <span className="hall-icon">⚔️</span><h3>Оружие</h3>
               <p>{save.heroSkin==="valkyrie"?"Меч валькирии":"Секира викинга"} сейчас в руке. Здесь будут храниться найденные клинки, топоры и копья.</p>
-              <div className="hall-slots"><span className="hall-slot on">⚔</span><span className="hall-slot">＋</span><span className="hall-slot">＋</span></div>
+              <div className="hall-slots"><button className="hall-slot on" onClick={()=>say("Это оружие уже экипировано.")}>⚔</button><button className="hall-slot" onClick={()=>say("Ячейка свободна: оружие ещё не найдено.")}>＋</button><button className="hall-slot" onClick={()=>say("Ячейка свободна: оружие ещё не найдено.")}>＋</button></div>
               <span className="hall-count">1 предмет</span>
-            </button>
-            <button className="hall-section" onClick={()=>go({t:"hero"})}>
+            </div>
+            <div className="hall-section">
               <span className="hall-icon">🛡️</span><h3>Экипировка</h3>
               <p>Броня, щиты, шлемы и сапоги. Выбранное снаряжение будет сразу появляться на герое.</p>
-              <div className="hall-slots"><span className="hall-slot on">♜</span><span className="hall-slot on">◉</span><span className="hall-slot on">⌁</span></div>
+              <div className="hall-slots"><button className="hall-slot on" onClick={()=>say("Надета базовая броня.")}>♜</button><button className="hall-slot on" onClick={()=>say("Экипирован базовый щит.")}>◉</button><button className="hall-slot on" onClick={()=>say("Надеты базовые сапоги.")}>⌁</button></div>
               <span className="hall-count">Базовый набор</span>
-            </button>
+            </div>
             <button className="hall-section" onClick={()=>say("Эликсиры появятся здесь после первых наград.")}>
               <span className="hall-icon">🧪</span><h3>Эликсиры</h3>
               <p>Лечение, сила, защита и руническая энергия. Зелья расходуются во время путешествий.</p>
