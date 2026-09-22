@@ -937,7 +937,7 @@ function midHero3d(h: HeroDef) {
     boot.position.set(0, -0.47, 0.075);
     knee.add(boot);
     g.add(thigh);
-    return thigh;
+    return {upper:thigh,knee};
   };
   const legL = makeLeg(-1), legR = makeLeg(1);
 
@@ -989,7 +989,7 @@ function midHero3d(h: HeroDef) {
   shadow.position.y = 0.02;
   g.add(shadow);
 
-  g.userData.anim = { armL, armR, legL, legR, weapon, phase: h.id === "elf" ? 1.2 : h.id === "dwarf" ? 2.4 : 0 };
+  g.userData.anim = { mode:"rigged", armL, armR, legL, legR, weapon, phase: h.id === "elf" ? 1.2 : h.id === "dwarf" ? 2.4 : 0 };
   return markMeshes(g);
 }
 
@@ -1496,6 +1496,12 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       | { kind:"segment"; x1:number; z1:number; x2:number; z2:number; r:number };
     const colliders: Collider[] = [];
     const HERO_RADIUS = 0.62;
+    const RIVER_HALF = 5.4;
+    const BRIDGE_X = -57, BRIDGE_Z = -48, BRIDGE_SPAN = 13.6, BRIDGE_WIDTH = 3.6;
+    const BRIDGE_Y = groundY(BRIDGE_X,BRIDGE_Z) + .58;
+    const riverCenterX = (z:number) => -57 + Math.sin(((z + 94) / 6) * .42) * 4.2;
+    const inRiverWater = (x:number,z:number) => z >= -94 && z <= 98 && Math.abs(x-riverCenterX(z)) < RIVER_HALF + HERO_RADIUS*.18;
+    const onRiverBridge = (x:number,z:number) => Math.abs(x-BRIDGE_X) <= BRIDGE_SPAN/2-.12 && Math.abs(z-BRIDGE_Z) <= BRIDGE_WIDTH/2-.16;
     // 0 = barred shut, 1 = fully open. Used both by the visual gate and collision passage.
     let villageGateProgress = villageGateOpenRef.current ? 1 : 0;
     const addRectCollider=(x:number,z:number,w:number,d:number,rot=0,pad=0.12)=>colliders.push({kind:"rect",x,z,w:w+pad*2,d:d+pad*2,rot});
@@ -1519,6 +1525,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
         // Interior bounds leave a clear opening toward the door at the front (positive Z).
         return x<heroHomeX-2.72 || x>heroHomeX+2.72 || z<heroHomeZ-2.05 || z>heroHomeZ+2.30;
       }
+      // The river is solid movement terrain only where the wooden bridge deck exists.
+      if(inRiverWater(x,z) && !onRiverBridge(x,z)) return true;
       // The front gate physically blocks the opening until the leaves have swung far enough.
       if(villageGateProgress < .78 && hits(x,z,{kind:"segment",x1:-3.15,z1:gateFrontZ,x2:3.15,z2:gateFrontZ,r:.20})) return true;
       return colliders.some(c=>hits(x,z,c));
@@ -1561,7 +1569,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     // Living river: broad low-poly water ribbon with subtle surface displacement.
     const riverPts:{x:number;z:number}[]=[];
     for(let i=0;i<=32;i++) riverPts.push({z:-94+i*6,x:-57+Math.sin(i*.42)*4.2});
-    const riverVerts:number[]=[]; const riverIdx:number[]=[]; const riverHalf=5.4;
+    const riverVerts:number[]=[]; const riverIdx:number[]=[]; const riverHalf=RIVER_HALF;
     for(let i=0;i<riverPts.length;i++){
       const p=riverPts[i],prev=riverPts[Math.max(0,i-1)],next=riverPts[Math.min(riverPts.length-1,i+1)];
       const dx=next.x-prev.x,dz=next.z-prev.z,len=Math.max(.001,Math.hypot(dx,dz)),nx=-dz/len,nz=dx/len,edge=groundY(p.x,p.z)+.055;
@@ -2410,10 +2418,10 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     // Straight river bridge replaces the old floating dock.
     const riverBridge=new THREE.Group();
     riverBridge.userData={id:"port",label:"Речной мост"};
-    const bridgeX=-57, bridgeZ=-48, bridgeY=groundY(bridgeX,bridgeZ)+.58;
+    const bridgeX=BRIDGE_X, bridgeZ=BRIDGE_Z, bridgeY=BRIDGE_Y;
     riverBridge.position.set(bridgeX,bridgeY,bridgeZ);
     const bridgeWood=mat(0x5b3a25,1), bridgeDark=mat(0x332219,1);
-    const span=13.6, deckW=3.6;
+    const span=BRIDGE_SPAN, deckW=BRIDGE_WIDTH;
     for(let i=0;i<17;i++){
       const plank=box(.78,.24,deckW,0x67432b,1);
       plank.position.set(-span/2+.48+i*.80,0,0);
@@ -2437,7 +2445,10 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     const beamA=box(span-.4,.28,.24,0x332219,1);beamA.position.set(0,-.26,-1.25);riverBridge.add(beamA);
     const beamB=beamA.clone();beamB.position.z=1.25;riverBridge.add(beamB);
     addMesh(riverBridge,"port","Речной мост");objects.push(riverBridge);
-    addRectCollider(bridgeX,bridgeZ,span,deckW,0,.02);
+    // Only the two railings block movement. The previous full-deck collider made
+    // the entire bridge impassable.
+    addSegmentCollider(bridgeX-span/2+.35,bridgeZ-deckW/2+.18,bridgeX+span/2-.35,bridgeZ-deckW/2+.18,.10,.02);
+    addSegmentCollider(bridgeX-span/2+.35,bridgeZ+deckW/2-.18,bridgeX+span/2-.35,bridgeZ+deckW/2-.18,.10,.02);
 
     // Utility clutter makes the village feel inhabited.
     const barrel=(x:number,z:number)=>{const b=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,1,12),mat(0x65432c,1));b.position.set(x,groundY(x,z)+.5,z);scene.add(b);for(const y of [.25,.76]){const r=new THREE.Mesh(new THREE.TorusGeometry(.51,.045,6,18),mat(0x302824,.7,.1));r.rotation.x=Math.PI/2;r.position.set(x,groundY(x,z)+y,z);scene.add(r);}};
@@ -3815,12 +3826,18 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
 
       const armL=model.getObjectByName("Arm_L_Pivot") as THREE.Object3D | null;
       const armR=model.getObjectByName("Arm_R_Pivot") as THREE.Object3D | null;
+      const elbowL=model.getObjectByName("Elbow_L_Pivot") as THREE.Object3D | null;
+      const elbowR=model.getObjectByName("Elbow_R_Pivot") as THREE.Object3D | null;
       const legL=model.getObjectByName("Leg_L_Pivot") as THREE.Object3D | null;
       const legR=model.getObjectByName("Leg_R_Pivot") as THREE.Object3D | null;
+      const kneeL=model.getObjectByName("Knee_L_Pivot") as THREE.Object3D | null;
+      const kneeR=model.getObjectByName("Knee_R_Pivot") as THREE.Object3D | null;
       const weaponSocket=model.getObjectByName("WeaponSocket_R") as THREE.Object3D | null;
 
       const projectedFront=model.getObjectByName("HeroVisual_Front") as THREE.Object3D | null;
-      const isV6MultiView=/(?:v6_.*_multiview|Yggdrasil_(?:Valkyrie_Raven_Guard|Viking_Jarl))/i.test(heroAsset);
+      // The new Viking has real articulated limb nodes. The Valkyrie remains on
+      // the compatibility whole-body motion until it receives the same rig.
+      const isV6MultiView=/(?:v6_.*_multiview|Yggdrasil_Valkyrie_Raven_Guard)/i.test(heroAsset);
 
       if(projectedFront || isV6MultiView){
         // V5/V6 experimental textured heroes keep the artwork/model intact.
@@ -3836,12 +3853,14 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       }else if(armL&&armR&&legL&&legR){
         const dummyL=new THREE.Object3D();
         const dummyR=new THREE.Object3D();
+        const dummyKL=new THREE.Object3D();
+        const dummyKR=new THREE.Object3D();
         heroAnim={
           mode:"rigged",
-          armL:{upper:armL,elbow:dummyL},
-          armR:{upper:armR,elbow:dummyR},
-          legL,
-          legR,
+          armL:{upper:armL,elbow:elbowL||dummyL},
+          armR:{upper:armR,elbow:elbowR||dummyR},
+          legL:{upper:legL,knee:kneeL||dummyKL},
+          legR:{upper:legR,knee:kneeR||dummyKR},
           weapon:weaponSocket||new THREE.Object3D(),
           phase:skin==="valkyrie"?1.2:0
         };
@@ -3912,27 +3931,31 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
         cameraDir.current.z=q.dz/l;
         setMoving(true);
       }else setMoving(false);
-      const hy=groundY(q.x,q.z);
+      const hy=onRiverBridge(q.x,q.z)?BRIDGE_Y+.12:groundY(q.x,q.z);
+      const moving=l>.05;
       hero.position.set(q.x,hy+.04,q.z);
       if(heroAnim){
         const walkT=now*.011+heroAnim.phase;
         if(heroAnim.mode==="projected" || heroAnim.mode==="multiview"){
-          const moving=l>.05;
           // Very small vertical step + body sway: enough to read as walking
           // without deforming the projected artwork.
           heroAnim.model.position.y=heroAnim.baseY+(moving?Math.abs(Math.sin(walkT))*0.035:0);
           heroAnim.model.rotation.z=moving?Math.sin(walkT)*0.018:0;
           heroAnim.weapon.rotation.z=-0.12+(moving?Math.sin(walkT)*.035:0);
         }else{
-          const stride=l>.05?Math.sin(walkT)*0.58:0;
-          const armSwing=l>.05?Math.sin(walkT+Math.PI)*0.42:0;
-          heroAnim.legL.rotation.x=stride;
-          heroAnim.legR.rotation.x=-stride;
+          const cycle=moving?Math.sin(walkT):0;
+          const stride=cycle*.58;
+          const armSwing=moving?Math.sin(walkT+Math.PI)*.46:0;
+          heroAnim.legL.upper.rotation.x=stride;
+          heroAnim.legR.upper.rotation.x=-stride;
+          heroAnim.legL.knee.rotation.x=moving?Math.max(0,-cycle)*.68:0;
+          heroAnim.legR.knee.rotation.x=moving?Math.max(0,cycle)*.68:0;
           heroAnim.armL.upper.rotation.x=armSwing;
           heroAnim.armR.upper.rotation.x=-armSwing;
-          heroAnim.armL.elbow.rotation.x=-Math.abs(armSwing)*.35;
-          heroAnim.armR.elbow.rotation.x=-Math.abs(armSwing)*.35;
-          heroAnim.weapon.rotation.z=-0.12+(l>.05?Math.sin(walkT)*.035:0);
+          heroAnim.armL.elbow.rotation.x=moving?-.12-Math.max(0,armSwing)*.30:0;
+          heroAnim.armR.elbow.rotation.x=moving?-.12-Math.max(0,-armSwing)*.30:0;
+          heroAnim.weapon.rotation.z=-0.12+(moving?Math.sin(walkT)*.035:0);
+          hero.position.y+=moving?Math.abs(Math.sin(walkT*2))*.018:0;
         }
       }
       // Keep the camera direction stable when the thumb is released. The old camera
