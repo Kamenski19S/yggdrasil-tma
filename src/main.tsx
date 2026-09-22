@@ -331,11 +331,13 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .mid3d-pill{padding:7px 10px;border:1px solid rgba(255,215,106,.28);border-radius:11px;background:rgba(5,12,8,.72);backdrop-filter:blur(5px);box-shadow:0 4px 12px rgba(0,0,0,.25)}
 .mid3d-pill b{display:block;color:#ffd76a;font-size:12px;line-height:1.1;letter-spacing:.8px}
 .mid3d-pill span{display:block;color:#c9d9cd;font-size:9px;line-height:1.2;margin-top:2px}
-.mid3d-joy{left:14px;bottom:18px;width:132px;height:132px;border-radius:50%;background:rgba(7,14,9,.46);border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 0 25px rgba(0,0,0,.22);touch-action:none}
+.mid3d-joy{left:14px;bottom:52px;width:132px;height:132px;border-radius:50%;background:rgba(7,14,9,.46);border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 0 25px rgba(0,0,0,.22);touch-action:none}
 .mid3d-joy:before,.mid3d-joy:after{content:"";position:absolute;left:50%;top:50%;background:rgba(255,255,255,.08);transform:translate(-50%,-50%);pointer-events:none}
 .mid3d-joy:before{width:82px;height:1px}.mid3d-joy:after{height:82px;width:1px}
 .mid3d-knob{position:absolute;left:41px;top:41px;width:50px;height:50px;border-radius:50%;background:rgba(219,231,221,.28);border:1px solid rgba(255,255,255,.42);box-shadow:0 5px 15px rgba(0,0,0,.35);touch-action:none}
 .mid3d-action{right:16px;bottom:32px;width:64px;height:64px;border-radius:50%;background:rgba(255,215,106,.92);color:#241b06;font-size:22px;font-weight:900;box-shadow:0 5px 16px rgba(0,0,0,.35);touch-action:none}
+.mid3d-strike{right:22px;bottom:112px;width:52px;height:52px;border-radius:50%;border:1px solid rgba(255,225,174,.66);background:radial-gradient(circle at 38% 30%,rgba(255,155,75,.98),rgba(126,38,20,.96));color:#fff4df;font-size:22px;font-weight:900;text-shadow:0 1px 4px rgba(0,0,0,.85);box-shadow:0 5px 15px rgba(0,0,0,.42),0 0 12px rgba(255,99,43,.25);touch-action:none}
+.mid3d-strike:active{transform:scale(.88);box-shadow:0 2px 8px rgba(0,0,0,.45),0 0 18px rgba(255,114,54,.55)}
 .mid3d-hint{left:50%;bottom:9px;transform:translateX(-50%);padding:6px 10px;border-radius:9px;background:rgba(5,10,7,.68);border:1px solid rgba(126,231,135,.18);color:#d0dfd3;font-size:10px;line-height:1.2;white-space:nowrap;pointer-events:none}
 .mid3d-interact{left:50%;bottom:112px;transform:translateX(-50%);width:210px;text-align:center;padding:10px;border-radius:14px;background:rgba(5,11,7,.91);border:1px solid rgba(255,215,106,.55);box-shadow:0 8px 22px rgba(0,0,0,.35)}
 .mid3d-interact b{display:block;color:#ffd76a;font-size:13px;line-height:1.2}
@@ -1006,6 +1008,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
   const cameraDir = useRef({ x: 0, z: 1 });
   const insideHomeRef = useRef(false);
   const homeActionRef = useRef<((inside:boolean)=>void)|null>(null);
+  const attackActionRef = useRef<(()=>void)|null>(null);
   const [villageGateOpen, setVillageGateOpen] = useState(false);
   const villageGateOpenRef = useRef(false);
   const gateActionRef = useRef<(()=>void)|null>(null);
@@ -3787,6 +3790,13 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     const heroFallback=midHero3d(h);
     hero.add(heroFallback);
     let heroAnim:any=heroFallback.userData.anim;
+    let attackStartedAt=-10000;
+    const attackGlowMats:THREE.MeshStandardMaterial[]=[];
+    attackActionRef.current=()=>{
+      const now=performance.now();
+      if(now-attackStartedAt<330)return;
+      attackStartedAt=now;
+    };
 
     const heroAsset=skin==="valkyrie"
       ? "Yggdrasil_Valkyrie_Raven_Guard.glb"
@@ -3835,6 +3845,20 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       const kneeR=model.getObjectByName("Knee_R_Pivot") as THREE.Object3D | null;
       const eyesPivot=model.getObjectByName("Eyes_Pivot") as THREE.Object3D | null;
       const weaponSocket=model.getObjectByName("WeaponSocket_R") as THREE.Object3D | null;
+      if(weaponSocket){
+        weaponSocket.traverse((o:any)=>{
+          if(!o.isMesh)return;
+          const tune=(m:any)=>{
+            if(!m?.isMeshStandardMaterial)return m;
+            const mm=m.clone();
+            mm.emissive=new THREE.Color(0x8b240d);
+            mm.emissiveIntensity=.05;
+            attackGlowMats.push(mm);
+            return mm;
+          };
+          if(Array.isArray(o.material))o.material=o.material.map(tune);else o.material=tune(o.material);
+        });
+      }
 
       const projectedFront=model.getObjectByName("HeroVisual_Front") as THREE.Object3D | null;
       // Legacy V6 characters keep compatibility motion. Both current Yggdrasil
@@ -3940,12 +3964,18 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       hero.position.set(q.x,hy+.04,q.z);
       if(heroAnim){
         const walkT=now*.011+heroAnim.phase;
+        const attackAge=now-attackStartedAt;
+        const attackActive=attackAge>=0&&attackAge<430;
+        const attackP=attackActive?attackAge/430:0;
+        const attackSwing=attackActive?Math.sin(attackP*Math.PI):0;
+        attackGlowMats.forEach(m=>{m.emissiveIntensity=attackActive ? .25+attackSwing*2.15 : .05;});
         if(heroAnim.mode==="projected" || heroAnim.mode==="multiview"){
           // Very small vertical step + body sway: enough to read as walking
           // without deforming the projected artwork.
           heroAnim.model.position.y=heroAnim.baseY+(moving?Math.abs(Math.sin(walkT))*0.035:0);
           heroAnim.model.rotation.z=moving?Math.sin(walkT)*0.018:0;
-          heroAnim.weapon.rotation.z=-0.12+(moving?Math.sin(walkT)*.035:0);
+          heroAnim.weapon.rotation.z=-0.12+(moving?Math.sin(walkT)*.035:0)-attackSwing*1.5;
+          heroAnim.model.rotation.x=attackSwing*.08;
         }else{
           const cycle=moving?Math.sin(walkT):0;
           const stride=cycle*.58;
@@ -3955,16 +3985,16 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
           heroAnim.legL.knee.rotation.x=moving?Math.max(0,-cycle)*.68:0;
           heroAnim.legR.knee.rotation.x=moving?Math.max(0,cycle)*.68:0;
           heroAnim.armL.upper.rotation.x=armSwing;
-          heroAnim.armR.upper.rotation.x=-armSwing;
+          heroAnim.armR.upper.rotation.x=-armSwing-attackSwing*1.55;
           heroAnim.armL.elbow.rotation.x=moving?-.12-Math.max(0,armSwing)*.30:0;
-          heroAnim.armR.elbow.rotation.x=moving?-.12-Math.max(0,-armSwing)*.30:0;
+          heroAnim.armR.elbow.rotation.x=(moving?-.12-Math.max(0,-armSwing)*.30:0)-attackSwing*.42;
           // Expressive low-cost eye animation: a short natural blink and a
           // subtle side-to-side glance, with no texture or extra draw calls.
           const blinkT=(now+heroAnim.phase*613)%4200;
           const blink=blinkT<110?Math.max(.10,Math.abs(blinkT-55)/55):1;
           heroAnim.eyes.scale.y=blink;
           heroAnim.eyes.rotation.y=Math.sin(now*.00115+heroAnim.phase)*.10;
-          heroAnim.weapon.rotation.z=-0.12+(moving?Math.sin(walkT)*.035:0);
+          heroAnim.weapon.rotation.z=-0.12+(moving?Math.sin(walkT)*.035:0)-attackSwing*.72;
           hero.position.y+=moving?Math.abs(Math.sin(walkT*2))*.018:0;
         }
       }
@@ -4050,14 +4080,14 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;gateActionRef.current=null;};
+    return()=>{glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;};
   },[h.id,on,eventDone]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
   const stopJoy=()=>{if(knob.current)knob.current.style.transform="translate(0,0)";state.current.dx=0;state.current.dz=0;};
   // Keep the visible joystick compact, but give it a much larger invisible touch zone.
   // This makes it comfortable to start steering with a thumb slightly above the circle.
-  const startJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{const a=joy.current;if(!a)return;const target=e.target as HTMLElement;if(target.closest?.(".mid3d-action")||target.closest?.(".mid3d-interact"))return;const r=a.getBoundingClientRect();const pad=26,up=78,down=26;const inside=e.clientX>=r.left-pad&&e.clientX<=r.right+pad&&e.clientY>=r.top-up&&e.clientY<=r.bottom+down;if(!inside)return;e.currentTarget.setPointerCapture(e.pointerId);joyMove(e);};
+  const startJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{const a=joy.current;if(!a)return;const target=e.target as HTMLElement;if(target.closest?.(".mid3d-action")||target.closest?.(".mid3d-strike")||target.closest?.(".mid3d-interact"))return;const r=a.getBoundingClientRect();const pad=26,up=78,down=26;const inside=e.clientX>=r.left-pad&&e.clientX<=r.right+pad&&e.clientY>=r.top-up&&e.clientY<=r.bottom+down;if(!inside)return;e.currentTarget.setPointerCapture(e.pointerId);joyMove(e);};
   const moveJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{if(e.currentTarget.hasPointerCapture(e.pointerId))joyMove(e);};
   const endJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);stopJoy();};
 
@@ -4086,6 +4116,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     </div>}
     {near&&!ritualOpen&&!forestEventOpen&&(()=>{const [label,id]=near.split("|");const home=id==="heroHome"||id==="heroHomeExit";const villageGate=id==="gate";return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{villageGate?(villageGateOpen?"Створки открыты, тяжёлый засов снят":"Ворота заперты большим деревянным засовом"):home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода"):"Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else if(id==="gate")gateActionRef.current?.();else on(id);}}>{villageGate?(villageGateOpen?"Закрыть ворота и поставить засов":"Снять засов и открыть ворота"):home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):"Взаимодействовать"}</button></div>;})()}
     <div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
+    <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" title="Удар оружием" onPointerDown={e=>e.stopPropagation()} onClick={()=>{attackActionRef.current?.();haptic();}}>⚔</button>
     <button className="mid3d-ui mid3d-action" onPointerDown={e=>e.stopPropagation()} onClick={()=>on("event")}>ᚠ</button>
     <div className="mid3d-ui mid3d-hint">{insideHome?(moving?"Ты внутри дома":"Дом героя • отдых • сундук • выход"):moving?"Исследуй Мидгард":"Ворота • площадь • кузница • Мимир • норны • лес"}</div>
   </div>;
