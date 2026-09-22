@@ -1615,7 +1615,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       const dx=next.x-prev.x,dz=next.z-prev.z,len=Math.max(.001,Math.hypot(dx,dz)),side=i%2===0?-1:1,rr=.34+midHash(i,15)*.72,off=riverHalf+side*(.25+midHash(i,16)*1.4);
       const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(rr,1),mat(0x5e625a,1));
       stone.position.set(p.x+(-dz/len)*off,groundY(p.x,p.z)+.18,p.z+(dx/len)*off);stone.scale.y=.5+midHash(i,17)*.35;
-      addMesh(stone);addCircleCollider(stone.position.x,stone.position.z,rr*.75,.03);
+      // Decorative bank stones remain visible but never block the player.
+      addMesh(stone);
     }
 
     // A few partially submerged stones break the perfect ribbon silhouette and add scale.
@@ -2023,7 +2024,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     for(let i=0;i<34;i++){
       const x=-84+midHash(i,610)*168,z=-82+midHash(i,611)*164;
       if(Math.hypot(x,z-2)<24) continue;
-      const s=.25+midHash(i,612)*.55;const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(s,1),mat(0x575b55,1));rock.scale.y=.55;rock.position.set(x,groundY(x,z)+s*.28,z);rock.rotation.set(midHash(i,613),midHash(i,614),midHash(i,615));addMesh(rock);addCircleCollider(x,z,s*.8,.03);
+      const s=.25+midHash(i,612)*.55;const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(s,1),mat(0x575b55,1));rock.scale.y=.55;rock.position.set(x,groundY(x,z)+s*.28,z);rock.rotation.set(midHash(i,613),midHash(i,614),midHash(i,615));addMesh(rock);
     }
 
     // Old human settlement — a quiet abandoned farmstead beyond the village.
