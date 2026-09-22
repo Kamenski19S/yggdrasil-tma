@@ -3777,8 +3777,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     let heroAnim:any=heroFallback.userData.anim;
 
     const heroAsset=skin==="valkyrie"
-      ? "Midgard_Hero_Valkyrie_Skin_V2_YUP.glb"
-      : "Midgard_Hero_Viking_Skin_V2_YUP.glb";
+      ? "Midgard_Hero_Valkyrie_Skin_V3_Textured_YUP.glb"
+      : "Midgard_Hero_Viking_Skin_V3_Textured_YUP.glb";
 
     loadGlbWithFolderFallback(heroAsset,(gltf:any)=>{
       const model=gltf.scene;
@@ -3795,7 +3795,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       });
 
       // About twice the old on-screen hero height while keeping a human silhouette.
-      model.scale.setScalar(1.28);
+      model.scale.setScalar(.86);
       model.rotation.y=0;
       model.position.set(0,0,0);
       model.updateMatrixWorld(true);
