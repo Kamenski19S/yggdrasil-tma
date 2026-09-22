@@ -3777,8 +3777,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     let heroAnim:any=heroFallback.userData.anim;
 
     const heroAsset=skin==="valkyrie"
-      ? "Midgard_Hero_Valkyrie_Skin_V5_Projected_YUP.glb"
-      : "Midgard_Hero_Viking_Skin_V5_Projected_YUP.glb";
+      ? "v6_valkyrie_multiview.glb"
+      : "v6_viking_multiview.glb";
 
     loadGlbWithFolderFallback(heroAsset,(gltf:any)=>{
       const model=gltf.scene;
@@ -3800,7 +3800,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       });
 
       // About twice the old on-screen hero height while keeping a human silhouette.
-      model.scale.setScalar(.84);
+      model.scale.setScalar(.78);
       model.rotation.y=0;
       model.position.set(0,0,0);
       model.updateMatrixWorld(true);
@@ -3820,13 +3820,14 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       const weaponSocket=model.getObjectByName("WeaponSocket_R") as THREE.Object3D | null;
 
       const projectedFront=model.getObjectByName("HeroVisual_Front") as THREE.Object3D | null;
+      const isV6MultiView=/v6_.*_multiview/i.test(heroAsset);
 
-      if(projectedFront){
-        // V5 is a projected-skin/impostor hero: the artwork itself must stay intact.
-        // Walking is therefore expressed as a subtle whole-body step/bob rather
-        // than bending empty compatibility pivots which do not own the visual cards.
+      if(projectedFront || isV6MultiView){
+        // V5/V6 experimental textured heroes keep the artwork/model intact.
+        // For V6 we use a subtle full-body walking motion because its current
+        // compatibility pivots are not parents of every visible mesh yet.
         heroAnim={
-          mode:"projected",
+          mode:isV6MultiView?"multiview":"projected",
           model,
           baseY:model.position.y,
           phase:skin==="valkyrie"?1.2:0,
@@ -3915,7 +3916,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       hero.position.set(q.x,hy+.04,q.z);
       if(heroAnim){
         const walkT=now*.011+heroAnim.phase;
-        if(heroAnim.mode==="projected"){
+        if(heroAnim.mode==="projected" || heroAnim.mode==="multiview"){
           const moving=l>.05;
           // Very small vertical step + body sway: enough to read as walking
           // without deforming the projected artwork.
