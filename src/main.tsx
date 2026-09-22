@@ -989,7 +989,7 @@ function midHero3d(h: HeroDef) {
   shadow.position.y = 0.02;
   g.add(shadow);
 
-  g.userData.anim = { mode:"rigged", armL, armR, legL, legR, weapon, phase: h.id === "elf" ? 1.2 : h.id === "dwarf" ? 2.4 : 0 };
+  g.userData.anim = { mode:"rigged", armL, armR, legL, legR, eyes:new THREE.Object3D(), weapon, phase: h.id === "elf" ? 1.2 : h.id === "dwarf" ? 2.4 : 0 };
   return markMeshes(g);
 }
 
@@ -3833,12 +3833,13 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       const legR=model.getObjectByName("Leg_R_Pivot") as THREE.Object3D | null;
       const kneeL=model.getObjectByName("Knee_L_Pivot") as THREE.Object3D | null;
       const kneeR=model.getObjectByName("Knee_R_Pivot") as THREE.Object3D | null;
+      const eyesPivot=model.getObjectByName("Eyes_Pivot") as THREE.Object3D | null;
       const weaponSocket=model.getObjectByName("WeaponSocket_R") as THREE.Object3D | null;
 
       const projectedFront=model.getObjectByName("HeroVisual_Front") as THREE.Object3D | null;
-      // The new Viking has real articulated limb nodes. The Valkyrie remains on
-      // the compatibility whole-body motion until it receives the same rig.
-      const isV6MultiView=/(?:v6_.*_multiview|Yggdrasil_Valkyrie_Raven_Guard)/i.test(heroAsset);
+      // Legacy V6 characters keep compatibility motion. Both current Yggdrasil
+      // heroes have articulated limbs and use the rigged branch below.
+      const isV6MultiView=/v6_.*_multiview/i.test(heroAsset);
 
       if(projectedFront || isV6MultiView){
         // V5/V6 experimental textured heroes keep the artwork/model intact.
@@ -3856,12 +3857,14 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
         const dummyR=new THREE.Object3D();
         const dummyKL=new THREE.Object3D();
         const dummyKR=new THREE.Object3D();
+        const dummyEyes=new THREE.Object3D();
         heroAnim={
           mode:"rigged",
           armL:{upper:armL,elbow:elbowL||dummyL},
           armR:{upper:armR,elbow:elbowR||dummyR},
           legL:{upper:legL,knee:kneeL||dummyKL},
           legR:{upper:legR,knee:kneeR||dummyKR},
+          eyes:eyesPivot||dummyEyes,
           weapon:weaponSocket||new THREE.Object3D(),
           phase:skin==="valkyrie"?1.2:0
         };
@@ -3955,6 +3958,12 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
           heroAnim.armR.upper.rotation.x=-armSwing;
           heroAnim.armL.elbow.rotation.x=moving?-.12-Math.max(0,armSwing)*.30:0;
           heroAnim.armR.elbow.rotation.x=moving?-.12-Math.max(0,-armSwing)*.30:0;
+          // Expressive low-cost eye animation: a short natural blink and a
+          // subtle side-to-side glance, with no texture or extra draw calls.
+          const blinkT=(now+heroAnim.phase*613)%4200;
+          const blink=blinkT<110?Math.max(.10,Math.abs(blinkT-55)/55):1;
+          heroAnim.eyes.scale.y=blink;
+          heroAnim.eyes.rotation.y=Math.sin(now*.00115+heroAnim.phase)*.10;
           heroAnim.weapon.rotation.z=-0.12+(moving?Math.sin(walkT)*.035:0);
           hero.position.y+=moving?Math.abs(Math.sin(walkT*2))*.018:0;
         }
