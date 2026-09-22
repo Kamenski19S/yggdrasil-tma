@@ -3777,8 +3777,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     let heroAnim:any=heroFallback.userData.anim;
 
     const heroAsset=skin==="valkyrie"
-      ? "v6_valkyrie_multiview.glb"
-      : "v6_viking_multiview.glb";
+      ? "Yggdrasil_Valkyrie_Raven_Guard.glb"
+      : "Yggdrasil_Viking_Jarl.glb";
 
     loadGlbWithFolderFallback(heroAsset,(gltf:any)=>{
       const model=gltf.scene;
@@ -3820,7 +3820,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       const weaponSocket=model.getObjectByName("WeaponSocket_R") as THREE.Object3D | null;
 
       const projectedFront=model.getObjectByName("HeroVisual_Front") as THREE.Object3D | null;
-      const isV6MultiView=/v6_.*_multiview/i.test(heroAsset);
+      const isV6MultiView=/(?:v6_.*_multiview|Yggdrasil_(?:Valkyrie_Raven_Guard|Viking_Jarl))/i.test(heroAsset);
 
       if(projectedFront || isV6MultiView){
         // V5/V6 experimental textured heroes keep the artwork/model intact.
