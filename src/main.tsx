@@ -3777,25 +3777,30 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     let heroAnim:any=heroFallback.userData.anim;
 
     const heroAsset=skin==="valkyrie"
-      ? "Midgard_Hero_Valkyrie_Skin_V4_Human_YUP.glb"
-      : "Midgard_Hero_Viking_Skin_V4_Human_YUP.glb";
+      ? "Midgard_Hero_Valkyrie_Skin_V5_Projected_YUP.glb"
+      : "Midgard_Hero_Viking_Skin_V5_Projected_YUP.glb";
 
     loadGlbWithFolderFallback(heroAsset,(gltf:any)=>{
       const model=gltf.scene;
       markMeshes(model);
       model.traverse((o:any)=>{
         if(!o.isMesh)return;
-        o.castShadow=true;
-        o.receiveShadow=true;
+        const nm=String(o.name||"");
+        const isProjected=/^HeroVisual_/.test(nm);
 
-        // Default weapon is already a separate named part in each GLB.
-        if(/^DefaultWeapon_/.test(String(o.name||""))){
+        // The projected artwork already contains its own painted lighting.
+        // Let it receive scene light, but don't let the transparent cards cast
+        // large rectangular shadows. The slim depth shell handles the silhouette shadow.
+        o.castShadow=!isProjected;
+        o.receiveShadow=!isProjected;
+
+        if(/^DefaultWeapon_/.test(nm)){
           o.visible=weapon==="default";
         }
       });
 
       // About twice the old on-screen hero height while keeping a human silhouette.
-      model.scale.setScalar(.77);
+      model.scale.setScalar(.84);
       model.rotation.y=0;
       model.position.set(0,0,0);
       model.updateMatrixWorld(true);
@@ -3814,10 +3819,24 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       const legR=model.getObjectByName("Leg_R_Pivot") as THREE.Object3D | null;
       const weaponSocket=model.getObjectByName("WeaponSocket_R") as THREE.Object3D | null;
 
-      if(armL&&armR&&legL&&legR){
+      const projectedFront=model.getObjectByName("HeroVisual_Front") as THREE.Object3D | null;
+
+      if(projectedFront){
+        // V5 is a projected-skin/impostor hero: the artwork itself must stay intact.
+        // Walking is therefore expressed as a subtle whole-body step/bob rather
+        // than bending empty compatibility pivots which do not own the visual cards.
+        heroAnim={
+          mode:"projected",
+          model,
+          baseY:model.position.y,
+          phase:skin==="valkyrie"?1.2:0,
+          weapon:weaponSocket||new THREE.Object3D()
+        };
+      }else if(armL&&armR&&legL&&legR){
         const dummyL=new THREE.Object3D();
         const dummyR=new THREE.Object3D();
         heroAnim={
+          mode:"rigged",
           armL:{upper:armL,elbow:dummyL},
           armR:{upper:armR,elbow:dummyR},
           legL,
@@ -3896,15 +3915,24 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       hero.position.set(q.x,hy+.04,q.z);
       if(heroAnim){
         const walkT=now*.011+heroAnim.phase;
-        const stride=l>.05?Math.sin(walkT)*0.58:0;
-        const armSwing=l>.05?Math.sin(walkT+Math.PI)*0.42:0;
-        heroAnim.legL.rotation.x=stride;
-        heroAnim.legR.rotation.x=-stride;
-        heroAnim.armL.upper.rotation.x=armSwing;
-        heroAnim.armR.upper.rotation.x=-armSwing;
-        heroAnim.armL.elbow.rotation.x=-Math.abs(armSwing)*.35;
-        heroAnim.armR.elbow.rotation.x=-Math.abs(armSwing)*.35;
-        heroAnim.weapon.rotation.z=-0.12+(l>.05?Math.sin(walkT)*.035:0);
+        if(heroAnim.mode==="projected"){
+          const moving=l>.05;
+          // Very small vertical step + body sway: enough to read as walking
+          // without deforming the projected artwork.
+          heroAnim.model.position.y=heroAnim.baseY+(moving?Math.abs(Math.sin(walkT))*0.035:0);
+          heroAnim.model.rotation.z=moving?Math.sin(walkT)*0.018:0;
+          heroAnim.weapon.rotation.z=-0.12+(moving?Math.sin(walkT)*.035:0);
+        }else{
+          const stride=l>.05?Math.sin(walkT)*0.58:0;
+          const armSwing=l>.05?Math.sin(walkT+Math.PI)*0.42:0;
+          heroAnim.legL.rotation.x=stride;
+          heroAnim.legR.rotation.x=-stride;
+          heroAnim.armL.upper.rotation.x=armSwing;
+          heroAnim.armR.upper.rotation.x=-armSwing;
+          heroAnim.armL.elbow.rotation.x=-Math.abs(armSwing)*.35;
+          heroAnim.armR.elbow.rotation.x=-Math.abs(armSwing)*.35;
+          heroAnim.weapon.rotation.z=-0.12+(l>.05?Math.sin(walkT)*.035:0);
+        }
       }
       // Keep the camera direction stable when the thumb is released. The old camera
       // used dx/dz directly, so stopping movement instantly changed its target and
