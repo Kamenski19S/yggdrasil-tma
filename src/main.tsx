@@ -68,7 +68,7 @@ const REALMS: Realm[] = [
 ];
 
 const NAV = [{ id: "tree", ic: "ᚱ", t: "Путь" }, { id: "hero", ic: "ᛗ", t: "Герой" }, { id: "gift", ic: "ᚷ", t: "Дар" }, { id: "hall", ic: "ᛟ", t: "Чертог" }];
-type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" } | { t: "hero" } | { t: "gift" } | { t: "hall" } | { t: "trial"; id: string } | { t: "fight"; id: string };
+type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" } | { t: "hero" } | { t: "gift" } | { t: "hall" } | { t: "craft" } | { t: "trial"; id: string } | { t: "fight"; id: string };
 type HeroSkin = "viking" | "valkyrie";
 type HeroWeapon = "default";
 type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; ownedWeapons: string[] };
@@ -343,6 +343,23 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .mid3d-interact b{display:block;color:#ffd76a;font-size:13px;line-height:1.2}
 .mid3d-interact span{display:block;color:#aebfb2;font-size:10px;line-height:1.2;margin:3px 0 7px}
 .mid3d-interact button{width:100%;padding:8px;border-radius:9px;background:#ffd76a;color:#241b06;font-weight:800;font-size:12px}
+.mid3d-map-shade{position:absolute;inset:0;z-index:40;background:rgba(3,7,5,.72);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:14px}
+.mid3d-map-panel{position:relative;width:min(92vw,390px);max-height:86%;padding:14px;border-radius:18px;background:linear-gradient(145deg,#f7f0dc,#d8c8a6);border:2px solid #ba8d43;color:#322716;box-shadow:0 18px 42px rgba(0,0,0,.65),inset 0 0 28px rgba(112,75,31,.14);overflow:auto;touch-action:auto}
+.mid3d-map-title{text-align:center;font-size:17px;font-weight:900;letter-spacing:1px;color:#65451e}.mid3d-map-sub{text-align:center;font-size:10px;color:#806944;margin:3px 0 9px}
+.mid3d-map-canvas{position:relative;width:100%;aspect-ratio:1.28;border-radius:13px;overflow:hidden;border:1px solid rgba(94,65,29,.45);background:radial-gradient(circle at 48% 46%,#eee2c4,#cbb88f)}
+.mid3d-map-canvas svg{position:absolute;inset:0;width:100%;height:100%}
+.map-landmark{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;font-size:13px;font-weight:900;color:#4b371c;text-shadow:0 1px #f8edd2}.map-landmark small{font-size:7px;white-space:nowrap;background:rgba(246,236,210,.82);padding:1px 3px;border-radius:3px}
+.map-landmark.goal{color:#a33b1f;animation:mapPulse 1.45s ease-in-out infinite}.map-landmark.hero{z-index:3;color:#155b76;font-size:18px}.map-landmark.hero small{color:#155b76}
+.mid3d-map-goal{margin-top:9px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.45);border:1px solid rgba(139,80,28,.34);font-size:11px;line-height:1.35}.mid3d-map-goal b{color:#9b321a}
+.mid3d-map-close{width:100%;margin-top:9px;padding:9px;border-radius:10px;background:linear-gradient(135deg,#8c5a28,#543319);color:#fff4dc;font-weight:800}
+@keyframes mapPulse{0%,100%{filter:drop-shadow(0 0 2px #f6b144);transform:translate(-50%,-50%) scale(1)}50%{filter:drop-shadow(0 0 8px #ff7a36);transform:translate(-50%,-50%) scale(1.15)}}
+
+.hall-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.hall-section{min-height:126px;padding:12px;border-radius:15px;text-align:left;background:linear-gradient(145deg,#18221b,#0d130f);border:1px solid #2b3c30;box-shadow:0 7px 16px rgba(0,0,0,.28)}
+.hall-section:active{transform:scale(.98)}.hall-section h3{font-size:13px;color:#ffd76a;margin:4px 0}.hall-section p{font-size:9px;line-height:1.35;color:#91a598}.hall-section .hall-icon{font-size:29px;display:block}.hall-count{display:inline-block;margin-top:7px;padding:3px 6px;border-radius:7px;background:#0a0e0b;border:1px solid #34473a;font-size:9px;color:#d6e3d8}
+.hall-slots{display:flex;gap:5px;margin-top:8px}.hall-slot{width:27px;height:27px;border-radius:7px;border:1px solid #4b5d4e;background:#090d0a;display:flex;align-items:center;justify-content:center;font-size:14px}.hall-slot.on{border-color:#ffd76a;box-shadow:0 0 7px rgba(255,215,106,.35)}
+.vial{position:relative;width:13px;height:21px;border:1px solid rgba(235,249,255,.72);border-radius:3px 3px 7px 7px;background:linear-gradient(180deg,rgba(255,255,255,.35) 0 35%,var(--vial) 38% 100%);box-shadow:0 0 8px var(--vial)}
+.craft-entry{width:100%;padding:13px;border-radius:15px;background:linear-gradient(135deg,#5f321b,#1c1712);border:1px solid #d68b38;text-align:left;box-shadow:inset 0 0 18px rgba(255,119,37,.12)}.craft-entry b{display:block;color:#ffc45e;font-size:14px}.craft-entry span{font-size:10px;color:#d7b891}
+.craft-screen{background:radial-gradient(circle at 50% 28%,#62331d,#18120e 58%,#090b09);padding-top:18px}.craft-fire{font-size:48px;filter:drop-shadow(0 0 15px #ff6a21)}.craft-recipe{display:grid;grid-template-columns:1fr 34px 1fr 34px 1fr;align-items:center;gap:5px;margin:16px 0}.craft-slot{aspect-ratio:1;border-radius:12px;border:1px solid #725336;background:rgba(8,10,8,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#8e806c;font-size:9px}.craft-slot b{font-size:24px;color:#d7b06a}.craft-op{text-align:center;color:#ffbe55;font-size:20px;font-weight:900}
 `;
 
 /* ===== Midgard 3D: реальная сцена, герой, дорога, деревня, кузница и Мимир ===== */
@@ -1004,6 +1021,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
   const [moving, setMoving] = useState(false);
   const [ritualOpen, setRitualOpen] = useState(false);
   const [forestEventOpen, setForestEventOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
+  const [mapHero, setMapHero] = useState({x:0,z:28});
   const [insideHome, setInsideHome] = useState(false);
   const cameraDir = useRef({ x: 0, z: 1 });
   const insideHomeRef = useRef(false);
@@ -4111,12 +4130,37 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
   const stopJoy=()=>{if(knob.current)knob.current.style.transform="translate(0,0)";state.current.dx=0;state.current.dz=0;};
   // Keep the visible joystick compact, but give it a much larger invisible touch zone.
   // This makes it comfortable to start steering with a thumb slightly above the circle.
-  const startJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{const a=joy.current;if(!a)return;const target=e.target as HTMLElement;if(target.closest?.(".mid3d-action")||target.closest?.(".mid3d-strike")||target.closest?.(".mid3d-interact"))return;const r=a.getBoundingClientRect();const pad=26,up=78,down=26;const inside=e.clientX>=r.left-pad&&e.clientX<=r.right+pad&&e.clientY>=r.top-up&&e.clientY<=r.bottom+down;if(!inside)return;e.currentTarget.setPointerCapture(e.pointerId);joyMove(e);};
+  const startJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{const a=joy.current;if(!a)return;const target=e.target as HTMLElement;if(target.closest?.(".mid3d-action")||target.closest?.(".mid3d-strike")||target.closest?.(".mid3d-interact")||target.closest?.(".mid3d-map-panel"))return;const r=a.getBoundingClientRect();const pad=26,up=78,down=26;const inside=e.clientX>=r.left-pad&&e.clientX<=r.right+pad&&e.clientY>=r.top-up&&e.clientY<=r.bottom+down;if(!inside)return;e.currentTarget.setPointerCapture(e.pointerId);joyMove(e);};
   const moveJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{if(e.currentTarget.hasPointerCapture(e.pointerId))joyMove(e);};
   const endJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);stopJoy();};
 
   return <div className="content mid3d-scene" ref={mount} style={{touchAction:"none",userSelect:"none",WebkitUserSelect:"none"}} onPointerDown={startJoyFromZone} onPointerMove={moveJoyFromZone} onPointerUp={endJoyFromZone} onPointerCancel={endJoyFromZone} onContextMenu={e=>e.preventDefault()}>
     <div className="mid3d-ui mid3d-top"><div className="mid3d-pill"><b>МИДГАРД</b><span>Деревня • река • лес • святилища</span></div><div className="mid3d-pill"><b>ᛟ</b><span>Мир живёт вокруг тебя</span></div></div>
+    {mapOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}>
+      <div className="mid3d-map-panel">
+        <div className="mid3d-map-title">ᚠ Карта Мидгарда</div>
+        <div className="mid3d-map-sub">Руна Феху указывает известные дороги и следующую цель</div>
+        <div className="mid3d-map-canvas">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <path d="M18 100 C15 82 25 72 20 58 C16 43 24 31 21 0" fill="none" stroke="#73a9b1" strokeWidth="9" opacity=".72"/>
+            <path d="M50 92 C49 73 47 61 44 53 C42 43 48 35 50 22" fill="none" stroke="#8b6440" strokeWidth="2.2" strokeDasharray="3 2" opacity=".75"/>
+            <path d="M18 77 C30 69 37 59 44 53 M44 53 C33 44 25 35 20 29 M44 53 C62 48 78 40 92 32" fill="none" stroke="#8b6440" strokeWidth="1.5" strokeDasharray="2.5 2" opacity=".65"/>
+            <circle cx="49" cy="53" r="13" fill="none" stroke="#a58a56" strokeWidth=".8" opacity=".7"/>
+          </svg>
+          <span className="map-landmark" style={{left:"49%",top:"53%"}}>⌂<small>Кузница</small></span>
+          <span className="map-landmark" style={{left:"51%",top:"50%"}}>◉<small>Мимир</small></span>
+          <span className="map-landmark" style={{left:"18%",top:"77%"}}>═<small>Мост</small></span>
+          <span className="map-landmark" style={{left:"20%",top:"29%"}}>ᛟ<small>Норны</small></span>
+          <span className="map-landmark" style={{left:"49%",top:"25%"}}>⌗<small>Ворота</small></span>
+          <span className="map-landmark" style={{left:"93%",top:"32%"}}>⌂<small>Дом</small></span>
+          <span className="map-landmark" style={{left:"47%",top:"8%"}}>♠<small>Роща</small></span>
+          <span className="map-landmark goal" style={{left:"49%",top:"53%"}}>ᚠ<small>Цель</small></span>
+          <span className="map-landmark hero" style={{left:`${((mapHero.x+88)/176)*100}%`,top:`${100-((mapHero.z+89)/178)*100}%`}}>◆<small>Ты здесь</small></span>
+        </div>
+        <div className="mid3d-map-goal"><b>Следующая цель: Кузница.</b><br/>Иди к центру деревни. Руна Феху отмечает нужное место огненным сиянием.</div>
+        <button className="mid3d-map-close" onClick={()=>setMapOpen(false)}>Закрыть карту и продолжить путь</button>
+      </div>
+    </div>}
     {forestEventOpen&&!eventDone&&<div className="mid3d-ui mid3d-interact" style={{bottom:"14%",left:"50%",transform:"translateX(-50%)",width:"min(92vw,390px)",zIndex:31}}>
       <b>ᛟ Колодец Трёх Норн</b>
       <span>В глубине колодца горит тёплое сияние. Серебряная, золотая и алая нити сходятся над водой, связывая прошлое, настоящее и будущее.</span>
@@ -4141,7 +4185,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     {near&&!ritualOpen&&!forestEventOpen&&(()=>{const [label,id]=near.split("|");const home=id==="heroHome"||id==="heroHomeExit";const villageGate=id==="gate";return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{villageGate?(villageGateOpen?"Створки открыты, тяжёлый засов снят":"Ворота заперты большим деревянным засовом"):home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода"):"Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else if(id==="gate")gateActionRef.current?.();else on(id);}}>{villageGate?(villageGateOpen?"Закрыть ворота и поставить засов":"Снять засов и открыть ворота"):home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):"Взаимодействовать"}</button></div>;})()}
     <div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" title="Удар оружием" onPointerDown={e=>e.stopPropagation()} onClick={()=>{attackActionRef.current?.();if("vibrate" in navigator)navigator.vibrate(12);}}>⚔</button>
-    <button className="mid3d-ui mid3d-action" onPointerDown={e=>e.stopPropagation()} onClick={()=>on("event")}>ᚠ</button>
+    <button className="mid3d-ui mid3d-action" aria-label="Карта Мидгарда" title="Карта Мидгарда" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapHero({x:state.current.x,z:state.current.z});setMapOpen(true);}}>ᚠ</button>
     <div className="mid3d-ui mid3d-hint">{insideHome?(moving?"Ты внутри дома":"Дом героя • отдых • сундук • выход"):moving?"Исследуй Мидгард":"Ворота • площадь • кузница • Мимир • норны • лес"}</div>
   </div>;
 }
@@ -4265,7 +4309,7 @@ const [roadT, setRoadT] = useState(0.06);
     setFlog(log + mlog + " " + m.name + " отвечает: −" + md + ".");
   };
   const nextStep = (id: string) => { if (trialIdx(id) >= 3 || save.artifacts.includes(id)) setScreen({ t: "realm", id }); else setScreen({ t: "trial", id }); };
-  const isNav = (id: string) => (id === "tree" ? screen.t === "tree" || screen.t === "realm" : screen.t === id);
+  const isNav = (id: string) => (id === "tree" ? screen.t === "tree" || screen.t === "realm" : id === "hall" ? screen.t === "hall" || screen.t === "craft" : screen.t === id);
   const navScreen = (id: string): Screen => (id === "tree" ? { t: "tree" } : ({ t: id } as Screen));
   // Реальная траектория дороги на исходной карте 1024×1536.
   // Герой всегда находится на этой линии, а камера двигается вместе с ним.
@@ -4279,6 +4323,7 @@ const [roadT, setRoadT] = useState(0.06);
         {screen.t === "hero" && <div className="title">🛡 Герой</div>}
         {screen.t === "gift" && <div className="title">🎁 Дар</div>}
         {screen.t === "hall" && <div className="title">🏛️ Чертог</div>}
+        {screen.t === "craft" && <button className="back" onClick={() => go({ t: "hall" })}>← Чертог · Крафт</button>}
         {screen.t === "trial" && <div className="title">🗝 Испытание</div>}
         {screen.t === "fight" && <div className="title">⚔ Бой</div>}
         <div className="sparks">✨ {save.sparks} Искр</div>
@@ -4708,7 +4753,7 @@ const [roadT, setRoadT] = useState(0.06);
         <div className="scroll">
           <div className="card center">
             <div className="big">🏛️</div>
-            <div className="qhead2">Склад Чертога</div>
+            <div className="qhead2">Чертог героя</div>
             <div className="stats">
               <div className="stat"><b>✨ {save.sparks}</b><span>Искр</span></div>
               <div className="stat"><b>🏺 {save.artifacts.length}/9</b><span>артефакты</span></div>
@@ -4716,18 +4761,52 @@ const [roadT, setRoadT] = useState(0.06);
             <div className="rank">🏆 Ранг: {rank(save.sparks)}</div>
             {save.hero && heroDef && <p className="dim">Герой: {save.hero.name} • {heroDef.race} • испытаний пройдено: {save.trials.length}</p>}
           </div>
-
-          <div className="card">
-            <div className="qhead2">⚔ Оружие</div>
-            <div className="hrow">
-              {save.heroSkin==="valkyrie"?"Меч валькирии":"Секира викинга"} • экипировано
-            </div>
-            <p className="dim">Найденное по ходу игры оружие будет храниться здесь. Экипировать его можно в разделе «Герой».</p>
+          <div className="hall-grid">
+            <button className="hall-section" onClick={()=>go({t:"hero"})}>
+              <span className="hall-icon">⚔️</span><h3>Оружие</h3>
+              <p>{save.heroSkin==="valkyrie"?"Меч валькирии":"Секира викинга"} сейчас в руке. Здесь будут храниться найденные клинки, топоры и копья.</p>
+              <div className="hall-slots"><span className="hall-slot on">⚔</span><span className="hall-slot">＋</span><span className="hall-slot">＋</span></div>
+              <span className="hall-count">1 предмет</span>
+            </button>
+            <button className="hall-section" onClick={()=>go({t:"hero"})}>
+              <span className="hall-icon">🛡️</span><h3>Экипировка</h3>
+              <p>Броня, щиты, шлемы и сапоги. Выбранное снаряжение будет сразу появляться на герое.</p>
+              <div className="hall-slots"><span className="hall-slot on">♜</span><span className="hall-slot on">◉</span><span className="hall-slot on">⌁</span></div>
+              <span className="hall-count">Базовый набор</span>
+            </button>
+            <button className="hall-section" onClick={()=>say("Эликсиры появятся здесь после первых наград.")}>
+              <span className="hall-icon">🧪</span><h3>Эликсиры</h3>
+              <p>Лечение, сила, защита и руническая энергия. Зелья расходуются во время путешествий.</p>
+              <div className="hall-slots"><span className="hall-slot"><i className="vial" style={{"--vial":"#d94332"} as React.CSSProperties}/></span><span className="hall-slot"><i className="vial" style={{"--vial":"#359ada"} as React.CSSProperties}/></span><span className="hall-slot"><i className="vial" style={{"--vial":"#57a85a"} as React.CSSProperties}/></span></div>
+              <span className="hall-count">Пока пусто</span>
+            </button>
+            <button className="hall-section" onClick={()=>say("Выбор боевых и путевых рун откроется после первого испытания.")}>
+              <span className="hall-icon">ᛉ</span><h3>Руны</h3>
+              <p>Боевая, защитная и путевая руны. Их силу герой сможет менять перед выходом из Чертога.</p>
+              <div className="hall-slots"><span className="hall-slot on">ᚦ</span><span className="hall-slot">ᛉ</span><span className="hall-slot">ᚱ</span></div>
+              <span className="hall-count">1 базовая руна</span>
+            </button>
           </div>
+          <button className="craft-entry" onClick={()=>{haptic();go({t:"craft"});}}><b>🔥 Перейти в локацию крафта</b><span>Соединяй оружие, материалы и Капли силы в новые предметы.</span></button>
+        </div>
+      )}
 
-          <div className="card">
-            <div className="qhead2">🧪 Эликсиры и зелья</div>
-            <p className="dim">Склад подготовлен. Найденные эликсиры, лечебные зелья и другие расходники появятся здесь.</p>
+      {screen.t === "craft" && (
+        <div className="scroll craft-screen">
+          <div className="card center" style={{background:"rgba(13,12,10,.84)",borderColor:"#71431f"}}>
+            <div className="craft-fire">🔥</div>
+            <div className="qhead2" style={{color:"#ffc45e"}}>Кузня Чертога</div>
+            <p className="dim">Положи два подходящих предмета и добавь Капли силы. Кузня покажет возможный результат до подтверждения.</p>
+            <div className="craft-recipe">
+              <button className="craft-slot" onClick={()=>say("Выбери первый предмет со склада оружия.")}><b>＋</b>предмет</button>
+              <span className="craft-op">＋</span>
+              <button className="craft-slot" onClick={()=>say("Выбери второй предмет или материал.")}><b>＋</b>материал</button>
+              <span className="craft-op">＝</span>
+              <span className="craft-slot"><b>?</b>результат</span>
+            </div>
+            <div className="hrow">🔥 Капли силы: <b>0</b></div>
+            <button className="btn gold" disabled>Создать предмет</button>
+            <button className="btn ghost" onClick={()=>go({t:"hall"})}>Вернуться в Чертог</button>
           </div>
         </div>
       )}
