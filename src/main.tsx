@@ -403,7 +403,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .craft-screen{background:radial-gradient(circle at 50% 28%,#62331d,#18120e 58%,#090b09);padding-top:18px}.craft-fire{font-size:48px;filter:drop-shadow(0 0 15px #ff6a21)}.craft-recipe{display:grid;grid-template-columns:1fr 34px 1fr 34px 1fr;align-items:center;gap:5px;margin:16px 0}.craft-slot{aspect-ratio:1;border-radius:12px;border:1px solid #725336;background:rgba(8,10,8,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#8e806c;font-size:9px}.craft-slot b{font-size:24px;color:#d7b06a}.craft-op{text-align:center;color:#ffbe55;font-size:20px;font-weight:900}
 .forge-screen{background:radial-gradient(circle at 50% 8%,rgba(239,100,27,.32),transparent 34%),linear-gradient(180deg,#21140d,#0b0d0b 72%);padding-top:14px}
 .forge-head{position:relative;overflow:hidden;padding:16px;border-radius:18px;border:1px solid #9a5a27;background:linear-gradient(145deg,rgba(82,42,19,.95),rgba(17,15,12,.96));box-shadow:inset 0 0 28px rgba(255,107,31,.13),0 8px 20px rgba(0,0,0,.35);text-align:center}.forge-head:before{content:"ᚲ";position:absolute;right:-3px;top:-22px;font-size:105px;color:rgba(255,146,53,.07);transform:rotate(10deg)}
-.forge-selected{width:118px;min-height:118px;margin:0 auto 8px;padding:9px;border-radius:15px;border:1px solid #d39a43;background:linear-gradient(145deg,#76501d,#24170c 62%,#0f0e0b);box-shadow:inset 0 0 18px rgba(255,208,99,.13),0 0 18px rgba(255,111,28,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}.forge-selected .fs-icon{font-size:35px;line-height:1;filter:drop-shadow(0 0 8px rgba(255,192,75,.55))}.forge-selected .fs-name{font-size:9px;font-weight:900;line-height:1.15;color:#fff0c7}.forge-selected .fs-level{font-size:8px;color:#f0c875}.forge-upgrade{width:min(230px,82%);margin:0 auto 9px;padding:8px;border-radius:10px;border:1px solid #a26b31;background:linear-gradient(145deg,#d08a43,#7b411e);color:#fff5df;font-size:10px;font-weight:900;box-shadow:0 4px 10px rgba(0,0,0,.28)}.forge-upgrade:disabled{opacity:.48;filter:saturate(.35)}.forge-title{color:#ffc66c;font-size:18px;font-weight:900;letter-spacing:.7px;margin-top:4px}.forge-master{color:#d9c5a6;font-size:10px;line-height:1.35;margin:4px auto 10px;max-width:310px}.forge-wallet{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:11px;background:rgba(4,7,5,.72);border:1px solid rgba(255,196,94,.34);font-size:11px;color:#ffe0a0}.forge-wallet b{color:#ffb34d;font-size:13px}
+.forge-title{color:#ffc66c;font-size:18px;font-weight:900;letter-spacing:.7px;margin-top:1px}.forge-master{color:#d9c5a6;font-size:10px;line-height:1.35;margin:4px auto 8px;max-width:310px}.forge-advice{position:relative;margin:0 auto 9px;padding:7px 10px;max-width:310px;border-radius:10px;background:rgba(255,232,176,.09);border:1px solid rgba(255,199,92,.30);color:#ffe3a6;font-size:9px;line-height:1.35}.forge-wallet{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:11px;background:rgba(4,7,5,.72);border:1px solid rgba(255,196,94,.34);font-size:11px;color:#ffe0a0}.forge-wallet b{color:#ffb34d;font-size:13px}
 .forge-free{margin:10px 0 5px;padding:7px 9px;border-radius:10px;background:rgba(255,224,132,.09);border:1px dashed rgba(255,215,106,.42);color:#e9d4a4;font-size:9px;line-height:1.35}.forge-free.ready{color:#fff0b2;box-shadow:inset 0 0 13px rgba(255,174,57,.1)}
 .forge-group-title{display:flex;align-items:center;gap:7px;margin:15px 2px 7px;color:#eacb91;font-size:11px;font-weight:900;letter-spacing:.8px;text-transform:uppercase}.forge-group-title:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(226,165,80,.42),transparent)}
 .forge-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.forge-item{position:relative;min-height:88px;padding:7px 4px 6px;border-radius:12px;border:1px solid #9c7535;background:linear-gradient(145deg,#6f4b1d,#271b0e 56%,#11100d);color:#fff0c5;box-shadow:inset 0 0 13px rgba(255,207,91,.09),0 4px 9px rgba(0,0,0,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;touch-action:manipulation}.forge-item:active{transform:scale(.96);filter:brightness(1.18)}.forge-item .fi-icon{font-size:23px;line-height:1;filter:drop-shadow(0 0 6px rgba(255,188,72,.42))}.forge-item .fi-name{font-size:8px;font-weight:800;line-height:1.12}.forge-item .fi-level{font-size:7px;color:#f3cb78}.forge-item .fi-cost{margin-top:1px;padding:2px 5px;border-radius:6px;background:rgba(7,7,5,.56);font-size:7px;color:#ffbd58}.forge-item.free{border-color:#ffd76a;box-shadow:inset 0 0 15px rgba(255,213,90,.16),0 0 9px rgba(255,166,47,.18)}.forge-item.selected{border-color:#ffe18a;box-shadow:inset 0 0 18px rgba(255,220,119,.2),0 0 14px rgba(255,135,37,.35)}.forge-item.locked{filter:saturate(.25);opacity:.56}.forge-item.locked .fi-cost{color:#9e9582}.forge-item.maxed{border-color:#9cdaae;background:linear-gradient(145deg,#37583f,#15241a 60%,#0b100c)}
@@ -1826,7 +1826,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start }: { h: HeroDef; skin
       });
 
       const placements = [
-        {x:-15,z:-18,rot:.18, sx:1.02,sy:1.02,sz:.78, id:"house",    label:"Дом дружинника"},
+        {x:-15,z:-18,rot:.18, sx:1.02,sy:1.02,sz:.78, id:"warriorHouse", label:"Дом дружинника"},
         {x:-31,z:  8,rot:.10, sx:.86,sy:.90,sz:.58, id:"fisher2",  label:"Дом рыбака"},
         {x:-27,z: 20,rot:-.25,sx:.82,sy:.86,sz:.56, id:"carpenter",label:"Дом плотника"},
         {x: 31,z: 18,rot:.32, sx:.88,sy:.92,sz:.58, id:"hunter2", label:"Дом охотницы"},
@@ -1923,7 +1923,9 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start }: { h: HeroDef; skin
     // open before the UI transition, while the original doorway remains as the
     // shadowed interior behind it.
     const forgeDoorPivot=new THREE.Group();
-    forgeDoorPivot.position.set(-10.92,groundY(-10,-2)+1.38,-1.62);
+    // The hinge must sit in the facade plane. The previous z=-1.62 placed the
+    // leaf well in front of the porch, so it looked detached from the doorway.
+    forgeDoorPivot.position.set(-10.92,groundY(-10,-2.72)+1.38,-2.72);
     const forgeDoor=new THREE.Mesh(new THREE.BoxGeometry(1.84,2.76,.14),mat(0x392318,.82,.04));
     forgeDoor.position.x=.92;
     forgeDoorPivot.add(forgeDoor);
@@ -4082,7 +4084,19 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start }: { h: HeroDef; skin
     homeActionRef.current=setHomeMode;
 
     const destinations=[
-      {id:"house",label:"Дом старейшины",x:13,z:-18,r:5.2},{id:"forge",label:"Дверь кузницы",x:-10,z:-1.6,r:2.8},
+      // Door points sit on the front side of each house rather than at its
+      // centre, so the white interaction cloud appears only by the entrance.
+      {id:"warriorHouse",label:"Дом дружинника",x:-14.34,z:-14.36,r:2.7},
+      {id:"fisher2",label:"Дом рыбака Халли",x:-30.63,z:11.68,r:2.7},
+      {id:"carpenter",label:"Дом плотника Бьёрна",x:-27.92,z:23.58,r:2.7},
+      {id:"hunter2",label:"Дом охотницы Рандви",x:32.16,z:21.49,r:2.7},
+      {id:"family",label:"Дом семьи Торстейна",x:19.56,z:27.68,r:2.7},
+      {id:"house",label:"Дом старейшины Хальвдана",x:12.70,z:-14.31,r:2.8},
+      {id:"fisher",label:"Дом рыбака Эйнара",x:25.44,z:-3.39,r:2.7},
+      {id:"hunter",label:"Дом охотника Ульва",x:15.71,z:12.54,r:2.7},
+      {id:"herbalist",label:"Дом травницы Сигрид",x:3.18,z:-21.31,r:2.7},
+      {id:"craftsman",label:"Дом ремесленника Торвальда",x:-24.24,z:-4.05,r:2.7},
+      {id:"forge",label:"Дверь кузницы Вёлунда",x:-10,z:-2.55,r:2.5},
       {id:"mimir",label:"Колодец Мимира",x:1,z:0,r:4.8},{id:"norns",label:"Прядильня норн",x:-52,z:38,r:5.4},
       {id:"rune",label:"Древний камень Феху",x:50,z:60,r:4.5},{id:"port",label:"Речной мост",x:-57,z:-48,r:6},
       {id:"ashgrove",label:"Роща Ясеня",x:-5,z:75,r:7.5},{id:"threeThreads",label:"Колодец Трёх Норн",x:58,z:-28,r:6.8},{id:"forestCache",label:"Забытый тайник",x:-72,z:48,r:4.2},
@@ -4344,6 +4358,9 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start }: { h: HeroDef; skin
     {near&&!ritualOpen&&!forestEventOpen&&(()=>{
       const [label,id]=near.split("|");
       if(id==="forge")return <div className="mid3d-ui mid3d-door-prompt"><b>Дверь кузницы</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>forgeActionRef.current?.()}>Открыть ручку</button></div>;
+      const villageDoor=["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman"].includes(id);
+      if(villageDoor)return <div className="mid3d-ui mid3d-door-prompt"><b>{label}</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>Открыть ручку</button></div>;
+      if(id==="heroHome")return <div className="mid3d-ui mid3d-door-prompt"><b>Дом героя</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>homeActionRef.current?.(true)}>Открыть ручку</button></div>;
       const home=id==="heroHome"||id==="heroHomeExit";
       const villageGate=id==="gate";
       return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{villageGate?(villageGateOpen?"Створки открыты, тяжёлый засов снят":"Ворота заперты большим деревянным засовом"):home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода"):"Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else if(id==="gate")gateActionRef.current?.();else on(id,{x:state.current.x,z:state.current.z});}}>{villageGate?(villageGateOpen?"Закрыть ворота и поставить засов":"Снять засов и открыть ворота"):home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):"Взаимодействовать"}</button></div>;
@@ -4377,7 +4394,6 @@ function App() {
   const [forgeTransition, setForgeTransition] = useState(false);
   const forgeTimer = useRef<number>(0);
   const midgardReturn = useRef({x:0,z:28});
-  const [selectedForgeId,setSelectedForgeId]=useState("default");
 const [roadT, setRoadT] = useState(0.06);
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
   useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
@@ -4657,6 +4673,18 @@ const [roadT, setRoadT] = useState(0.06);
         say("Старейшина: «За северной дорогой начинается лес. Но ночью там слышны голоса, которых не знает ни один охотник.»");
         return;
       }
+      const homeMessages:Record<string,string>={
+        warriorHouse:"Дом дружинника. За дверью слышно, как точат клинок перед вечерним дозором.",
+        fisher2:"Дом рыбака Халли. На крыльце сохнут сети, принесённые с северной реки.",
+        carpenter:"Дом плотника Бьёрна. Изнутри доносится стук резца по ясеню.",
+        hunter2:"Дом охотницы Рандви. Над дверью висит связка тёмных стрел.",
+        family:"Дом семьи Торстейна. В окне горит спокойный домашний свет.",
+        fisher:"Дом рыбака Эйнара. Хозяин ещё не вернулся с реки.",
+        hunter:"Дом охотника Ульва. У порога видны свежие следы из леса.",
+        herbalist:"Дом травницы Сигрид. Из-за двери пахнет можжевельником и сушёными травами.",
+        craftsman:"Дом ремесленника Торвальда. Внутри звенят небольшие молотки."
+      };
+      if(homeMessages[id]){say(homeMessages[id]);return;}
       if (id === "port") {
         say("У причала: «Река ведёт к землям, где Мидгард заканчивается. Когда-нибудь здесь начнётся путь дальше.»");
         return;
@@ -4984,15 +5012,11 @@ const [roadT, setRoadT] = useState(0.06);
       {screen.t === "forge" && (()=>{
         const weapons=forgeItems.filter(item=>item.kind==="weapon");
         const gear=forgeItems.filter(item=>item.kind==="gear");
-        const selected=forgeItems.find(item=>item.id===selectedForgeId)||forgeItems[0];
-        const selectedLevel=forgeLevel(selected.id);
-        const selectedMaxed=selectedLevel>=5;
-        const selectedCost=forgeCost(selected.id);
         const forgeButton=(item:typeof forgeItems[number])=>{
           const level=forgeLevel(item.id);
           const maxed=level>=5;
           const free=!save.forgeFreeUsed&&item.owned&&!maxed;
-          return <button key={item.id} className={"forge-item"+(!item.owned?" locked":"")+(free?" free":"")+(maxed?" maxed":"")+(selected.id===item.id?" selected":"")} onClick={()=>{if(!item.owned){say("Этот предмет ещё не найден.");return;}setSelectedForgeId(item.id);haptic();}}>
+          return <button key={item.id} className={"forge-item"+(!item.owned?" locked":"")+(free?" free":"")+(maxed?" maxed":"")} onClick={()=>improveForgeItem(item)}>
             <span className="fi-icon">{item.icon}</span>
             <span className="fi-name">{item.name}</span>
             <span className="fi-level">{level>0?"Закалка +"+level:"Без улучшений"}</span>
@@ -5001,10 +5025,9 @@ const [roadT, setRoadT] = useState(0.06);
         };
         return <div className="scroll forge-screen">
           <div className="forge-head">
-            <div className="forge-selected"><span className="fs-icon">{selected.icon}</span><span className="fs-name">{selected.name}</span><span className="fs-level">{selectedLevel>0?"Закалка +"+selectedLevel:"Выбрано для ковки"}</span></div>
-            <button className="forge-upgrade" disabled={!selected.owned||selectedMaxed} onClick={()=>improveForgeItem(selected)}>{selectedMaxed?"Высшая закалка":!save.forgeFreeUsed?"Закалить бесплатно":"Закалить за "+selectedCost+" 🔥"}</button>
             <div className="forge-title">Кузница Вёлунда</div>
             <div className="forge-master">«Сталь помнит каждый бой. Отдай её огню — и она вернётся сильнее».</div>
+            <div className="forge-advice"><b>Совет:</b> сначала закали основное оружие. Нажми на доступный предмет — улучшение сработает сразу.</div>
             <div className="forge-wallet"><span>Запас:</span><b>🔥 {save.sparks}</b><span>Капель силы</span></div>
           </div>
           <div className={"forge-free"+(!save.forgeFreeUsed?" ready":"")}>{save.forgeFreeUsed
