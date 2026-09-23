@@ -383,6 +383,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .mid3d-interact b{display:block;color:#ffd76a;font-size:13px;line-height:1.2}
 .mid3d-interact span{display:block;color:#aebfb2;font-size:10px;line-height:1.2;margin:3px 0 7px}
 .mid3d-interact button{width:100%;padding:8px;border-radius:9px;background:#ffd76a;color:#241b06;font-weight:800;font-size:12px}
+.mid3d-door-prompt{right:15px;top:43%;width:142px;padding:10px 10px 9px;border-radius:15px;background:#fffdf7;color:#17130e;border:1px solid rgba(82,51,23,.28);box-shadow:0 8px 24px rgba(0,0,0,.32);text-align:left}.mid3d-door-prompt:before{content:"";position:absolute;left:-10px;top:25px;border-width:8px 10px 8px 0;border-style:solid;border-color:transparent #fffdf7 transparent transparent}.mid3d-door-prompt b{display:block;margin-bottom:8px;color:#17130e;font-size:12px;line-height:1.15}.mid3d-door-prompt button{width:100%;padding:8px 6px;border-radius:9px;border:1px solid #77451f;background:linear-gradient(145deg,#d4924d,#8d5127);color:#fff8e9;font-size:10px;font-weight:900;box-shadow:inset 0 1px rgba(255,255,255,.3),0 3px 8px rgba(66,31,8,.25)}.mid3d-door-prompt button:active{transform:scale(.96);filter:brightness(1.1)}
 .mid3d-map-shade{position:absolute;inset:0;z-index:40;background:rgba(3,7,5,.72);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:14px}
 .mid3d-map-panel{position:relative;width:min(92vw,390px);max-height:86%;padding:14px;border-radius:18px;background:linear-gradient(145deg,#f7f0dc,#d8c8a6);border:2px solid #ba8d43;color:#322716;box-shadow:0 18px 42px rgba(0,0,0,.65),inset 0 0 28px rgba(112,75,31,.14);overflow:auto;touch-action:auto}
 .mid3d-map-title{text-align:center;font-size:17px;font-weight:900;letter-spacing:1px;color:#65451e}.mid3d-map-sub{text-align:center;font-size:10px;color:#806944;margin:3px 0 9px}
@@ -402,11 +403,11 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .craft-screen{background:radial-gradient(circle at 50% 28%,#62331d,#18120e 58%,#090b09);padding-top:18px}.craft-fire{font-size:48px;filter:drop-shadow(0 0 15px #ff6a21)}.craft-recipe{display:grid;grid-template-columns:1fr 34px 1fr 34px 1fr;align-items:center;gap:5px;margin:16px 0}.craft-slot{aspect-ratio:1;border-radius:12px;border:1px solid #725336;background:rgba(8,10,8,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#8e806c;font-size:9px}.craft-slot b{font-size:24px;color:#d7b06a}.craft-op{text-align:center;color:#ffbe55;font-size:20px;font-weight:900}
 .forge-screen{background:radial-gradient(circle at 50% 8%,rgba(239,100,27,.32),transparent 34%),linear-gradient(180deg,#21140d,#0b0d0b 72%);padding-top:14px}
 .forge-head{position:relative;overflow:hidden;padding:16px;border-radius:18px;border:1px solid #9a5a27;background:linear-gradient(145deg,rgba(82,42,19,.95),rgba(17,15,12,.96));box-shadow:inset 0 0 28px rgba(255,107,31,.13),0 8px 20px rgba(0,0,0,.35);text-align:center}.forge-head:before{content:"ᚲ";position:absolute;right:-3px;top:-22px;font-size:105px;color:rgba(255,146,53,.07);transform:rotate(10deg)}
-.forge-anvil{font-size:45px;line-height:1;filter:drop-shadow(0 0 11px rgba(255,112,31,.75))}.forge-title{color:#ffc66c;font-size:18px;font-weight:900;letter-spacing:.7px;margin-top:4px}.forge-master{color:#d9c5a6;font-size:10px;line-height:1.35;margin:4px auto 10px;max-width:310px}.forge-wallet{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:11px;background:rgba(4,7,5,.72);border:1px solid rgba(255,196,94,.34);font-size:11px;color:#ffe0a0}.forge-wallet b{color:#ffb34d;font-size:13px}
+.forge-selected{width:118px;min-height:118px;margin:0 auto 8px;padding:9px;border-radius:15px;border:1px solid #d39a43;background:linear-gradient(145deg,#76501d,#24170c 62%,#0f0e0b);box-shadow:inset 0 0 18px rgba(255,208,99,.13),0 0 18px rgba(255,111,28,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}.forge-selected .fs-icon{font-size:35px;line-height:1;filter:drop-shadow(0 0 8px rgba(255,192,75,.55))}.forge-selected .fs-name{font-size:9px;font-weight:900;line-height:1.15;color:#fff0c7}.forge-selected .fs-level{font-size:8px;color:#f0c875}.forge-upgrade{width:min(230px,82%);margin:0 auto 9px;padding:8px;border-radius:10px;border:1px solid #a26b31;background:linear-gradient(145deg,#d08a43,#7b411e);color:#fff5df;font-size:10px;font-weight:900;box-shadow:0 4px 10px rgba(0,0,0,.28)}.forge-upgrade:disabled{opacity:.48;filter:saturate(.35)}.forge-title{color:#ffc66c;font-size:18px;font-weight:900;letter-spacing:.7px;margin-top:4px}.forge-master{color:#d9c5a6;font-size:10px;line-height:1.35;margin:4px auto 10px;max-width:310px}.forge-wallet{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:11px;background:rgba(4,7,5,.72);border:1px solid rgba(255,196,94,.34);font-size:11px;color:#ffe0a0}.forge-wallet b{color:#ffb34d;font-size:13px}
 .forge-free{margin:10px 0 5px;padding:7px 9px;border-radius:10px;background:rgba(255,224,132,.09);border:1px dashed rgba(255,215,106,.42);color:#e9d4a4;font-size:9px;line-height:1.35}.forge-free.ready{color:#fff0b2;box-shadow:inset 0 0 13px rgba(255,174,57,.1)}
 .forge-group-title{display:flex;align-items:center;gap:7px;margin:15px 2px 7px;color:#eacb91;font-size:11px;font-weight:900;letter-spacing:.8px;text-transform:uppercase}.forge-group-title:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(226,165,80,.42),transparent)}
-.forge-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.forge-item{position:relative;min-height:112px;padding:10px 5px 8px;border-radius:14px;border:1px solid #9c7535;background:linear-gradient(145deg,#6f4b1d,#271b0e 56%,#11100d);color:#fff0c5;box-shadow:inset 0 0 16px rgba(255,207,91,.09),0 5px 12px rgba(0,0,0,.28);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;touch-action:manipulation}.forge-item:active:not(:disabled){transform:scale(.96);filter:brightness(1.18)}.forge-item .fi-icon{font-size:29px;line-height:1;filter:drop-shadow(0 0 7px rgba(255,188,72,.42))}.forge-item .fi-name{font-size:9px;font-weight:800;line-height:1.15}.forge-item .fi-level{font-size:8px;color:#f3cb78}.forge-item .fi-cost{margin-top:2px;padding:3px 6px;border-radius:7px;background:rgba(7,7,5,.56);font-size:8px;color:#ffbd58}.forge-item.free{border-color:#ffd76a;box-shadow:inset 0 0 18px rgba(255,213,90,.16),0 0 12px rgba(255,166,47,.18)}.forge-item.locked{filter:saturate(.25);opacity:.56}.forge-item.locked .fi-cost{color:#9e9582}.forge-item.maxed{border-color:#9cdaae;background:linear-gradient(145deg,#37583f,#15241a 60%,#0b100c)}
-.forge-note{margin:14px 0 6px;padding:10px 12px;border-radius:12px;border:1px solid rgba(213,155,75,.25);background:rgba(5,7,5,.62);font-size:9px;line-height:1.45;color:#bba98e}.forge-note b{color:#f1c979}.forge-exit{width:100%;margin-top:8px;padding:11px;border-radius:12px;border:1px solid #6e4d2a;background:linear-gradient(135deg,#342416,#17130e);color:#e8d4b5;font-size:11px;font-weight:800}
+.forge-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.forge-item{position:relative;min-height:88px;padding:7px 4px 6px;border-radius:12px;border:1px solid #9c7535;background:linear-gradient(145deg,#6f4b1d,#271b0e 56%,#11100d);color:#fff0c5;box-shadow:inset 0 0 13px rgba(255,207,91,.09),0 4px 9px rgba(0,0,0,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;touch-action:manipulation}.forge-item:active{transform:scale(.96);filter:brightness(1.18)}.forge-item .fi-icon{font-size:23px;line-height:1;filter:drop-shadow(0 0 6px rgba(255,188,72,.42))}.forge-item .fi-name{font-size:8px;font-weight:800;line-height:1.12}.forge-item .fi-level{font-size:7px;color:#f3cb78}.forge-item .fi-cost{margin-top:1px;padding:2px 5px;border-radius:6px;background:rgba(7,7,5,.56);font-size:7px;color:#ffbd58}.forge-item.free{border-color:#ffd76a;box-shadow:inset 0 0 15px rgba(255,213,90,.16),0 0 9px rgba(255,166,47,.18)}.forge-item.selected{border-color:#ffe18a;box-shadow:inset 0 0 18px rgba(255,220,119,.2),0 0 14px rgba(255,135,37,.35)}.forge-item.locked{filter:saturate(.25);opacity:.56}.forge-item.locked .fi-cost{color:#9e9582}.forge-item.maxed{border-color:#9cdaae;background:linear-gradient(145deg,#37583f,#15241a 60%,#0b100c)}
+.forge-note{margin:14px 0 6px;padding:10px 12px;border-radius:12px;border:1px solid rgba(213,155,75,.25);background:rgba(5,7,5,.62);font-size:9px;line-height:1.45;color:#bba98e}.forge-note b{color:#f1c979}.forge-exit{width:100%;margin-top:8px;padding:12px;border-radius:12px;border:1px solid #ff765a;background:radial-gradient(circle at 50% 0,rgba(255,201,96,.42),transparent 42%),linear-gradient(135deg,#b31f27,#5d0711 64%,#260207);color:#fff0db;font-size:11px;font-weight:900;box-shadow:inset 0 0 18px rgba(255,133,48,.23),0 0 14px rgba(198,28,27,.28);text-shadow:0 1px 4px #350006}.forge-exit:active{transform:scale(.98);filter:brightness(1.12)}
 .forge-transition{position:fixed;inset:0;z-index:80;background:radial-gradient(circle,rgba(255,151,46,.32),rgba(5,5,4,.94) 58%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#ffd47b;pointer-events:all}.forge-transition b{display:flex;align-items:center;justify-content:center;width:104px;height:104px;border-radius:50%;border:2px solid rgba(255,198,89,.72);background:radial-gradient(circle,rgba(255,178,56,.3),rgba(68,29,9,.42) 55%,transparent 57%);font-size:54px;box-shadow:0 0 26px rgba(255,116,25,.65),inset 0 0 25px rgba(255,188,77,.35);animation:forgePortal .72s ease-out}.forge-transition span{font-size:10px;letter-spacing:1.3px;text-transform:uppercase;text-shadow:0 2px 8px #000}
 `;
 
@@ -1060,11 +1061,11 @@ function midHero3d(h: HeroDef) {
   return markMeshes(g);
 }
 
-function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; on: (id: string) => void; eventDone: boolean }) {
+function Midgard3D({ h, skin, weapon, on, eventDone, start }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number} }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
-  const state = useRef({ x: 0, z: 28, dx: 0, dz: 0 });
+  const state = useRef({ x: start.x, z: start.z, dx: 0, dz: 0 });
   const [near, setNear] = useState("");
   const [moving, setMoving] = useState(false);
   const [ritualOpen, setRitualOpen] = useState(false);
@@ -1081,6 +1082,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
   const [villageGateOpen, setVillageGateOpen] = useState(false);
   const villageGateOpenRef = useRef(false);
   const gateActionRef = useRef<(()=>void)|null>(null);
+  const forgeActionRef = useRef<(()=>void)|null>(null);
 
   useEffect(() => {
     const el = mount.current;
@@ -1916,6 +1918,33 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       addMesh(forgeModel,"forge","Кузница");
       console.log('[FORGE] loaded', `${BASE}img/models/${forgeAsset}`);
     }, 'FORGE');
+
+    // A lightweight working door sits over the dark forge entrance. It swings
+    // open before the UI transition, while the original doorway remains as the
+    // shadowed interior behind it.
+    const forgeDoorPivot=new THREE.Group();
+    forgeDoorPivot.position.set(-10.92,groundY(-10,-2)+1.38,-1.62);
+    const forgeDoor=new THREE.Mesh(new THREE.BoxGeometry(1.84,2.76,.14),mat(0x392318,.82,.04));
+    forgeDoor.position.x=.92;
+    forgeDoorPivot.add(forgeDoor);
+    const forgeDoorTrim=new THREE.Mesh(new THREE.BoxGeometry(1.58,2.48,.04),mat(0x50321e,.88,.02));
+    forgeDoorTrim.position.set(.92,0,.09);
+    forgeDoorPivot.add(forgeDoorTrim);
+    const forgeHandle=new THREE.Mesh(new THREE.SphereGeometry(.10,10,8),mat(0xb27635,.42,.72));
+    forgeHandle.position.set(1.54,-.02,.17);
+    forgeDoorPivot.add(forgeHandle);
+    addMesh(forgeDoorPivot,"forge","Дверь кузницы");
+    let forgeDoorProgress=0;
+    let forgeDoorOpening=false;
+    let forgeDoorEntered=false;
+    let forgeEntryPosition={x:start.x,z:start.z};
+    forgeActionRef.current=()=>{
+      if(forgeDoorOpening)return;
+      forgeEntryPosition={x:state.current.x,z:state.current.z};
+      state.current.dx=0;state.current.dz=0;
+      forgeDoorOpening=true;
+      forgeDoorEntered=false;
+    };
 
     addRectCollider(-10,-5,9.6,6.6,0,.05);
 
@@ -4025,7 +4054,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     },"HERO GLB",()=>{if(glbTreesAlive)setHeroLoadFailed(true);});
 
     const ray=new THREE.Raycaster();const pointer=new THREE.Vector2();
-    const click=(e:PointerEvent)=>{if((e.target as HTMLElement)?.closest?.(".mid3d-ui"))return;const r=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-r.left)/r.width)*2-1;pointer.y=-((e.clientY-r.top)/r.height)*2+1;ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects(objects,true)[0];if(hit){let o:any=hit.object;while(o.parent&&!o.userData?.id)o=o.parent;if(o.userData?.id){if(o.userData.id==="gate")gateActionRef.current?.();else on(o.userData.id);}}};
+    const click=(e:PointerEvent)=>{if((e.target as HTMLElement)?.closest?.(".mid3d-ui"))return;const r=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-r.left)/r.width)*2-1;pointer.y=-((e.clientY-r.top)/r.height)*2+1;ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects(objects,true)[0];if(hit){let o:any=hit.object;while(o.parent&&!o.userData?.id)o=o.parent;if(o.userData?.id){if(o.userData.id==="gate")gateActionRef.current?.();else if(o.userData.id==="forge")forgeActionRef.current?.();else on(o.userData.id,{x:state.current.x,z:state.current.z});}}};
     renderer.domElement.addEventListener("pointerup",click);
 
     const setHomeMode=(inside:boolean)=>{
@@ -4053,7 +4082,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     homeActionRef.current=setHomeMode;
 
     const destinations=[
-      {id:"house",label:"Дом старейшины",x:13,z:-18,r:5.2},{id:"forge",label:"Кузница",x:-10,z:-5,r:5.4},
+      {id:"house",label:"Дом старейшины",x:13,z:-18,r:5.2},{id:"forge",label:"Дверь кузницы",x:-10,z:-1.6,r:2.8},
       {id:"mimir",label:"Колодец Мимира",x:1,z:0,r:4.8},{id:"norns",label:"Прядильня норн",x:-52,z:38,r:5.4},
       {id:"rune",label:"Древний камень Феху",x:50,z:60,r:4.5},{id:"port",label:"Речной мост",x:-57,z:-48,r:6},
       {id:"ashgrove",label:"Роща Ясеня",x:-5,z:75,r:7.5},{id:"threeThreads",label:"Колодец Трёх Норн",x:58,z:-28,r:6.8},{id:"forestCache",label:"Забытый тайник",x:-72,z:48,r:4.2},
@@ -4066,6 +4095,16 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     let raf=0,last=performance.now();
     const loop=(now:number)=>{
       const dt=Math.min(.05,(now-last)/1000);last=now;const q=state.current;const l=Math.hypot(q.dx,q.dz);
+
+      if(forgeDoorOpening){
+        forgeDoorProgress=Math.min(1,forgeDoorProgress+dt*1.65);
+        const doorT=THREE.MathUtils.smoothstep(forgeDoorProgress,0,1);
+        forgeDoorPivot.rotation.y=-doorT*1.42;
+        if(forgeDoorProgress>.86&&!forgeDoorEntered){
+          forgeDoorEntered=true;
+          on("forge",forgeEntryPosition);
+        }
+      }
 
       // Gate sequence: remove the crossbar first, then swing both leaves.
       const gateTarget=villageGateOpenRef.current?1:0;
@@ -4242,14 +4281,14 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;};
-  },[h.id,skin,weapon,on,eventDone]);
+    return()=>{glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
+  },[h.id,skin,weapon,on,eventDone,start.x,start.z]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
   const stopJoy=()=>{if(knob.current)knob.current.style.transform="translate(0,0)";state.current.dx=0;state.current.dz=0;};
   // Keep the visible joystick compact, but give it a much larger invisible touch zone.
   // This makes it comfortable to start steering with a thumb slightly above the circle.
-  const startJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{const a=joy.current;if(!a)return;const target=e.target as HTMLElement;if(target.closest?.(".mid3d-action")||target.closest?.(".mid3d-strike")||target.closest?.(".mid3d-interact")||target.closest?.(".mid3d-map-panel"))return;const r=a.getBoundingClientRect();const pad=26,up=78,down=26;const inside=e.clientX>=r.left-pad&&e.clientX<=r.right+pad&&e.clientY>=r.top-up&&e.clientY<=r.bottom+down;if(!inside)return;e.currentTarget.setPointerCapture(e.pointerId);joyMove(e);};
+  const startJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{const a=joy.current;if(!a)return;const target=e.target as HTMLElement;if(target.closest?.(".mid3d-action")||target.closest?.(".mid3d-strike")||target.closest?.(".mid3d-interact")||target.closest?.(".mid3d-door-prompt")||target.closest?.(".mid3d-map-panel"))return;const r=a.getBoundingClientRect();const pad=26,up=78,down=26;const inside=e.clientX>=r.left-pad&&e.clientX<=r.right+pad&&e.clientY>=r.top-up&&e.clientY<=r.bottom+down;if(!inside)return;e.currentTarget.setPointerCapture(e.pointerId);joyMove(e);};
   const moveJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{if(e.currentTarget.hasPointerCapture(e.pointerId))joyMove(e);};
   const endJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);stopJoy();};
 
@@ -4302,7 +4341,13 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:ice")}}>❄️ Ледяной обет — ослабить первый удар врага</button>
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:ygg")}}>🌳 Зов Иггдрасиля — пережить смертельный удар</button>
     </div>}
-    {near&&!ritualOpen&&!forestEventOpen&&(()=>{const [label,id]=near.split("|");const home=id==="heroHome"||id==="heroHomeExit";const villageGate=id==="gate";return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{villageGate?(villageGateOpen?"Створки открыты, тяжёлый засов снят":"Ворота заперты большим деревянным засовом"):home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода"):"Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else if(id==="gate")gateActionRef.current?.();else on(id);}}>{villageGate?(villageGateOpen?"Закрыть ворота и поставить засов":"Снять засов и открыть ворота"):home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):"Взаимодействовать"}</button></div>;})()}
+    {near&&!ritualOpen&&!forestEventOpen&&(()=>{
+      const [label,id]=near.split("|");
+      if(id==="forge")return <div className="mid3d-ui mid3d-door-prompt"><b>Дверь кузницы</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>forgeActionRef.current?.()}>Открыть ручку</button></div>;
+      const home=id==="heroHome"||id==="heroHomeExit";
+      const villageGate=id==="gate";
+      return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{villageGate?(villageGateOpen?"Створки открыты, тяжёлый засов снят":"Ворота заперты большим деревянным засовом"):home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода"):"Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else if(id==="gate")gateActionRef.current?.();else on(id,{x:state.current.x,z:state.current.z});}}>{villageGate?(villageGateOpen?"Закрыть ворота и поставить засов":"Снять засов и открыть ворота"):home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):"Взаимодействовать"}</button></div>;
+    })()}
     <div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" title="Удар оружием" onPointerDown={e=>e.stopPropagation()} onClick={()=>{attackActionRef.current?.();if("vibrate" in navigator)navigator.vibrate(12);}}>⚔</button>
     <button className="mid3d-ui mid3d-action" aria-label="Карта Мидгарда" title="Карта Мидгарда" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapHero({x:state.current.x,z:state.current.z});setMapOpen(true);}}>ᚠ</button>
@@ -4331,6 +4376,8 @@ function App() {
   const [over, setOver] = useState("");
   const [forgeTransition, setForgeTransition] = useState(false);
   const forgeTimer = useRef<number>(0);
+  const midgardReturn = useRef({x:0,z:28});
+  const [selectedForgeId,setSelectedForgeId]=useState("default");
 const [roadT, setRoadT] = useState(0.06);
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
   useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
@@ -4354,8 +4401,9 @@ const [roadT, setRoadT] = useState(0.06);
   const say = (m: string) => { setToast(m); window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(""), 1800); };
   const haptic = (k: "light" | "success" = "light") => { try { if (k === "success") tg?.HapticFeedback?.notificationOccurred?.("success"); else tg?.HapticFeedback?.impactOccurred?.("light"); } catch {} };
   const go = (s: Screen) => setScreen(s);
-  const enterForge=()=>{
+  const enterForge=(position?:{x:number;z:number})=>{
     if(forgeTransition)return;
+    if(position)midgardReturn.current={x:position.x,z:position.z};
     setForgeTransition(true);
     window.clearTimeout(forgeTimer.current);
     forgeTimer.current=window.setTimeout(()=>{setForgeTransition(false);setScreen({t:"forge"});},720);
@@ -4367,10 +4415,10 @@ const [roadT, setRoadT] = useState(0.06);
   const confirmHero = () => { if (!pick || !pickName) return; setSave(s => ({ ...s, hero: { id: pick, name: pickName } })); haptic("success"); say("Путь начинается, " + pickName + "!"); setScreen({ t: "tree" }); };
   const heroDef = save.hero ? HEROES.find(h => h.id === save.hero!.id)! : null;
   const forgeItems = [
-    {id:"default",icon:save.heroSkin==="valkyrie"?"⚔️":"🪓",name:save.heroSkin==="valkyrie"?"Меч валькирии":"Секира викинга",kind:"weapon",owned:true},
+    {id:"default",icon:save.heroSkin==="valkyrie"?"⚔️":"◢━",name:save.heroSkin==="valkyrie"?"Меч валькирии":"Секира викинга",kind:"weapon",owned:true},
     {id:"knife",icon:"🗡️",name:"Боевой нож",kind:"weapon",owned:save.ownedWeapons.includes("knife")},
     {id:"axe",icon:"🪓",name:"Северный топор",kind:"weapon",owned:save.ownedWeapons.includes("axe")},
-    {id:"mace",icon:"⛓️",name:"Цепной шип",kind:"weapon",owned:save.ownedWeapons.includes("mace")},
+    {id:"mace",icon:"⛓✦",name:"Цепной шип",kind:"weapon",owned:save.ownedWeapons.includes("mace")},
     {id:"spear",icon:"🔱",name:"Копьё",kind:"weapon",owned:save.ownedWeapons.includes("spear")},
     {id:"armor",icon:"♜",name:"Нагрудная броня",kind:"gear",owned:true},
     {id:"shield",icon:"🛡️",name:"Круглый щит",kind:"gear",owned:true},
@@ -4572,7 +4620,7 @@ const [roadT, setRoadT] = useState(0.06);
   if (realm.id === "midgard") {
     if (!heroDef) return null;
 
-    const interact = (id: string) => {
+    const interact = (id: string, position?:{x:number;z:number}) => {
       haptic();
       if (id === "mimir") {
         if (save.done.includes("forest:present")) {
@@ -4596,9 +4644,13 @@ const [roadT, setRoadT] = useState(0.06);
         say('Колодец Трёх Норн светится изнутри. Серебряная, золотая и алая нити сходятся над водой — прошлое, настоящее и будущее здесь связаны воедино.');
         return;
       }
-      if (id === "forge" || id === "blacksmith") {
+      if (id === "forge") {
         say("Вёлунд открывает дверь кузницы. Огонь горна отзывается на Капли силы.");
-        enterForge();
+        enterForge(position);
+        return;
+      }
+      if(id === "blacksmith"){
+        say("Вёлунд: «Выбери сталь у двери кузницы. Горн уже разожжён».");
         return;
       }
       if (id === "house" || id === "elder") {
@@ -4753,7 +4805,7 @@ const [roadT, setRoadT] = useState(0.06);
       }
     };
 
-    return <Midgard3D h={heroDef} skin={save.heroSkin} weapon={save.heroWeapon} on={interact} eventDone={save.done.includes("forest:choice")} />;
+    return <Midgard3D h={heroDef} skin={save.heroSkin} weapon={save.heroWeapon} on={interact} eventDone={save.done.includes("forest:choice")} start={midgardReturn.current} />;
   }
 
   return (
@@ -4932,11 +4984,15 @@ const [roadT, setRoadT] = useState(0.06);
       {screen.t === "forge" && (()=>{
         const weapons=forgeItems.filter(item=>item.kind==="weapon");
         const gear=forgeItems.filter(item=>item.kind==="gear");
+        const selected=forgeItems.find(item=>item.id===selectedForgeId)||forgeItems[0];
+        const selectedLevel=forgeLevel(selected.id);
+        const selectedMaxed=selectedLevel>=5;
+        const selectedCost=forgeCost(selected.id);
         const forgeButton=(item:typeof forgeItems[number])=>{
           const level=forgeLevel(item.id);
           const maxed=level>=5;
           const free=!save.forgeFreeUsed&&item.owned&&!maxed;
-          return <button key={item.id} className={"forge-item"+(!item.owned?" locked":"")+(free?" free":"")+(maxed?" maxed":"")} onClick={()=>improveForgeItem(item)}>
+          return <button key={item.id} className={"forge-item"+(!item.owned?" locked":"")+(free?" free":"")+(maxed?" maxed":"")+(selected.id===item.id?" selected":"")} onClick={()=>{if(!item.owned){say("Этот предмет ещё не найден.");return;}setSelectedForgeId(item.id);haptic();}}>
             <span className="fi-icon">{item.icon}</span>
             <span className="fi-name">{item.name}</span>
             <span className="fi-level">{level>0?"Закалка +"+level:"Без улучшений"}</span>
@@ -4945,7 +5001,8 @@ const [roadT, setRoadT] = useState(0.06);
         };
         return <div className="scroll forge-screen">
           <div className="forge-head">
-            <div className="forge-anvil">⚒️</div>
+            <div className="forge-selected"><span className="fs-icon">{selected.icon}</span><span className="fs-name">{selected.name}</span><span className="fs-level">{selectedLevel>0?"Закалка +"+selectedLevel:"Выбрано для ковки"}</span></div>
+            <button className="forge-upgrade" disabled={!selected.owned||selectedMaxed} onClick={()=>improveForgeItem(selected)}>{selectedMaxed?"Высшая закалка":!save.forgeFreeUsed?"Закалить бесплатно":"Закалить за "+selectedCost+" 🔥"}</button>
             <div className="forge-title">Кузница Вёлунда</div>
             <div className="forge-master">«Сталь помнит каждый бой. Отдай её огню — и она вернётся сильнее».</div>
             <div className="forge-wallet"><span>Запас:</span><b>🔥 {save.sparks}</b><span>Капель силы</span></div>
@@ -4958,7 +5015,7 @@ const [roadT, setRoadT] = useState(0.06);
           <div className="forge-group-title">Экипировка</div>
           <div className="forge-grid">{gear.map(forgeButton)}</div>
           <div className="forge-note"><b>Закалка действует в бою.</b> Оружие усиливает обычный удар; броня и шлем добавляют здоровье и снижают урон; щит крепче держит защиту; улучшенные сапоги помогают быстрее восстановить энергию.</div>
-          <button className="forge-exit" onClick={()=>{haptic();go({t:"realm",id:"midgard"});}}>Открыть дверь и вернуться в Мидгард</button>
+          <button className="forge-exit" onClick={()=>{haptic();go({t:"realm",id:"midgard"});}}>🔥 Открыть дверь и вернуться в Мидгард</button>
         </div>;
       })()}
 
