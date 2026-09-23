@@ -104,13 +104,15 @@ const NAV = [{ id: "tree", ic: "ᚱ", t: "Путь" }, { id: "hero", ic: "ᛗ", 
 type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" } | { t: "hero" } | { t: "gift" } | { t: "hall" } | { t: "craft" } | { t: "forge" } | { t: "trial"; id: string } | { t: "fight"; id: string };
 type HeroSkin = "viking" | "valkyrie";
 type HeroWeapon = "default";
-type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; ownedWeapons: string[]; forgeLevels: Record<string,number>; forgeFreeUsed: boolean };
-const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", ownedWeapons: ["default"], forgeLevels: {}, forgeFreeUsed: false };
+type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; ownedWeapons: string[]; potions: string[]; runes: string[]; forgeLevels: Record<string,number>; forgeFreeUsed: boolean };
+const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", ownedWeapons: ["default"], potions: [], runes: [], forgeLevels: {}, forgeFreeUsed: false };
 const loadSave = (): Save => {
   try {
     const s:any = { ...DEF, ...JSON.parse(localStorage.getItem("yggdrasil") || "") };
     if (!Array.isArray(s.powers)) s.powers = [];
     if (!Array.isArray(s.ownedWeapons)) s.ownedWeapons = ["default"];
+    if (!Array.isArray(s.potions)) s.potions = [];
+    if (!Array.isArray(s.runes)) s.runes = [];
     if (!s.forgeLevels || typeof s.forgeLevels !== "object" || Array.isArray(s.forgeLevels)) s.forgeLevels = {};
     if (typeof s.forgeFreeUsed !== "boolean") s.forgeFreeUsed = false;
     if (s.heroSkin !== "viking" && s.heroSkin !== "valkyrie") {
@@ -129,6 +131,20 @@ const rank = (n: number) => (n >= 500 ? "Всеотец" : n >= 300 ? "Мудр�
 const LADDER = [3, 5, 8, 12, 18, 25, 40];
 const COMBAT_ENERGY = 5;
 const combatEnergyColor = (n:number) => n>=5?"#35d06f":n===4?"#91df4f":n===3?"#328bea":n===2?"#68d8ee":n===1?"#e34c43":"#26302a";
+
+const WHISPER_GUARD: Master = {
+  name: "Хродвитнир",
+  title: "Страж Камня шёпота",
+  hp: 34,
+  atk: 6,
+  sym: "ᚦ",
+  greet: "Камень хранит память о сотворении Мидгарда. Ответь верно — или докажи своё право оружием."
+};
+const WHISPER_QUEST: Quest = {
+  q: "Из чего, согласно эддической песне, боги создали землю Мидгарда?",
+  a: ["Из ветвей Иггдрасиля", "Из тела великана Имира", "Из камней Асгарда"],
+  c: 1
+};
 
 const NAMES_F = ["Астрид", "Фрейдис", "Гудрун", "Сигрид", "Хельга", "Ингрид", "Ирса", "Сольвейг"];
 const NAMES_M = ["Сигурд", "Рагнар", "Эйнар", "Лейф", "Бьорн", "Харальд", "Ульф", "Гудмунд"];
@@ -330,8 +346,11 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .cloud .btn{margin-top:10px}
 @keyframes cloudin{from{opacity:0;transform:translateX(46px) scale(.92)}}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes battleFlash{0%{opacity:0;transform:scale(.7) rotate(-24deg)}32%{opacity:1}100%{opacity:0;transform:scale(1.18) rotate(-24deg)}}
 /* Дуэльная пластина боя */
-.duel{display:flex;align-items:center;gap:8px;padding:12px 12px 10px;background:linear-gradient(180deg,rgba(20,28,23,.92),rgba(10,14,11,.96));border:1px solid #26342a;border-radius:20px;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.duel{position:relative;overflow:hidden;display:flex;align-items:center;gap:8px;padding:12px 12px 10px;background:linear-gradient(180deg,rgba(20,28,23,.92),rgba(10,14,11,.96));border:1px solid #26342a;border-radius:20px;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.battle-fx{position:absolute;inset:-25%;z-index:4;pointer-events:none;opacity:0;transform:rotate(-24deg);animation:battleFlash .48s ease-out}.battle-fx.hit{background:linear-gradient(105deg,transparent 42%,rgba(255,244,205,.96) 48%,rgba(255,119,40,.9) 51%,transparent 58%)}.battle-fx.rune{background:radial-gradient(circle,rgba(159,113,255,.92),rgba(74,158,255,.42) 22%,transparent 58%);filter:drop-shadow(0 0 12px #91dfff)}.battle-fx.guard{background:radial-gradient(circle at 28% 50%,rgba(231,69,45,.72),transparent 35%)}
+.guard-face{background:radial-gradient(circle at 50% 38%,#725735 0 20%,#342b25 22% 39%,#101512 41%);box-shadow:0 0 12px #ff9a43,inset 0 0 10px rgba(0,0,0,.8)}
 .dside{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0}
 .dface{position:relative;width:54px;height:54px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;overflow:hidden;background:#0d130f;text-shadow:0 0 6px currentColor;box-shadow:0 0 10px currentColor}
 .dhp{width:100%;height:6px;border-radius:4px;background:#0a0f0b;border:1px solid #223028;overflow:hidden}
@@ -4400,6 +4419,7 @@ function App() {
   const [shield, setShield] = useState(false);
   const [valk, setValk] = useState(false);
   const [over, setOver] = useState("");
+  const [combatFx, setCombatFx] = useState<{kind:"hit"|"rune"|"guard";key:number}|null>(null);
   const [forgeTransition, setForgeTransition] = useState(false);
   const forgeTimer = useRef<number>(0);
   const midgardReturn = useRef({x:0,z:28});
@@ -4423,7 +4443,7 @@ const [roadT, setRoadT] = useState(0.06);
     if (screen.t !== "tree" && screen.t !== "choose" && save.hero) { tg.BackButton.show(); tg.BackButton.onClick(back); } else tg.BackButton.hide();
     return () => { tg.BackButton?.offClick?.(back); };
   }, [screen, save.hero]);
-  useEffect(() => { setRes(null); setRemoved(null); setWhisper(false); setOver(""); setShield(false); }, [screen]);
+  useEffect(() => { setRes(null); setRemoved(null); setWhisper(false); setOver(""); setShield(false); setCombatFx(null); }, [screen]);
   useEffect(()=>()=>window.clearTimeout(forgeTimer.current),[]);
 
   const say = (m: string) => { setToast(m); window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(""), 1800); };
@@ -4473,6 +4493,18 @@ const [roadT, setRoadT] = useState(0.06);
     setSave(s => ({ ...s, sparks: s.sparks + add + (art ? 30 : 0), trials: [...s.trials, id + ":" + idx], artifacts: art ? [...s.artifacts, id] : s.artifacts }));
     if (art) { haptic("success"); say("Мир пройден! Артефакт: " + ARTIFACTS[id]); }
   };
+  const answerWhisper = (ai:number) => {
+    if(res!==null)return;
+    setRes(ai);
+    if(ai===WHISPER_QUEST.c){
+      setSave(s=>s.done.includes("whisper:wisdom")?s:{...s,sparks:s.sparks+8,done:[...new Set([...s.done,"whisper:wisdom"])]});
+      haptic("success");
+      say("Камень признал верный ответ: +8 Капель силы.");
+    }else{
+      haptic();
+      setFlog(WHISPER_GUARD.name+" выходит из янтарного света: «Пусть теперь ответит твоя сталь!»");
+    }
+  };
   const answer = (id: string, ai: number) => {
     if (res !== null) return;
     const idx = trialIdx(id); const q = QUESTS[id][idx];
@@ -4502,7 +4534,7 @@ const [roadT, setRoadT] = useState(0.06);
   };
   const useWhisper = (id: string) => { const idx = trialIdx(id); const q = QUESTS[id][idx]; const wrong = q.a.findIndex((_, i) => i !== q.c && i !== removed); setRemoved(wrong); setWhisper(true); haptic(); say("Шёпот ветров уносит один ответ..."); };
   const startFight = (id: string) => {
-    const m = MASTERS[id];
+    const m = id==="whisper"?WHISPER_GUARD:MASTERS[id];
     const ash = save.powers.includes("ashBreath");
     const forgedHp=forgeLevel("armor")*3+forgeLevel("helmet")*2;
     const fightMaxHp=heroDef!.hp+forgedHp+(ash?25:0);
@@ -4516,11 +4548,31 @@ const [roadT, setRoadT] = useState(0.06);
     if (ash) setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "ashBreath") }));
     setScreen({ t: "fight", id });
   };
+  const finishWhisperBattle=()=>{
+    const missing=["knife","axe","mace","spear"].filter(id=>!save.ownedWeapons.includes(id));
+    const roll=rnd(3);
+    const weaponNames:Record<string,string>={knife:"Боевой нож",axe:"Северный топор",mace:"Цепной шип",spear:"Копьё"};
+    const weapon=missing.length?missing[rnd(missing.length)]:"";
+    const reward=roll===0&&weapon
+      ? {kind:"weapon",id:weapon,label:weaponNames[weapon]}
+      : roll===1
+        ? {kind:"potion",id:"northernMoss",label:"Эликсир северного мха"}
+        : {kind:"rune",id:"kenazShard",label:"Осколок руны Кеназ"};
+    setSave(s=>{
+      if(s.done.includes("whisper:battle"))return s;
+      return {...s,sparks:s.sparks+18,done:[...new Set([...s.done,"whisper:battle"])],
+        ownedWeapons:reward.kind==="weapon"?[...new Set([...s.ownedWeapons,reward.id])]:s.ownedWeapons,
+        potions:reward.kind==="potion"?[...s.potions,reward.id]:s.potions,
+        runes:reward.kind==="rune"?[...new Set([...s.runes,reward.id])]:s.runes};
+    });
+    return reward.label;
+  };
   const fightAct = (id: string, kind: "hit" | "rune" | "shield" | "restore") => {
     if (over) return;
-    const m = MASTERS[id]; const idx = trialIdx(id);
+    const m = id==="whisper"?WHISPER_GUARD:MASTERS[id]; const idx = trialIdx(id);
     let dmg = 0; let log = ""; let nhen = hen; let nmen = men; let nshield = shield;
     if (kind === "hit") {
+      setCombatFx({kind:"hit",key:Date.now()});
       dmg = heroDef!.str + forgeLevel("default") + rnd(4);
       if(hen>0)nhen=Math.max(0,hen-1);else{dmg=Math.ceil(dmg*.55);log="Силы иссякли — удар слабее. ";}
       if (save.powers.includes("fireOath")) { dmg += 5; setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "fireOath") })); log += "Огненный обет! "; }
@@ -4529,13 +4581,25 @@ const [roadT, setRoadT] = useState(0.06);
     }
     if (kind === "rune") {
       if (hen < 2) { say("Для рунического удара нужно 2 деления энергии."); return; }
+      setCombatFx({kind:"rune",key:Date.now()});
       nhen = hen - 2; dmg = heroDef!.en + 2 + rnd(5);
       log = "Руническое заклинание вспыхивает: −" + dmg + " хозяину.";
     }
     if (kind === "shield") { if(hen<1){say("Нет энергии, чтобы удержать щит.");return;} nhen=hen-1;nshield = true; log = "Ты поднимаешь щит — удар ослабнет."; }
     if (kind === "restore") { const restored=2+(forgeLevel("boots")>=3?1:0);nhen=Math.min(COMBAT_ENERGY,hen+restored);log="Ты переводишь дыхание и восстанавливаешь "+restored+" деления энергии."; }
     const nm = mhp - dmg;
-    if (nm <= 0) { setMhp(0); setHen(nhen); setMen(nmen); setOver("win"); const add = 8 + idx * 2; setFlog("Хозяин повержен! Награда: +" + add + " Капель силы"); finishTrial(id, idx, add); return; }
+    if (nm <= 0) {
+      setMhp(0); setHen(nhen); setMen(nmen); setOver("win");
+      if(id==="whisper"){
+        const reward=finishWhisperBattle();
+        setFlog("Хродвитнир повержен! Награда: +18 Капель силы и «"+reward+"».");
+      }else{
+        const add = 8 + idx * 2;
+        setFlog("Хозяин повержен! Награда: +" + add + " Капель силы");
+        finishTrial(id, idx, add);
+      }
+      return;
+    }
     let md = m.atk + rnd(3); let mlog = "";
     if(nmen<=0){md=0;nmen=2;mlog=" "+m.name+" вынужден перевести дыхание и восстанавливает энергию.";}else nmen=Math.max(0,nmen-1);
     const forgedDefense=Math.floor((forgeLevel("armor")+forgeLevel("helmet"))/2);
@@ -4711,6 +4775,16 @@ const [roadT, setRoadT] = useState(0.06);
       }
       if (id === "runefield") {
         say("Поле Рун. Здесь можно будет разгадывать сочетания рун и открывать новые пути. Это место запомнит твой выбор.");
+        return;
+      }
+      if(id==="whisperStone"){
+        if(save.done.includes("whisper:battle")){
+          say("Камень шепчет имя побеждённого стража. Его награда уже хранится в Чертоге.");
+        }else if(save.done.includes("whisper:wisdom")){
+          say("Камень помнит твой верный ответ. Янтарный свет остаётся спокойным.");
+        }else{
+          setScreen({t:"trial",id:"whisper"});
+        }
         return;
       }
       if (id === "oldfarm") {
@@ -4899,6 +4973,23 @@ const [roadT, setRoadT] = useState(0.06);
   );
 })()}
       {screen.t === "trial" && (() => {
+        if(screen.id==="whisper")return (
+          <div className="scroll">
+            <div className="mhead">
+              <span className="mface guard-face" style={{borderColor:"#ff9a43",color:"#ffd18b"}}>ᚦ</span>
+              <span className="mname2" style={{color:"#ffbd68"}}>{WHISPER_GUARD.name}</span>
+              <span className="mtitle">{WHISPER_GUARD.title}</span>
+            </div>
+            <div className="greet">«{WHISPER_GUARD.greet}»</div>
+            <div className="cloud">
+              <div className="riddle">{WHISPER_QUEST.q}</div>
+              {WHISPER_QUEST.a.map((a,i)=><button key={i} className={"ans"+(res!==null?(i===WHISPER_QUEST.c?" good":i===res?" bad":" off"):"")} onClick={()=>answerWhisper(i)}>{a}</button>)}
+              {res!==null&&(res===WHISPER_QUEST.c
+                ? <button className="btn gold" onClick={()=>go({t:"realm",id:"midgard"})}>Вернуться к Камню шёпота</button>
+                : <button className="btn" onClick={()=>startFight("whisper")}>⚔ Принять вызов стража</button>)}
+            </div>
+          </div>
+        );
         const realm = REALMS.find(r => r.id === screen.id)!;
         const m = MASTERS[realm.id];
         const idx = trialIdx(realm.id);
@@ -4929,13 +5020,16 @@ const [roadT, setRoadT] = useState(0.06);
       })()}
 
       {screen.t === "fight" && (() => {
-        const realm = REALMS.find(r => r.id === screen.id)!;
-        const m = MASTERS[realm.id];
+        const isWhisper=screen.id==="whisper";
+        const realm = REALMS.find(r => r.id === (isWhisper?"midgard":screen.id))!;
+        const m = isWhisper?WHISPER_GUARD:MASTERS[realm.id];
+        const fightId=isWhisper?"whisper":realm.id;
         return (
           <div className="scroll">
             <div className="duel">
+              {combatFx&&<i key={combatFx.key} className={"battle-fx "+combatFx.kind}/>}
               <div className="dside">
-                <span className="dface" style={{ borderColor: realm.color, color: realm.color }}><BgImg name={MASTER_IMG[realm.id]} className="himg" />{m.sym}</span>
+                <span className={"dface"+(isWhisper?" guard-face":"")} style={{ borderColor: isWhisper?"#ff9a43":realm.color, color: isWhisper?"#ffd18b":realm.color }}>{!isWhisper&&<BgImg name={MASTER_IMG[realm.id]} className="himg" />}{m.sym}</span>
                 <span className="dname" style={{ color: realm.color }}>{m.name}</span>
                 <span className="dhp"><span className="dhpfill" style={{ width: Math.max(0, (mhp / m.hp) * 100) + "%", background: realm.color }} /></span>
                 <span className="dnum">{mhp}/{m.hp}</span>
@@ -4954,13 +5048,13 @@ const [roadT, setRoadT] = useState(0.06);
             </div>
             <div className="flog">{flog}</div>
             {!over && (<div className="acts">
-              <button className="btn gold" onClick={() => fightAct(realm.id, "hit")}>⚔ Удар: {heroDef!.weapon} (−1 энергия)</button>
-              <button className="btn rune" onClick={() => fightAct(realm.id, "rune")}>🌀 Руническое заклинание (−2 энергии)</button>
-              <button className="btn shield" onClick={() => fightAct(realm.id, "shield")}>🛡 Щит (−1 энергия)</button>
-              <button className="btn ghost" onClick={() => fightAct(realm.id, "restore")}>🌿 Перевести дыхание (+{2+(forgeLevel("boots")>=3?1:0)} энергии)</button>
+              <button className="btn gold" onClick={() => fightAct(fightId, "hit")}>⚔ Удар: {heroDef!.weapon} (−1 энергия)</button>
+              <button className="btn rune" onClick={() => fightAct(fightId, "rune")}>🌀 Руническое заклинание (−2 энергии)</button>
+              <button className="btn shield" onClick={() => fightAct(fightId, "shield")}>🛡 Щит (−1 энергия)</button>
+              <button className="btn ghost" onClick={() => fightAct(fightId, "restore")}>🌿 Перевести дыхание (+{2+(forgeLevel("boots")>=3?1:0)} энергии)</button>
             </div>)}
-            {over === "win" && <button className="btn gold" onClick={() => nextStep(realm.id)}>Забрать награду →</button>}
-            {over === "lose" && <button className="btn ghost" onClick={() => go({ t: "tree" })}>Древо возрождает тебя</button>}
+            {over === "win" && <button className="btn gold" onClick={() => isWhisper?go({t:"realm",id:"midgard"}):nextStep(realm.id)}>Забрать награду →</button>}
+            {over === "lose" && <button className="btn ghost" onClick={() => go(isWhisper?{t:"realm",id:"midgard"}:{ t: "tree" })}>{isWhisper?"Вернуться в Мидгард":"Древо возрождает тебя"}</button>}
           </div>
         );
       })()}
@@ -5069,9 +5163,9 @@ const [roadT, setRoadT] = useState(0.06);
           <div className="hall-grid">
             <div className="hall-section">
               <span className="hall-icon">⚔️</span><h3>Оружие</h3>
-              <p>{save.heroSkin==="valkyrie"?"Меч валькирии":"Секира викинга"} сейчас в руке. Здесь будут храниться найденные клинки, топоры и копья.</p>
-              <div className="hall-slots"><button className="hall-slot on" onClick={()=>say("Это оружие уже экипировано.")}>⚔</button><button className="hall-slot" onClick={()=>say("Ячейка свободна: оружие ещё не найдено.")}>＋</button><button className="hall-slot" onClick={()=>say("Ячейка свободна: оружие ещё не найдено.")}>＋</button></div>
-              <span className="hall-count">1 предмет</span>
+              <p>{save.heroSkin==="valkyrie"?"Меч валькирии":"Секира викинга"} сейчас в руке. Найденное оружие сохраняется здесь после боёв.</p>
+              <div className="hall-slots"><button className="hall-slot on" onClick={()=>say("Это оружие уже экипировано.")}>⚔</button><button className={"hall-slot"+(save.ownedWeapons.length>1?" on":"")} onClick={()=>say(save.ownedWeapons.length>1?"Наградное оружие найдено. Смену оружия добавим следующим этапом.":"Ячейка свободна: оружие ещё не найдено.")}>{save.ownedWeapons.length>1?"🗡":"＋"}</button><button className={"hall-slot"+(save.ownedWeapons.length>2?" on":"")} onClick={()=>say(save.ownedWeapons.length>2?"Ещё одно оружие хранится в Чертоге.":"Ячейка свободна: оружие ещё не найдено.")}>{save.ownedWeapons.length>2?"🪓":"＋"}</button></div>
+              <span className="hall-count">{save.ownedWeapons.length} предмет{save.ownedWeapons.length===1?"":"а"}</span>
             </div>
             <div className="hall-section">
               <span className="hall-icon">🛡️</span><h3>Экипировка</h3>
@@ -5079,17 +5173,17 @@ const [roadT, setRoadT] = useState(0.06);
               <div className="hall-slots"><button className="hall-slot on" onClick={()=>say("Надета базовая броня.")}>♜</button><button className="hall-slot on" onClick={()=>say("Экипирован базовый щит.")}>◉</button><button className="hall-slot on" onClick={()=>say("Надеты базовые сапоги.")}>⌁</button></div>
               <span className="hall-count">Базовый набор</span>
             </div>
-            <button className="hall-section" onClick={()=>say("Эликсиры появятся здесь после первых наград.")}>
+            <button className="hall-section" onClick={()=>say(save.potions.length?"Эликсир северного мха готов к будущему бою.":"Эликсиры появятся здесь после первых наград.")}>
               <span className="hall-icon">🧪</span><h3>Эликсиры</h3>
               <p>Лечение, сила, защита и руническая энергия. Зелья расходуются во время путешествий.</p>
               <div className="hall-slots"><span className="hall-slot"><i className="vial" style={{"--vial":"#d94332"} as React.CSSProperties}/></span><span className="hall-slot"><i className="vial" style={{"--vial":"#359ada"} as React.CSSProperties}/></span><span className="hall-slot"><i className="vial" style={{"--vial":"#57a85a"} as React.CSSProperties}/></span></div>
-              <span className="hall-count">Пока пусто</span>
+              <span className="hall-count">{save.potions.length?save.potions.length+" эликсир":"Пока пусто"}</span>
             </button>
-            <button className="hall-section" onClick={()=>say("Выбор боевых и путевых рун откроется после первого испытания.")}>
+            <button className="hall-section" onClick={()=>say(save.runes.length?"Осколок Кеназ хранится в Чертоге.":"Выбор боевых и путевых рун откроется после первого испытания.")}>
               <span className="hall-icon">ᛉ</span><h3>Руны</h3>
               <p>Боевая, защитная и путевая руны. Их силу герой сможет менять перед выходом из Чертога.</p>
               <div className="hall-slots"><span className="hall-slot on">ᚦ</span><span className="hall-slot">ᛉ</span><span className="hall-slot">ᚱ</span></div>
-              <span className="hall-count">1 базовая руна</span>
+              <span className="hall-count">{1+save.runes.length} {save.runes.length?"руны":"базовая руна"}</span>
             </button>
           </div>
           <button className="craft-entry" onClick={()=>{haptic();go({t:"craft"});}}><b>🔥 Перейти в локацию крафта</b><span>Соединяй оружие, материалы и Капли силы в новые предметы.</span></button>
