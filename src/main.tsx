@@ -3,6 +3,8 @@ import { createRoot } from "react-dom/client";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
+THREE.Cache.enabled = true;
+
 const tg: any = (window as any).Telegram?.WebApp;
 const BASE: string = (import.meta as any).env?.BASE_URL || "/";
 
@@ -324,6 +326,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 @keyframes breathe{0%,100%{opacity:.3;transform:scale(.9)}50%{opacity:.7;transform:scale(1.1)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes fade{from{opacity:0}}
+@keyframes heroRunePulse{0%,100%{opacity:.48;transform:scale(.9);filter:drop-shadow(0 0 5px rgba(255,215,106,.45))}50%{opacity:1;transform:scale(1.09);filter:drop-shadow(0 0 15px rgba(255,215,106,.95))}}
 
 .mid3d-scene{background:#8da894;overflow:hidden;position:relative;isolation:isolate;touch-action:none}
 .mid3d-scene canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -339,6 +342,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .mid3d-action{right:16px;bottom:32px;width:64px;height:64px;border-radius:50%;background:rgba(255,215,106,.92);color:#241b06;font-size:22px;font-weight:900;box-shadow:0 5px 16px rgba(0,0,0,.35);touch-action:none}
 .mid3d-strike{right:22px;bottom:112px;width:52px;height:52px;border-radius:50%;border:1px solid rgba(255,225,174,.66);background:radial-gradient(circle at 38% 30%,rgba(255,155,75,.98),rgba(126,38,20,.96));color:#fff4df;font-size:22px;font-weight:900;text-shadow:0 1px 4px rgba(0,0,0,.85);box-shadow:0 5px 15px rgba(0,0,0,.42),0 0 12px rgba(255,99,43,.25);touch-action:none}
 .mid3d-strike:active{transform:scale(.88);box-shadow:0 2px 8px rgba(0,0,0,.45),0 0 18px rgba(255,114,54,.55)}
+.mid3d-hero-load{left:50%;top:58%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;color:#f4d36d;text-shadow:0 2px 8px rgba(0,0,0,.85)}
+.mid3d-hero-load b{font-size:34px;line-height:1;animation:heroRunePulse 1.05s ease-in-out infinite}.mid3d-hero-load span{font-size:9px;letter-spacing:.8px;padding:3px 7px;border-radius:8px;background:rgba(4,9,6,.55)}
 .mid3d-hint{left:50%;bottom:9px;transform:translateX(-50%);padding:6px 10px;border-radius:9px;background:rgba(5,10,7,.68);border:1px solid rgba(126,231,135,.18);color:#d0dfd3;font-size:10px;line-height:1.2;white-space:nowrap;pointer-events:none}
 .mid3d-interact{left:50%;bottom:112px;transform:translateX(-50%);width:210px;text-align:center;padding:10px;border-radius:14px;background:rgba(5,11,7,.91);border:1px solid rgba(255,215,106,.55);box-shadow:0 8px 22px rgba(0,0,0,.35)}
 .mid3d-interact b{display:block;color:#ffd76a;font-size:13px;line-height:1.2}
@@ -1024,6 +1029,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
   const [forestEventOpen, setForestEventOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [mapHero, setMapHero] = useState({x:0,z:28});
+  const [heroReady, setHeroReady] = useState(false);
+  const [heroLoadFailed, setHeroLoadFailed] = useState(false);
   const [insideHome, setInsideHome] = useState(false);
   const cameraDir = useRef({ x: 0, z: 1 });
   const insideHomeRef = useRef(false);
@@ -1036,6 +1043,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
   useEffect(() => {
     const el = mount.current;
     if (!el) return;
+    setHeroReady(false);
+    setHeroLoadFailed(false);
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xa4b6ad);
@@ -1322,13 +1331,17 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     const loadGlbWithFolderFallback = (
       asset:string,
       onLoad:(gltf:any)=>void,
-      label:string
+      label:string,
+      onFinalError?:()=>void
     ) => {
       const paths = [`${BASE}img/models/${asset}`, `${BASE}img/model/${asset}`];
       const tryPath = (index:number) => {
         gltfLoader.load(paths[index], onLoad, undefined, (error:any) => {
           if (index + 1 < paths.length) tryPath(index + 1);
-          else console.error(`[${label}] FAILED`, paths, error);
+          else {
+            console.error(`[${label}] FAILED`, paths, error);
+            onFinalError?.();
+          }
         });
       };
       tryPath(0);
@@ -3803,31 +3816,54 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     const motes=new THREE.Points(moteGeo,moteMat);
     scene.add(motes);
 
-    // Real GLB hero. Keep the old procedural figure only as a safe loading fallback.
+    // Real GLB hero. The procedural prototype stays hidden so it can never flash
+    // on screen while the selected character is still loading.
     const hero=new THREE.Group();
     scene.add(hero);
 
-    const heroFallback=midHero3d(h);
-    hero.add(heroFallback);
-    let heroAnim:any=heroFallback.userData.anim;
+    let heroAnim:any=null;
     let attackStartedAt=-10000;
     const attackGlowMats:THREE.MeshStandardMaterial[]=[];
     const strikeColor=skin==="valkyrie"?0x91ddff:0xff8538;
     const strikeMat=new THREE.MeshBasicMaterial({color:strikeColor,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide});
-    const strikeFlash=new THREE.Mesh(new THREE.RingGeometry(.12,.42,24),strikeMat);
-    strikeFlash.position.set(0,1.35,1.28);
-    strikeFlash.visible=false;
-    hero.add(strikeFlash);
+    const slashSide=skin==="valkyrie"?-1:1;
+    const slashCurve=new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-.48*slashSide,.57,-.04),
+      new THREE.Vector3(-.10*slashSide,.34,.02),
+      new THREE.Vector3(.34*slashSide,-.02,.03),
+      new THREE.Vector3(.25*slashSide,-.43,-.02)
+    ]);
+    const slashGeo=new THREE.TubeGeometry(slashCurve,14,.026,4,false);
+    const strikeSlash=new THREE.Mesh(slashGeo,strikeMat);
+    strikeSlash.position.set(0,1.45,1.32);
+    strikeSlash.visible=false;
+    hero.add(strikeSlash);
     const strikeLight=new THREE.PointLight(strikeColor,0,4.8,2);
     strikeLight.position.set(0,1.35,1.15);
     hero.add(strikeLight);
     const boltGeo=new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(.18,1.92,1.31),new THREE.Vector3(-.10,1.62,1.31),new THREE.Vector3(.12,1.39,1.31),new THREE.Vector3(-.18,1.02,1.31)
+      new THREE.Vector3(0,.36,0),new THREE.Vector3(-.12,.13,0),
+      new THREE.Vector3(-.12,.13,0),new THREE.Vector3(.08,-.05,0),
+      new THREE.Vector3(.08,-.05,0),new THREE.Vector3(-.10,-.34,0),
+      new THREE.Vector3(-.04,.08,0),new THREE.Vector3(-.27,-.03,0),
+      new THREE.Vector3(.06,-.07,0),new THREE.Vector3(.27,-.19,0)
     ]);
     const boltMat=new THREE.LineBasicMaterial({color:0xc9f3ff,transparent:true,opacity:0,blending:THREE.AdditiveBlending});
-    const strikeBolt=new THREE.Line(boltGeo,boltMat);
+    const strikeBolt=new THREE.LineSegments(boltGeo,boltMat);
+    strikeBolt.position.set(.20*slashSide,1.30,1.38);
     strikeBolt.visible=false;
     hero.add(strikeBolt);
+    const sparkPositions=new Float32Array([
+      0,0,0, .28,.13,.03, -.25,.18,-.02, .18,-.22,.04,
+      -.19,-.28,.01, .36,-.08,-.03, -.34,.02,.02, .08,.34,0
+    ]);
+    const sparkGeo=new THREE.BufferGeometry();
+    sparkGeo.setAttribute("position",new THREE.BufferAttribute(sparkPositions,3));
+    const sparkMat=new THREE.PointsMaterial({color:0xffa23f,size:.085,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,sizeAttenuation:true});
+    const strikeSparks=new THREE.Points(sparkGeo,sparkMat);
+    strikeSparks.position.set(.18*slashSide,1.28,1.39);
+    strikeSparks.visible=false;
+    hero.add(strikeSparks);
     attackActionRef.current=()=>{
       const now=performance.now();
       if(now-attackStartedAt<650)return;
@@ -3839,6 +3875,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       : "Yggdrasil_Viking_Jarl.glb";
 
     loadGlbWithFolderFallback(heroAsset,(gltf:any)=>{
+      if(!glbTreesAlive)return;
       const model=gltf.scene;
       markMeshes(model);
       model.traverse((o:any)=>{
@@ -3869,7 +3906,6 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       model.updateMatrixWorld(true);
 
       hero.add(model);
-      heroFallback.visible=false;
 
       const armL=model.getObjectByName("Arm_L_Pivot") as THREE.Object3D | null;
       const armR=model.getObjectByName("Arm_R_Pivot") as THREE.Object3D | null;
@@ -3936,7 +3972,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
       }
 
       console.log("[HERO GLB] loaded",heroAsset);
-    },"HERO GLB");
+      setHeroReady(true);
+    },"HERO GLB",()=>{if(glbTreesAlive)setHeroLoadFailed(true);});
 
     const ray=new THREE.Raycaster();const pointer=new THREE.Vector2();
     const click=(e:PointerEvent)=>{if((e.target as HTMLElement)?.closest?.(".mid3d-ui"))return;const r=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-r.left)/r.width)*2-1;pointer.y=-((e.clientY-r.top)/r.height)*2+1;ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects(objects,true)[0];if(hit){let o:any=hit.object;while(o.parent&&!o.userData?.id)o=o.parent;if(o.userData?.id){if(o.userData.id==="gate")gateActionRef.current?.();else on(o.userData.id);}}};
@@ -4034,13 +4071,16 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
         }
         const impact=attackActive?Math.max(0,1-Math.abs(attackP-.57)/.17):0;
         attackGlowMats.forEach(m=>{m.emissiveIntensity=attackActive ? .22+impact*2.45 : .05;});
-        strikeFlash.visible=impact>0;
+        strikeSlash.visible=impact>0;
         strikeBolt.visible=skin==="valkyrie"&&impact>0;
-        const fxScale=.65+impact*(.72+h.str*.035);
-        strikeFlash.scale.setScalar(fxScale);
-        strikeFlash.rotation.z=now*.018;
+        strikeSparks.visible=skin!=="valkyrie"&&impact>0;
+        const fxScale=.78+impact*(.44+h.str*.026);
+        strikeSlash.scale.setScalar(fxScale);
         strikeMat.opacity=impact*.9;
         boltMat.opacity=impact*.92;
+        strikeBolt.scale.setScalar(.76+impact*(.52+h.str*.018));
+        sparkMat.opacity=impact*.96;
+        strikeSparks.scale.setScalar(.45+impact*(1.05+h.str*.035));
         strikeLight.intensity=impact*(1.35+h.str*.16);
         if(heroAnim.mode==="projected" || heroAnim.mode==="multiview"){
           // Very small vertical step + body sway: enough to read as walking
@@ -4153,8 +4193,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});boltGeo.dispose();boltMat.dispose();renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;};
-  },[h.id,on,eventDone]);
+    return()=>{glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;};
+  },[h.id,skin,weapon,on,eventDone]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
   const stopJoy=()=>{if(knob.current)knob.current.style.transform="translate(0,0)";state.current.dx=0;state.current.dz=0;};
@@ -4166,6 +4206,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
 
   return <div className="content mid3d-scene" ref={mount} style={{touchAction:"none",userSelect:"none",WebkitUserSelect:"none"}} onPointerDown={startJoyFromZone} onPointerMove={moveJoyFromZone} onPointerUp={endJoyFromZone} onPointerCancel={endJoyFromZone} onContextMenu={e=>e.preventDefault()}>
     <div className="mid3d-ui mid3d-top"><div className="mid3d-pill"><b>МИДГАРД</b><span>Деревня • река • лес • святилища</span></div><div className="mid3d-pill"><b>ᛟ</b><span>Мир живёт вокруг тебя</span></div></div>
+    {!heroReady&&<div className="mid3d-ui mid3d-hero-load"><b>{heroLoadFailed?"ᚾ":"ᛉ"}</b><span>{heroLoadFailed?"Герой не загрузился":"ПРОБУЖДЕНИЕ ГЕРОЯ"}</span></div>}
     {mapOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}>
       <div className="mid3d-map-panel">
         <div className="mid3d-map-title">ᚠ Карта Мидгарда</div>
@@ -4241,6 +4282,15 @@ function App() {
 const [roadT, setRoadT] = useState(0.06);
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
   useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
+  useEffect(() => {
+    // Warm the small hero assets while the player is on the tree/menu screen.
+    // THREE.Cache keeps the downloaded buffers, so entering Midgard no longer
+    // waits for a second network round trip.
+    const loader=new GLTFLoader();
+    ["Yggdrasil_Viking_Jarl.glb","Yggdrasil_Valkyrie_Raven_Guard.glb"].forEach(asset=>{
+      loader.load(`${BASE}img/models/${asset}`,()=>{},undefined,()=>{});
+    });
+  }, []);
   useEffect(() => {
     if (!tg?.BackButton) return;
     const back = () => setScreen({ t: "tree" });
