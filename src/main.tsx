@@ -101,16 +101,18 @@ const REALMS: Realm[] = [
 ];
 
 const NAV = [{ id: "tree", ic: "ᚱ", t: "Путь" }, { id: "hero", ic: "ᛗ", t: "Герой" }, { id: "gift", ic: "ᚷ", t: "Дар" }, { id: "hall", ic: "ᛟ", t: "Чертог" }];
-type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" } | { t: "hero" } | { t: "gift" } | { t: "hall" } | { t: "craft" } | { t: "trial"; id: string } | { t: "fight"; id: string };
+type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" } | { t: "hero" } | { t: "gift" } | { t: "hall" } | { t: "craft" } | { t: "forge" } | { t: "trial"; id: string } | { t: "fight"; id: string };
 type HeroSkin = "viking" | "valkyrie";
 type HeroWeapon = "default";
-type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; ownedWeapons: string[] };
-const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", ownedWeapons: ["default"] };
+type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; ownedWeapons: string[]; forgeLevels: Record<string,number>; forgeFreeUsed: boolean };
+const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", ownedWeapons: ["default"], forgeLevels: {}, forgeFreeUsed: false };
 const loadSave = (): Save => {
   try {
     const s:any = { ...DEF, ...JSON.parse(localStorage.getItem("yggdrasil") || "") };
     if (!Array.isArray(s.powers)) s.powers = [];
     if (!Array.isArray(s.ownedWeapons)) s.ownedWeapons = ["default"];
+    if (!s.forgeLevels || typeof s.forgeLevels !== "object" || Array.isArray(s.forgeLevels)) s.forgeLevels = {};
+    if (typeof s.forgeFreeUsed !== "boolean") s.forgeFreeUsed = false;
     if (s.heroSkin !== "viking" && s.heroSkin !== "valkyrie") {
       const hd = s.hero ? HEROES.find((x:any)=>x.id===s.hero.id) : null;
       s.heroSkin = hd?.gender === "f" ? "valkyrie" : "viking";
@@ -358,6 +360,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes fade{from{opacity:0}}
 @keyframes heroRunePulse{0%,100%{opacity:.48;transform:scale(.9);filter:drop-shadow(0 0 5px rgba(255,215,106,.45))}50%{opacity:1;transform:scale(1.09);filter:drop-shadow(0 0 15px rgba(255,215,106,.95))}}
+@keyframes forgePortal{0%{opacity:0;transform:scale(.35) rotate(-18deg)}55%{opacity:1;transform:scale(1.08) rotate(3deg)}100%{opacity:.9;transform:scale(1) rotate(0)}}
 
 .mid3d-scene{background:#8da894;overflow:hidden;position:relative;isolation:isolate;touch-action:none}
 .mid3d-scene canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -397,6 +400,14 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .vial{position:relative;width:13px;height:21px;border:1px solid rgba(235,249,255,.72);border-radius:3px 3px 7px 7px;background:linear-gradient(180deg,rgba(255,255,255,.35) 0 35%,var(--vial) 38% 100%);box-shadow:0 0 8px var(--vial)}
 .craft-entry{width:100%;padding:13px;border-radius:15px;background:linear-gradient(135deg,#5f321b,#1c1712);border:1px solid #d68b38;text-align:left;box-shadow:inset 0 0 18px rgba(255,119,37,.12)}.craft-entry b{display:block;color:#ffc45e;font-size:14px}.craft-entry span{font-size:10px;color:#d7b891}
 .craft-screen{background:radial-gradient(circle at 50% 28%,#62331d,#18120e 58%,#090b09);padding-top:18px}.craft-fire{font-size:48px;filter:drop-shadow(0 0 15px #ff6a21)}.craft-recipe{display:grid;grid-template-columns:1fr 34px 1fr 34px 1fr;align-items:center;gap:5px;margin:16px 0}.craft-slot{aspect-ratio:1;border-radius:12px;border:1px solid #725336;background:rgba(8,10,8,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#8e806c;font-size:9px}.craft-slot b{font-size:24px;color:#d7b06a}.craft-op{text-align:center;color:#ffbe55;font-size:20px;font-weight:900}
+.forge-screen{background:radial-gradient(circle at 50% 8%,rgba(239,100,27,.32),transparent 34%),linear-gradient(180deg,#21140d,#0b0d0b 72%);padding-top:14px}
+.forge-head{position:relative;overflow:hidden;padding:16px;border-radius:18px;border:1px solid #9a5a27;background:linear-gradient(145deg,rgba(82,42,19,.95),rgba(17,15,12,.96));box-shadow:inset 0 0 28px rgba(255,107,31,.13),0 8px 20px rgba(0,0,0,.35);text-align:center}.forge-head:before{content:"ᚲ";position:absolute;right:-3px;top:-22px;font-size:105px;color:rgba(255,146,53,.07);transform:rotate(10deg)}
+.forge-anvil{font-size:45px;line-height:1;filter:drop-shadow(0 0 11px rgba(255,112,31,.75))}.forge-title{color:#ffc66c;font-size:18px;font-weight:900;letter-spacing:.7px;margin-top:4px}.forge-master{color:#d9c5a6;font-size:10px;line-height:1.35;margin:4px auto 10px;max-width:310px}.forge-wallet{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:11px;background:rgba(4,7,5,.72);border:1px solid rgba(255,196,94,.34);font-size:11px;color:#ffe0a0}.forge-wallet b{color:#ffb34d;font-size:13px}
+.forge-free{margin:10px 0 5px;padding:7px 9px;border-radius:10px;background:rgba(255,224,132,.09);border:1px dashed rgba(255,215,106,.42);color:#e9d4a4;font-size:9px;line-height:1.35}.forge-free.ready{color:#fff0b2;box-shadow:inset 0 0 13px rgba(255,174,57,.1)}
+.forge-group-title{display:flex;align-items:center;gap:7px;margin:15px 2px 7px;color:#eacb91;font-size:11px;font-weight:900;letter-spacing:.8px;text-transform:uppercase}.forge-group-title:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(226,165,80,.42),transparent)}
+.forge-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.forge-item{position:relative;min-height:112px;padding:10px 5px 8px;border-radius:14px;border:1px solid #9c7535;background:linear-gradient(145deg,#6f4b1d,#271b0e 56%,#11100d);color:#fff0c5;box-shadow:inset 0 0 16px rgba(255,207,91,.09),0 5px 12px rgba(0,0,0,.28);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;touch-action:manipulation}.forge-item:active:not(:disabled){transform:scale(.96);filter:brightness(1.18)}.forge-item .fi-icon{font-size:29px;line-height:1;filter:drop-shadow(0 0 7px rgba(255,188,72,.42))}.forge-item .fi-name{font-size:9px;font-weight:800;line-height:1.15}.forge-item .fi-level{font-size:8px;color:#f3cb78}.forge-item .fi-cost{margin-top:2px;padding:3px 6px;border-radius:7px;background:rgba(7,7,5,.56);font-size:8px;color:#ffbd58}.forge-item.free{border-color:#ffd76a;box-shadow:inset 0 0 18px rgba(255,213,90,.16),0 0 12px rgba(255,166,47,.18)}.forge-item.locked{filter:saturate(.25);opacity:.56}.forge-item.locked .fi-cost{color:#9e9582}.forge-item.maxed{border-color:#9cdaae;background:linear-gradient(145deg,#37583f,#15241a 60%,#0b100c)}
+.forge-note{margin:14px 0 6px;padding:10px 12px;border-radius:12px;border:1px solid rgba(213,155,75,.25);background:rgba(5,7,5,.62);font-size:9px;line-height:1.45;color:#bba98e}.forge-note b{color:#f1c979}.forge-exit{width:100%;margin-top:8px;padding:11px;border-radius:12px;border:1px solid #6e4d2a;background:linear-gradient(135deg,#342416,#17130e);color:#e8d4b5;font-size:11px;font-weight:800}
+.forge-transition{position:fixed;inset:0;z-index:80;background:radial-gradient(circle,rgba(255,151,46,.32),rgba(5,5,4,.94) 58%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#ffd47b;pointer-events:all}.forge-transition b{display:flex;align-items:center;justify-content:center;width:104px;height:104px;border-radius:50%;border:2px solid rgba(255,198,89,.72);background:radial-gradient(circle,rgba(255,178,56,.3),rgba(68,29,9,.42) 55%,transparent 57%);font-size:54px;box-shadow:0 0 26px rgba(255,116,25,.65),inset 0 0 25px rgba(255,188,77,.35);animation:forgePortal .72s ease-out}.forge-transition span{font-size:10px;letter-spacing:1.3px;text-transform:uppercase;text-shadow:0 2px 8px #000}
 `;
 
 /* ===== Midgard 3D: реальная сцена, герой, дорога, деревня, кузница и Мимир ===== */
@@ -4311,12 +4322,15 @@ function App() {
   const [whisper, setWhisper] = useState(false);
   const [mhp, setMhp] = useState(0);
   const [hhp, setHhp] = useState(0);
+  const [hmax, setHmax] = useState(0);
   const [hen, setHen] = useState(0);
   const [men, setMen] = useState(0);
   const [flog, setFlog] = useState("");
   const [shield, setShield] = useState(false);
   const [valk, setValk] = useState(false);
   const [over, setOver] = useState("");
+  const [forgeTransition, setForgeTransition] = useState(false);
+  const forgeTimer = useRef<number>(0);
 const [roadT, setRoadT] = useState(0.06);
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
   useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
@@ -4330,21 +4344,51 @@ const [roadT, setRoadT] = useState(0.06);
   }, [save.heroSkin]);
   useEffect(() => {
     if (!tg?.BackButton) return;
-    const back = () => setScreen({ t: "tree" });
+    const back = () => setScreen(screen.t === "forge" ? { t: "realm", id:"midgard" } : { t: "tree" });
     if (screen.t !== "tree" && screen.t !== "choose" && save.hero) { tg.BackButton.show(); tg.BackButton.onClick(back); } else tg.BackButton.hide();
     return () => { tg.BackButton?.offClick?.(back); };
   }, [screen, save.hero]);
   useEffect(() => { setRes(null); setRemoved(null); setWhisper(false); setOver(""); setShield(false); }, [screen]);
+  useEffect(()=>()=>window.clearTimeout(forgeTimer.current),[]);
 
   const say = (m: string) => { setToast(m); window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(""), 1800); };
   const haptic = (k: "light" | "success" = "light") => { try { if (k === "success") tg?.HapticFeedback?.notificationOccurred?.("success"); else tg?.HapticFeedback?.impactOccurred?.("light"); } catch {} };
   const go = (s: Screen) => setScreen(s);
+  const enterForge=()=>{
+    if(forgeTransition)return;
+    setForgeTransition(true);
+    window.clearTimeout(forgeTimer.current);
+    forgeTimer.current=window.setTimeout(()=>{setForgeTransition(false);setScreen({t:"forge"});},720);
+  };
   const openRealm = (r: Realm) => { haptic(); setScreen({ t: "realm", id: r.id }); };
   const watchGain = () => Math.floor(Math.min(12, (Date.now() - save.watch) / 3600000) * 3);
   const collectWatch = () => { const g = watchGain(); if (g <= 0) { say("Дозор только начался — Капли силы ещё собираются."); return; } setSave(s => ({ ...s, sparks: s.sparks + g, watch: Date.now() })); haptic("success"); say("Дозор завершён: +" + g + " Капель силы"); };
   const claimGift = () => { if (save.gift === today()) return; const d = save.gift ? Math.round((Date.parse(today()) - Date.parse(save.gift)) / 86400000) : 99; const next = d <= 2 ? (save.streak % 7) + 1 : 1; const rew = LADDER[next - 1]; setSave(s => ({ ...s, sparks: s.sparks + rew, gift: today(), streak: next })); haptic("success"); say("Дар Древа, день " + next + ": +" + rew + " ✨"); };
   const confirmHero = () => { if (!pick || !pickName) return; setSave(s => ({ ...s, hero: { id: pick, name: pickName } })); haptic("success"); say("Путь начинается, " + pickName + "!"); setScreen({ t: "tree" }); };
   const heroDef = save.hero ? HEROES.find(h => h.id === save.hero!.id)! : null;
+  const forgeItems = [
+    {id:"default",icon:save.heroSkin==="valkyrie"?"⚔️":"🪓",name:save.heroSkin==="valkyrie"?"Меч валькирии":"Секира викинга",kind:"weapon",owned:true},
+    {id:"knife",icon:"🗡️",name:"Боевой нож",kind:"weapon",owned:save.ownedWeapons.includes("knife")},
+    {id:"axe",icon:"🪓",name:"Северный топор",kind:"weapon",owned:save.ownedWeapons.includes("axe")},
+    {id:"mace",icon:"⛓️",name:"Цепной шип",kind:"weapon",owned:save.ownedWeapons.includes("mace")},
+    {id:"spear",icon:"🔱",name:"Копьё",kind:"weapon",owned:save.ownedWeapons.includes("spear")},
+    {id:"armor",icon:"♜",name:"Нагрудная броня",kind:"gear",owned:true},
+    {id:"shield",icon:"🛡️",name:"Круглый щит",kind:"gear",owned:true},
+    {id:"helmet",icon:"⛑️",name:"Боевой шлем",kind:"gear",owned:true},
+    {id:"boots",icon:"🥾",name:"Походные сапоги",kind:"gear",owned:true},
+  ];
+  const forgeLevel=(id:string)=>Math.max(0,Number(save.forgeLevels[id]||0));
+  const forgeCost=(id:string)=>save.forgeFreeUsed?5+forgeLevel(id)*5:0;
+  const improveForgeItem=(item:typeof forgeItems[number])=>{
+    if(!item.owned){say("Этот предмет ещё нужно получить в награду за испытание.");return;}
+    const level=forgeLevel(item.id);
+    if(level>=5){say(item.name+" уже достиг максимальной закалки Мидгарда.");return;}
+    const cost=forgeCost(item.id);
+    if(save.sparks<cost){say("Недостаточно Капель силы. Нужно: "+cost+" 🔥");return;}
+    setSave(s=>({...s,sparks:s.sparks-cost,forgeFreeUsed:true,forgeLevels:{...s.forgeLevels,[item.id]:(s.forgeLevels[item.id]||0)+1}}));
+    haptic("success");
+    say((cost===0?"Первая ковка бесплатна. ":"")+item.name+": закалка +1");
+  };
   const rnd = (n: number) => Math.floor(Math.random() * n);
   const trialIdx = (id: string) => save.trials.filter(t => t.startsWith(id + ":")).length;
   const openGate = (r: Realm) => { if (save.artifacts.includes(r.id)) { say("Мир покорён. Артефакт хранится в листе героя."); return; } haptic(); setScreen({ t: "trial", id: r.id }); };
@@ -4384,8 +4428,11 @@ const [roadT, setRoadT] = useState(0.06);
   const startFight = (id: string) => {
     const m = MASTERS[id];
     const ash = save.powers.includes("ashBreath");
+    const forgedHp=forgeLevel("armor")*3+forgeLevel("helmet")*2;
+    const fightMaxHp=heroDef!.hp+forgedHp+(ash?25:0);
     setMhp(m.hp);
-    setHhp(heroDef!.hp + (ash ? 25 : 0));
+    setHhp(fightMaxHp);
+    setHmax(fightMaxHp);
     setHen(COMBAT_ENERGY);
     setMen(COMBAT_ENERGY);
     setOver(""); setShield(false); setValk(false);
@@ -4398,10 +4445,10 @@ const [roadT, setRoadT] = useState(0.06);
     const m = MASTERS[id]; const idx = trialIdx(id);
     let dmg = 0; let log = ""; let nhen = hen; let nmen = men; let nshield = shield;
     if (kind === "hit") {
-      dmg = heroDef!.str + rnd(4);
+      dmg = heroDef!.str + forgeLevel("default") + rnd(4);
       if(hen>0)nhen=Math.max(0,hen-1);else{dmg=Math.ceil(dmg*.55);log="Силы иссякли — удар слабее. ";}
       if (save.powers.includes("fireOath")) { dmg += 5; setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "fireOath") })); log += "Огненный обет! "; }
-      if (heroDef!.id === "berserk" && hhp <= heroDef!.hp / 2) { dmg *= 2; log += "Медвежья ярость! "; }
+      if (heroDef!.id === "berserk" && hhp <= Math.max(heroDef!.hp,hmax) / 2) { dmg *= 2; log += "Медвежья ярость! "; }
       log += "Ты бьёшь: " + heroDef!.weapon + " — −" + dmg + " хозяину.";
     }
     if (kind === "rune") {
@@ -4410,12 +4457,14 @@ const [roadT, setRoadT] = useState(0.06);
       log = "Руническое заклинание вспыхивает: −" + dmg + " хозяину.";
     }
     if (kind === "shield") { if(hen<1){say("Нет энергии, чтобы удержать щит.");return;} nhen=hen-1;nshield = true; log = "Ты поднимаешь щит — удар ослабнет."; }
-    if (kind === "restore") { nhen=Math.min(COMBAT_ENERGY,hen+2);log="Ты переводишь дыхание и восстанавливаешь 2 деления энергии."; }
+    if (kind === "restore") { const restored=2+(forgeLevel("boots")>=3?1:0);nhen=Math.min(COMBAT_ENERGY,hen+restored);log="Ты переводишь дыхание и восстанавливаешь "+restored+" деления энергии."; }
     const nm = mhp - dmg;
     if (nm <= 0) { setMhp(0); setHen(nhen); setMen(nmen); setOver("win"); const add = 8 + idx * 2; setFlog("Хозяин повержен! Награда: +" + add + " Капель силы"); finishTrial(id, idx, add); return; }
     let md = m.atk + rnd(3); let mlog = "";
     if(nmen<=0){md=0;nmen=2;mlog=" "+m.name+" вынужден перевести дыхание и восстанавливает энергию.";}else nmen=Math.max(0,nmen-1);
-    if (nshield) { md = Math.ceil(md * 0.3); mlog += " Щит принял большую часть удара."; }
+    const forgedDefense=Math.floor((forgeLevel("armor")+forgeLevel("helmet"))/2);
+    md=Math.max(1,md-forgedDefense);
+    if (nshield) { md = Math.max(0,Math.ceil(md * 0.3)-forgeLevel("shield")); mlog += " Щит принял большую часть удара."; }
     if (save.powers.includes("iceOath")) { md = Math.ceil(md * 0.65); setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "iceOath") })); mlog += " Ледяной обет сковал удар врага."; }
     if (heroDef!.id === "dwarf") md = Math.ceil(md * 0.75);
     let nh = hhp;
@@ -4446,10 +4495,13 @@ const [roadT, setRoadT] = useState(0.06);
         {screen.t === "gift" && <div className="title">🎁 Дар</div>}
         {screen.t === "hall" && <div className="title">🏛️ Чертог</div>}
         {screen.t === "craft" && <button className="back" onClick={() => go({ t: "hall" })}>← Чертог · Крафт</button>}
+        {screen.t === "forge" && <button className="back" onClick={() => go({ t: "realm", id:"midgard" })}>← Мидгард · Кузница</button>}
         {screen.t === "trial" && <div className="title">🗝 Испытание</div>}
         {screen.t === "fight" && <div className="title">⚔ Бой</div>}
         <div className="sparks">🔥 {save.sparks} Капель силы</div>
       </div>
+
+      {forgeTransition&&<div className="forge-transition"><b>ᚲ</b><span>Дверь кузницы открывается</span></div>}
 
       {screen.t === "choose" && (
         <div className="scroll choose-screen">
@@ -4545,7 +4597,8 @@ const [roadT, setRoadT] = useState(0.06);
         return;
       }
       if (id === "forge" || id === "blacksmith") {
-        say("Кузнец: «Сталь помнит руку. Принеси руну — и мы узнаем, что можно закалить.»");
+        say("Вёлунд открывает дверь кузницы. Огонь горна отзывается на Капли силы.");
+        enterForge();
         return;
       }
       if (id === "house" || id === "elder") {
@@ -4801,7 +4854,8 @@ const [roadT, setRoadT] = useState(0.06);
               <div className="dside">
                 <span className="dface" style={{ borderColor: heroDef!.color, color: heroDef!.color }}><BgImg name={heroDef!.img} className="himg" />{heroDef!.sym}</span>
                 <span className="dname" style={{ color: heroDef!.color }}>{save.hero!.name}</span>
-                <span className="dhp"><span className="dhpfill" style={{ width: Math.max(0, (hhp / heroDef!.hp) * 100) + "%", background: "#7ee787" }} /></span>
+                <span className="dhp"><span className="dhpfill" style={{ width: Math.min(100,Math.max(0,(hhp/Math.max(1,hmax))*100))+"%", background: "#7ee787" }} /></span>
+                <span className="dnum">{hhp}/{hmax}</span>
                 <span className="energy-label">энергия</span>
                 <span className="denergy">{Array.from({ length: COMBAT_ENERGY }).map((_, i) => {const c=combatEnergyColor(hen);return <span key={i} className={"pip"+(i<hen?" on":"")} style={i<hen?{background:c,boxShadow:`0 0 7px ${c}`}:{}}/>;})}</span>
               </div>
@@ -4811,7 +4865,7 @@ const [roadT, setRoadT] = useState(0.06);
               <button className="btn gold" onClick={() => fightAct(realm.id, "hit")}>⚔ Удар: {heroDef!.weapon} (−1 энергия)</button>
               <button className="btn rune" onClick={() => fightAct(realm.id, "rune")}>🌀 Руническое заклинание (−2 энергии)</button>
               <button className="btn shield" onClick={() => fightAct(realm.id, "shield")}>🛡 Щит (−1 энергия)</button>
-              <button className="btn ghost" onClick={() => fightAct(realm.id, "restore")}>🌿 Перевести дыхание (+2 энергии)</button>
+              <button className="btn ghost" onClick={() => fightAct(realm.id, "restore")}>🌿 Перевести дыхание (+{2+(forgeLevel("boots")>=3?1:0)} энергии)</button>
             </div>)}
             {over === "win" && <button className="btn gold" onClick={() => nextStep(realm.id)}>Забрать награду →</button>}
             {over === "lose" && <button className="btn ghost" onClick={() => go({ t: "tree" })}>Древо возрождает тебя</button>}
@@ -4827,7 +4881,7 @@ const [roadT, setRoadT] = useState(0.06);
             <div className="stats">
               <div className="stat"><b>⚔ {heroDef.str}</b><span>сила</span></div>
               <div className="stat"><b>✨ {heroDef.en}</b><span>энергия</span></div>
-              <div className="stat"><b>❤ {heroDef.hp}</b><span>здоровье</span></div>
+              <div className="stat"><b>❤ {heroDef.hp+forgeLevel("armor")*3+forgeLevel("helmet")*2}</b><span>здоровье</span></div>
             </div>
             <div className="hrow">🎭 Облик героя</div>
             <div className="chips">
@@ -4873,6 +4927,39 @@ const [roadT, setRoadT] = useState(0.06);
             </div>
           </div>
         );
+      })()}
+
+      {screen.t === "forge" && (()=>{
+        const weapons=forgeItems.filter(item=>item.kind==="weapon");
+        const gear=forgeItems.filter(item=>item.kind==="gear");
+        const forgeButton=(item:typeof forgeItems[number])=>{
+          const level=forgeLevel(item.id);
+          const maxed=level>=5;
+          const free=!save.forgeFreeUsed&&item.owned&&!maxed;
+          return <button key={item.id} className={"forge-item"+(!item.owned?" locked":"")+(free?" free":"")+(maxed?" maxed":"")} onClick={()=>improveForgeItem(item)}>
+            <span className="fi-icon">{item.icon}</span>
+            <span className="fi-name">{item.name}</span>
+            <span className="fi-level">{level>0?"Закалка +"+level:"Без улучшений"}</span>
+            <span className="fi-cost">{!item.owned?"Не найдено":maxed?"Высшая закалка":free?"Бесплатно":forgeCost(item.id)+" 🔥"}</span>
+          </button>;
+        };
+        return <div className="scroll forge-screen">
+          <div className="forge-head">
+            <div className="forge-anvil">⚒️</div>
+            <div className="forge-title">Кузница Вёлунда</div>
+            <div className="forge-master">«Сталь помнит каждый бой. Отдай её огню — и она вернётся сильнее».</div>
+            <div className="forge-wallet"><span>Запас:</span><b>🔥 {save.sparks}</b><span>Капель силы</span></div>
+          </div>
+          <div className={"forge-free"+(!save.forgeFreeUsed?" ready":"")}>{save.forgeFreeUsed
+            ? "Следующая закалка оплачивается Каплями силы. Цена растёт вместе с уровнем предмета."
+            : "Дар кузнеца: первое улучшение любого доступного предмета бесплатно."}</div>
+          <div className="forge-group-title">Оружие</div>
+          <div className="forge-grid">{weapons.map(forgeButton)}</div>
+          <div className="forge-group-title">Экипировка</div>
+          <div className="forge-grid">{gear.map(forgeButton)}</div>
+          <div className="forge-note"><b>Закалка действует в бою.</b> Оружие усиливает обычный удар; броня и шлем добавляют здоровье и снижают урон; щит крепче держит защиту; улучшенные сапоги помогают быстрее восстановить энергию.</div>
+          <button className="forge-exit" onClick={()=>{haptic();go({t:"realm",id:"midgard"});}}>Открыть дверь и вернуться в Мидгард</button>
+        </div>;
       })()}
 
       {screen.t === "hall" && (
@@ -4937,7 +5024,7 @@ const [roadT, setRoadT] = useState(0.06);
         </div>
       )}
 
-      {save.hero && (
+      {save.hero && screen.t!=="forge" && (
         <div className="nav">
           {NAV.map(n => (<button key={n.id} className={"navbtn" + (isNav(n.id) ? " on" : "")} onClick={() => go(navScreen(n.id))}><span className="ic">{n.ic}</span>{n.t}</button>))}
         </div>
