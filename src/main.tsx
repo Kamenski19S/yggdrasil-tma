@@ -7,6 +7,37 @@ THREE.Cache.enabled = true;
 
 const tg: any = (window as any).Telegram?.WebApp;
 const BASE: string = (import.meta as any).env?.BASE_URL || "/";
+const GLB_CACHE_NAME = "yggdrasil-glb-v1";
+const glbRequests = new Map<string, Promise<ArrayBuffer>>();
+
+async function cachedGlbBuffer(url:string):Promise<ArrayBuffer>{
+  const absolute=new URL(url,window.location.href).href;
+  const pending=glbRequests.get(absolute);
+  if(pending)return pending.then(buffer=>buffer.slice(0));
+  const request=(async()=>{
+    if("caches" in window){
+      try{
+        const cache=await caches.open(GLB_CACHE_NAME);
+        const stored=await cache.match(absolute);
+        if(stored)return stored.arrayBuffer();
+        const response=await fetch(absolute,{cache:"force-cache"});
+        if(!response.ok)throw new Error(`HTTP ${response.status}: ${absolute}`);
+        try{await cache.put(absolute,response.clone());}catch{}
+        return response.arrayBuffer();
+      }catch(error){
+        // Some embedded browsers expose CacheStorage but restrict writes.
+        // In that case the game must still load normally over the network.
+        if(error instanceof Error&&error.message.startsWith("HTTP "))throw error;
+      }
+    }
+    const response=await fetch(absolute,{cache:"force-cache"});
+    if(!response.ok)throw new Error(`HTTP ${response.status}: ${absolute}`);
+    return response.arrayBuffer();
+  })();
+  glbRequests.set(absolute,request);
+  try{return (await request).slice(0);}
+  finally{glbRequests.delete(absolute);}
+}
 
 type Rune = { id: string; sym: string; name: string; meaning: string; task: string; reward: number };
 type Realm = {
@@ -1336,13 +1367,20 @@ function Midgard3D({ h, skin, weapon, on, eventDone }: { h: HeroDef; skin: HeroS
     ) => {
       const paths = [`${BASE}img/models/${asset}`, `${BASE}img/model/${asset}`];
       const tryPath = (index:number) => {
-        gltfLoader.load(paths[index], onLoad, undefined, (error:any) => {
+        const url=paths[index];
+        const fail=(error:any)=>{
           if (index + 1 < paths.length) tryPath(index + 1);
           else {
             console.error(`[${label}] FAILED`, paths, error);
             onFinalError?.();
           }
-        });
+        };
+        cachedGlbBuffer(url).then(buffer=>{
+          if(!glbTreesAlive)return;
+          const absolute=new URL(url,window.location.href).href;
+          const basePath=absolute.slice(0,absolute.lastIndexOf("/")+1);
+          gltfLoader.parse(buffer,basePath,onLoad,fail);
+        }).catch(fail);
       };
       tryPath(0);
     };
@@ -4283,14 +4321,13 @@ const [roadT, setRoadT] = useState(0.06);
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
   useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
   useEffect(() => {
-    // Warm the small hero assets while the player is on the tree/menu screen.
-    // THREE.Cache keeps the downloaded buffers, so entering Midgard no longer
-    // waits for a second network round trip.
-    const loader=new GLTFLoader();
-    ["Yggdrasil_Viking_Jarl.glb","Yggdrasil_Valkyrie_Raven_Guard.glb"].forEach(asset=>{
-      loader.load(`${BASE}img/models/${asset}`,()=>{},undefined,()=>{});
-    });
-  }, []);
+    // Warm only the selected hero. The second character is loaded later when
+    // actually chosen, which keeps the first launch lighter on a slow route.
+    const asset=save.heroSkin==="valkyrie"
+      ? "Yggdrasil_Valkyrie_Raven_Guard.glb"
+      : "Yggdrasil_Viking_Jarl.glb";
+    cachedGlbBuffer(`${BASE}img/models/${asset}`).catch(()=>{});
+  }, [save.heroSkin]);
   useEffect(() => {
     if (!tg?.BackButton) return;
     const back = () => setScreen({ t: "tree" });
