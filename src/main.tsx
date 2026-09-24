@@ -3987,7 +3987,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: 
       });
 
       // About twice the old on-screen hero height while keeping a human silhouette.
-      model.scale.setScalar(skin==="valkyrie"?1.72:.78);
+      model.scale.setScalar(skin==="valkyrie"?3.1:.78);
       model.rotation.y=0;
       model.position.set(0,0,0);
       model.updateMatrixWorld(true);
@@ -4003,6 +4003,9 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: 
         const mixer=new THREE.AnimationMixer(model);
         const actions:Record<string,THREE.AnimationAction>={};
         for(const clip of gltf.animations || [])actions[clip.name]=mixer.clipAction(clip);
+        if(actions.walk_loop)actions.walk_loop.timeScale=1.6;
+        if(actions.sword_attack)actions.sword_attack.timeScale=1.35;
+        if(actions.fall)actions.fall.timeScale=1.2;
         for(const name of ["sword_attack","fall"]){
           if(actions[name])actions[name].setLoop(THREE.LoopOnce,1).clampWhenFinished=true;
         }
@@ -4177,12 +4180,12 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: 
       if(heroAnim){
         if(heroAnim.mode==="vika"){
           const falling=now-fallStartedAt<1250;
-          const attacking=!falling && now-attackStartedAt<1540;
+          const attacking=!falling && now-attackStartedAt<1150;
           const desired=falling?"fall":attacking?"sword_attack":moving?"walk_loop":"idle";
           const next=heroAnim.actions[desired] || heroAnim.actions.idle;
           if(next && heroAnim.current!==desired){
-            heroAnim.actions[heroAnim.current]?.fadeOut(.16);
-            next.reset().fadeIn(.16).play();
+            heroAnim.actions[heroAnim.current]?.fadeOut(.08);
+            next.reset().fadeIn(.08).play();
             heroAnim.current=desired;
           }
           heroAnim.mixer.update(dt);
