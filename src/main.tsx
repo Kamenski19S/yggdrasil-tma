@@ -402,6 +402,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .mid3d-interact b{display:block;color:#ffd76a;font-size:13px;line-height:1.2}
 .mid3d-interact span{display:block;color:#aebfb2;font-size:10px;line-height:1.2;margin:3px 0 7px}
 .mid3d-interact button{width:100%;padding:8px;border-radius:9px;background:#ffd76a;color:#241b06;font-weight:800;font-size:12px}
+.mid3d-rematch{left:10px;top:72px;max-width:168px;padding:9px 11px;border-radius:13px;border:1px solid rgba(255,203,105,.72);background:linear-gradient(145deg,rgba(72,39,20,.94),rgba(28,20,14,.96));color:#ffe5a6;font-size:10px;font-weight:900;line-height:1.25;text-align:left;box-shadow:0 7px 20px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.12);z-index:34;animation:cloudin .24s ease-out}.mid3d-rematch small{display:block;margin-top:3px;color:#d8cbb4;font-size:8px;font-weight:600}.mid3d-rematch:active{transform:scale(.97);filter:brightness(1.12)}
+.whisper-cloud{left:50%;bottom:8%;transform:translateX(-50%);width:min(90vw,390px);padding:14px;border-radius:24px;background:linear-gradient(180deg,#fffef9,#e8ece8);color:#211e18;border:1px solid rgba(104,76,37,.26);box-shadow:0 14px 36px rgba(0,0,0,.48),inset 0 -8px 16px rgba(83,103,91,.12);text-align:center;z-index:35;touch-action:auto}.whisper-cloud:before{content:"";position:absolute;left:26px;bottom:-15px;border-width:15px 18px 0 0;border-style:solid;border-color:#e8ece8 transparent transparent transparent}.whisper-cloud h3{margin:0 0 5px;color:#9a4d1e;font-size:15px}.whisper-cloud p{margin:0 0 9px;font-size:10px;line-height:1.4;color:#4c4a43}.whisper-question{font-size:13px;font-weight:900;line-height:1.38;margin:7px 0 8px}.whisper-answer,.whisper-action{width:100%;padding:9px;margin-top:6px;border-radius:11px;border:1px solid rgba(61,77,66,.25);background:rgba(255,255,255,.82);color:#242b26;font-size:11px;font-weight:800}.whisper-answer.good{background:#d9f3df;color:#1c7137;border-color:#54a66d}.whisper-answer.bad{background:#f5d8d1;color:#9b3022;border-color:#d56a58}.whisper-answer.off{opacity:.45}.whisper-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.whisper-action{margin:0;min-height:48px;background:linear-gradient(145deg,#fff9e8,#ded4bc);border-color:#a68248}.whisper-action.rune{background:linear-gradient(145deg,#eadcff,#b99ae9);color:#382059}.whisper-action.shield{background:linear-gradient(145deg,#dff3ff,#9bcbe5);color:#173d50}.whisper-action.rest{background:linear-gradient(145deg,#dff0d7,#9dc590);color:#24451e}.whisper-action:disabled{opacity:.48}.whisper-log{min-height:28px;margin:0 0 8px;font-size:10px;line-height:1.35;color:#5b4935;font-style:italic}.whisper-close{width:100%;padding:10px;border-radius:11px;background:linear-gradient(145deg,#c47a31,#793b1d);color:#fff7e8;font-size:11px;font-weight:900}.whisper-bars{left:8px;right:8px;top:18%;display:flex;justify-content:space-between;align-items:flex-start;z-index:32;pointer-events:none}.whisper-unit{width:44%;display:flex;flex-direction:column;align-items:center;padding:6px;border-radius:12px;background:rgba(5,9,7,.72);border:1px solid rgba(255,255,255,.22);box-shadow:0 6px 18px rgba(0,0,0,.32)}.whisper-unit b{font-size:10px;color:#fff3d6}.whisper-unit small{font-size:8px;color:#cfddd2;margin-top:2px}.whisper-pips{display:flex;gap:5px;margin-bottom:4px}.whisper-pip{width:12px;height:12px;border-radius:50%;background:#1e2822;border:1px solid rgba(255,255,255,.25)}.whisper-reward-icon{font-size:38px;filter:drop-shadow(0 0 10px #ff9d3e)}.whisper-reward-name{font-size:14px;font-weight:900;color:#8f3d18;margin:4px 0}.whisper-reward-rarity{display:inline-block;padding:3px 8px;border-radius:8px;background:#4e2618;color:#ffc873;font-size:9px;text-transform:uppercase;letter-spacing:.8px}.whisper-battle-fx{position:absolute;inset:-15%;z-index:34;pointer-events:none;animation:battleFlash .48s ease-out}.whisper-battle-fx.hit{background:linear-gradient(110deg,transparent 43%,rgba(255,242,195,.95) 49%,rgba(255,106,35,.88) 52%,transparent 58%)}.whisper-battle-fx.rune{background:radial-gradient(circle,rgba(171,118,255,.82),rgba(81,182,255,.38) 22%,transparent 57%)}.whisper-battle-fx.guard{background:radial-gradient(circle at 30% 48%,rgba(218,53,35,.58),transparent 38%)}
 .mid3d-door-prompt{right:15px;top:43%;width:142px;padding:10px 10px 9px;border-radius:15px;background:#fffdf7;color:#17130e;border:1px solid rgba(82,51,23,.28);box-shadow:0 8px 24px rgba(0,0,0,.32);text-align:left}.mid3d-door-prompt:before{content:"";position:absolute;left:-10px;top:25px;border-width:8px 10px 8px 0;border-style:solid;border-color:transparent #fffdf7 transparent transparent}.mid3d-door-prompt b{display:block;margin-bottom:8px;color:#17130e;font-size:12px;line-height:1.15}.mid3d-door-prompt button{width:100%;padding:8px 6px;border-radius:9px;border:1px solid #77451f;background:linear-gradient(145deg,#d4924d,#8d5127);color:#fff8e9;font-size:10px;font-weight:900;box-shadow:inset 0 1px rgba(255,255,255,.3),0 3px 8px rgba(66,31,8,.25)}.mid3d-door-prompt button:active{transform:scale(.96);filter:brightness(1.1)}
 .mid3d-map-shade{position:absolute;inset:0;z-index:40;background:rgba(3,7,5,.72);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:14px}
 .mid3d-map-panel{position:relative;width:min(92vw,390px);max-height:86%;padding:14px;border-radius:18px;background:linear-gradient(145deg,#f7f0dc,#d8c8a6);border:2px solid #ba8d43;color:#322716;box-shadow:0 18px 42px rgba(0,0,0,.65),inset 0 0 28px rgba(112,75,31,.14);overflow:auto;touch-action:auto}
@@ -1080,7 +1082,10 @@ function midHero3d(h: HeroDef) {
   return markMeshes(g);
 }
 
-function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void }) {
+type WhisperCombatStats={maxHp:number;attack:number;runeAttack:number;defense:number};
+type WhisperPhase="closed"|"question"|"fight"|"reward"|"defeat";
+
+function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -1094,6 +1099,26 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: 
   const [heroReady, setHeroReady] = useState(false);
   const [heroLoadFailed, setHeroLoadFailed] = useState(false);
   const [insideHome, setInsideHome] = useState(false);
+  const [whisperPhase,setWhisperPhase]=useState<WhisperPhase>("closed");
+  const whisperPhaseRef=useRef<WhisperPhase>("closed");
+  const [whisperAnswer,setWhisperAnswer]=useState<number|null>(null);
+  const [whisperHeroHp,setWhisperHeroHp]=useState(whisperStats.maxHp);
+  const [whisperGuardHp,setWhisperGuardHp]=useState(WHISPER_GUARD.hp);
+  const [whisperHeroEnergy,setWhisperHeroEnergy]=useState(COMBAT_ENERGY);
+  const [whisperGuardEnergy,setWhisperGuardEnergy]=useState(COMBAT_ENERGY);
+  const [whisperShield,setWhisperShield]=useState(false);
+  const [whisperBusy,setWhisperBusy]=useState(false);
+  const [whisperLog,setWhisperLog]=useState(WHISPER_GUARD.greet);
+  const [whisperReward,setWhisperReward]=useState("");
+  const [whisperReplay,setWhisperReplay]=useState(false);
+  const whisperReplayRef=useRef(false);
+  const [whisperFx,setWhisperFx]=useState<{kind:"hit"|"rune"|"guard";key:number}|null>(null);
+  const whisperTimers=useRef<number[]>([]);
+  const guardVisualRef=useRef<THREE.Group|null>(null);
+  const guardAttackAtRef=useRef(-10000);
+  const guardHitAtRef=useRef(-10000);
+  const guardDefeatedRef=useRef(false);
+  const whisperBattleStartedRef=useRef(false);
   const cameraDir = useRef({ x: 0, z: 1 });
   const insideHomeRef = useRef(false);
   const homeActionRef = useRef<((inside:boolean)=>void)|null>(null);
@@ -1102,6 +1127,96 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: 
   const villageGateOpenRef = useRef(false);
   const gateActionRef = useRef<(()=>void)|null>(null);
   const forgeActionRef = useRef<(()=>void)|null>(null);
+
+  const setWhisperPhaseSafe=(phase:WhisperPhase)=>{whisperPhaseRef.current=phase;setWhisperPhase(phase);};
+  const clearWhisperTimers=()=>{whisperTimers.current.forEach(id=>window.clearTimeout(id));whisperTimers.current=[];};
+  useEffect(()=>()=>clearWhisperTimers(),[]);
+
+  const beginWhisperEncounter=()=>{
+    clearWhisperTimers();
+    state.current.dx=0;state.current.dz=0;
+    setWhisperAnswer(null);setWhisperReward("");setWhisperFx(null);
+    setWhisperHeroHp(whisperStats.maxHp);setWhisperGuardHp(WHISPER_GUARD.hp);
+    setWhisperHeroEnergy(COMBAT_ENERGY);setWhisperGuardEnergy(COMBAT_ENERGY);
+    setWhisperShield(false);setWhisperBusy(false);setWhisperLog(WHISPER_GUARD.greet);
+    guardDefeatedRef.current=false;whisperBattleStartedRef.current=false;whisperReplayRef.current=false;setWhisperReplay(false);
+    setWhisperPhaseSafe("question");
+  };
+  const beginWhisperRematch=()=>{
+    clearWhisperTimers();
+    state.current.dx=0;state.current.dz=0;
+    setWhisperAnswer(null);setWhisperReward("");setWhisperFx(null);
+    setWhisperHeroHp(whisperStats.maxHp);setWhisperGuardHp(WHISPER_GUARD.hp);
+    setWhisperHeroEnergy(COMBAT_ENERGY);setWhisperGuardEnergy(COMBAT_ENERGY);
+    setWhisperShield(false);setWhisperBusy(false);
+    setWhisperLog("Камень вновь призывает Хродвитнира. Это тренировочный бой без повторной награды.");
+    guardDefeatedRef.current=false;whisperBattleStartedRef.current=true;whisperReplayRef.current=true;setWhisperReplay(true);
+    setWhisperPhaseSafe("fight");
+  };
+  const closeWhisperEncounter=()=>{
+    clearWhisperTimers();state.current.dx=0;state.current.dz=0;setWhisperBusy(false);setWhisperPhaseSafe("closed");
+  };
+  const answerWhisperInWorld=(answer:number)=>{
+    if(whisperAnswer!==null)return;
+    setWhisperAnswer(answer);
+    if(answer===WHISPER_QUEST.c){
+      onWhisperCorrect();setWhisperReward("8 Капель силы");setWhisperLog("Камень признал твоё знание истории Мидгарда.");setWhisperPhaseSafe("reward");
+    }else{
+      whisperBattleStartedRef.current=true;
+      setWhisperLog("Хродвитнир выходит из янтарного света. Теперь ответит сталь.");
+      whisperTimers.current.push(window.setTimeout(()=>setWhisperPhaseSafe("fight"),520));
+    }
+  };
+  const whisperGuardTurn=(shielded:boolean)=>{
+    whisperTimers.current.push(window.setTimeout(()=>{
+      if(whisperGuardEnergy<=0){setWhisperGuardEnergy(2);setWhisperLog("Хродвитнир переводит дыхание и восстанавливает две точки энергии.");setWhisperBusy(false);setWhisperShield(false);return;}
+      setWhisperGuardEnergy(v=>Math.max(0,v-1));guardAttackAtRef.current=performance.now();setWhisperFx({kind:"guard",key:Date.now()});
+      whisperTimers.current.push(window.setTimeout(()=>{
+        const raw=WHISPER_GUARD.atk+Math.floor(Math.random()*3);
+        const damage=Math.max(1,Math.ceil((raw-whisperStats.defense)*(shielded?.3:1)));
+        const next=Math.max(0,whisperHeroHp-damage);
+        setWhisperHeroHp(next);setWhisperShield(false);setWhisperBusy(false);
+        if(next<=0){setWhisperLog("Хродвитнир оказался сильнее. Камень позволит повторить испытание.");setWhisperPhaseSafe("defeat");}
+        else setWhisperLog(shielded?"Щит принял удар. Получено урона: "+damage+".":"Хродвитнир отвечает ударом: −"+damage+" здоровья.");
+      },390));
+    },620));
+  };
+  const whisperFightAction=(kind:"hit"|"rune"|"shield"|"restore")=>{
+    if(whisperBusy||whisperPhaseRef.current!=="fight")return;
+    if(kind==="rune"&&whisperHeroEnergy<2){setWhisperLog("Для рунического удара нужны две точки энергии.");return;}
+    if(kind==="shield"&&whisperHeroEnergy<1){setWhisperLog("Не осталось энергии, чтобы поднять щит.");return;}
+    setWhisperBusy(true);
+    let damage=0;
+    if(kind==="hit"){
+      attackActionRef.current?.();setWhisperFx({kind:"hit",key:Date.now()});
+      damage=whisperStats.attack+Math.floor(Math.random()*4);
+      if(whisperHeroEnergy>0)setWhisperHeroEnergy(v=>Math.max(0,v-1));else damage=Math.ceil(damage*.55);
+      setWhisperLog("Герой замахивается и наносит удар сверху.");
+    }else if(kind==="rune"){
+      attackActionRef.current?.();setWhisperFx({kind:"rune",key:Date.now()});setWhisperHeroEnergy(v=>v-2);
+      damage=whisperStats.runeAttack+Math.floor(Math.random()*5);setWhisperLog("Руна вспыхивает между героем и стражем.");
+    }else if(kind==="shield"){
+      setWhisperHeroEnergy(v=>Math.max(0,v-1));setWhisperShield(true);setWhisperLog("Герой поднимает щит и готовится принять удар.");
+      whisperGuardTurn(true);return;
+    }else{
+      const restored=Math.min(COMBAT_ENERGY,whisperHeroEnergy+2);
+      setWhisperHeroEnergy(restored);setWhisperLog("Герой переводит дыхание и восстанавливает энергию.");
+      whisperGuardTurn(false);return;
+    }
+    whisperTimers.current.push(window.setTimeout(()=>{
+      const next=Math.max(0,whisperGuardHp-damage);
+      setWhisperGuardHp(next);guardHitAtRef.current=performance.now();
+      if(next<=0){
+        guardDefeatedRef.current=true;
+        if(whisperReplayRef.current){
+          setWhisperReward("Испытание пройдено повторно");setWhisperLog("Хродвитнир снова повержен. Первая награда уже была получена, поэтому этот бой остаётся тренировочным.");
+        }else{
+          const reward=onWhisperWin();setWhisperReward("18 Капель силы и «"+reward+"»");setWhisperLog("Хродвитнир повержен. Камень открывает награду.");
+        }
+        whisperTimers.current.push(window.setTimeout(()=>{setWhisperBusy(false);setWhisperPhaseSafe("reward");},650));
+      }else whisperGuardTurn(false);
+    },420));
+  };
 
   useEffect(() => {
     const el = mount.current;
@@ -1246,11 +1361,21 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: 
           ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(rand(i*2)-.5)*10,y+(rand(i*4)-.5)*10);ctx.stroke();
         }
       } else {
-        ctx.fillStyle="#514333";ctx.fillRect(0,0,512,512);
-        for(let i=0;i<1300;i++){
+        // Warm, compacted earth for footpaths. The old near-black texture and
+        // paired tubular ruts read as railway tracks on mobile.
+        ctx.fillStyle="#b79a6c";ctx.fillRect(0,0,512,512);
+        for(let i=0;i<1050;i++){
           const x=rand(i*1.3)*512,y=rand(i*2.7)*512;
-          ctx.fillStyle=`rgba(${45+rand(i*3)*38},${35+rand(i*4)*28},${23+rand(i*5)*20},${.08+rand(i*6)*.18})`;
-          ctx.fillRect(x,y,2+rand(i*7)*7,1+rand(i*8)*4);
+          const pale=rand(i*9)>.68;
+          ctx.fillStyle=pale
+            ? `rgba(226,204,157,${.10+rand(i*6)*.20})`
+            : `rgba(92,69,43,${.06+rand(i*6)*.14})`;
+          ctx.beginPath();ctx.ellipse(x,y,1+rand(i*7)*4,.8+rand(i*8)*2.5,rand(i*10)*Math.PI,0,Math.PI*2);ctx.fill();
+        }
+        for(let i=0;i<90;i++){
+          const x=rand(i*11.4)*512,y=rand(i*13.8)*512;
+          ctx.strokeStyle=`rgba(89,68,45,${.07+rand(i)*.08})`;ctx.lineWidth=1+rand(i*5)*1.8;
+          ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+8+rand(i*2)*20,y+(rand(i*3)-.5)*7);ctx.stroke();
         }
       }
       const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;
@@ -1735,37 +1860,120 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: 
       stone.scale.y=.35+midHash(i,1523)*.45;stone.rotation.set(midHash(i,1524)*2,midHash(i,1525)*2,midHash(i,1526)*2);scene.add(stone);
     }
 
-    // Roads are deliberately dark and wide, with two wheel ruts and stone edges.
+    // A readable footpath network connects the village and every major landmark.
+    // Pale compacted earth replaces the old paired dark tubes that looked like rails.
+    const pathTexture=canvasTex("road");
+    pathTexture.repeat.set(1.2,5.5);
+    const pathMaterial=new THREE.MeshStandardMaterial({map:pathTexture,color:0xc39a61,roughness:1,metalness:0,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
+    const pathEdgeMaterial=new THREE.MeshStandardMaterial({color:0x735b3d,roughness:1,metalness:0,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
     const road = (points:Array<[number,number]>, width:number) => {
-      const pts=points.map(([x,z])=>new THREE.Vector3(x,groundY(x,z)+.035,z));
-      const verts:number[]=[]; const idx:number[]=[];
-      for(let i=0;i<pts.length;i++){
-        const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];
-        const dx=b.x-a.x,dz=b.z-a.z,l=Math.max(.001,Math.hypot(dx,dz));
-        const px=-dz/l,pz=dx/l;
-        verts.push(pts[i].x+px*width/2,pts[i].y,pts[i].z+pz*width/2,pts[i].x-px*width/2,pts[i].y+.01,pts[i].z-pz*width/2);
-        if(i<pts.length-1){const k=i*2;idx.push(k,k+1,k+2,k+1,k+3,k+2);}
-      }
-      const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));geo.setIndex(idx);geo.computeVertexNormals();
-      const mesh=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map:canvasTex("road"),roughness:1}));mesh.receiveShadow=true;scene.add(mesh);
-      // wheel ruts
-      [-width*.22,width*.22].forEach(off=>{
-        const rutPts=pts.map((p,i)=>{const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];const dx=b.x-a.x,dz=b.z-a.z,l=Math.max(.001,Math.hypot(dx,dz));return new THREE.Vector3(p.x+(-dz/l)*off,p.y+.045,p.z+(dx/l)*off);});
-        const rg=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rutPts),Math.max(12,pts.length*4),.055,5,false);
-        const rm=new THREE.Mesh(rg,mat(0x33291f,1));rm.scale.y=.12;scene.add(rm);
-      });
+      const controls=points.map(([x,z])=>new THREE.Vector3(x,0,z));
+      let routeLength=0;for(let i=1;i<controls.length;i++)routeLength+=controls[i].distanceTo(controls[i-1]);
+      const curve=new THREE.CatmullRomCurve3(controls,false,"centripetal");
+      const pts=curve.getSpacedPoints(Math.max(8,Math.ceil(routeLength/1.35))).map(p=>new THREE.Vector3(p.x,groundY(p.x,p.z),p.z));
+      const surface=(surfaceWidth:number,yOffset:number,material:THREE.Material,wobble:number)=>{
+        const verts:number[]=[],uvs:number[]=[],idx:number[]=[];
+        let distance=0;
+        for(let i=0;i<pts.length;i++){
+          if(i>0)distance+=pts[i].distanceTo(pts[i-1]);
+          const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];
+          const dx=b.x-a.x,dz=b.z-a.z,l=Math.max(.001,Math.hypot(dx,dz));
+          const px=-dz/l,pz=dx/l;
+          const edgeNoise=1+(midHash(i+points.length*17,187)-.5)*wobble;
+          const half=surfaceWidth*.5*edgeNoise;
+          const bend=(midHash(i+points.length*29,193)-.5)*wobble*.45;
+          verts.push(pts[i].x+px*(half+bend),pts[i].y+yOffset,pts[i].z+pz*(half+bend));
+          verts.push(pts[i].x-px*(half-bend),pts[i].y+yOffset+.006,pts[i].z-pz*(half-bend));
+          uvs.push(0,distance/5,1,distance/5);
+          // Counter-clockwise winding keeps the visible face and normals upward.
+          if(i<pts.length-1){const k=i*2;idx.push(k,k+2,k+1,k+1,k+2,k+3);}
+        }
+        const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));geo.setAttribute("uv",new THREE.Float32BufferAttribute(uvs,2));geo.setIndex(idx);geo.computeVertexNormals();
+        const mesh=new THREE.Mesh(geo,material);mesh.receiveShadow=true;mesh.renderOrder=1;scene.add(mesh);
+      };
+      surface(width*1.10,.075,pathEdgeMaterial,.10);
+      surface(width,.102,pathMaterial,.08);
     };
-    road([[0,72],[0,58],[1,44],[0,31],[1,19],[2,8],[0,-3],[-1,-16],[-2,-29],[-5,-44]],7.4);
-    road([[-2,7],[8,5],[19,2],[31,-1],[42,-5]],5.7);
-    road([[0,8],[-9,13],[-19,20],[-27,31],[-31,44]],4.6);
-    road([[1,-3],[10,-10],[20,-18],[29,-28]],4.5);
-    road([[-1,2],[-12,-4],[-22,-10],[-32,-12],[-39,-8]],4.4);
-    road([[4,14],[-3,22],[-7,31],[-8,42]],3.8);
-    road([[0,31],[-5,42],[-18,54],[-30,61],[-43,62]],4.0);
-    road([[4,14],[10,28],[18,41],[27,57]],3.8);
-    road([[5,31],[15,45],[27,57],[39,70]],3.7);
-    road([[-20,20],[-36,28],[-51,34],[-64,36]],3.6);
-    road([[-39,-8],[-47,-12],[-53,-15]],3.4);
+    // Roads inside the palisade. Every branch ends before the timber wall and
+    // the only route to the outside passes through the working front gate.
+    road([[0,43.5],[0,35],[0,27],[1,18],[1,9],[1,2]],2.35);
+    road([[1,2],[-5,2],[-10,-2],[-17,-4],[-24,-4]],1.75);
+    road([[-5,2],[-11,8],[-17,14],[-23,20],[-27,24]],1.62);
+    road([[-17,14],[-23,13],[-27,12]],1.48);
+    road([[-10,-2],[-13,-10],[-15,-17],[-16,-22]],1.52);
+    road([[1,2],[4,-5],[8,-11],[12,-14]],1.65);
+    road([[4,-5],[4,-13],[3,-21]],1.48);
+    road([[1,9],[8,8],[15,12],[21,18],[27,21]],1.62);
+    road([[8,8],[16,3],[25,-3]],1.55);
+    road([[15,12],[18,20],[20,27]],1.52);
+
+    // Outside junction at the gate. These curves first clear the front corners
+    // of the palisade, then continue along its outer side instead of cutting through it.
+    road([[0,44.5],[0,50],[0,58],[-2,67],[-5,75]],2.20);
+    road([[0,49],[-10,49],[-20,49],[-28,48],[-34,44],[-35,36]],1.88);
+    road([[0,49],[10,52],[18,55]],1.86);
+    road([[18,55],[32,58],[42,59],[50,60]],1.62);
+    road([[50,60],[55,68],[62,78]],1.48);
+
+    // East side: deer glade, homes, camp and the southern sacred places.
+    road([[0,49],[14,49],[27,48],[34,44],[35,36]],1.88);
+    road([[35,36],[39,34],[43,32],[57,33],[68,33],[75,33]],1.62);
+    road([[35,36],[35,25],[35,14],[35,3],[35,-10],[35,-23],[35,-32]],1.72);
+    road([[35,20],[46,15],[57,11],[68,8]],1.50);
+    road([[35,-32],[43,-34],[51,-31],[58,-28]],1.54);
+    road([[35,-32],[32,-42],[25,-52],[15,-62],[5,-70]],1.68);
+
+    // West side on the village bank: Norns and the deep ash grove.
+    road([[-35,36],[-42,37],[-49,38]],1.55);
+    road([[-35,44],[-39,54],[-43,64],[-45,75]],1.48);
+    road([[-35,36],[-35,24],[-35,14],[-35,2],[-35,-10],[-35,-23],[-35,-32],[-40,-38],[-48,-44],[-50,-48]],1.72);
+    road([[-35,14],[-32,15],[-31,15]],1.42);
+
+    // The river can be crossed only on the wooden bridge. Beyond it a narrow
+    // west-bank trail reaches the old farm, forest cache and Whispering Stone.
+    road([[-50,-48],[-57,-48],[-64,-48]],2.05);
+    road([[-64,-48],[-70,-48],[-72,-48]],1.58);
+    road([[-64,-48],[-67,-40],[-68,-27],[-68,-11],[-65,8]],1.62);
+    road([[-65,8],[-68,24],[-70,37],[-72,48]],1.50);
+
+    const signTexture=(label:string)=>{
+      const c=document.createElement("canvas");c.width=512;c.height=128;const ctx=c.getContext("2d")!;
+      ctx.clearRect(0,0,512,128);ctx.font="900 60px Arial, sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";
+      ctx.lineJoin="round";ctx.lineWidth=9;ctx.strokeStyle="rgba(35,17,7,.96)";ctx.strokeText(label.toUpperCase(),256,66,474);
+      ctx.fillStyle="#fff0c8";ctx.shadowColor="rgba(22,10,3,.95)";ctx.shadowBlur=4;ctx.fillText(label.toUpperCase(),256,66,474);
+      const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=4;return tex;
+    };
+    const signBoardGeometry=()=>{
+      const s=new THREE.Shape();s.moveTo(-1.65,-.34);s.lineTo(1.02,-.34);s.lineTo(1.58,0);s.lineTo(1.02,.34);s.lineTo(-1.65,.34);s.lineTo(-1.48,0);s.closePath();
+      return new THREE.ExtrudeGeometry(s,{depth:.13,bevelEnabled:true,bevelSize:.045,bevelThickness:.035,bevelSegments:1});
+    };
+    const addSignpost=(x:number,z:number,entries:Array<{label:string;target:[number,number];color:number}>)=>{
+      const g=new THREE.Group();g.position.set(x,groundY(x,z)+.04,z);
+      const post=new THREE.Mesh(new THREE.CylinderGeometry(.10,.15,2.65,9),mat(0x5a351d,.96));post.position.y=1.32;post.castShadow=true;g.add(post);
+      const cap=new THREE.Mesh(new THREE.ConeGeometry(.19,.27,8),mat(0x382113,.96));cap.position.y=2.77;g.add(cap);
+      entries.forEach((entry,i)=>{
+        const board=new THREE.Group();board.position.y=1.62+i*.45;board.scale.setScalar(.70);
+        const dx=entry.target[0]-x,dz=entry.target[1]-z;board.rotation.y=Math.atan2(-dz,dx);
+        const plank=new THREE.Mesh(signBoardGeometry(),mat(entry.color,.92));plank.castShadow=true;plank.receiveShadow=true;board.add(plank);
+        const tex=signTexture(entry.label);
+        const labelMaterial=new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.FrontSide});
+        const front=new THREE.Mesh(new THREE.PlaneGeometry(2.92,.56),labelMaterial);front.position.set(-.08,0,.205);board.add(front);
+        // A second, normally oriented label prevents mirrored writing when the
+        // player approaches the sign from behind.
+        const back=new THREE.Mesh(new THREE.PlaneGeometry(2.92,.56),labelMaterial.clone());back.position.set(-.08,0,-.075);back.rotation.y=Math.PI;board.add(back);
+        const nailMat=mat(0x2b211a,.55);
+        for(const nx of [-1.25,.72]){const nail=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.045,7),nailMat);nail.rotation.x=Math.PI/2;nail.position.set(nx,0,.225);board.add(nail);}
+        g.add(board);
+      });
+      scene.add(g);
+    };
+    addSignpost(-4,7,[{label:"Кузница",target:[-10,-3],color:0x875229},{label:"Ворота",target:[0,44],color:0x6d4325},{label:"Мимир",target:[1,0],color:0x775035}]);
+    addSignpost(2,31,[{label:"Площадь",target:[1,8],color:0x875229},{label:"Ворота",target:[0,44],color:0x6d4325}]);
+    addSignpost(1,53,[{label:"Поле Рун",target:[18,55],color:0x6e4325},{label:"Роща Ясеня",target:[-5,75],color:0x57452d}]);
+    addSignpost(-35,38,[{label:"Норны",target:[-49,38],color:0x694126},{label:"Мост",target:[-57,-48],color:0x59442f}]);
+    addSignpost(-67,-41,[{label:"Камень Шёпота",target:[-72,-48],color:0x744025},{label:"Старый хутор",target:[-65,8],color:0x83562f},{label:"Мост",target:[-57,-48],color:0x5d4934}]);
+    addSignpost(35,39,[{label:"Дом героя",target:[75,33],color:0x80502d},{label:"Камень Феху",target:[50,60],color:0x89522c}]);
+    addSignpost(36,-26,[{label:"Три Норны",target:[58,-28],color:0x67472e},{label:"Круг силы",target:[5,-70],color:0x744a29},{label:"Деревня",target:[0,44],color:0x8a5a32}]);
 
     const woodTex=canvasTex("wood");woodTex.repeat.set(2,1);
     const roofTex=canvasTex("roof");roofTex.repeat.set(2,2);
@@ -3476,6 +3684,27 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: 
     objects.push(whisperStone);
     addCircleCollider(whisperX,whisperZ,2.5,.1);
 
+    // Temporary low-poly guardian. Its root and animation hooks stay stable so a
+    // rigged GLB guardian can replace only this visual later.
+    const whisperGuard=new THREE.Group();
+    const guardBody=new THREE.Mesh(new THREE.CapsuleGeometry(.72,1.55,6,10),mat(0x493b33,.82,.16));guardBody.position.y=1.48;whisperGuard.add(guardBody);
+    const guardChest=new THREE.Mesh(new THREE.BoxGeometry(1.65,1.05,.72),mat(0x4e5961,.48,.7));guardChest.position.set(0,1.82,0);guardChest.rotation.x=-.05;whisperGuard.add(guardChest);
+    const guardHead=new THREE.Mesh(new THREE.SphereGeometry(.48,12,9),mat(0x8a6045,.8));guardHead.position.y=2.92;guardHead.scale.set(1,.92,.92);whisperGuard.add(guardHead);
+    const guardHelm=new THREE.Mesh(new THREE.ConeGeometry(.58,.72,7),mat(0x303a40,.4,.78));guardHelm.position.y=3.34;whisperGuard.add(guardHelm);
+    const guardEyeMat=new THREE.MeshBasicMaterial({color:0xff7b27});
+    for(const x of [-.17,.17]){const eye=new THREE.Mesh(new THREE.SphereGeometry(.045,6,5),guardEyeMat);eye.position.set(x,2.98,.43);whisperGuard.add(eye);}
+    const guardArmPivot=new THREE.Group();guardArmPivot.position.set(-.88,2.22,0);whisperGuard.add(guardArmPivot);
+    const guardArm=new THREE.Mesh(new THREE.CapsuleGeometry(.19,.78,4,7),mat(0x72513d,.78));guardArm.position.y=-.46;guardArmPivot.add(guardArm);
+    const guardClub=new THREE.Group();guardClub.position.set(0,-.8,.05);guardArmPivot.add(guardClub);
+    const clubHandle=new THREE.Mesh(new THREE.CylinderGeometry(.07,.09,1.45,7),mat(0x4c2e19,1));clubHandle.position.y=-.54;guardClub.add(clubHandle);
+    const clubHead=new THREE.Mesh(new THREE.DodecahedronGeometry(.42,0),mat(0x252b2e,.72,.48));clubHead.position.y=-1.28;clubHead.scale.set(1.25,.82,.88);guardClub.add(clubHead);
+    for(let i=0;i<5;i++){const spike=new THREE.Mesh(new THREE.ConeGeometry(.07,.28,5),mat(0x4b5458,.55,.62));const a=i/5*Math.PI*2;spike.position.set(Math.cos(a)*.42,-1.28,Math.sin(a)*.30);spike.rotation.z=Math.PI/2;spike.rotation.y=-a;guardClub.add(spike);}
+    const guardShield=new THREE.Mesh(new THREE.CylinderGeometry(.58,.58,.14,14),mat(0x5b3a21,.72,.35));guardShield.rotation.x=Math.PI/2;guardShield.position.set(.72,1.75,.30);whisperGuard.add(guardShield);
+    const guardRune=addFloatingRune(whisperGuard,"ᚦ",0,3.55,.12,0xff8a32,.72,.16);guardRune.material.blending=THREE.AdditiveBlending;
+    whisperGuard.position.set(whisperX,groundY(whisperX,whisperZ+2.7),whisperZ+2.7);whisperGuard.rotation.y=0;whisperGuard.visible=false;
+    whisperGuard.userData={arm:guardArmPivot,baseY:whisperGuard.position.y};
+    markMeshes(whisperGuard);scene.add(whisperGuard);guardVisualRef.current=whisperGuard;
+
     // STEP 9 — LANDMARK IDENTITY -------------------------------------------------
     // Give each major sacred place a distinct visual "threshold" so landmarks feel
     // embedded in the landscape rather than simply placed on top of it. Everything
@@ -3996,7 +4225,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: 
         }
       });
 
-      // About twice the old on-screen hero height while keeping a human silhouette.
+      // Original articulated Valkyrie and Viking use the same world scale.
       model.scale.setScalar(.78);
       model.rotation.y=0;
       model.position.set(0,0,0);
@@ -4131,6 +4360,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: 
     let raf=0,last=performance.now(),lastPositionSave=0;
     const loop=(now:number)=>{
       const dt=Math.min(.05,(now-last)/1000);last=now;const q=state.current;const l=Math.hypot(q.dx,q.dz);
+      const whisperNow=whisperPhaseRef.current;
+      const encounterLocked=whisperNow!=="closed";
 
       if(forgeDoorOpening){
         forgeDoorProgress=Math.min(1,forgeDoorProgress+dt*1.65);
@@ -4153,16 +4384,21 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: 
       villageGateBar.position.y=groundY(0,gateFrontZ)+2.32-barT*.78;
       villageGateBar.position.z=gateFrontZ+.72+barT*.52;
       villageGateBar.rotation.z=-barT*.28;
-      if(l>.05){
+      if(!encounterLocked&&l>.05){
         const step=6.2*dt;
         moveWithCollision(q,q.x+(q.dx/l)*step,q.z+(q.dz/l)*step);
         hero.rotation.y=Math.atan2(q.dx,q.dz);
         cameraDir.current.x=q.dx/l;
         cameraDir.current.z=q.dz/l;
         setMoving(true);
-      }else setMoving(false);
+      }else{q.dx=0;q.dz=0;setMoving(false);}
+      if(whisperBattleStartedRef.current&&whisperNow!=="closed"&&whisperNow!=="question"){
+        q.x=whisperX;q.z=whisperZ+7.0;
+        hero.rotation.y=Math.PI;
+        cameraDir.current.x=0;cameraDir.current.z=-1;
+      }
       const hy=onRiverBridge(q.x,q.z)?BRIDGE_Y+.12:groundY(q.x,q.z);
-      const moving=l>.05;
+      const moving=!encounterLocked&&l>.05;
       hero.position.set(q.x,hy+.04,q.z);
       // Keep the latest map position independently from the forge. This also
       // covers exits through Hero, Gift, Hall and the world tree navigation.
@@ -4241,15 +4477,43 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: 
           hero.position.y+=moving?Math.abs(Math.sin(walkT*2))*.018:0;
         }
       }
+      if(guardVisualRef.current){
+        const g=guardVisualRef.current;
+        const show=whisperBattleStartedRef.current&&whisperNow!=="closed"&&whisperNow!=="question";
+        g.visible=show;
+        if(show){
+          g.position.x=whisperX;g.position.z=whisperZ+2.7;
+          const baseY=groundY(g.position.x,g.position.z);
+          const attackAge=now-guardAttackAtRef.current;
+          const hitAge=now-guardHitAtRef.current;
+          const arm=g.userData.arm as THREE.Object3D;
+          if(guardDefeatedRef.current){
+            g.rotation.z=THREE.MathUtils.lerp(g.rotation.z,-1.34,.08);
+            g.position.y=THREE.MathUtils.lerp(g.position.y,baseY-.55,.08);
+            if(arm)arm.rotation.x=0;
+          }else{
+            g.rotation.z=0;g.position.y=baseY+Math.sin(now*.003)*.035;
+            if(arm){
+              if(attackAge>=0&&attackAge<620){const p=attackAge/620;arm.rotation.x=p<.45?-2.0*(p/.45):THREE.MathUtils.lerp(-2.0,.65,(p-.45)/.55);}
+              else arm.rotation.x=-.18+Math.sin(now*.0024)*.06;
+            }
+            g.rotation.x=hitAge>=0&&hitAge<260?Math.sin(hitAge/260*Math.PI)*-.18:0;
+          }
+        }
+      }
       // Keep the camera direction stable when the thumb is released. The old camera
       // used dx/dz directly, so stopping movement instantly changed its target and
       // produced the visible screen jump/bounce on mobile.
       const cd=cameraDir.current;
-      const target=insideHomeRef.current
-        ? new THREE.Vector3(q.x-cd.x*1.0,hy+3.65,q.z-cd.z*1.0)
-        : new THREE.Vector3(q.x-cd.x*2.0,hy+7.2,q.z-cd.z*2.0+11.8);
-      camera.position.lerp(target,insideHomeRef.current?.09:.055);
-      camera.lookAt(q.x+(insideHomeRef.current?cd.x*.9:cd.x*1.9),hy+(insideHomeRef.current?1.25:1.2),q.z+(insideHomeRef.current?cd.z*.9:cd.z*1.9));
+      const battleView=whisperBattleStartedRef.current&&whisperNow!=="closed"&&whisperNow!=="question";
+      const target=battleView
+        ? new THREE.Vector3(whisperX+9.7,groundY(whisperX,whisperZ)+6.5,whisperZ+8.4)
+        : insideHomeRef.current
+          ? new THREE.Vector3(q.x-cd.x*1.0,hy+3.65,q.z-cd.z*1.0)
+          : new THREE.Vector3(q.x-cd.x*2.0,hy+7.2,q.z-cd.z*2.0+11.8);
+      camera.position.lerp(target,battleView ? .075 : insideHomeRef.current ? .09 : .055);
+      if(battleView)camera.lookAt(whisperX,groundY(whisperX,whisperZ)+1.7,whisperZ+4.5);
+      else camera.lookAt(q.x+(insideHomeRef.current?cd.x*.9:cd.x*1.9),hy+(insideHomeRef.current?1.25:1.2),q.z+(insideHomeRef.current?cd.z*.9:cd.z*1.9));
       let found="",foundId="";
       if(insideHomeRef.current){
         if(q.z>heroHomeZ+1.72){found="Дверь — выйти из дома";foundId="heroHomeExit";}
@@ -4323,19 +4587,22 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: 
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
+    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
   },[h.id,skin,weapon,on,eventDone,start.x,start.z,rememberPosition]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
   const stopJoy=()=>{if(knob.current)knob.current.style.transform="translate(0,0)";state.current.dx=0;state.current.dz=0;};
   // Keep the visible joystick compact, but give it a much larger invisible touch zone.
   // This makes it comfortable to start steering with a thumb slightly above the circle.
-  const startJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{const a=joy.current;if(!a)return;const target=e.target as HTMLElement;if(target.closest?.(".mid3d-action")||target.closest?.(".mid3d-strike")||target.closest?.(".mid3d-interact")||target.closest?.(".mid3d-door-prompt")||target.closest?.(".mid3d-map-panel"))return;const r=a.getBoundingClientRect();const pad=26,up=78,down=26;const inside=e.clientX>=r.left-pad&&e.clientX<=r.right+pad&&e.clientY>=r.top-up&&e.clientY<=r.bottom+down;if(!inside)return;e.currentTarget.setPointerCapture(e.pointerId);joyMove(e);};
+  const startJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{const a=joy.current;if(!a||whisperPhaseRef.current!=="closed")return;const target=e.target as HTMLElement;if(target.closest?.(".mid3d-action")||target.closest?.(".mid3d-strike")||target.closest?.(".mid3d-interact")||target.closest?.(".mid3d-door-prompt")||target.closest?.(".mid3d-rematch")||target.closest?.(".mid3d-map-panel")||target.closest?.(".whisper-cloud"))return;const r=a.getBoundingClientRect();const pad=26,up=78,down=26;const inside=e.clientX>=r.left-pad&&e.clientX<=r.right+pad&&e.clientY>=r.top-up&&e.clientY<=r.bottom+down;if(!inside)return;e.currentTarget.setPointerCapture(e.pointerId);joyMove(e);};
   const moveJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{if(e.currentTarget.hasPointerCapture(e.pointerId))joyMove(e);};
   const endJoyFromZone=(e:React.PointerEvent<HTMLDivElement>)=>{if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);stopJoy();};
+  const whisperPips=(energy:number)=>Array.from({length:COMBAT_ENERGY}).map((_,i)=>{const color=combatEnergyColor(energy);return <i key={i} className="whisper-pip" style={i<energy?{background:color,boxShadow:`0 0 8px ${color}`}:{}}/>;});
+  const rewardIcon=whisperReward.includes("Кеназ")?"ᚲ":whisperReward.includes("Эликсир")?"🧪":whisperReward.includes("Капель")&&!whisperReward.includes("и «")?"🔥":"⚔️";
 
   return <div className="content mid3d-scene" ref={mount} style={{touchAction:"none",userSelect:"none",WebkitUserSelect:"none"}} onPointerDown={startJoyFromZone} onPointerMove={moveJoyFromZone} onPointerUp={endJoyFromZone} onPointerCancel={endJoyFromZone} onContextMenu={e=>e.preventDefault()}>
     <div className="mid3d-ui mid3d-top"><div className="mid3d-pill"><b>МИДГАРД</b><span>Деревня • река • лес • святилища</span></div><div className="mid3d-pill"><b>ᛟ</b><span>Мир живёт вокруг тебя</span></div></div>
+    {near.endsWith("|whisperStone")&&whisperResolved&&whisperPhase==="closed"&&<button className="mid3d-ui mid3d-rematch" onPointerDown={e=>e.stopPropagation()} onClick={beginWhisperRematch}>⚔ Пройти испытание ещё раз<small>Повторный бой без награды</small></button>}
     {!heroReady&&<div className="mid3d-ui mid3d-hero-load"><b>{heroLoadFailed?"ᚾ":"ᛉ"}</b><span>{heroLoadFailed?"Герой не загрузился":"ПРОБУЖДЕНИЕ ГЕРОЯ"}</span></div>}
     {mapOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}>
       <div className="mid3d-map-panel">
@@ -4383,7 +4650,35 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: 
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:ice")}}>❄️ Ледяной обет — ослабить первый удар врага</button>
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:ygg")}}>🌳 Зов Иггдрасиля — пережить смертельный удар</button>
     </div>}
-    {near&&!ritualOpen&&!forestEventOpen&&(()=>{
+    {whisperBattleStartedRef.current&&whisperPhase!=="closed"&&whisperPhase!=="question"&&<div className="mid3d-ui whisper-bars">
+      <div className="whisper-unit"><span className="whisper-pips">{whisperPips(whisperHeroEnergy)}</span><b>{h.race}</b><small>❤ {whisperHeroHp}/{whisperStats.maxHp}</small></div>
+      <div className="whisper-unit"><span className="whisper-pips">{whisperPips(whisperGuardEnergy)}</span><b>{WHISPER_GUARD.name}</b><small>❤ {whisperGuardHp}/{WHISPER_GUARD.hp}</small></div>
+    </div>}
+    {whisperFx&&whisperPhase==="fight"&&<i key={whisperFx.key} className={"mid3d-ui whisper-battle-fx "+whisperFx.kind}/>}
+    {whisperPhase==="question"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
+      <h3>Камень шёпота</h3><p>Янтарный свет хранит память о сотворении мира людей. Из глубины раздаётся голос стража.</p>
+      <div className="whisper-question">{WHISPER_QUEST.q}</div>
+      {WHISPER_QUEST.a.map((answer,i)=><button key={answer} className={"whisper-answer"+(whisperAnswer!==null?(i===WHISPER_QUEST.c?" good":i===whisperAnswer?" bad":" off"):"")} onClick={()=>answerWhisperInWorld(i)}>{answer}</button>)}
+    </div>}
+    {whisperPhase==="fight"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
+      <h3>⚔ Бой у Камня шёпота</h3><div className="whisper-log">{whisperLog}</div>
+      <div className="whisper-actions">
+        <button className="whisper-action" disabled={whisperBusy} onClick={()=>whisperFightAction("hit")}>⚔ Удар оружием<br/><small>−1 энергия</small></button>
+        <button className="whisper-action rune" disabled={whisperBusy} onClick={()=>whisperFightAction("rune")}>ᚲ Руна Кеназ<br/><small>−2 энергии</small></button>
+        <button className="whisper-action shield" disabled={whisperBusy} onClick={()=>whisperFightAction("shield")}>🛡 Поднять щит<br/><small>−1 энергия</small></button>
+        <button className="whisper-action rest" disabled={whisperBusy} onClick={()=>whisperFightAction("restore")}>🌿 Перевести дух<br/><small>+2 энергии</small></button>
+      </div>
+    </div>}
+    {whisperPhase==="reward"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
+      <div className="whisper-reward-icon">{whisperReplay?"ᚦ":rewardIcon}</div><div className="whisper-reward-rarity">{whisperReplay?"Повторное испытание":"Награда Мидгарда"}</div>
+      <div className="whisper-reward-name">{whisperReward}</div><p>{whisperLog}</p>
+      <button className="whisper-close" onClick={closeWhisperEncounter}>{whisperReplay?"Завершить тренировку":"Забрать награду и продолжить путь"}</button>
+    </div>}
+    {whisperPhase==="defeat"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
+      <div className="whisper-reward-icon">ᚾ</div><div className="whisper-reward-name">Испытание не пройдено</div><p>{whisperLog}</p>
+      <button className="whisper-close" onClick={whisperReplay?beginWhisperRematch:beginWhisperEncounter}>Попробовать ещё раз</button>
+    </div>}
+    {near&&!ritualOpen&&!forestEventOpen&&whisperPhase==="closed"&&(()=>{
       const [label,id]=near.split("|");
       if(id==="forge")return <div className="mid3d-ui mid3d-door-prompt"><b>Дверь кузницы</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>forgeActionRef.current?.()}>Открыть ручку</button></div>;
       const villageDoor=["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman","oldfarm"].includes(id);
@@ -4391,11 +4686,12 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: 
       if(id==="heroHome")return <div className="mid3d-ui mid3d-door-prompt"><b>Дом героя</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>homeActionRef.current?.(true)}>Открыть ручку</button></div>;
       const home=id==="heroHome"||id==="heroHomeExit";
       const villageGate=id==="gate";
-      return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{villageGate?(villageGateOpen?"Створки открыты, тяжёлый засов снят":"Ворота заперты большим деревянным засовом"):home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода"):"Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else if(id==="gate")gateActionRef.current?.();else on(id,{x:state.current.x,z:state.current.z});}}>{villageGate?(villageGateOpen?"Закрыть ворота и поставить засов":"Снять засов и открыть ворота"):home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):"Взаимодействовать"}</button></div>;
+      const whisper=id==="whisperStone";
+      return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{villageGate?(villageGateOpen?"Створки открыты, тяжёлый засов снят":"Ворота заперты большим деревянным засовом"):home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода"):whisper?(whisperResolved?"Камень помнит завершённое испытание":"Из янтарного света доносится древний вопрос"):"Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else if(id==="gate")gateActionRef.current?.();else if(id==="whisperStone"&&!whisperResolved)beginWhisperEncounter();else on(id,{x:state.current.x,z:state.current.z});}}>{villageGate?(villageGateOpen?"Закрыть ворота и поставить засов":"Снять засов и открыть ворота"):home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):whisper?(whisperResolved?"Прикоснуться к камню":"Слушать шёпот"):"Взаимодействовать"}</button></div>;
     })()}
-    <div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
+    {whisperPhase==="closed"&&<><div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" title="Удар оружием" onPointerDown={e=>e.stopPropagation()} onClick={()=>{attackActionRef.current?.();if("vibrate" in navigator)navigator.vibrate(12);}}>⚔</button>
-    <button className="mid3d-ui mid3d-action" aria-label="Карта Мидгарда" title="Карта Мидгарда" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapHero({x:state.current.x,z:state.current.z});setMapOpen(true);}}>ᚠ</button>
+    <button className="mid3d-ui mid3d-action" aria-label="Карта Мидгарда" title="Карта Мидгарда" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapHero({x:state.current.x,z:state.current.z});setMapOpen(true);}}>ᚠ</button></>}
     <div className="mid3d-ui mid3d-hint">{insideHome?(moving?"Ты внутри дома":"Дом героя • отдых • сундук • выход"):moving?"Исследуй Мидгард":"Ворота • площадь • кузница • Мимир • норны • лес"}</div>
   </div>;
 }
@@ -4493,17 +4789,9 @@ const [roadT, setRoadT] = useState(0.06);
     setSave(s => ({ ...s, sparks: s.sparks + add + (art ? 30 : 0), trials: [...s.trials, id + ":" + idx], artifacts: art ? [...s.artifacts, id] : s.artifacts }));
     if (art) { haptic("success"); say("Мир пройден! Артефакт: " + ARTIFACTS[id]); }
   };
-  const answerWhisper = (ai:number) => {
-    if(res!==null)return;
-    setRes(ai);
-    if(ai===WHISPER_QUEST.c){
-      setSave(s=>s.done.includes("whisper:wisdom")?s:{...s,sparks:s.sparks+8,done:[...new Set([...s.done,"whisper:wisdom"])]});
-      haptic("success");
-      say("Камень признал верный ответ: +8 Капель силы.");
-    }else{
-      haptic();
-      setFlog(WHISPER_GUARD.name+" выходит из янтарного света: «Пусть теперь ответит твоя сталь!»");
-    }
+  const finishWhisperCorrect = () => {
+    setSave(s=>s.done.includes("whisper:wisdom")?s:{...s,sparks:s.sparks+8,done:[...new Set([...s.done,"whisper:wisdom"])]});
+    haptic("success");
   };
   const answer = (id: string, ai: number) => {
     if (res !== null) return;
@@ -4534,7 +4822,7 @@ const [roadT, setRoadT] = useState(0.06);
   };
   const useWhisper = (id: string) => { const idx = trialIdx(id); const q = QUESTS[id][idx]; const wrong = q.a.findIndex((_, i) => i !== q.c && i !== removed); setRemoved(wrong); setWhisper(true); haptic(); say("Шёпот ветров уносит один ответ..."); };
   const startFight = (id: string) => {
-    const m = id==="whisper"?WHISPER_GUARD:MASTERS[id];
+    const m = MASTERS[id];
     const ash = save.powers.includes("ashBreath");
     const forgedHp=forgeLevel("armor")*3+forgeLevel("helmet")*2;
     const fightMaxHp=heroDef!.hp+forgedHp+(ash?25:0);
@@ -4569,7 +4857,7 @@ const [roadT, setRoadT] = useState(0.06);
   };
   const fightAct = (id: string, kind: "hit" | "rune" | "shield" | "restore") => {
     if (over) return;
-    const m = id==="whisper"?WHISPER_GUARD:MASTERS[id]; const idx = trialIdx(id);
+    const m = MASTERS[id]; const idx = trialIdx(id);
     let dmg = 0; let log = ""; let nhen = hen; let nmen = men; let nshield = shield;
     if (kind === "hit") {
       setCombatFx({kind:"hit",key:Date.now()});
@@ -4590,14 +4878,9 @@ const [roadT, setRoadT] = useState(0.06);
     const nm = mhp - dmg;
     if (nm <= 0) {
       setMhp(0); setHen(nhen); setMen(nmen); setOver("win");
-      if(id==="whisper"){
-        const reward=finishWhisperBattle();
-        setFlog("Хродвитнир повержен! Награда: +18 Капель силы и «"+reward+"».");
-      }else{
-        const add = 8 + idx * 2;
-        setFlog("Хозяин повержен! Награда: +" + add + " Капель силы");
-        finishTrial(id, idx, add);
-      }
+      const add = 8 + idx * 2;
+      setFlog("Хозяин повержен! Награда: +" + add + " Капель силы");
+      finishTrial(id, idx, add);
       return;
     }
     let md = m.atk + rnd(3); let mlog = "";
@@ -4782,8 +5065,6 @@ const [roadT, setRoadT] = useState(0.06);
           say("Камень шепчет имя побеждённого стража. Его награда уже хранится в Чертоге.");
         }else if(save.done.includes("whisper:wisdom")){
           say("Камень помнит твой верный ответ. Янтарный свет остаётся спокойным.");
-        }else{
-          setScreen({t:"trial",id:"whisper"});
         }
         return;
       }
@@ -4919,7 +5200,24 @@ const [roadT, setRoadT] = useState(0.06);
       }
     };
 
-    return <Midgard3D h={heroDef} skin={save.heroSkin} weapon={save.heroWeapon} on={interact} eventDone={save.done.includes("forest:choice")} start={midgardReturn.current} rememberPosition={rememberMidgardPosition} />;
+    return <Midgard3D
+      h={heroDef}
+      skin={save.heroSkin}
+      weapon={save.heroWeapon}
+      on={interact}
+      eventDone={save.done.includes("forest:choice")}
+      start={midgardReturn.current}
+      rememberPosition={rememberMidgardPosition}
+      whisperResolved={save.done.includes("whisper:battle")||save.done.includes("whisper:wisdom")}
+      whisperStats={{
+        maxHp:heroDef.hp+forgeLevel("armor")*3+forgeLevel("helmet")*2,
+        attack:heroDef.str+forgeLevel("default"),
+        runeAttack:heroDef.en+2,
+        defense:Math.floor((forgeLevel("armor")+forgeLevel("helmet"))/2)
+      }}
+      onWhisperCorrect={finishWhisperCorrect}
+      onWhisperWin={finishWhisperBattle}
+    />;
   }
 
   return (
@@ -4973,23 +5271,6 @@ const [roadT, setRoadT] = useState(0.06);
   );
 })()}
       {screen.t === "trial" && (() => {
-        if(screen.id==="whisper")return (
-          <div className="scroll">
-            <div className="mhead">
-              <span className="mface guard-face" style={{borderColor:"#ff9a43",color:"#ffd18b"}}>ᚦ</span>
-              <span className="mname2" style={{color:"#ffbd68"}}>{WHISPER_GUARD.name}</span>
-              <span className="mtitle">{WHISPER_GUARD.title}</span>
-            </div>
-            <div className="greet">«{WHISPER_GUARD.greet}»</div>
-            <div className="cloud">
-              <div className="riddle">{WHISPER_QUEST.q}</div>
-              {WHISPER_QUEST.a.map((a,i)=><button key={i} className={"ans"+(res!==null?(i===WHISPER_QUEST.c?" good":i===res?" bad":" off"):"")} onClick={()=>answerWhisper(i)}>{a}</button>)}
-              {res!==null&&(res===WHISPER_QUEST.c
-                ? <button className="btn gold" onClick={()=>go({t:"realm",id:"midgard"})}>Вернуться к Камню шёпота</button>
-                : <button className="btn" onClick={()=>startFight("whisper")}>⚔ Принять вызов стража</button>)}
-            </div>
-          </div>
-        );
         const realm = REALMS.find(r => r.id === screen.id)!;
         const m = MASTERS[realm.id];
         const idx = trialIdx(realm.id);
@@ -5020,16 +5301,14 @@ const [roadT, setRoadT] = useState(0.06);
       })()}
 
       {screen.t === "fight" && (() => {
-        const isWhisper=screen.id==="whisper";
-        const realm = REALMS.find(r => r.id === (isWhisper?"midgard":screen.id))!;
-        const m = isWhisper?WHISPER_GUARD:MASTERS[realm.id];
-        const fightId=isWhisper?"whisper":realm.id;
+        const realm = REALMS.find(r => r.id === screen.id)!;
+        const m = MASTERS[realm.id];
         return (
           <div className="scroll">
             <div className="duel">
               {combatFx&&<i key={combatFx.key} className={"battle-fx "+combatFx.kind}/>}
               <div className="dside">
-                <span className={"dface"+(isWhisper?" guard-face":"")} style={{ borderColor: isWhisper?"#ff9a43":realm.color, color: isWhisper?"#ffd18b":realm.color }}>{!isWhisper&&<BgImg name={MASTER_IMG[realm.id]} className="himg" />}{m.sym}</span>
+                <span className="dface" style={{ borderColor: realm.color, color: realm.color }}><BgImg name={MASTER_IMG[realm.id]} className="himg" />{m.sym}</span>
                 <span className="dname" style={{ color: realm.color }}>{m.name}</span>
                 <span className="dhp"><span className="dhpfill" style={{ width: Math.max(0, (mhp / m.hp) * 100) + "%", background: realm.color }} /></span>
                 <span className="dnum">{mhp}/{m.hp}</span>
@@ -5048,13 +5327,13 @@ const [roadT, setRoadT] = useState(0.06);
             </div>
             <div className="flog">{flog}</div>
             {!over && (<div className="acts">
-              <button className="btn gold" onClick={() => fightAct(fightId, "hit")}>⚔ Удар: {heroDef!.weapon} (−1 энергия)</button>
-              <button className="btn rune" onClick={() => fightAct(fightId, "rune")}>🌀 Руническое заклинание (−2 энергии)</button>
-              <button className="btn shield" onClick={() => fightAct(fightId, "shield")}>🛡 Щит (−1 энергия)</button>
-              <button className="btn ghost" onClick={() => fightAct(fightId, "restore")}>🌿 Перевести дыхание (+{2+(forgeLevel("boots")>=3?1:0)} энергии)</button>
+              <button className="btn gold" onClick={() => fightAct(realm.id, "hit")}>⚔ Удар: {heroDef!.weapon} (−1 энергия)</button>
+              <button className="btn rune" onClick={() => fightAct(realm.id, "rune")}>🌀 Руническое заклинание (−2 энергии)</button>
+              <button className="btn shield" onClick={() => fightAct(realm.id, "shield")}>🛡 Щит (−1 энергия)</button>
+              <button className="btn ghost" onClick={() => fightAct(realm.id, "restore")}>🌿 Перевести дыхание (+{2+(forgeLevel("boots")>=3?1:0)} энергии)</button>
             </div>)}
-            {over === "win" && <button className="btn gold" onClick={() => isWhisper?go({t:"realm",id:"midgard"}):nextStep(realm.id)}>Забрать награду →</button>}
-            {over === "lose" && <button className="btn ghost" onClick={() => go(isWhisper?{t:"realm",id:"midgard"}:{ t: "tree" })}>{isWhisper?"Вернуться в Мидгард":"Древо возрождает тебя"}</button>}
+            {over === "win" && <button className="btn gold" onClick={() => nextStep(realm.id)}>Забрать награду →</button>}
+            {over === "lose" && <button className="btn ghost" onClick={() => go({ t: "tree" })}>Древо возрождает тебя</button>}
           </div>
         );
       })()}
