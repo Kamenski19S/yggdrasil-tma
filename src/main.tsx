@@ -1361,11 +1361,21 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
           ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(rand(i*2)-.5)*10,y+(rand(i*4)-.5)*10);ctx.stroke();
         }
       } else {
-        ctx.fillStyle="#514333";ctx.fillRect(0,0,512,512);
-        for(let i=0;i<1300;i++){
+        // Warm, compacted earth for footpaths. The old near-black texture and
+        // paired tubular ruts read as railway tracks on mobile.
+        ctx.fillStyle="#b79a6c";ctx.fillRect(0,0,512,512);
+        for(let i=0;i<1050;i++){
           const x=rand(i*1.3)*512,y=rand(i*2.7)*512;
-          ctx.fillStyle=`rgba(${45+rand(i*3)*38},${35+rand(i*4)*28},${23+rand(i*5)*20},${.08+rand(i*6)*.18})`;
-          ctx.fillRect(x,y,2+rand(i*7)*7,1+rand(i*8)*4);
+          const pale=rand(i*9)>.68;
+          ctx.fillStyle=pale
+            ? `rgba(226,204,157,${.10+rand(i*6)*.20})`
+            : `rgba(92,69,43,${.06+rand(i*6)*.14})`;
+          ctx.beginPath();ctx.ellipse(x,y,1+rand(i*7)*4,.8+rand(i*8)*2.5,rand(i*10)*Math.PI,0,Math.PI*2);ctx.fill();
+        }
+        for(let i=0;i<90;i++){
+          const x=rand(i*11.4)*512,y=rand(i*13.8)*512;
+          ctx.strokeStyle=`rgba(89,68,45,${.07+rand(i)*.08})`;ctx.lineWidth=1+rand(i*5)*1.8;
+          ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+8+rand(i*2)*20,y+(rand(i*3)-.5)*7);ctx.stroke();
         }
       }
       const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;
@@ -1850,37 +1860,92 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
       stone.scale.y=.35+midHash(i,1523)*.45;stone.rotation.set(midHash(i,1524)*2,midHash(i,1525)*2,midHash(i,1526)*2);scene.add(stone);
     }
 
-    // Roads are deliberately dark and wide, with two wheel ruts and stone edges.
+    // A readable footpath network connects the village and every major landmark.
+    // Pale compacted earth replaces the old paired dark tubes that looked like rails.
+    const pathTexture=canvasTex("road");
+    pathTexture.repeat.set(1.2,5.5);
+    const pathMaterial=new THREE.MeshStandardMaterial({map:pathTexture,color:0xd0b27d,roughness:1,metalness:0});
+    const pathEdgeMaterial=new THREE.MeshStandardMaterial({color:0x756347,roughness:1,metalness:0});
     const road = (points:Array<[number,number]>, width:number) => {
-      const pts=points.map(([x,z])=>new THREE.Vector3(x,groundY(x,z)+.035,z));
-      const verts:number[]=[]; const idx:number[]=[];
-      for(let i=0;i<pts.length;i++){
-        const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];
-        const dx=b.x-a.x,dz=b.z-a.z,l=Math.max(.001,Math.hypot(dx,dz));
-        const px=-dz/l,pz=dx/l;
-        verts.push(pts[i].x+px*width/2,pts[i].y,pts[i].z+pz*width/2,pts[i].x-px*width/2,pts[i].y+.01,pts[i].z-pz*width/2);
-        if(i<pts.length-1){const k=i*2;idx.push(k,k+1,k+2,k+1,k+3,k+2);}
-      }
-      const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));geo.setIndex(idx);geo.computeVertexNormals();
-      const mesh=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map:canvasTex("road"),roughness:1}));mesh.receiveShadow=true;scene.add(mesh);
-      // wheel ruts
-      [-width*.22,width*.22].forEach(off=>{
-        const rutPts=pts.map((p,i)=>{const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];const dx=b.x-a.x,dz=b.z-a.z,l=Math.max(.001,Math.hypot(dx,dz));return new THREE.Vector3(p.x+(-dz/l)*off,p.y+.045,p.z+(dx/l)*off);});
-        const rg=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rutPts),Math.max(12,pts.length*4),.055,5,false);
-        const rm=new THREE.Mesh(rg,mat(0x33291f,1));rm.scale.y=.12;scene.add(rm);
-      });
+      const pts=points.map(([x,z])=>new THREE.Vector3(x,groundY(x,z),z));
+      const surface=(surfaceWidth:number,yOffset:number,material:THREE.Material,wobble:number)=>{
+        const verts:number[]=[],uvs:number[]=[],idx:number[]=[];
+        let distance=0;
+        for(let i=0;i<pts.length;i++){
+          if(i>0)distance+=pts[i].distanceTo(pts[i-1]);
+          const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];
+          const dx=b.x-a.x,dz=b.z-a.z,l=Math.max(.001,Math.hypot(dx,dz));
+          const px=-dz/l,pz=dx/l;
+          const edgeNoise=1+(midHash(i+points.length*17,187)-.5)*wobble;
+          const half=surfaceWidth*.5*edgeNoise;
+          const bend=(midHash(i+points.length*29,193)-.5)*wobble*.45;
+          verts.push(pts[i].x+px*(half+bend),pts[i].y+yOffset,pts[i].z+pz*(half+bend));
+          verts.push(pts[i].x-px*(half-bend),pts[i].y+yOffset+.006,pts[i].z-pz*(half-bend));
+          uvs.push(0,distance/5,1,distance/5);
+          if(i<pts.length-1){const k=i*2;idx.push(k,k+1,k+2,k+1,k+3,k+2);}
+        }
+        const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));geo.setAttribute("uv",new THREE.Float32BufferAttribute(uvs,2));geo.setIndex(idx);geo.computeVertexNormals();
+        const mesh=new THREE.Mesh(geo,material);mesh.receiveShadow=true;scene.add(mesh);
+      };
+      surface(width*1.17,.024,pathEdgeMaterial,.20);
+      surface(width,.041,pathMaterial,.13);
     };
-    road([[0,72],[0,58],[1,44],[0,31],[1,19],[2,8],[0,-3],[-1,-16],[-2,-29],[-5,-44]],7.4);
-    road([[-2,7],[8,5],[19,2],[31,-1],[42,-5]],5.7);
-    road([[0,8],[-9,13],[-19,20],[-27,31],[-31,44]],4.6);
-    road([[1,-3],[10,-10],[20,-18],[29,-28]],4.5);
-    road([[-1,2],[-12,-4],[-22,-10],[-32,-12],[-39,-8]],4.4);
-    road([[4,14],[-3,22],[-7,31],[-8,42]],3.8);
-    road([[0,31],[-5,42],[-18,54],[-30,61],[-43,62]],4.0);
-    road([[4,14],[10,28],[18,41],[27,57]],3.8);
-    road([[5,31],[15,45],[27,57],[39,70]],3.7);
-    road([[-20,20],[-36,28],[-51,34],[-64,36]],3.6);
-    road([[-39,-8],[-47,-12],[-53,-15]],3.4);
+    // Main village road and the route from the southern monolith to the ash grove.
+    road([[5,-70],[2,-55],[-2,-39],[-1,-22],[0,-8],[2,8],[1,24],[0,44],[1,59],[-5,75]],4.8);
+    // Village houses and western settlements.
+    road([[2,8],[-8,4],[-17,-1],[-25,-4],[-39,-8],[-52,-2],[-65,8]],3.25);
+    road([[-8,4],[-17,12],[-28,18],[-40,28],[-52,38]],3.0);
+    road([[-28,18],[-30,29],[-39,42],[-55,48],[-72,48]],2.65);
+    road([[-39,42],[-43,59],[-45,75]],2.55);
+    road([[-17,12],[-24,14],[-30,15]],2.5);
+    // South-west route through the old farm to the bridge and Whispering Stone.
+    road([[-25,-4],[-35,-14],[-45,-27],[-56,-40],[-57,-48]],3.05);
+    road([[-57,-48],[-64,-48],[-72,-48]],2.7);
+    road([[-35,-14],[-45,-5],[-56,3],[-65,8]],2.55);
+    // Village homes and eastern sacred places.
+    road([[1,-3],[10,-8],[13,-14],[23,-20],[39,-25],[58,-28]],3.1);
+    road([[2,8],[14,9],[25,2],[42,-5],[55,0],[68,8]],3.15);
+    road([[14,9],[17,20],[20,28],[31,30],[43,32]],2.85);
+    road([[43,32],[55,34],[67,33],[75,33]],2.65);
+    road([[68,8],[72,20],[75,33]],2.55);
+    // Northern forest loop: rune field, deer glade, Fehu stone and Hoddmimir forest.
+    road([[1,24],[9,37],[18,55],[34,58],[50,60]],2.8);
+    road([[20,28],[30,40],[42,51],[50,60]],2.65);
+    road([[43,32],[48,46],[50,60],[57,70],[62,78]],2.55);
+    road([[1,24],[-10,22],[-20,18],[-30,15]],2.65);
+
+    const signTexture=(label:string)=>{
+      const c=document.createElement("canvas");c.width=512;c.height=128;const ctx=c.getContext("2d")!;
+      ctx.clearRect(0,0,512,128);ctx.fillStyle="#f4ddb0";ctx.font="900 42px Arial, sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";
+      ctx.shadowColor="rgba(34,18,8,.9)";ctx.shadowBlur=3;ctx.fillText(label.toUpperCase(),256,66,465);
+      const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=4;return tex;
+    };
+    const signBoardGeometry=()=>{
+      const s=new THREE.Shape();s.moveTo(-1.65,-.34);s.lineTo(1.02,-.34);s.lineTo(1.58,0);s.lineTo(1.02,.34);s.lineTo(-1.65,.34);s.lineTo(-1.48,0);s.closePath();
+      return new THREE.ExtrudeGeometry(s,{depth:.13,bevelEnabled:true,bevelSize:.045,bevelThickness:.035,bevelSegments:1});
+    };
+    const addSignpost=(x:number,z:number,entries:Array<{label:string;target:[number,number];color:number}>)=>{
+      const g=new THREE.Group();g.position.set(x,groundY(x,z),z);
+      const post=new THREE.Mesh(new THREE.CylinderGeometry(.12,.17,3.35,9),mat(0x5a351d,.96));post.position.y=1.68;post.castShadow=true;g.add(post);
+      const cap=new THREE.Mesh(new THREE.ConeGeometry(.23,.32,8),mat(0x382113,.96));cap.position.y=3.48;g.add(cap);
+      entries.forEach((entry,i)=>{
+        const board=new THREE.Group();board.position.y=2.32+i*.62;
+        const dx=entry.target[0]-x,dz=entry.target[1]-z;board.rotation.y=Math.atan2(-dz,dx);
+        const plank=new THREE.Mesh(signBoardGeometry(),mat(entry.color,.92));plank.castShadow=true;plank.receiveShadow=true;board.add(plank);
+        const tex=signTexture(entry.label);
+        const front=new THREE.Mesh(new THREE.PlaneGeometry(2.78,.49),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));front.position.set(-.10,0,.205);board.add(front);
+        const nailMat=mat(0x2b211a,.55);
+        for(const nx of [-1.25,.72]){const nail=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.045,7),nailMat);nail.rotation.x=Math.PI/2;nail.position.set(nx,0,.225);board.add(nail);}
+        g.add(board);
+      });
+      scene.add(g);
+    };
+    addSignpost(-5,6,[{label:"Кузница",target:[-10,-3],color:0x875229},{label:"Ворота",target:[0,44],color:0x6d4325},{label:"Мимир",target:[1,0],color:0x775035}]);
+    addSignpost(-28,18,[{label:"Норны",target:[-52,38],color:0x694126},{label:"Старый хутор",target:[-65,8],color:0x83562f},{label:"Мост",target:[-57,-48],color:0x59442f}]);
+    addSignpost(-55,-40,[{label:"Камень Шёпота",target:[-72,-48],color:0x744025},{label:"Мост",target:[-57,-48],color:0x5d4934},{label:"Деревня",target:[0,0],color:0x82572f}]);
+    addSignpost(17,38,[{label:"Поле Рун",target:[18,55],color:0x6e4325},{label:"Камень Феху",target:[50,60],color:0x89522c},{label:"Роща Ясеня",target:[-5,75],color:0x57452d}]);
+    addSignpost(43,30,[{label:"Дом героя",target:[75,33],color:0x80502d},{label:"Поляна Оленей",target:[43,32],color:0x625039},{label:"Лес Ходдмимира",target:[62,78],color:0x4e3d2a}]);
+    addSignpost(38,-22,[{label:"Три Норны",target:[58,-28],color:0x67472e},{label:"Стоянка",target:[68,8],color:0x744a29},{label:"Деревня",target:[0,0],color:0x8a5a32}]);
 
     const woodTex=canvasTex("wood");woodTex.repeat.set(2,1);
     const roofTex=canvasTex("roof");roofTex.repeat.set(2,2);
