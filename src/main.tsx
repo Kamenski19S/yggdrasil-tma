@@ -1864,8 +1864,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
     // Pale compacted earth replaces the old paired dark tubes that looked like rails.
     const pathTexture=canvasTex("road");
     pathTexture.repeat.set(1.2,5.5);
-    const pathMaterial=new THREE.MeshStandardMaterial({map:pathTexture,color:0xe0c18b,roughness:1,metalness:0,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
-    const pathEdgeMaterial=new THREE.MeshStandardMaterial({color:0x806b4b,roughness:1,metalness:0,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+    const pathMaterial=new THREE.MeshStandardMaterial({map:pathTexture,color:0xc39a61,roughness:1,metalness:0,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
+    const pathEdgeMaterial=new THREE.MeshStandardMaterial({color:0x735b3d,roughness:1,metalness:0,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
     const road = (points:Array<[number,number]>, width:number) => {
       const controls=points.map(([x,z])=>new THREE.Vector3(x,0,z));
       let routeLength=0;for(let i=1;i<controls.length;i++)routeLength+=controls[i].distanceTo(controls[i-1]);
@@ -1891,32 +1891,50 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
         const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));geo.setAttribute("uv",new THREE.Float32BufferAttribute(uvs,2));geo.setIndex(idx);geo.computeVertexNormals();
         const mesh=new THREE.Mesh(geo,material);mesh.receiveShadow=true;mesh.renderOrder=1;scene.add(mesh);
       };
-      surface(width*1.20,.075,pathEdgeMaterial,.12);
+      surface(width*1.10,.075,pathEdgeMaterial,.10);
       surface(width,.102,pathMaterial,.08);
     };
-    // Main village road and the route from the southern monolith to the ash grove.
-    road([[5,-70],[2,-55],[-2,-39],[-1,-22],[0,-8],[2,8],[1,24],[0,44],[1,59],[-5,75]],4.8);
-    // Village houses and western settlements.
-    road([[2,8],[-8,4],[-17,-1],[-25,-4],[-39,-8],[-52,-2],[-65,8]],3.25);
-    road([[-8,4],[-17,12],[-28,18],[-40,28],[-52,38]],3.0);
-    road([[-28,18],[-30,29],[-39,42],[-55,48],[-72,48]],2.65);
-    road([[-39,42],[-43,59],[-45,75]],2.55);
-    road([[-17,12],[-24,14],[-30,15]],2.5);
-    // South-west route through the old farm to the bridge and Whispering Stone.
-    road([[-25,-4],[-35,-14],[-45,-27],[-56,-40],[-57,-48]],3.05);
-    road([[-57,-48],[-64,-48],[-72,-48]],2.7);
-    road([[-35,-14],[-45,-5],[-56,3],[-65,8]],2.55);
-    // Village homes and eastern sacred places.
-    road([[1,-3],[10,-8],[13,-14],[23,-20],[39,-25],[58,-28]],3.1);
-    road([[2,8],[14,9],[25,2],[42,-5],[55,0],[68,8]],3.15);
-    road([[14,9],[17,20],[20,28],[31,30],[43,32]],2.85);
-    road([[43,32],[55,34],[67,33],[75,33]],2.65);
-    road([[68,8],[72,20],[75,33]],2.55);
-    // Northern forest loop: rune field, deer glade, Fehu stone and Hoddmimir forest.
-    road([[1,24],[9,37],[18,55],[34,58],[50,60]],2.8);
-    road([[20,28],[30,40],[42,51],[50,60]],2.65);
-    road([[43,32],[48,46],[50,60],[57,70],[62,78]],2.55);
-    road([[1,24],[-10,22],[-20,18],[-30,15]],2.65);
+    // Roads inside the palisade. Every branch ends before the timber wall and
+    // the only route to the outside passes through the working front gate.
+    road([[0,43.5],[0,35],[0,27],[1,18],[1,9],[1,2]],2.35);
+    road([[1,2],[-5,2],[-10,-2],[-17,-4],[-24,-4]],1.75);
+    road([[-5,2],[-11,8],[-17,14],[-23,20],[-27,24]],1.62);
+    road([[-17,14],[-23,13],[-27,12]],1.48);
+    road([[-10,-2],[-13,-10],[-15,-17],[-16,-22]],1.52);
+    road([[1,2],[4,-5],[8,-11],[12,-14]],1.65);
+    road([[4,-5],[4,-13],[3,-21]],1.48);
+    road([[1,9],[8,8],[15,12],[21,18],[27,21]],1.62);
+    road([[8,8],[16,3],[25,-3]],1.55);
+    road([[15,12],[18,20],[20,27]],1.52);
+
+    // Outside junction at the gate. These curves first clear the front corners
+    // of the palisade, then continue along its outer side instead of cutting through it.
+    road([[0,44.5],[0,50],[0,58],[-2,67],[-5,75]],2.20);
+    road([[0,49],[-10,49],[-20,49],[-28,48],[-34,44],[-35,36]],1.88);
+    road([[0,49],[10,52],[18,55]],1.86);
+    road([[18,55],[32,58],[42,59],[50,60]],1.62);
+    road([[50,60],[55,68],[62,78]],1.48);
+
+    // East side: deer glade, homes, camp and the southern sacred places.
+    road([[0,49],[14,49],[27,48],[34,44],[35,36]],1.88);
+    road([[35,36],[39,34],[43,32],[57,33],[68,33],[75,33]],1.62);
+    road([[35,36],[35,25],[35,14],[35,3],[35,-10],[35,-23],[35,-32]],1.72);
+    road([[35,20],[46,15],[57,11],[68,8]],1.50);
+    road([[35,-32],[43,-34],[51,-31],[58,-28]],1.54);
+    road([[35,-32],[32,-42],[25,-52],[15,-62],[5,-70]],1.68);
+
+    // West side on the village bank: Norns and the deep ash grove.
+    road([[-35,36],[-42,37],[-49,38]],1.55);
+    road([[-35,44],[-39,54],[-43,64],[-45,75]],1.48);
+    road([[-35,36],[-35,24],[-35,14],[-35,2],[-35,-10],[-35,-23],[-35,-32],[-40,-38],[-48,-44],[-50,-48]],1.72);
+    road([[-35,14],[-32,15],[-31,15]],1.42);
+
+    // The river can be crossed only on the wooden bridge. Beyond it a narrow
+    // west-bank trail reaches the old farm, forest cache and Whispering Stone.
+    road([[-50,-48],[-57,-48],[-64,-48]],2.05);
+    road([[-64,-48],[-70,-48],[-72,-48]],1.58);
+    road([[-64,-48],[-67,-40],[-68,-27],[-68,-11],[-65,8]],1.62);
+    road([[-65,8],[-68,24],[-70,37],[-72,48]],1.50);
 
     const signTexture=(label:string)=>{
       const c=document.createElement("canvas");c.width=512;c.height=128;const ctx=c.getContext("2d")!;
@@ -1930,10 +1948,10 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
     };
     const addSignpost=(x:number,z:number,entries:Array<{label:string;target:[number,number];color:number}>)=>{
       const g=new THREE.Group();g.position.set(x,groundY(x,z)+.04,z);
-      const post=new THREE.Mesh(new THREE.CylinderGeometry(.15,.21,4.05,9),mat(0x5a351d,.96));post.position.y=2.02;post.castShadow=true;g.add(post);
-      const cap=new THREE.Mesh(new THREE.ConeGeometry(.28,.38,8),mat(0x382113,.96));cap.position.y=4.22;g.add(cap);
+      const post=new THREE.Mesh(new THREE.CylinderGeometry(.10,.15,2.65,9),mat(0x5a351d,.96));post.position.y=1.32;post.castShadow=true;g.add(post);
+      const cap=new THREE.Mesh(new THREE.ConeGeometry(.19,.27,8),mat(0x382113,.96));cap.position.y=2.77;g.add(cap);
       entries.forEach((entry,i)=>{
-        const board=new THREE.Group();board.position.y=2.55+i*.72;board.scale.setScalar(1.16);
+        const board=new THREE.Group();board.position.y=1.62+i*.45;board.scale.setScalar(.70);
         const dx=entry.target[0]-x,dz=entry.target[1]-z;board.rotation.y=Math.atan2(-dz,dx);
         const plank=new THREE.Mesh(signBoardGeometry(),mat(entry.color,.92));plank.castShadow=true;plank.receiveShadow=true;board.add(plank);
         const tex=signTexture(entry.label);
@@ -1944,13 +1962,13 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
       });
       scene.add(g);
     };
-    addSignpost(-5,6,[{label:"Кузница",target:[-10,-3],color:0x875229},{label:"Ворота",target:[0,44],color:0x6d4325},{label:"Мимир",target:[1,0],color:0x775035}]);
-    addSignpost(4,27,[{label:"Площадь",target:[1,8],color:0x875229},{label:"Ворота",target:[0,44],color:0x6d4325},{label:"Поле Рун",target:[18,55],color:0x775035}]);
-    addSignpost(-28,18,[{label:"Норны",target:[-52,38],color:0x694126},{label:"Старый хутор",target:[-65,8],color:0x83562f},{label:"Мост",target:[-57,-48],color:0x59442f}]);
-    addSignpost(-55,-40,[{label:"Камень Шёпота",target:[-72,-48],color:0x744025},{label:"Мост",target:[-57,-48],color:0x5d4934},{label:"Деревня",target:[0,0],color:0x82572f}]);
-    addSignpost(17,38,[{label:"Поле Рун",target:[18,55],color:0x6e4325},{label:"Камень Феху",target:[50,60],color:0x89522c},{label:"Роща Ясеня",target:[-5,75],color:0x57452d}]);
-    addSignpost(43,30,[{label:"Дом героя",target:[75,33],color:0x80502d},{label:"Поляна Оленей",target:[43,32],color:0x625039},{label:"Лес Ходдмимира",target:[62,78],color:0x4e3d2a}]);
-    addSignpost(38,-22,[{label:"Три Норны",target:[58,-28],color:0x67472e},{label:"Стоянка",target:[68,8],color:0x744a29},{label:"Деревня",target:[0,0],color:0x8a5a32}]);
+    addSignpost(-4,7,[{label:"Кузница",target:[-10,-3],color:0x875229},{label:"Ворота",target:[0,44],color:0x6d4325},{label:"Мимир",target:[1,0],color:0x775035}]);
+    addSignpost(2,31,[{label:"Площадь",target:[1,8],color:0x875229},{label:"Ворота",target:[0,44],color:0x6d4325}]);
+    addSignpost(1,53,[{label:"Поле Рун",target:[18,55],color:0x6e4325},{label:"Роща Ясеня",target:[-5,75],color:0x57452d}]);
+    addSignpost(-35,38,[{label:"Норны",target:[-49,38],color:0x694126},{label:"Мост",target:[-57,-48],color:0x59442f}]);
+    addSignpost(-67,-41,[{label:"Камень Шёпота",target:[-72,-48],color:0x744025},{label:"Старый хутор",target:[-65,8],color:0x83562f},{label:"Мост",target:[-57,-48],color:0x5d4934}]);
+    addSignpost(35,39,[{label:"Дом героя",target:[75,33],color:0x80502d},{label:"Камень Феху",target:[50,60],color:0x89522c}]);
+    addSignpost(36,-26,[{label:"Три Норны",target:[58,-28],color:0x67472e},{label:"Круг силы",target:[5,-70],color:0x744a29},{label:"Деревня",target:[0,44],color:0x8a5a32}]);
 
     const woodTex=canvasTex("wood");woodTex.repeat.set(2,1);
     const roofTex=canvasTex("roof");roofTex.repeat.set(2,2);
