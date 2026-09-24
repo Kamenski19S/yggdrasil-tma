@@ -4026,7 +4026,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: 
       const weaponSocketR=model.getObjectByName("WeaponSocket_R") as THREE.Object3D | null;
       // The Valkyrie's sword is in her left hand, while the shield is on the right.
       // Animate the actual weapon arm so she never appears to strike with the shield.
-      const weaponSocket=skin==="valkyrie"?(weaponSocketL||weaponSocketR):(weaponSocketR||weaponSocketL);
+      const weaponSocket=weaponSocketR||weaponSocketL;
       if(weaponSocket){
         weaponSocket.traverse((o:any)=>{
           if(!o.isMesh)return;
@@ -4055,7 +4055,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: 
           mode:isV6MultiView?"multiview":"projected",
           model,
           baseY:model.position.y,
-          phase:skin==="valkyrie"?1.2:0,
+          phase:0,
           weapon:weaponSocket||new THREE.Object3D()
         };
       }else if(armL&&armR&&legL&&legR){
@@ -4072,8 +4072,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition }: 
           legR:{upper:legR,knee:kneeR||dummyKR},
           eyes:eyesPivot||dummyEyes,
           weapon:weaponSocket||new THREE.Object3D(),
-          attackSide:skin==="valkyrie"?"left":"right",
-          phase:skin==="valkyrie"?1.2:0
+          attackSide:"right",
+          phase:0
         };
       }
 
