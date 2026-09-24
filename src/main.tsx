@@ -1864,10 +1864,13 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
     // Pale compacted earth replaces the old paired dark tubes that looked like rails.
     const pathTexture=canvasTex("road");
     pathTexture.repeat.set(1.2,5.5);
-    const pathMaterial=new THREE.MeshStandardMaterial({map:pathTexture,color:0xd0b27d,roughness:1,metalness:0});
-    const pathEdgeMaterial=new THREE.MeshStandardMaterial({color:0x756347,roughness:1,metalness:0});
+    const pathMaterial=new THREE.MeshStandardMaterial({map:pathTexture,color:0xe0c18b,roughness:1,metalness:0,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
+    const pathEdgeMaterial=new THREE.MeshStandardMaterial({color:0x806b4b,roughness:1,metalness:0,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
     const road = (points:Array<[number,number]>, width:number) => {
-      const pts=points.map(([x,z])=>new THREE.Vector3(x,groundY(x,z),z));
+      const controls=points.map(([x,z])=>new THREE.Vector3(x,0,z));
+      let routeLength=0;for(let i=1;i<controls.length;i++)routeLength+=controls[i].distanceTo(controls[i-1]);
+      const curve=new THREE.CatmullRomCurve3(controls,false,"centripetal");
+      const pts=curve.getSpacedPoints(Math.max(8,Math.ceil(routeLength/1.35))).map(p=>new THREE.Vector3(p.x,groundY(p.x,p.z),p.z));
       const surface=(surfaceWidth:number,yOffset:number,material:THREE.Material,wobble:number)=>{
         const verts:number[]=[],uvs:number[]=[],idx:number[]=[];
         let distance=0;
@@ -1882,13 +1885,14 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
           verts.push(pts[i].x+px*(half+bend),pts[i].y+yOffset,pts[i].z+pz*(half+bend));
           verts.push(pts[i].x-px*(half-bend),pts[i].y+yOffset+.006,pts[i].z-pz*(half-bend));
           uvs.push(0,distance/5,1,distance/5);
-          if(i<pts.length-1){const k=i*2;idx.push(k,k+1,k+2,k+1,k+3,k+2);}
+          // Counter-clockwise winding keeps the visible face and normals upward.
+          if(i<pts.length-1){const k=i*2;idx.push(k,k+2,k+1,k+1,k+2,k+3);}
         }
         const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));geo.setAttribute("uv",new THREE.Float32BufferAttribute(uvs,2));geo.setIndex(idx);geo.computeVertexNormals();
-        const mesh=new THREE.Mesh(geo,material);mesh.receiveShadow=true;scene.add(mesh);
+        const mesh=new THREE.Mesh(geo,material);mesh.receiveShadow=true;mesh.renderOrder=1;scene.add(mesh);
       };
-      surface(width*1.17,.024,pathEdgeMaterial,.20);
-      surface(width,.041,pathMaterial,.13);
+      surface(width*1.20,.075,pathEdgeMaterial,.12);
+      surface(width,.102,pathMaterial,.08);
     };
     // Main village road and the route from the southern monolith to the ash grove.
     road([[5,-70],[2,-55],[-2,-39],[-1,-22],[0,-8],[2,8],[1,24],[0,44],[1,59],[-5,75]],4.8);
@@ -1925,11 +1929,11 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
       return new THREE.ExtrudeGeometry(s,{depth:.13,bevelEnabled:true,bevelSize:.045,bevelThickness:.035,bevelSegments:1});
     };
     const addSignpost=(x:number,z:number,entries:Array<{label:string;target:[number,number];color:number}>)=>{
-      const g=new THREE.Group();g.position.set(x,groundY(x,z),z);
-      const post=new THREE.Mesh(new THREE.CylinderGeometry(.12,.17,3.35,9),mat(0x5a351d,.96));post.position.y=1.68;post.castShadow=true;g.add(post);
-      const cap=new THREE.Mesh(new THREE.ConeGeometry(.23,.32,8),mat(0x382113,.96));cap.position.y=3.48;g.add(cap);
+      const g=new THREE.Group();g.position.set(x,groundY(x,z)+.04,z);
+      const post=new THREE.Mesh(new THREE.CylinderGeometry(.15,.21,4.05,9),mat(0x5a351d,.96));post.position.y=2.02;post.castShadow=true;g.add(post);
+      const cap=new THREE.Mesh(new THREE.ConeGeometry(.28,.38,8),mat(0x382113,.96));cap.position.y=4.22;g.add(cap);
       entries.forEach((entry,i)=>{
-        const board=new THREE.Group();board.position.y=2.32+i*.62;
+        const board=new THREE.Group();board.position.y=2.55+i*.72;board.scale.setScalar(1.16);
         const dx=entry.target[0]-x,dz=entry.target[1]-z;board.rotation.y=Math.atan2(-dz,dx);
         const plank=new THREE.Mesh(signBoardGeometry(),mat(entry.color,.92));plank.castShadow=true;plank.receiveShadow=true;board.add(plank);
         const tex=signTexture(entry.label);
@@ -1941,6 +1945,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
       scene.add(g);
     };
     addSignpost(-5,6,[{label:"Кузница",target:[-10,-3],color:0x875229},{label:"Ворота",target:[0,44],color:0x6d4325},{label:"Мимир",target:[1,0],color:0x775035}]);
+    addSignpost(4,27,[{label:"Площадь",target:[1,8],color:0x875229},{label:"Ворота",target:[0,44],color:0x6d4325},{label:"Поле Рун",target:[18,55],color:0x775035}]);
     addSignpost(-28,18,[{label:"Норны",target:[-52,38],color:0x694126},{label:"Старый хутор",target:[-65,8],color:0x83562f},{label:"Мост",target:[-57,-48],color:0x59442f}]);
     addSignpost(-55,-40,[{label:"Камень Шёпота",target:[-72,-48],color:0x744025},{label:"Мост",target:[-57,-48],color:0x5d4934},{label:"Деревня",target:[0,0],color:0x82572f}]);
     addSignpost(17,38,[{label:"Поле Рун",target:[18,55],color:0x6e4325},{label:"Камень Феху",target:[50,60],color:0x89522c},{label:"Роща Ясеня",target:[-5,75],color:0x57452d}]);
