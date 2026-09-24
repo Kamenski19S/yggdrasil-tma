@@ -1938,8 +1938,9 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
 
     const signTexture=(label:string)=>{
       const c=document.createElement("canvas");c.width=512;c.height=128;const ctx=c.getContext("2d")!;
-      ctx.clearRect(0,0,512,128);ctx.fillStyle="#f4ddb0";ctx.font="900 42px Arial, sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";
-      ctx.shadowColor="rgba(34,18,8,.9)";ctx.shadowBlur=3;ctx.fillText(label.toUpperCase(),256,66,465);
+      ctx.clearRect(0,0,512,128);ctx.font="900 60px Arial, sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";
+      ctx.lineJoin="round";ctx.lineWidth=9;ctx.strokeStyle="rgba(35,17,7,.96)";ctx.strokeText(label.toUpperCase(),256,66,474);
+      ctx.fillStyle="#fff0c8";ctx.shadowColor="rgba(22,10,3,.95)";ctx.shadowBlur=4;ctx.fillText(label.toUpperCase(),256,66,474);
       const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=4;return tex;
     };
     const signBoardGeometry=()=>{
@@ -1955,7 +1956,11 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
         const dx=entry.target[0]-x,dz=entry.target[1]-z;board.rotation.y=Math.atan2(-dz,dx);
         const plank=new THREE.Mesh(signBoardGeometry(),mat(entry.color,.92));plank.castShadow=true;plank.receiveShadow=true;board.add(plank);
         const tex=signTexture(entry.label);
-        const front=new THREE.Mesh(new THREE.PlaneGeometry(2.78,.49),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));front.position.set(-.10,0,.205);board.add(front);
+        const labelMaterial=new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.FrontSide});
+        const front=new THREE.Mesh(new THREE.PlaneGeometry(2.92,.56),labelMaterial);front.position.set(-.08,0,.205);board.add(front);
+        // A second, normally oriented label prevents mirrored writing when the
+        // player approaches the sign from behind.
+        const back=new THREE.Mesh(new THREE.PlaneGeometry(2.92,.56),labelMaterial.clone());back.position.set(-.08,0,-.075);back.rotation.y=Math.PI;board.add(back);
         const nailMat=mat(0x2b211a,.55);
         for(const nx of [-1.25,.72]){const nail=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.045,7),nailMat);nail.rotation.x=Math.PI/2;nail.position.set(nx,0,.225);board.add(nail);}
         g.add(board);
