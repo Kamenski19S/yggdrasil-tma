@@ -2633,6 +2633,43 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       });
       return {model:result,size:bounds.getSize(new THREE.Vector3())};
     };
+    // Project the supplied stone texture at a fixed world size on each wall face.
+    const stoneWallMaterials:THREE.MeshStandardMaterial[]=[];
+    let stoneWallTexture:THREE.Texture|null=null;
+    const applyWallStoneTexture=(root:THREE.Object3D)=>{
+      root.updateMatrixWorld(true);
+      root.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        const geometry=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();
+        const positions=geometry.attributes.position,uv=new Float32Array(positions.count*2);
+        const points=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()];
+        const edgeA=new THREE.Vector3(),edgeB=new THREE.Vector3(),normal=new THREE.Vector3();
+        for(let i=0;i<positions.count;i+=3){
+          for(let k=0;k<3;k++)points[k].fromBufferAttribute(positions,i+k).applyMatrix4(o.matrixWorld);
+          normal.crossVectors(edgeA.subVectors(points[1],points[0]),edgeB.subVectors(points[2],points[0]));
+          const ax=Math.abs(normal.x),ay=Math.abs(normal.y),az=Math.abs(normal.z);
+          for(let k=0;k<3;k++){
+            const point=points[k],u=ay>ax&&ay>az?point.x:ax>az?point.z:point.x;
+            const v=ay>ax&&ay>az?point.z:point.y;
+            uv[(i+k)*2]=u/3.5;uv[(i+k)*2+1]=v/3.5;
+          }
+        }
+        geometry.setAttribute("uv",new THREE.BufferAttribute(uv,2));o.geometry=geometry;
+        const tune=(original:THREE.MeshStandardMaterial)=>{
+          const material=original.clone();stoneWallMaterials.push(material);
+          if(stoneWallTexture){material.map=stoneWallTexture;material.color.setHex(/DarkRock/i.test(material.name)?0xd5d5d5:0xffffff);material.needsUpdate=true;}
+          return material;
+        };
+        o.material=Array.isArray(o.material)?o.material.map(tune):tune(o.material);
+      });
+    };
+    const pendingStoneTexture=new THREE.TextureLoader().load(`${BASE}img/models/T_UnevenBrick1_BaseColor.png`,texture=>{
+      if(!glbTreesAlive){texture.dispose();return;}
+      texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
+      texture.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());texture.needsUpdate=true;
+      stoneWallTexture=texture;
+      stoneWallMaterials.forEach(material=>{material.map=texture;material.color.setHex(/DarkRock/i.test(material.name)?0xd5d5d5:0xffffff);material.needsUpdate=true;});
+    },undefined,()=>console.warn("Stone wall texture unavailable; retaining plain stone materials."));
     const wallRuns:Array<[number,number,number,number]>=[
       [-30,-31,-6,-31],[6,-31,30,-31],[-30,-31,-30,44],[30,-31,30,44],
       [-30,44,-6,44],[6,44,30,44]
@@ -2650,12 +2687,12 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         const g=new THREE.Group();g.position.set(x,base,z);g.rotation.y=rotation;
         const body=box(width+.05,5.0,1.9,0x999b8d,1);body.position.y=2.5;g.add(body);
         for(let k=0;k<4;k++){const tooth=box(width/7,.8,1.9,0x929689,1);tooth.position.set((k+.5)*width/4-width/2,5.4,0);g.add(tooth);}
-        scene.add(g);wallFallbacks.push(g);
+        scene.add(g);applyWallStoneTexture(g);wallFallbacks.push(g);
       }
     });
     loadGlbWithFolderFallback("WallBricks.fbx",(asset:any)=>{
       const baked=bakeFortModel(asset.scene);
-      wallSlots.forEach(slot=>{const model=baked.model.clone(true);model.scale.set((slot.width+.06)/baked.size.x,5.8/baked.size.y,2/baked.size.z);model.rotation.y=slot.rotation;model.position.set(slot.x,slot.base,slot.z);scene.add(model);});
+      wallSlots.forEach(slot=>{const model=baked.model.clone(true);model.scale.set((slot.width+.06)/baked.size.x,5.8/baked.size.y,2/baked.size.z);model.rotation.y=slot.rotation;model.position.set(slot.x,slot.base,slot.z);scene.add(model);applyWallStoneTexture(model);});
       wallFallbacks.forEach(g=>g.visible=false);
     },"STONE WALLS");
 
@@ -4693,7 +4730,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
+    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingStoneTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
   },[h.id,skin,weapon,on,eventDone,start.x,start.z,rememberPosition,northBridgeRepaired]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
