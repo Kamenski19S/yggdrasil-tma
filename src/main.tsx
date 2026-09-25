@@ -2636,8 +2636,10 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     // Project the supplied stone texture at a fixed world size on each wall face.
     const stoneWallMaterials:THREE.MeshStandardMaterial[]=[];
     let stoneWallTexture:THREE.Texture|null=null;
-    const applyWallStoneTexture=(root:THREE.Object3D)=>{
-      root.updateMatrixWorld(true);
+    const brickStoneMaterials:THREE.MeshStandardMaterial[]=[];
+    let brickStoneTexture:THREE.Texture|null=null;
+    const applyWallStoneTexture=(root:THREE.Object3D,brick=false)=>{
+      root.updateWorldMatrix(true,true);
       root.traverse((o:any)=>{
         if(!o.isMesh)return;
         const geometry=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();
@@ -2656,8 +2658,11 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         }
         geometry.setAttribute("uv",new THREE.BufferAttribute(uv,2));o.geometry=geometry;
         const tune=(original:THREE.MeshStandardMaterial)=>{
-          const material=original.clone();stoneWallMaterials.push(material);
-          if(stoneWallTexture){material.map=stoneWallTexture;material.color.setHex(/DarkRock/i.test(material.name)?0xd5d5d5:0xffffff);material.needsUpdate=true;}
+          const material=original.clone();
+          if(brick&&/Black|Celing|Wood/i.test(material.name))return material;
+          (brick?brickStoneMaterials:stoneWallMaterials).push(material);
+          const texture=brick?brickStoneTexture:stoneWallTexture;
+          if(texture){material.map=texture;material.color.setHex(/DarkRock/i.test(material.name)?0xd5d5d5:0xffffff);material.needsUpdate=true;}
           return material;
         };
         o.material=Array.isArray(o.material)?o.material.map(tune):tune(o.material);
@@ -2670,6 +2675,13 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       stoneWallTexture=texture;
       stoneWallMaterials.forEach(material=>{material.map=texture;material.color.setHex(/DarkRock/i.test(material.name)?0xd5d5d5:0xffffff);material.needsUpdate=true;});
     },undefined,()=>console.warn("Stone wall texture unavailable; retaining plain stone materials."));
+    const pendingBrickTexture=new THREE.TextureLoader().load(`${BASE}img/models/T_Brick_BaseColor1.png`,texture=>{
+      if(!glbTreesAlive){texture.dispose();return;}
+      texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
+      texture.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());texture.needsUpdate=true;
+      brickStoneTexture=texture;
+      brickStoneMaterials.forEach(material=>{material.map=texture;material.color.setHex(/DarkRock/i.test(material.name)?0xd5d5d5:0xffffff);material.needsUpdate=true;});
+    },undefined,()=>console.warn("Brick texture unavailable; retaining plain stone materials."));
     const wallRuns:Array<[number,number,number,number]>=[
       [-30,-31,-6,-31],[6,-31,30,-31],[-30,-31,-30,44],[30,-31,30,44],
       [-30,44,-6,44],[6,44,30,44]
@@ -2710,13 +2722,14 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       root.add(left,right);
       const bar=box(6.1,.26,.30,0x35291f,1);bar.position.set(0,2.3,1.37);root.add(bar);
       addMesh(root,config.id,config.id==="gate"?"Передние ворота":"Задние ворота");
+      applyWallStoneTexture(fallback,true);
       // Pier collision follows the clear opening of the door frame.
       addRectCollider(-4.5,config.z,3,2,0,.02);addRectCollider(4.5,config.z,3,2,0,.02);
       return {...config,root,fallback,left,right,bar};
     });
     loadGlbWithFolderFallback("WallEntranceBricks.fbx",(asset:any)=>{
       const baked=bakeFortModel(asset.scene);
-      for(const gate of fortGates){const model=baked.model.clone(true);model.scale.set(12/baked.size.x,7.8/baked.size.y,2/baked.size.z);gate.root.add(model);gate.fallback.visible=false;}
+      for(const gate of fortGates){const model=baked.model.clone(true);model.scale.set(12/baked.size.x,7.8/baked.size.y,2/baked.size.z);gate.root.add(model);applyWallStoneTexture(model,true);gate.fallback.visible=false;}
     },"STONE GATE ARCHES");
     loadGlbWithFolderFallback("Door.fbx",(asset:any)=>{
       const baked=bakeFortModel(asset.scene);
@@ -2749,11 +2762,11 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       const root=new THREE.Group();root.position.set(x,groundY(x,z)-.18,z);
       const body=box(4.8,10,4.8,0x858b80,1);body.position.y=5;root.add(body);
       const crown=box(5.6,.65,5.6,0x999b8d,1);crown.position.y=10;root.add(crown);
-      addMesh(root,"tower","Крепостная башня");towerFallbacks.push(root);addRectCollider(x,z,5.6,5.6,0,.08);
+      addMesh(root,"tower","Крепостная башня");applyWallStoneTexture(root,true);towerFallbacks.push(root);addRectCollider(x,z,5.6,5.6,0,.08);
     });
     loadGlbWithFolderFallback("LargeSquareTowerBricks.fbx",(asset:any)=>{
       const baked=bakeFortModel(asset.scene);
-      towerSlots.forEach(([x,z],i)=>{const model=baked.model.clone(true);model.scale.set(5.6/baked.size.x,12/baked.size.y,5.6/baked.size.z);model.position.set(x,groundY(x,z)-.18,z);addMesh(model,"tower","Крепостная башня");towerFallbacks[i].visible=false;});
+      towerSlots.forEach(([x,z],i)=>{const model=baked.model.clone(true);model.scale.set(5.6/baked.size.x,12/baked.size.y,5.6/baked.size.z);model.position.set(x,groundY(x,z)-.18,z);addMesh(model,"tower","Крепостная башня");applyWallStoneTexture(model,true);towerFallbacks[i].visible=false;});
     },"FORTRESS TOWERS");
     // Norns' fate wheel — antique wooden wheel with an original yarn ball below.
     const nornsWheelAsset='Midgard_Norns_Fate_Wheel_V1_YUP.glb';
@@ -2856,7 +2869,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         rail.position.set(0,.42,side*(BRIDGE_WIDTH/2-.1));fallback.add(rail);
         addSegmentCollider(x-BRIDGE_SPAN/2+.35,z+side*(BRIDGE_WIDTH/2-.18),x+BRIDGE_SPAN/2-.35,z+side*(BRIDGE_WIDTH/2-.18),.10,.02);
       }
-      g.add(fallback);addMesh(g,id,label);
+      g.add(fallback);addMesh(g,id,label);applyWallStoneTexture(fallback);
       return {g,fallback};
     };
     const riverBridge=makeStoneBridgeBase(BRIDGE_X,BRIDGE_Z,BRIDGE_Y,"port","Речной мост");
@@ -2904,7 +2917,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       });
       for(const bridge of [riverBridge,northBridge]){
         const model=prepared.clone(true);model.position.y=.12;
-        bridge.g.add(model);bridge.fallback.visible=false;
+        bridge.g.add(model);applyWallStoneTexture(model);bridge.fallback.visible=false;
       }
     },"STONE FBX BRIDGES");
 
@@ -4730,7 +4743,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingStoneTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
+    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
   },[h.id,skin,weapon,on,eventDone,start.x,start.z,rememberPosition,northBridgeRepaired]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
