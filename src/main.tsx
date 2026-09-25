@@ -4225,7 +4225,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
     };
 
     const heroAsset=skin==="valkyrie"
-      ? "Womentest.glb"
+      ? "woman2.glb"
       : "Yggdrasil_Viking_Jarl.glb";
 
     loadGlbWithFolderFallback(heroAsset,(gltf:any)=>{
@@ -4248,7 +4248,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
         }
       });
 
-      const isAnimatedWoman=heroAsset==="Womentest.glb";
+      const isAnimatedWoman=heroAsset==="woman2.glb";
 
       // The Blender-exported woman is already close to real-world human scale.
       // Keep the legacy Viking at its tuned size.
@@ -4831,7 +4831,7 @@ const [roadT, setRoadT] = useState(0.06);
     // Warm only the selected hero. The second character is loaded later when
     // actually chosen, which keeps the first launch lighter on a slow route.
     const asset=save.heroSkin==="valkyrie"
-      ? "Womentest.glb"
+      ? "woman2.glb"
       : "Yggdrasil_Viking_Jarl.glb";
     cachedGlbBuffer(`${BASE}img/models/${asset}`).catch(()=>{});
   }, [save.heroSkin]);
