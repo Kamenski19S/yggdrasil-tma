@@ -4252,7 +4252,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
 
       // The Blender-exported woman is already close to real-world human scale.
       // Keep the legacy Viking at its tuned size.
-      model.scale.setScalar(isAnimatedWoman?1.35:.78);
+      model.scale.setScalar(isAnimatedWoman?2.25:.78);
       model.rotation.y=0;
       model.position.set(0,0,0);
       model.updateMatrixWorld(true);
@@ -4313,16 +4313,19 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
         const walkClip=findClip("walk_loop","Walk");
         const runClip=findClip("Run");
         const attackClip=findClip("sword_attack","kick","Sword_Slash","Punch_Right","Punch_Left");
+        const fallClip=findClip("fall","death","Death");
         const actions:{
           idle?:THREE.AnimationAction;
           walk?:THREE.AnimationAction;
           run?:THREE.AnimationAction;
           attack?:THREE.AnimationAction;
+          fall?:THREE.AnimationAction;
         }={};
         if(idleClip)actions.idle=mixer.clipAction(idleClip);
         if(walkClip)actions.walk=mixer.clipAction(walkClip);
         if(runClip)actions.run=mixer.clipAction(runClip);
         if(attackClip)actions.attack=mixer.clipAction(attackClip);
+        if(fallClip)actions.fall=mixer.clipAction(fallClip);
 
         for(const key of ["idle","walk","run"] as const){
           const action=actions[key];
@@ -4336,9 +4339,13 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
           actions.attack.clampWhenFinished=true;
           actions.attack.setDuration(.68);
         }
+        if(actions.fall){
+          actions.fall.setLoop(THREE.LoopOnce,1);
+          actions.fall.clampWhenFinished=true;
+        }
 
         let current="";
-        const setAction=(name:"idle"|"walk"|"run"|"attack")=>{
+        const setAction=(name:"idle"|"walk"|"run"|"attack"|"fall")=>{
           let desired=name;
           if(!actions[desired]){
             desired=name==="walk"&&actions.run?"run":"idle";
@@ -4348,7 +4355,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
           const previous=current?actions[current as keyof typeof actions]:undefined;
           next.enabled=true;
           next.reset().setEffectiveWeight(1).play();
-          if(previous&&previous!==next)previous.crossFadeTo(next,desired==="attack"?.08:.14,false);
+          if(previous&&previous!==next)previous.crossFadeTo(next,(desired==="attack"||desired==="fall")?.08:.14,false);
           current=desired;
         };
         setAction("idle");
@@ -4539,11 +4546,13 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
         strikeSparks.scale.setScalar(.45+impact*(1.05+h.str*.035));
         strikeLight.intensity=impact*(1.35+h.str*.16);
         if(heroAnim.mode==="mixer"){
-          const desired=attackActive&&heroAnim.actions.attack
-            ?"attack"
-            :moving
-              ?(heroAnim.actions.walk?"walk":"run")
-              :"idle";
+          const desired=whisperPhaseRef.current==="defeat"&&heroAnim.actions.fall
+            ?"fall"
+            :attackActive&&heroAnim.actions.attack
+              ?"attack"
+              :moving
+                ?(heroAnim.actions.walk?"walk":"run")
+                :"idle";
           heroAnim.setAction(desired);
           heroAnim.mixer.update(dt);
         }else if(heroAnim.mode==="projected" || heroAnim.mode==="multiview"){
