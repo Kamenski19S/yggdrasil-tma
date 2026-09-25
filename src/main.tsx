@@ -1149,7 +1149,9 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
   const attackActionRef = useRef<(()=>void)|null>(null);
   const [villageGateOpen, setVillageGateOpen] = useState(false);
   const villageGateOpenRef = useRef(false);
-  const gateActionRef = useRef<(()=>void)|null>(null);
+  const [rearGateOpen,setRearGateOpen]=useState(false);
+  const rearGateOpenRef=useRef(false);
+  const gateActionRef = useRef<((id?:string)=>void)|null>(null);
   const forgeActionRef = useRef<(()=>void)|null>(null);
 
   const setWhisperPhaseSafe=(phase:WhisperPhase)=>{whisperPhaseRef.current=phase;setWhisperPhase(phase);};
@@ -1488,8 +1490,6 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const herbalistHouseAsset = 'Midgard_Herbalist_House_V1_YUP.glb';
     const craftsmanHouseAsset = 'Midgard_Craftsman_House_V1_YUP.glb';
     const oldFarmAsset = 'Midgard_Old_Farm_V1_YUP.glb';
-    const vikingGateAsset = 'Midgard_Viking_Gate_Tower_V1_YUP.glb';
-    const vikingPalisadeAsset = 'Midgard_Viking_Palisade_Segment_V1_YUP.glb';
     const mimirWellAsset = 'Midgard_Mimir_Well_V1_YUP.glb';
     const hoddmimirAsset = 'Midgard_Hoddmimir_Holt_V2_YUP.glb';
 
@@ -1548,7 +1548,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       onFinalError?:()=>void
     ) => {
       const assetNames = asset === "Vika-3d-animated-optimized.glb"
-        ? [asset, "Vika-3d-animated.glb"] : [asset];
+        ? [asset, "Vika-3d-animated.glb"] : /\.fbx$/i.test(asset)
+          ? [asset,asset.replace(/\.fbx$/i,"(2).fbx"),asset.replace(/\.fbx$/i,"(3).fbx"),asset.replace(/\.fbx$/i,"(1).fbx")] : [asset];
       const paths = assetNames.flatMap(name => [`${BASE}img/models/${name}`, `${BASE}img/model/${name}`]);
       const tryPath = (index:number) => {
         const url=paths[index];
@@ -1773,6 +1774,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const bridgeHeight=(x:number,z:number)=>withinBridge(x,z,BRIDGE_X,BRIDGE_Z)?BRIDGE_Y:NORTH_BRIDGE_Y;
     // 0 = barred shut, 1 = fully open. Used both by the visual gate and collision passage.
     let villageGateProgress = villageGateOpenRef.current ? 1 : 0;
+    let rearGateProgress=rearGateOpenRef.current?1:0;
     const addRectCollider=(x:number,z:number,w:number,d:number,rot=0,pad=0.12)=>colliders.push({kind:"rect",x,z,w:w+pad*2,d:d+pad*2,rot});
     const addCircleCollider=(x:number,z:number,r:number,pad=0.12)=>colliders.push({kind:"circle",x,z,r:r+pad});
     const addSegmentCollider=(x1:number,z1:number,x2:number,z2:number,r:number,pad=0.12)=>colliders.push({kind:"segment",x1,z1,x2,z2,r:r+pad});
@@ -1798,8 +1800,9 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       if(!northBridgeRepaired&&hits(x,z,{kind:"rect",x:NORTH_BRIDGE_X,z:NORTH_BRIDGE_Z,w:BRIDGE_SPAN+.6,d:BRIDGE_WIDTH+.5,rot:0}))return true;
       // Water can be crossed only on an open bridge deck.
       if(inRiverWater(x,z) && !onRiverBridge(x,z)) return true;
-      // The front gate physically blocks the opening until the leaves have swung far enough.
-      if(villageGateProgress < .78 && hits(x,z,{kind:"segment",x1:-3.15,z1:gateFrontZ,x2:3.15,z2:gateFrontZ,r:.20})) return true;
+      // Each gate blocks its own opening until its leaves have swung far enough.
+      if(villageGateProgress < .78 && hits(x,z,{kind:"segment",x1:-2.87,z1:gateFrontZ,x2:2.87,z2:gateFrontZ,r:1.12})) return true;
+      if(rearGateProgress < .78 && hits(x,z,{kind:"segment",x1:-2.87,z1:gateRearZ,x2:2.87,z2:gateRearZ,r:1.12}))return true;
       return colliders.some(c=>hits(x,z,c));
     };
     const moveWithCollision=(q:{x:number;z:number},nx:number,nz:number)=>{
@@ -1934,15 +1937,15 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       surface(width*1.10,.075,pathEdgeMaterial,.10);
       surface(width,.102,pathMaterial,.08);
     };
-    // Roads inside the palisade. Every branch ends before the timber wall and
-    // the only route to the outside passes through the working front gate.
+    // Village roads connect the front and rear gates.
     road([[0,43.5],[0,35],[0,27],[1,18],[1,9],[1,2]],2.35);
     road([[1,2],[-5,2],[-10,-2],[-17,-4],[-24,-4]],1.75);
     road([[-5,2],[-11,8],[-17,14],[-23,20],[-27,24]],1.62);
     road([[-17,14],[-23,13],[-27,12]],1.48);
     road([[-10,-2],[-13,-10],[-15,-17],[-16,-22]],1.52);
     road([[1,2],[4,-5],[8,-11],[12,-14]],1.65);
-    road([[4,-5],[4,-13],[3,-21]],1.48);
+    road([[4,-5],[4,-13],[3,-21],[0,-27],[0,-36]],1.8);
+    road([[0,-36],[0,-43],[-8,-49],[-24,-48],[-35,-48]],1.8);
     road([[1,9],[8,8],[15,12],[21,18],[27,21]],1.62);
     road([[8,8],[16,3],[25,-3]],1.55);
     road([[15,12],[18,20],[20,27]],1.52);
@@ -2608,111 +2611,113 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     addMesh(runeField,"runefield","Поле Рун"); objects.push(runeField);
     addCircleCollider(runeFieldX,runeFieldZ,1.8,.08);
 
-    // Palisade and gate: use one GLB segment for ALL four settlement walls.
-    // Procedural stakes stay visible only as a fallback if the GLB is unavailable.
-    const proceduralPalisades:THREE.Group[]=[];
-    const palisadeRuns:Array<[number,number,number,number]>=[
-      // Rear wall is now fully closed.
-      [-30,-31,30,-31],
-      // Side walls.
-      [-30,-31,-30,44],[30,-31,30,44],
-      // Main/front wall: run the large palisade right up to the gate posts.
-      // Only the actual opening between the two working gate leaves remains passable.
-      [-30,44,-4.25,44],[4.25,44,30,44]
+    // Stone fortifications: two independent gates and eight square towers.
+    // Bake authoring transforms once; every placement shares geometry and materials.
+    const fortMaterial=(name:string)=>new THREE.MeshStandardMaterial({
+      name,color:/DarkRock/i.test(name)?0x60655f:/LightRock/i.test(name)?0x999b8d:
+        /Black/i.test(name)?0x272d2b:/Celing/i.test(name)?0x444e4a:
+        /DarkWood/i.test(name)?0x35291f:/Wood/i.test(name)?0x69513a:0x85897e,
+      roughness:.96,metalness:0
+    });
+    const bakeFortModel=(source:THREE.Object3D)=>{
+      source.updateMatrixWorld(true);
+      const bounds=new THREE.Box3().setFromObject(source),center=bounds.getCenter(new THREE.Vector3());
+      const result=new THREE.Group();
+      source.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        const geometry=o.geometry.clone().applyMatrix4(o.matrixWorld);
+        geometry.translate(-center.x,-bounds.min.y,-center.z);
+        const materials=(Array.isArray(o.material)?o.material:[o.material]).map((m:any)=>fortMaterial(m.name||"LightRock"));
+        const mesh=new THREE.Mesh(geometry,Array.isArray(o.material)?materials:materials[0]);
+        mesh.name=o.name;mesh.castShadow=true;mesh.receiveShadow=true;result.add(mesh);
+      });
+      return {model:result,size:bounds.getSize(new THREE.Vector3())};
+    };
+    const wallRuns:Array<[number,number,number,number]>=[
+      [-30,-31,-6,-31],[6,-31,30,-31],[-30,-31,-30,44],[30,-31,30,44],
+      [-30,44,-6,44],[6,44,30,44]
     ];
-    const palisade=(x1:number,z1:number,x2:number,z2:number)=>{
-      const g=new THREE.Group();const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz),n=Math.max(1,Math.floor(len/1.7));
-      for(let i=0;i<=n;i++){const t=i/n;const px=x1+dx*t,pz=z1+dz*t;const p=new THREE.Mesh(new THREE.ConeGeometry(.24,.24+2.8+midHash(i,x1)*.5,6),mat(0x3c2a1c,1));p.position.set(px,groundY(px,pz)+1.45,pz);g.add(p);}
-      const beam=box(.3,.35,len,0x2d2119,1);beam.rotation.y=Math.atan2(dx,dz);beam.position.set((x1+x2)/2,groundY((x1+x2)/2,(z1+z2)/2)+1.25,(z1+z2)/2);g.add(beam);
-      scene.add(g);proceduralPalisades.push(g);addSegmentCollider(x1,z1,x2,z2,.34,.08);
-    };
-    palisadeRuns.forEach(r=>palisade(...r));
-
-    loadGlbWithFolderFallback(vikingPalisadeAsset,(gltf:any)=>{
-      if(!glbTreesAlive)return;
-      const source=gltf.scene.clone(true);
-      markMeshes(source);
-      source.traverse((o:any)=>{if(!o.isMesh)return;o.visible=true;o.castShadow=true;o.receiveShadow=true;o.frustumCulled=true;});
-      proceduralPalisades.forEach(g=>g.visible=false);
-
-      palisadeRuns.forEach(([x1,z1,x2,z2],runIndex)=>{
-        const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz);
-        const n=Math.max(1,Math.ceil(len/3.10));
-        const each=len/n;
-        for(let i=0;i<n;i++){
-          const t=(i+.5)/n,px=x1+dx*t,pz=z1+dz*t;
-          const seg=source.clone(true);
-          seg.scale.set(each/3.2,.96+midHash(i,runIndex+2600)*.08,1);
-          seg.rotation.set(0,Math.atan2(-dz,dx),0);
-          seg.position.set(px,groundY(px,pz),pz);
-          scene.add(seg);
-        }
-      });
-      console.log('[PALISADE] all settlement walls loaded',`${BASE}img/models/${vikingPalisadeAsset}`);
-    },'PALISADE');
-    const gateFrontZ=44;
-    const gate=new THREE.Group();gate.userData={id:"gate",label:"Ворота Мидгарда"};for(const x of [-4.2,4.2]){const p=box(.8,6,.8,0x2b1a11,1);p.position.set(x,3,gateFrontZ);gate.add(p);}const top=box(10,.8,1,0x24160f,1);top.position.set(0,6,gateFrontZ);gate.add(top);for(let i=-3;i<=3;i++){const bar=box(1.0,4.2,.22,0x3a2115,1);bar.position.set(i*1.15,2,gateFrontZ+.3);gate.add(bar);}addMesh(gate,"gate","Ворота Мидгарда");objects.push(gate);
-    loadGlbWithFolderFallback(vikingGateAsset, (gltf:any) => {
-      if (!glbTreesAlive) return;
-      const gateModel = gltf.scene.clone(true);
-      markMeshes(gateModel);
-      gateModel.traverse((o:any) => {
-        if (!o.isMesh) return;
-        o.visible = true;
-        o.castShadow = true;
-        o.receiveShadow = true;
-        o.frustumCulled = true;
-      });
-      gateModel.scale.set(.78,.82,.82);
-      gateModel.rotation.set(0,0,0);
-      gateModel.position.set(0,groundY(0,gateFrontZ),gateFrontZ);
-      gateModel.userData={id:"gate",label:"Ворота Мидгарда"};
-      gate.visible=false;
-      addMesh(gateModel,"gate","Ворота Мидгарда");
-      objects.push(gateModel);
-      console.log('[VIKING GATE] loaded', `${BASE}img/models/${vikingGateAsset}`);
-    }, 'VIKING GATE');
-
-    // Working old-style village doors: first lift/slide the heavy crossbar,
-    // then swing the two leaves open on their side hinges.
-    const gateWood=new THREE.MeshStandardMaterial({color:0x2b180f,roughness:1});
-    const gateIron=new THREE.MeshStandardMaterial({color:0x262728,roughness:.78,metalness:.35});
-    const gateLeftPivot=new THREE.Group();
-    const gateRightPivot=new THREE.Group();
-    gateLeftPivot.position.set(-3.12,groundY(-3.12,gateFrontZ),gateFrontZ+.38);
-    gateRightPivot.position.set(3.12,groundY(3.12,gateFrontZ),gateFrontZ+.38);
-
-    const makeGateLeaf=(side:number)=>{
-      const leaf=new THREE.Group();
-      const leafW=3.05,leafH=4.05;
-      for(let i=0;i<5;i++){
-        const plank=new THREE.Mesh(new THREE.BoxGeometry(.56,leafH,.24),gateWood);
-        plank.position.set(side*(.33+i*.60),2.05,0);
-        plank.castShadow=true;plank.receiveShadow=true;leaf.add(plank);
+    const wallFallbacks:THREE.Group[]=[];
+    const wallSlots:Array<{x:number;z:number;width:number;rotation:number;base:number}>=[];
+    wallRuns.forEach(([x1,z1,x2,z2])=>{
+      const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz),n=Math.ceil(len/6);
+      addSegmentCollider(x1,z1,x2,z2,1.03,.06);
+      for(let i=0;i<n;i++){
+        const width=len/n,t=(i+.5)/n,x=x1+dx*t,z=z1+dz*t;
+        const base=Math.min(groundY(x1+dx*i/n,z1+dz*i/n),groundY(x1+dx*(i+1)/n,z1+dz*(i+1)/n))-.14;
+        const rotation=Math.atan2(-dz,dx);
+        wallSlots.push({x,z,width,rotation,base});
+        const g=new THREE.Group();g.position.set(x,base,z);g.rotation.y=rotation;
+        const body=box(width+.05,5.0,1.9,0x999b8d,1);body.position.y=2.5;g.add(body);
+        for(let k=0;k<4;k++){const tooth=box(width/7,.8,1.9,0x929689,1);tooth.position.set((k+.5)*width/4-width/2,5.4,0);g.add(tooth);}
+        scene.add(g);wallFallbacks.push(g);
       }
-      const brace1=new THREE.Mesh(new THREE.BoxGeometry(3.0,.18,.30),gateWood);
-      brace1.position.set(side*1.48,1.18,.05);leaf.add(brace1);
-      const brace2=brace1.clone();brace2.position.y=2.95;leaf.add(brace2);
-      const diag=new THREE.Mesh(new THREE.BoxGeometry(3.25,.16,.27),gateWood);
-      diag.position.set(side*1.48,2.05,.08);diag.rotation.z=side*.70;leaf.add(diag);
-      const hinge=new THREE.Mesh(new THREE.BoxGeometry(.18,3.65,.34),gateIron);
-      hinge.position.set(side*.12,2.05,.08);leaf.add(hinge);
-      return leaf;
+    });
+    loadGlbWithFolderFallback("WallBricks.fbx",(asset:any)=>{
+      const baked=bakeFortModel(asset.scene);
+      wallSlots.forEach(slot=>{const model=baked.model.clone(true);model.scale.set((slot.width+.06)/baked.size.x,5.8/baked.size.y,2/baked.size.z);model.rotation.y=slot.rotation;model.position.set(slot.x,slot.base,slot.z);scene.add(model);});
+      wallFallbacks.forEach(g=>g.visible=false);
+    },"STONE WALLS");
+
+    const gateFrontZ=44,gateRearZ=-31;
+    const fortGates=[{id:"gate",z:gateFrontZ,facing:1},{id:"gateRear",z:gateRearZ,facing:-1}].map(config=>{
+      const root=new THREE.Group();root.position.set(0,groundY(0,config.z)-.04,config.z);root.rotation.y=config.facing===1?0:Math.PI;
+      const fallback=new THREE.Group();
+      for(const side of [-1,1]){const pier=box(2.55,6.7,2,0x999b8d,1);pier.position.set(side*4.7,3.35,0);fallback.add(pier);}
+      const lintel=box(12,1.6,2,0x929689,1);lintel.position.y=6.65;fallback.add(lintel);
+      root.add(fallback);
+      const left=new THREE.Group(),right=new THREE.Group();
+      left.position.set(-2.84,0,1.06);right.position.set(2.87,0,1.06);
+      const leftLeaf=box(2.78,4.1,.25,0x69513a,1);leftLeaf.position.set(1.39,2.05,0);left.add(leftLeaf);
+      const rightLeaf=box(2.78,4.1,.25,0x69513a,1);rightLeaf.position.set(-1.39,2.05,0);right.add(rightLeaf);
+      root.add(left,right);
+      const bar=box(6.1,.26,.30,0x35291f,1);bar.position.set(0,2.3,1.37);root.add(bar);
+      addMesh(root,config.id,config.id==="gate"?"Передние ворота":"Задние ворота");
+      // Pier collision follows the clear opening of the door frame.
+      addRectCollider(-4.5,config.z,3,2,0,.02);addRectCollider(4.5,config.z,3,2,0,.02);
+      return {...config,root,fallback,left,right,bar};
+    });
+    loadGlbWithFolderFallback("WallEntranceBricks.fbx",(asset:any)=>{
+      const baked=bakeFortModel(asset.scene);
+      for(const gate of fortGates){const model=baked.model.clone(true);model.scale.set(12/baked.size.x,7.8/baked.size.y,2/baked.size.z);gate.root.add(model);gate.fallback.visible=false;}
+    },"STONE GATE ARCHES");
+    loadGlbWithFolderFallback("Door.fbx",(asset:any)=>{
+      const baked=bakeFortModel(asset.scene);
+      const sx=12/153.60701084136963,sy=7.8/154.9450965435867,sz=.06;
+      baked.model.children.forEach((part:any)=>{
+        part.geometry.scale(sx,sy,sz);part.geometry.computeBoundingBox();
+      });
+      const leftPart=baked.model.getObjectByName("LeftDoor") as THREE.Mesh|undefined;
+      const rightPart=baked.model.getObjectByName("RightDoor") as THREE.Mesh|undefined;
+      if(!leftPart||!rightPart)return;
+      const leftHinge=leftPart.geometry.boundingBox!.min.x,rightHinge=rightPart.geometry.boundingBox!.max.x;
+      leftPart.geometry.translate(-leftHinge,0,0);rightPart.geometry.translate(-rightHinge,0,0);
+      for(const gate of fortGates){
+        gate.left.clear();gate.right.clear();gate.left.position.x=leftHinge;gate.right.position.x=rightHinge;
+        gate.left.add(leftPart.clone());gate.right.add(rightPart.clone());
+        for(const part of baked.model.children){if(part!==leftPart&&part!==rightPart){const frame=part.clone();frame.position.z=1.06;gate.root.add(frame);}}
+      }
+    },"WORKING FBX DOORS");
+    gateActionRef.current=(id="gate")=>{
+      const rear=id==="gateRear",isOpen=rear?rearGateOpenRef.current:villageGateOpenRef.current;
+      // Do not shut the leaves on a hero standing in the doorway.
+      if(isOpen&&Math.abs(state.current.x)<3.7&&Math.abs(state.current.z-(rear?gateRearZ:gateFrontZ))<2.2)return;
+      if(rear){rearGateOpenRef.current=!isOpen;setRearGateOpen(!isOpen);}
+      else{villageGateOpenRef.current=!isOpen;setVillageGateOpen(!isOpen);}
     };
-    gateLeftPivot.add(makeGateLeaf(1));
-    gateRightPivot.add(makeGateLeaf(-1));
-    scene.add(gateLeftPivot,gateRightPivot);
 
-    const villageGateBar=new THREE.Mesh(new THREE.BoxGeometry(6.7,.32,.34),gateWood);
-    villageGateBar.position.set(0,groundY(0,gateFrontZ)+2.32,gateFrontZ+.72);
-    villageGateBar.castShadow=true;villageGateBar.receiveShadow=true;scene.add(villageGateBar);
-
-    gateActionRef.current=()=>{
-      villageGateOpenRef.current=!villageGateOpenRef.current;
-      setVillageGateOpen(villageGateOpenRef.current);
-    };
-
-    addCircleCollider(-4.2,gateFrontZ,.55,.05);addCircleCollider(4.2,gateFrontZ,.55,.05);
+    const towerSlots=[[-30,-31],[30,-31],[-30,44],[30,44],[-8.5,44],[8.5,44],[-8.5,-31],[8.5,-31]];
+    const towerFallbacks:THREE.Group[]=[];
+    towerSlots.forEach(([x,z])=>{
+      const root=new THREE.Group();root.position.set(x,groundY(x,z)-.18,z);
+      const body=box(4.8,10,4.8,0x858b80,1);body.position.y=5;root.add(body);
+      const crown=box(5.6,.65,5.6,0x999b8d,1);crown.position.y=10;root.add(crown);
+      addMesh(root,"tower","Крепостная башня");towerFallbacks.push(root);addRectCollider(x,z,5.6,5.6,0,.08);
+    });
+    loadGlbWithFolderFallback("LargeSquareTowerBricks.fbx",(asset:any)=>{
+      const baked=bakeFortModel(asset.scene);
+      towerSlots.forEach(([x,z],i)=>{const model=baked.model.clone(true);model.scale.set(5.6/baked.size.x,12/baked.size.y,5.6/baked.size.z);model.position.set(x,groundY(x,z)-.18,z);addMesh(model,"tower","Крепостная башня");towerFallbacks[i].visible=false;});
+    },"FORTRESS TOWERS");
     // Norns' fate wheel — antique wooden wheel with an original yarn ball below.
     const nornsWheelAsset='Midgard_Norns_Fate_Wheel_V1_YUP.glb';
     const nornsRoot=new THREE.Group();
@@ -4195,10 +4200,6 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
 
     // Loose old branches removed from the ground around settlement paths.
 
-    // A small watchtower gives vertical scale and a visible landmark.
-    const tower=new THREE.Group();tower.position.set(29,groundY(29,25),25);tower.userData={id:"tower",label:"Сторожевая башня"};for(const px of [-2,2])for(const pz of [-2,2]){const p=box(.35,7,.35,0x3c291d,1);p.position.set(px,3.5,pz);tower.add(p);}const deck=box(5,.35,5,0x68472d,1);deck.position.y=5.8;tower.add(deck);const roofT=new THREE.Mesh(new THREE.ConeGeometry(3.8,2.7,4),mat(0x292522,1));roofT.position.y=8;tower.add(roofT);addMesh(tower,"tower","Сторожевая башня");objects.push(tower);
-    addRectCollider(29,25,4.8,4.8,0,.08);
-
     // NPCs with simple wandering paths.
     const npc=(x:number,z:number,id:string,label:string,color:number,phase:number)=>{const g=new THREE.Group();g.userData={id,label,phase,baseX:x,baseZ:z};const body=new THREE.Mesh(new THREE.CapsuleGeometry(.32,.78,4,8),mat(color,.9));body.position.y=.85;g.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.25,12,8),mat(0xc99470,.9));head.position.y=1.58;g.add(head);const cloak=box(.7,.9,.15,0x27251f,1);cloak.position.set(0,.82,-.27);g.add(cloak);g.position.set(x,groundY(x,z),z);addMesh(g,id,label);objects.push(g);npcs.push(g);};
     npc(9,-8,"elder","Старейшина",0x73563f,.4);npc(-6,-3,"blacksmith","Кузнец",0x5c3b2b,1.5);npc(21,1,"hunter","Охотник",0x40523f,2.4);npc(5,10,"villager","Житель Мидгарда",0x59634d,3.4);npc(-16,4,"villager2","Житель деревни",0x654b3a,4.2);
@@ -4398,7 +4399,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     },"HERO GLB",()=>{if(glbTreesAlive)setHeroLoadFailed(true);});
 
     const ray=new THREE.Raycaster();const pointer=new THREE.Vector2();
-    const click=(e:PointerEvent)=>{if((e.target as HTMLElement)?.closest?.(".mid3d-ui"))return;const r=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-r.left)/r.width)*2-1;pointer.y=-((e.clientY-r.top)/r.height)*2+1;ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects(objects,true)[0];if(hit){let o:any=hit.object;while(o.parent&&!o.userData?.id)o=o.parent;if(o.userData?.id){if(o.userData.id==="gate")gateActionRef.current?.();else if(o.userData.id==="forge")forgeActionRef.current?.();else on(o.userData.id,{x:state.current.x,z:state.current.z});}}};
+    const click=(e:PointerEvent)=>{if((e.target as HTMLElement)?.closest?.(".mid3d-ui"))return;const r=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-r.left)/r.width)*2-1;pointer.y=-((e.clientY-r.top)/r.height)*2+1;ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects(objects,true)[0];if(hit){let o:any=hit.object;while(o.parent&&!o.userData?.id)o=o.parent;if(o.userData?.id){if(o.userData.id==="gate"||o.userData.id==="gateRear")gateActionRef.current?.(o.userData.id);else if(o.userData.id==="forge")forgeActionRef.current?.();else on(o.userData.id,{x:state.current.x,z:state.current.z});}}};
     renderer.domElement.addEventListener("pointerup",click);
 
     const setHomeMode=(inside:boolean)=>{
@@ -4445,7 +4446,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       {id:"runefield",label:"Поле Рун",x:18,z:55,r:8.0},{id:"oldfarm",label:"Дверь Старого хутора",x:-65.45,z:8.55,r:3.2},{id:"deer",label:"Поляна Четырёх Оленей",x:43,z:32,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:62,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:68,z:8,r:8.5},{id:"heroHome",label:"Дверь дома героя",x:75,z:32.75,r:2.8},{id:"deepGrove",label:"Глубокая роща",x:-45,z:75,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:-30,z:15,r:7.5},{id:"powerCircle",label:"Круг Силы — Монолит",x:5,z:-70,r:6.5},{id:"whisperStone",label:"Камень Шёпота",x:-72,z:-48,r:6.5},
       {id:"elder",label:"Старейшина",x:9,z:-8,r:3.2},{id:"blacksmith",label:"Кузнец",x:-6,z:-3,r:3.2},
       {id:"northBridge",label:northBridgeRepaired?"Северный мост":"Северный мост — проход закрыт",x:NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.6,z:NORTH_BRIDGE_Z,r:3.8},
-      {id:"gate",label:"Ворота Мидгарда",x:0,z:44,r:6},{id:"tower",label:"Сторожевая башня",x:29,z:25,r:4}
+      {id:"gate",label:"Передние ворота",x:0,z:44,r:6},{id:"gateRear",label:"Задние ворота",x:0,z:-31,r:6},
+      ...towerSlots.map(([x,z])=>({id:"tower",label:"Крепостная башня",x,z,r:4}))
     ];
 
     const resize=()=>{const w=Math.max(1,el.clientWidth),hh=Math.max(1,el.clientHeight);camera.aspect=w/hh;camera.updateProjectionMatrix();renderer.setSize(w,hh,false);};resize();const observer=new ResizeObserver(resize);observer.observe(el);
@@ -4465,17 +4467,15 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         }
       }
 
-      // Gate sequence: remove the crossbar first, then swing both leaves.
-      const gateTarget=villageGateOpenRef.current?1:0;
-      villageGateProgress=THREE.MathUtils.clamp(villageGateProgress+(gateTarget>villageGateProgress?1:-1)*dt*.72,0,1);
-      const barT=THREE.MathUtils.smoothstep(villageGateProgress,0,.42);
-      const doorT=THREE.MathUtils.smoothstep(villageGateProgress,.32,1);
-      gateLeftPivot.rotation.y=-doorT*1.42;
-      gateRightPivot.rotation.y=doorT*1.42;
-      villageGateBar.position.x=-barT*5.05;
-      villageGateBar.position.y=groundY(0,gateFrontZ)+2.32-barT*.78;
-      villageGateBar.position.z=gateFrontZ+.72+barT*.52;
-      villageGateBar.rotation.z=-barT*.28;
+      for(const gate of fortGates){
+        const rear=gate.id==="gateRear",target=(rear?rearGateOpenRef.current:villageGateOpenRef.current)?1:0;
+        let progress=rear?rearGateProgress:villageGateProgress;
+        progress=THREE.MathUtils.clamp(progress+Math.sign(target-progress)*dt*.72,0,1);
+        if(rear)rearGateProgress=progress;else villageGateProgress=progress;
+        const barT=THREE.MathUtils.smoothstep(progress,0,.42),doorT=THREE.MathUtils.smoothstep(progress,.32,1);
+        gate.left.rotation.y=-doorT*1.42;gate.right.rotation.y=doorT*1.42;
+        gate.bar.position.set(-barT*4.9,2.3-barT*.78,1.37+barT*.52);gate.bar.rotation.z=-barT*.28;
+      }
       if(!encounterLocked&&l>.05){
         const step=6.2*dt;
         moveWithCollision(q,q.x+(q.dx/l)*step,q.z+(q.dz/l)*step);
@@ -4796,9 +4796,10 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       if(villageDoor)return <div className="mid3d-ui mid3d-door-prompt"><b>{label}</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>Открыть ручку</button></div>;
       if(id==="heroHome")return <div className="mid3d-ui mid3d-door-prompt"><b>Дом героя</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>homeActionRef.current?.(true)}>Открыть ручку</button></div>;
       const home=id==="heroHome"||id==="heroHomeExit";
-      const villageGate=id==="gate";
+      const villageGate=id==="gate"||id==="gateRear";
+      const selectedGateOpen=id==="gateRear"?rearGateOpen:villageGateOpen;
       const whisper=id==="whisperStone";
-      return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{villageGate?(villageGateOpen?"Створки открыты, тяжёлый засов снят":"Ворота заперты большим деревянным засовом"):home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода"):whisper?(whisperResolved?"Камень помнит завершённое испытание":"Из янтарного света доносится древний вопрос"):"Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else if(id==="gate")gateActionRef.current?.();else if(id==="whisperStone"&&!whisperResolved)beginWhisperEncounter();else on(id,{x:state.current.x,z:state.current.z});}}>{villageGate?(villageGateOpen?"Закрыть ворота и поставить засов":"Снять засов и открыть ворота"):home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):whisper?(whisperResolved?"Прикоснуться к камню":"Слушать шёпот"):"Взаимодействовать"}</button></div>;
+      return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{villageGate?(selectedGateOpen?"Створки открыты, тяжёлый засов снят":"Ворота заперты большим деревянным засовом"):home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода"):whisper?(whisperResolved?"Камень помнит завершённое испытание":"Из янтарного света доносится древний вопрос"):"Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else if(id==="gate"||id==="gateRear")gateActionRef.current?.(id);else if(id==="whisperStone"&&!whisperResolved)beginWhisperEncounter();else on(id,{x:state.current.x,z:state.current.z});}}>{villageGate?(selectedGateOpen?"Закрыть ворота и поставить засов":"Снять засов и открыть ворота"):home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):whisper?(whisperResolved?"Прикоснуться к камню":"Слушать шёпот"):"Взаимодействовать"}</button></div>;
     })()}
     {whisperPhase==="closed"&&<><div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" title="Удар оружием" onPointerDown={e=>e.stopPropagation()} onClick={()=>{attackActionRef.current?.();if("vibrate" in navigator)navigator.vibrate(12);}}>⚔</button>
