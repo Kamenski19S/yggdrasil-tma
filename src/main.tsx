@@ -1763,7 +1763,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const colliders: Collider[] = [];
     const HERO_RADIUS = 0.62;
     const RIVER_HALF = 5.4;
-    const BRIDGE_X = -57, BRIDGE_Z = -48, BRIDGE_SPAN = 13.6, BRIDGE_WIDTH = 3.6;
+    const BRIDGE_X = -57, BRIDGE_Z = -48, BRIDGE_SPAN = 13.6, BRIDGE_WIDTH = 4.8;
     const BRIDGE_Y = groundY(BRIDGE_X,BRIDGE_Z) + .58;
     const riverCenterX = (z:number) => -57 + Math.sin(((z + 94) / 6) * .42) * 4.2;
     const NORTH_BRIDGE_Z=52, NORTH_BRIDGE_X=riverCenterX(NORTH_BRIDGE_Z);
@@ -1794,7 +1794,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const blocked=(x:number,z:number)=>{
       if(insideHomeRef.current){
         // Interior bounds leave a clear opening toward the door at the front (positive Z).
-        return x<heroHomeX-2.72 || x>heroHomeX+2.72 || z<heroHomeZ-2.05 || z>heroHomeZ+2.30;
+        return x<heroHomeX-2.72*HOME_SCALE || x>heroHomeX+2.72*HOME_SCALE || z<heroHomeZ-2.05*HOME_SCALE || z>heroHomeZ+2.30*HOME_SCALE;
       }
       // The northern crossing stays blocked from either bank until its repair quest is complete.
       if(!northBridgeRepaired&&hits(x,z,{kind:"rect",x:NORTH_BRIDGE_X,z:NORTH_BRIDGE_Z,w:BRIDGE_SPAN+.6,d:BRIDGE_WIDTH+.5,rot:0}))return true;
@@ -1807,8 +1807,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     };
     const moveWithCollision=(q:{x:number;z:number},nx:number,nz:number)=>{
       if(insideHomeRef.current){
-        const x=Math.max(heroHomeX-2.55,Math.min(heroHomeX+2.55,nx));
-        const z=Math.max(heroHomeZ-1.92,Math.min(heroHomeZ+2.55,nz));
+        const x=Math.max(heroHomeX-2.55*HOME_SCALE,Math.min(heroHomeX+2.55*HOME_SCALE,nx));
+        const z=Math.max(heroHomeZ-1.92*HOME_SCALE,Math.min(heroHomeZ+2.55*HOME_SCALE,nz));
         q.x=x;q.z=z;return;
       }
       const x=Math.max(-88,Math.min(88,nx)),z=Math.max(-89,Math.min(89,nz));
@@ -1937,18 +1937,28 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       surface(width*1.10,.075,pathEdgeMaterial,.10);
       surface(width,.102,pathMaterial,.08);
     };
+    const HOME_SCALE=1.30;
+    const villageHomes=[
+      {asset:vikingHouseAsset,id:"warriorHouse",label:"Дом дружинника",x:-21,z:-21,rot:0,sx:1.02,sy:1.02,sz:.78,w:9,d:7},
+      {asset:vikingHouseAsset,id:"fisher2",label:"Дом рыбака Халли",x:-21,z:8,rot:0,sx:.86,sy:.90,sz:.58,w:7.8,d:5.8},
+      {asset:vikingHouseAsset,id:"carpenter",label:"Дом плотника Бьёрна",x:-20,z:22,rot:0,sx:.82,sy:.86,sz:.56,w:7.8,d:5.8},
+      {asset:vikingHouseAsset,id:"hunter2",label:"Дом охотницы Рандви",x:22,z:20,rot:0,sx:.88,sy:.92,sz:.58,w:7.8,d:5.8},
+      {asset:vikingHouseAsset,id:"family",label:"Дом семьи Торстейна",x:9,z:16,rot:0,sx:.84,sy:.88,sz:.57,w:7.8,d:5.8},
+      {asset:elderHouseAsset,id:"house",label:"Дом старейшины Хальвдана",x:16,z:-21,rot:0,sx:1.02,sy:.82,sz:.90,w:10.85,d:7.85},
+      {asset:fisherHouseAsset,id:"fisher",label:"Дом рыбака Эйнара",x:21,z:-7,rot:0,sx:.95,sy:.94,sz:.65,w:8.85,d:6.85},
+      {asset:hunterHouseAsset,id:"hunter",label:"Дом охотника Ульва",x:17,z:6,rot:0,sx:.94,sy:.90,sz:.64,w:8.85,d:6.85},
+      {asset:herbalistHouseAsset,id:"herbalist",label:"Дом травницы Сигрид",x:-8,z:-21,rot:0,sx:.91,sy:.88,sz:.62,w:8.85,d:6.85},
+      {asset:craftsmanHouseAsset,id:"craftsman",label:"Дом ремесленника Торвальда",x:-22,z:-6,rot:0,sx:.86,sy:.82,sz:.64,w:8.85,d:6.85}
+    ];
+    const homeDestinations=villageHomes.map(p=>({id:p.id,label:p.label,x:p.x,z:p.z+p.d*HOME_SCALE/2+1.1,r:3.0}));
+
     // Village roads connect the front and rear gates.
     road([[0,43.5],[0,35],[0,27],[1,18],[1,9],[1,2]],2.35);
-    road([[1,2],[-5,2],[-10,-2],[-17,-4],[-24,-4]],1.75);
-    road([[-5,2],[-11,8],[-17,14],[-23,20],[-27,24]],1.62);
-    road([[-17,14],[-23,13],[-27,12]],1.48);
-    road([[-10,-2],[-13,-10],[-15,-17],[-16,-22]],1.52);
-    road([[1,2],[4,-5],[8,-11],[12,-14]],1.65);
-    road([[4,-5],[4,-13],[3,-21],[0,-27],[0,-36]],1.8);
+    road([[1,2],[0,-6],[0,-17],[0,-27],[0,-36]],2.35);
     road([[0,-36],[0,-43],[-8,-49],[-24,-48],[-35,-48]],1.8);
-    road([[1,9],[8,8],[15,12],[21,18],[27,21]],1.62);
-    road([[8,8],[16,3],[25,-3]],1.55);
-    road([[15,12],[18,20],[20,27]],1.52);
+    road([[0,1],[-5,1],[-10,-2.55]],1.6);
+    // Side streets run in front of the relocated entrances.
+    homeDestinations.forEach(p=>road([[0,p.z],[p.x*.5,p.z],[p.x,p.z]],1.5));
 
     // Outside junction at the gate. These curves first clear the front corners
     // of the palisade, then continue along its outer side instead of cutting through it.
@@ -1960,7 +1970,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
 
     // East side: deer glade, homes, camp and the southern sacred places.
     road([[0,49],[14,49],[27,48],[34,44],[35,36]],1.88);
-    road([[35,36],[39,34],[43,32],[57,33],[68,33],[75,33]],1.62);
+    road([[35,36],[39,34],[43,32],[57,33],[68,36],[75,36],[80,36]],1.62);
     road([[35,36],[35,25],[35,14],[35,3],[35,-10],[35,-23],[35,-32]],1.72);
     road([[35,20],[46,15],[57,11],[68,8]],1.50);
     road([[35,-32],[43,-34],[51,-31],[58,-28]],1.54);
@@ -2024,19 +2034,66 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const woodTex=canvasTex("wood");woodTex.repeat.set(2,1);
     const roofTex=canvasTex("roof");roofTex.repeat.set(2,2);
 
+    const homeMaterials:{material:THREE.MeshStandardMaterial;roof:boolean}[]=[];
+    const homeTextures:{wall:THREE.Texture|null;roof:THREE.Texture|null}={wall:null,roof:null};
+    const setHomeMap=(material:THREE.MeshStandardMaterial,texture:THREE.Texture)=>{
+      material.map=texture;material.color.setHex(0xffffff);material.roughness=.95;
+      material.bumpMap=null;material.roughnessMap=null;material.needsUpdate=true;
+    };
+    const loadHomeTexture=(name:string,roof:boolean)=>new THREE.TextureLoader().load(`${BASE}img/models/${name}`,texture=>{
+      if(!glbTreesAlive){texture.dispose();return;}
+      texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
+      texture.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());texture.needsUpdate=true;
+      homeTextures[roof?"roof":"wall"]=texture;
+      homeMaterials.filter(p=>p.roof===roof).forEach(p=>setHomeMap(p.material,texture));
+    },undefined,()=>console.warn(`House texture unavailable: ${name}`));
+    const pendingHomeBrick=loadHomeTexture("T_RedBrick_BaseColor1.png",false);
+    const pendingHomeRoof=loadHomeTexture("T_RoundTilesBaseColorr1.png",true);
+    const applyHomeTextures=(root:THREE.Object3D)=>{
+      root.updateWorldMatrix(true,true);
+      root.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        const name=String(o.name),materials=Array.isArray(o.material)?o.material:[o.material];
+        const roof=/roof|aframe|canopy|thatch/i.test(name)&&!/ridge|batten|beam/i.test(name);
+        const wall=/wall|gable|main(?:$|_block)|barn_(?:left|right)side|stonebase|upper$|keep|wing$|tower(?!roof|window|band)|chimney(?!cap)|^cabin$|hunter_base|left_stone/i.test(name);
+        if(!roof&&!wall)return;
+        if(/window|door|frame|beam|post|rail|step|porch|platform|foundation/i.test(name)&&!roof)return;
+        const geo=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();
+        const pos=geo.attributes.position,uv=new Float32Array(pos.count*2);
+        const pts=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()],n=new THREE.Vector3(),a=new THREE.Vector3(),b=new THREE.Vector3();
+        // World-size projection avoids stretching on houses of different sizes.
+        for(let i=0;i<pos.count;i+=3){
+          for(let k=0;k<3;k++)pts[k].fromBufferAttribute(pos,i+k).applyMatrix4(o.matrixWorld);
+          n.crossVectors(a.subVectors(pts[1],pts[0]),b.subVectors(pts[2],pts[0])).normalize();
+          const top=Math.abs(n.y)>.5,side=Math.abs(n.x)>Math.abs(n.z);
+          for(let k=0;k<3;k++){
+            const v=pts[k];uv[(i+k)*2]=(top?v.z:side?v.z:v.x)/3.2;
+            uv[(i+k)*2+1]=(top?v.x:v.y)/3.2;
+          }
+        }
+        geo.setAttribute("uv",new THREE.BufferAttribute(uv,2));o.geometry=geo;
+        const changed=materials.map((m:THREE.MeshStandardMaterial)=>{
+          const material=m.clone();homeMaterials.push({material,roof});
+          const texture=homeTextures[roof?"roof":"wall"];if(texture)setHomeMap(material,texture);
+          return material;
+        });
+        o.material=Array.isArray(o.material)?changed:changed[0];
+      });
+    };
+
     // Detailed Nordic longhouse.
     const house=(x:number,z:number,w:number,d:number,rot:number,label:string,id:string,wallColor:number,roofColor:number)=>{
-      const g=new THREE.Group(); g.rotation.y=rot; g.position.set(x,groundY(x,z),z); g.userData={id,label};
-      const logMat=new THREE.MeshStandardMaterial({map:woodTex,color:wallColor,roughness:.94,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.014});
+      const g=new THREE.Group(); g.rotation.y=rot; g.position.set(x,groundY(x,z),z); g.userData={id,label}; g.scale.setScalar(HOME_SCALE);
+      const logMat=new THREE.MeshStandardMaterial({name:"HouseWall",map:woodTex,color:wallColor,roughness:.94,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.014});
       const foundation=box(w+.7,.55,d+.7,0x575a53,1); foundation.position.y=.28; g.add(foundation);
 
       // Seven courses of rounded logs, with alternating corner overlap.
       for(let row=0;row<7;row++){
         const yy=.62+row*.47;
-        const front=log(w-(row%2)*.20,.29,wallColor); front.material=logMat;
+        const front=log(w-(row%2)*.20,.29,wallColor); front.material=logMat;front.name="HouseWall";
         front.position.set(0,yy,d*.5-.03); g.add(front);
         const back=front.clone(); back.position.z=-d*.5+.03; g.add(back);
-        const left=log(d+.06,.29,wallColor); left.material=logMat; left.rotation.y=Math.PI/2;
+        const left=log(d+.06,.29,wallColor); left.material=logMat;left.name="HouseWall"; left.rotation.y=Math.PI/2;
         left.position.set(-w*.5+.03,yy,0); g.add(left);
         const right=left.clone(); right.position.x=w*.5-.03; g.add(right);
       }
@@ -2060,7 +2117,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         const hh=box(1.05,.07,.09,0x302219,1); hh.position.set(px,2.02,d*.5+.40); g.add(hh);
       }
 
-      const roof=roofSlope(w+1.55,d+1.35,roofColor); roof.position.y=4.18; g.add(roof);
+      const roof=roofSlope(w+1.55,d+1.35,roofColor); roof.position.y=4.18;roof.traverse(o=>{if((o as THREE.Mesh).isMesh)o.name="HouseRoof";}); g.add(roof);
       // Heavy eaves and a real ridge make the silhouette unmistakably Nordic.
       for(const ex of [-1,1]){
         const eave=log(d+1.48,.12,0x30231b);
@@ -2078,92 +2135,21 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       const chimney=cyl(.34,2.0,0x57534e,8,1); chimney.position.set(w*.25,5.05,-d*.10); g.add(chimney);
       const cap=box(.72,.14,.72,0x302d29,1); cap.position.set(w*.25,6.08,-d*.10); g.add(cap);
 
-      addMesh(g,id,label); objects.push(g); addRectCollider(x,z,w+.85,d+.85,rot,.05);
+      addMesh(g,id,label); objects.push(g); addRectCollider(x,z,(w+.85)*HOME_SCALE,(d+.85)*HOME_SCALE,rot,.05);applyHomeTextures(g);
       return g;
     };
 
-    // Dense village core: buildings frame the roads and central square.
-    // Viking house GLB: use one loaded source and clone it for ordinary houses.
-    // Named core homes (elder, fisherman, hunter, herbalist, craftsman) stay untouched.
-    loadGlbWithFolderFallback(vikingHouseAsset, (gltf:any) => {
-      if (!glbTreesAlive) return;
-
-      const source = gltf.scene.clone(true);
-      markMeshes(source);
-      source.traverse((o:any) => {
-        if (!o.isMesh) return;
-        o.visible = true;
-        o.castShadow = true;
-        o.receiveShadow = true;
-        o.frustumCulled = true;
-      });
-
-      const placements = [
-        {x:-15,z:-18,rot:.18, sx:1.02,sy:1.02,sz:.78, id:"warriorHouse", label:"Дом дружинника"},
-        {x:-31,z:  8,rot:.10, sx:.86,sy:.90,sz:.58, id:"fisher2",  label:"Дом рыбака"},
-        {x:-27,z: 20,rot:-.25,sx:.82,sy:.86,sz:.56, id:"carpenter",label:"Дом плотника"},
-        {x: 31,z: 18,rot:.32, sx:.88,sy:.92,sz:.58, id:"hunter2", label:"Дом охотницы"},
-        {x: 20,z: 24,rot:-.12,sx:.84,sy:.88,sz:.57, id:"family",  label:"Дом семьи"}
-      ];
-
-      placements.forEach((p, i) => {
-        const h = source.clone(true);
-        h.scale.set(p.sx,p.sy,p.sz);
-        h.rotation.set(0,p.rot,0);
-        h.position.set(p.x,groundY(p.x,p.z),p.z);
-        h.userData={id:p.id,label:p.label};
-        addMesh(h,p.id,p.label);
-        objects.push(h);
-      });
-
-      console.log('[VIKING HOUSE] 5 cloned houses loaded', `${BASE}img/models/${vikingHouseAsset}`);
-    }, 'VIKING HOUSE');
-
-    addRectCollider(-15,-18,9.0,7.0,.18,.05);
-
-    // Five named village homes are unique GLB assets.
-    // Their original map positions, rotations, interaction ids and collision plots are preserved.
-    const placeUniqueVillageHouse = (
-      asset:string,
-      x:number,z:number,rot:number,
-      sx:number,sy:number,sz:number,
-      id:string,label:string
-    ) => {
-      loadGlbWithFolderFallback(asset, (gltf:any) => {
-        if (!glbTreesAlive) return;
-
-        const model = gltf.scene.clone(true);
-        markMeshes(model);
-        model.traverse((o:any) => {
-          if (!o.isMesh) return;
-          o.visible = true;
-          o.castShadow = true;
-          o.receiveShadow = true;
-          o.frustumCulled = true;
-        });
-
-        model.scale.set(sx,sy,sz);
-        model.rotation.set(0,rot,0);
-        model.position.set(x,groundY(x,z),z);
-        model.userData={id,label};
-
-        addMesh(model,id,label);
-        console.log(`[${label}] loaded`, `${BASE}img/models/${asset}`);
-      }, label);
-    };
-
-    placeUniqueVillageHouse(elderHouseAsset,13,-18,-.08,1.02,.82,.90,"house","Дом старейшины");
-    placeUniqueVillageHouse(fisherHouseAsset,23,-6,.72,.95,.94,.65,"fisher","Дом рыбака");
-    placeUniqueVillageHouse(hunterHouseAsset,17,9,-.35,.94,.90,.64,"hunter","Дом охотника");
-    placeUniqueVillageHouse(herbalistHouseAsset,3,-25,.05,.91,.88,.62,"herbalist","Дом травницы");
-    placeUniqueVillageHouse(craftsmanHouseAsset,-22,-7,-.65,.86,.82,.64,"craftsman","Дом ремесленника");
-
-    // Same collision footprints as the procedural houses they replace.
-    addRectCollider(13,-18,10.85,7.85,-.08,.05);
-    addRectCollider(23,-6,8.85,6.85,.72,.05);
-    addRectCollider(17,9,8.85,6.85,-.35,.05);
-    addRectCollider(3,-25,8.85,6.85,.05,.05);
-    addRectCollider(-22,-7,8.85,6.85,-.65,.05);
+    // One layout is authoritative for the enlarged buildings and their entrances.
+    villageHomes.forEach(p=>{
+      addRectCollider(p.x,p.z,p.w*HOME_SCALE,p.d*HOME_SCALE,p.rot,.05);
+      loadGlbWithFolderFallback(p.asset,(gltf:any)=>{
+        if(!glbTreesAlive)return;
+        const model=gltf.scene.clone(true);markMeshes(model);
+        model.scale.set(p.sx*HOME_SCALE,p.sy*HOME_SCALE,p.sz*HOME_SCALE);
+        model.rotation.y=p.rot;model.position.set(p.x,groundY(p.x,p.z),p.z);
+        addMesh(model,p.id,p.label);objects.push(model);applyHomeTextures(model);
+      },p.label);
+    });
 
     // GLB blacksmith forge — replaces the old procedural smithy.
     // Keep the same location, interaction id, collision footprint and warm fire light.
@@ -2188,7 +2174,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       forgeModel.position.set(-10, groundY(-10,-5), -5);
       forgeModel.userData = { id:"forge", label:"Кузница" };
 
-      addMesh(forgeModel,"forge","Кузница");
+      addMesh(forgeModel,"forge","Кузница");applyHomeTextures(forgeModel);
       console.log('[FORGE] loaded', `${BASE}img/models/${forgeAsset}`);
     }, 'FORGE');
 
@@ -2350,15 +2336,15 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         o.receiveShadow = true;
         o.frustumCulled = true;
       });
-      barnModel.scale.set(.84,.90,.70);
+      barnModel.scale.set(.84*HOME_SCALE,.90*HOME_SCALE,.70*HOME_SCALE);
       barnModel.rotation.set(0,.08,0);
-      barnModel.position.set(-19,groundY(-19,31),31);
+      barnModel.position.set(-19,groundY(-19,35),35);
       barnModel.userData={id:"barn",label:"Амбар"};
-      addMesh(barnModel,"barn","Амбар");
+      addMesh(barnModel,"barn","Амбар");applyHomeTextures(barnModel);
       objects.push(barnModel);
       console.log('[BARN] loaded', `${BASE}img/models/${barnAsset}`);
     }, 'BARN');
-    addRectCollider(-19,31,8.55,5.25,.08,.04);
+    addRectCollider(-19,35,8.55*HOME_SCALE,5.25*HOME_SCALE,.08,.04);
 
     loadGlbWithFolderFallback(shedAsset, (gltf:any) => {
       if (!glbTreesAlive) return;
@@ -2371,21 +2357,20 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         o.receiveShadow = true;
         o.frustumCulled = true;
       });
-      shedModel.scale.set(1.00,.92,.70);
+      shedModel.scale.set(HOME_SCALE,.92*HOME_SCALE,.70*HOME_SCALE);
       shedModel.rotation.set(0,-.20,0);
       shedModel.position.set(17,groundY(17,34),34);
       shedModel.userData={id:"shed",label:"Сарай"};
-      addMesh(shedModel,"shed","Сарай");
+      addMesh(shedModel,"shed","Сарай");applyHomeTextures(shedModel);
       objects.push(shedModel);
       console.log('[SHED] loaded', `${BASE}img/models/${shedAsset}`);
     }, 'SHED');
-    addRectCollider(17,34,7.45,5.20,-.20,.04);
+    addRectCollider(17,34,7.45*HOME_SCALE,5.20*HOME_SCALE,-.20,.04);
 
     // Legacy procedural fisher storage removed; it duplicated the newer village buildings.
-    for(const p0 of [[-20,29,1.0],[-16,34,.85],[-20,35,.8],[18,31,.9],[21,37,.72],[31,5,.9]] as Array<[number,number,number]>) hay(p0[0],p0[1],p0[2]);
-    cart(-17,24,.18); cart(29,-5,-.55); bench(-20,23,.18); bench(25,31,-.2);
+    for(const p0 of [[-25,33,1.0],[-14,37,.85],[-25,37,.8],[24,32,.9],[24,38,.72],[31,5,.9]] as Array<[number,number,number]>) hay(p0[0],p0[1],p0[2]);
+    cart(-12,31,.18); cart(27,-12,-.55); bench(-12,19,.18); bench(25,29,-.2);
     // A second line of modest homes is now supplied by Viking GLB clones above.
-    addRectCollider(-31,8,7.8,5.8,.1,.04);addRectCollider(-27,20,7.8,5.8,-.25,.04);addRectCollider(31,18,7.8,5.8,.32,.04);addRectCollider(20,24,7.8,5.8,-.12,.04);
     // Small market corner near the square.
     const stall=(x:number,z:number,rot:number)=>{
       const g=new THREE.Group();g.position.set(x,groundY(x,z),z);g.rotation.y=rot;
@@ -2402,7 +2387,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     // The two decorative wells at (-17,-11) and (-21,-16) stood directly
     // beside the palisade house. From the gameplay camera their posts looked
     // like pale sticks floating over both roof slopes, so they are removed.
-    for(const p0 of [[14,-12],[22,-14],[24,17],[-31,15],[-18,41],[34,14]] as Array<[number,number]>) wellMarker(p0[0],p0[1]);
+    for(const p0 of [[10,-11],[25,-15],[25,13],[-31,15],[-18,41],[34,14]] as Array<[number,number]>) wellMarker(p0[0],p0[1]);
     // Low vegetation and scattered stones fill empty ground without turning it into a particle-heavy scene.
     const bush=(x:number,z:number,s=1)=>{
       const g=new THREE.Group();const y=groundY(x,z);
@@ -2434,17 +2419,17 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         o.receiveShadow = true;
         o.frustumCulled = true;
       });
-      oldFarmModel.scale.set(.85,.75,.62);
+      oldFarmModel.scale.set(.85*HOME_SCALE,.75*HOME_SCALE,.62*HOME_SCALE);
       oldFarmModel.rotation.set(0,.12,0);
       oldFarmModel.position.set(-65,groundY(-65,5),5);
       oldFarmModel.userData={id:"oldfarm",label:"Старый хутор"};
       oldFarmFallback.visible=false;
       addMesh(oldFarmModel,"oldfarm","Старый хутор");
-      objects.push(oldFarmModel);
+      objects.push(oldFarmModel);applyHomeTextures(oldFarmModel);
       console.log('[OLD FARM] loaded', `${BASE}img/models/${oldFarmAsset}`);
     }, 'OLD FARM');
     // Legacy procedural old barn removed; the Old Farm GLB is now the sole farmstead structure here.
-    hay(-68,8,.9); cart(-62,2,-.25); wellMarker(-58,4);
+    hay(-71,10,.9); cart(-71,1,-.25); wellMarker(-58,4);
     const oldField=new THREE.Group();
     oldField.position.set(-63,groundY(-63,47),47);
     for(let r=0;r<6;r++){
@@ -2908,7 +2893,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         if(!o.isMesh)return;
         const geometry=o.geometry.clone();geometry.applyMatrix4(o.matrixWorld);
         geometry.translate(-center.x,-deckY,-center.z);
-        geometry.scale(BRIDGE_WIDTH/size.x,5.0/size.y,BRIDGE_SPAN/size.z);
+        geometry.scale(BRIDGE_WIDTH/size.x,7.5/size.y,BRIDGE_SPAN/size.z);
         geometry.rotateY(-Math.PI/2);geometry.computeBoundingBox();geometry.computeBoundingSphere();
         const oldMaterials=Array.isArray(o.material)?o.material:[o.material];
         const materials=oldMaterials.map((m:any)=>new THREE.MeshStandardMaterial({name:m.name,color:/LightWood/i.test(m.name)?0x81857f:0x4d5552,roughness:.96,metalness:0}));
@@ -3560,19 +3545,19 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         else o.material=applyDeepGroveLook(o.material);
       });
 
-      grove.scale.setScalar(.86);
+      grove.scale.setScalar(.86*HOME_SCALE);
       grove.rotation.y=-.38;
       grove.position.set(0,0,0);
       grove.updateMatrixWorld(true);
       const bb=new THREE.Box3().setFromObject(grove);
       grove.position.y-=bb.min.y;
-      deepGroveRoot.add(grove);
+      deepGroveRoot.add(grove);applyHomeTextures(grove);
       console.log('[DEEP GROVE] Treehouse GLB restored',deepGroveAsset);
     },'DEEP GROVE');
 
     scene.add(deepGroveRoot);
     objects.push(deepGroveRoot);
-    addCircleCollider(deepGroveX,deepGroveZ,2.7,.08);
+    addCircleCollider(deepGroveX,deepGroveZ,2.7*HOME_SCALE,.08);
     // Fallen Ash now uses the controlled procedural stump above.
     // The older GLB is intentionally not loaded because its upper pieces read as wooden planks.
     const fallenAshFallback=makeFallenAsh(-30,15);
@@ -3883,7 +3868,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     // a short porch and a modest fenced yard. This is the hero's own dwelling, not another NPC house.
     const heroHomeX=80, heroHomeZ=30;
     const heroCabin=new THREE.Group();
-    heroCabin.position.set(heroHomeX,groundY(heroHomeX,heroHomeZ),heroHomeZ);
+    heroCabin.position.set(heroHomeX,groundY(heroHomeX,heroHomeZ),heroHomeZ);heroCabin.scale.setScalar(HOME_SCALE);
     const cabinStoneMat=mat(0x5b5a53,1);
     // Build the cabin as real wall segments, leaving a physical doorway in the front wall.
     // This makes the transition into the interior possible without teleporting through a solid box.
@@ -3918,7 +3903,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const chimneyCap=box(.62,.10,.62,0x34312d,1); chimneyCap.position.set(1.55,5.48,-.65); heroCabin.add(chimneyCap);
     const porch=box(2.35,.18,1.0,0x65452d,1); porch.position.set(0,.62,3.15); heroCabin.add(porch);
     const porchStep=box(1.55,.16,.48,0x59402b,1); porchStep.position.set(0,.30,3.58); heroCabin.add(porchStep);
-    addMesh(heroCabin,'heroHome','Домик героя'); objects.push(heroCabin);
+    [backWall,leftWall,rightWall,frontLeft,frontRight,frontTop].forEach(o=>o.name="HouseWall");roofL.name=roofR.name="HouseRoof";
+    addMesh(heroCabin,'heroHome','Домик героя');applyHomeTextures(heroCabin); objects.push(heroCabin);
 
     // Reference-driven hero house GLB. The procedural cabin stays as a fallback
     // until this asset loads successfully. The interactive hinged door is preserved.
@@ -3947,19 +3933,19 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       house.rotation.set(0, 0, 0);
 
       heroCabin.add(house);
-      heroHouseModel = house;
+      heroHouseModel = house;applyHomeTextures(house);
       console.log('[HERO HOUSE] loaded', `${BASE}img/models/${heroHouseAsset}`);
     }, 'HERO HOUSE');
     // Exterior collision follows the actual walls and leaves the doorway open.
-    addRectCollider(heroHomeX,heroHomeZ-2.72,7.4,.30,0,.05);
-    addRectCollider(heroHomeX-3.72,heroHomeZ,.30,5.45,0,.05);
-    addRectCollider(heroHomeX+3.72,heroHomeZ,.30,5.45,0,.05);
-    addRectCollider(heroHomeX-2.43,heroHomeZ+2.72,2.55,.30,0,.05);
-    addRectCollider(heroHomeX+2.43,heroHomeZ+2.72,2.55,.30,0,.05);
+    addRectCollider(heroHomeX,heroHomeZ-2.72*HOME_SCALE,7.4*HOME_SCALE,.30*HOME_SCALE,0,.05);
+    addRectCollider(heroHomeX-3.72*HOME_SCALE,heroHomeZ,.30*HOME_SCALE,5.45*HOME_SCALE,0,.05);
+    addRectCollider(heroHomeX+3.72*HOME_SCALE,heroHomeZ,.30*HOME_SCALE,5.45*HOME_SCALE,0,.05);
+    addRectCollider(heroHomeX-2.43*HOME_SCALE,heroHomeZ+2.72*HOME_SCALE,2.55*HOME_SCALE,.30*HOME_SCALE,0,.05);
+    addRectCollider(heroHomeX+2.43*HOME_SCALE,heroHomeZ+2.72*HOME_SCALE,2.55*HOME_SCALE,.30*HOME_SCALE,0,.05);
 
     // Interior: a real small room occupying the same 3D space. The roof is hidden while inside
     // so the follow camera can see the room instead of clipping through the ceiling.
-    const homeInterior=new THREE.Group(); homeInterior.position.set(heroHomeX,groundY(heroHomeX,heroHomeZ),heroHomeZ); homeInterior.visible=false;
+    const homeInterior=new THREE.Group(); homeInterior.position.set(heroHomeX,groundY(heroHomeX,heroHomeZ),heroHomeZ); homeInterior.visible=false;homeInterior.scale.setScalar(HOME_SCALE);
     const floor=box(7.0,.16,5.0,0x4b3424,1); floor.position.y=.50; homeInterior.add(floor);
     const innerBack=box(7.0,2.65,.18,0x3f2b20,1); innerBack.position.set(0,1.8,-2.45); homeInterior.add(innerBack);
     const innerLeft=box(.18,2.65,4.9,0x3f2b20,1); innerLeft.position.set(-3.45,1.8,0); homeInterior.add(innerLeft);
@@ -3981,7 +3967,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     addMesh(homeInterior,'heroHomeInterior','Дом героя — внутри'); objects.push(homeInterior);
 
     const heroYard=new THREE.Group();
-    heroYard.position.set(heroHomeX,groundY(heroHomeX,heroHomeZ),heroHomeZ);
+    heroYard.position.set(heroHomeX,groundY(heroHomeX,heroHomeZ),heroHomeZ);heroYard.scale.setScalar(HOME_SCALE);
     const yardRing=new THREE.Mesh(new THREE.TorusGeometry(6.2,.055,7,48),new THREE.MeshStandardMaterial({color:0x76624c,emissive:0x211b15,emissiveIntensity:.25,transparent:true,opacity:.5}));
     yardRing.rotation.x=Math.PI/2; yardRing.position.y=.035; heroYard.add(yardRing);
     // Low fence leaves the cabin visually open and avoids the heavy log-pile look.
@@ -3991,7 +3977,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     for(const fz of [-2.4,2.9]){const rail=box(10.2,.12,.12,0x60412b,1);rail.position.set(0,.59,fz);heroYard.add(rail);}
     const pathStoneMat=mat(0x69645c,1);
     for(let i=0;i<7;i++){const st=new THREE.Mesh(new THREE.CylinderGeometry(.32,.40,.12,7),pathStoneMat);st.position.set(0,.08,4.1+i*.72);st.rotation.y=i*.4;heroYard.add(st);}
-    const homeHearth=fire(heroHomeX-2.4,heroHomeZ+4.8,.48); homeHearth.scale.setScalar(.72);
+    const homeHearth=fire(heroHomeX-2.4*HOME_SCALE,heroHomeZ+4.8*HOME_SCALE,.48); homeHearth.scale.setScalar(.72);
     addMesh(heroYard,'heroHomeYard','Двор домика героя'); objects.push(heroYard);
 
 
@@ -4466,10 +4452,10 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         roofL.visible=!inside; roofR.visible=!inside; cabinRidge.visible=!inside; chimney.visible=!inside; chimneyCap.visible=!inside;
       }
       if(inside){
-        state.current.x=heroHomeX; state.current.z=heroHomeZ+0.95; cameraDir.current.x=0; cameraDir.current.z=-1;
+        state.current.x=heroHomeX; state.current.z=heroHomeZ+0.95*HOME_SCALE; cameraDir.current.x=0; cameraDir.current.z=-1;
         doorPivot.rotation.y=-Math.PI/2;
       }else{
-        state.current.x=heroHomeX; state.current.z=heroHomeZ+3.75; cameraDir.current.x=0; cameraDir.current.z=1;
+        state.current.x=heroHomeX; state.current.z=heroHomeZ+3.75*HOME_SCALE; cameraDir.current.x=0; cameraDir.current.z=1;
         doorPivot.rotation.y=0;
       }
       hero.position.set(state.current.x,groundY(state.current.x,state.current.z)+.04,state.current.z);
@@ -4479,21 +4465,12 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const destinations=[
       // Door points sit on the front side of each house rather than at its
       // centre, so the white interaction cloud appears only by the entrance.
-      {id:"warriorHouse",label:"Дом дружинника",x:-15.66,z:-21.64,r:3.0},
-      {id:"fisher2",label:"Дом рыбака Халли",x:-30.63,z:11.68,r:2.7},
-      {id:"carpenter",label:"Дом плотника Бьёрна",x:-27.92,z:23.58,r:2.7},
-      {id:"hunter2",label:"Дом охотницы Рандви",x:32.16,z:21.49,r:2.7},
-      {id:"family",label:"Дом семьи Торстейна",x:19.56,z:27.68,r:2.7},
-      {id:"house",label:"Дом старейшины Хальвдана",x:12.70,z:-14.31,r:2.8},
-      {id:"fisher",label:"Дом рыбака Эйнара",x:25.44,z:-3.39,r:2.7},
-      {id:"hunter",label:"Дом охотника Ульва",x:15.71,z:12.54,r:2.7},
-      {id:"herbalist",label:"Дом травницы Сигрид",x:3.18,z:-21.31,r:2.7},
-      {id:"craftsman",label:"Дом ремесленника Торвальда",x:-24.24,z:-4.05,r:2.7},
+      ...homeDestinations,
       {id:"forge",label:"Дверь кузницы Вёлунда",x:-10,z:-2.55,r:2.5},
       {id:"mimir",label:"Колодец Мимира",x:1,z:0,r:4.8},{id:"norns",label:"Прядильня норн",x:-52,z:38,r:5.4},
       {id:"rune",label:"Древний камень Феху",x:50,z:60,r:4.5},{id:"port",label:"Речной мост",x:-57,z:-48,r:6},
       {id:"ashgrove",label:"Роща Ясеня",x:-5,z:75,r:7.5},{id:"threeThreads",label:"Колодец Трёх Норн",x:58,z:-28,r:6.8},{id:"forestCache",label:"Забытый тайник",x:-72,z:48,r:4.2},
-      {id:"runefield",label:"Поле Рун",x:18,z:55,r:8.0},{id:"oldfarm",label:"Дверь Старого хутора",x:-65.45,z:8.55,r:3.2},{id:"deer",label:"Поляна Четырёх Оленей",x:43,z:32,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:62,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:68,z:8,r:8.5},{id:"heroHome",label:"Дверь дома героя",x:75,z:32.75,r:2.8},{id:"deepGrove",label:"Глубокая роща",x:-45,z:75,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:-30,z:15,r:7.5},{id:"powerCircle",label:"Круг Силы — Монолит",x:5,z:-70,r:6.5},{id:"whisperStone",label:"Камень Шёпота",x:-72,z:-48,r:6.5},
+      {id:"runefield",label:"Поле Рун",x:18,z:55,r:8.0},{id:"oldfarm",label:"Дверь Старого хутора",x:-64.4,z:10.8,r:3.2},{id:"deer",label:"Поляна Четырёх Оленей",x:43,z:32,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:62,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:68,z:8,r:8.5},{id:"heroHome",label:"Дверь дома героя",x:heroHomeX,z:heroHomeZ+4.7*HOME_SCALE,r:3.2},{id:"deepGrove",label:"Глубокая роща",x:-45,z:75,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:-30,z:15,r:7.5},{id:"powerCircle",label:"Круг Силы — Монолит",x:5,z:-70,r:6.5},{id:"whisperStone",label:"Камень Шёпота",x:-72,z:-48,r:6.5},
       {id:"elder",label:"Старейшина",x:9,z:-8,r:3.2},{id:"blacksmith",label:"Кузнец",x:-6,z:-3,r:3.2},
       {id:"northBridge",label:northBridgeRepaired?"Северный мост":"Северный мост — проход закрыт",x:NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.6,z:NORTH_BRIDGE_Z,r:3.8},
       {id:"gate",label:"Передние ворота",x:0,z:44,r:6},{id:"gateRear",label:"Задние ворота",x:0,z:-31,r:6},
@@ -4539,7 +4516,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         hero.rotation.y=Math.PI;
         cameraDir.current.x=0;cameraDir.current.z=-1;
       }
-      const hy=onRiverBridge(q.x,q.z)?bridgeHeight(q.x,q.z)+.12:groundY(q.x,q.z);
+      const hy=insideHomeRef.current?groundY(heroHomeX,heroHomeZ)+.58*HOME_SCALE:onRiverBridge(q.x,q.z)?bridgeHeight(q.x,q.z)+.12:groundY(q.x,q.z);
       const moving=!encounterLocked&&l>.05;
       hero.position.set(q.x,hy+.04,q.z);
       // Keep the latest map position independently from the forge. This also
@@ -4672,7 +4649,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       else camera.lookAt(q.x+(insideHomeRef.current?cd.x*.9:cd.x*1.9),hy+(insideHomeRef.current?1.25:1.2),q.z+(insideHomeRef.current?cd.z*.9:cd.z*1.9));
       let found="",foundId="";
       if(insideHomeRef.current){
-        if(q.z>heroHomeZ+1.72){found="Дверь — выйти из дома";foundId="heroHomeExit";}
+        if(q.z>heroHomeZ+1.72*HOME_SCALE){found="Дверь — выйти из дома";foundId="heroHomeExit";}
       } else {
         for(const d of destinations){if(Math.hypot(q.x-d.x,q.z-d.z)<d.r){found=d.label;foundId=d.id;break;}}
       }
@@ -4743,7 +4720,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
+    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
   },[h.id,skin,weapon,on,eventDone,start.x,start.z,rememberPosition,northBridgeRepaired]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
