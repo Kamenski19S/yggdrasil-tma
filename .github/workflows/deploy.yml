@@ -21,6 +21,11 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Optimize animated hero for web
+        run: |
+          npx --yes @gltf-transform/cli resize public/img/models/Vika-3d-animated-optimized.glb public/img/models/Vika-3d-animated-optimized.web.glb --width 1536 --height 1536
+          mv public/img/models/Vika-3d-animated-optimized.web.glb public/img/models/Vika-3d-animated-optimized.glb
+
       - name: Build
         run: npm run build
 
