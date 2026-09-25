@@ -1109,7 +1109,7 @@ function midHero3d(h: HeroDef) {
 type WhisperCombatStats={maxHp:number;attack:number;runeAttack:number;defense:number};
 type WhisperPhase="closed"|"question"|"fight"|"reward"|"defeat";
 
-function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string }) {
+function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, northBridgeRepaired, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -1547,7 +1547,9 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
       label:string,
       onFinalError?:()=>void
     ) => {
-      const paths = [`${BASE}img/models/${asset}`, `${BASE}img/model/${asset}`];
+      const assetNames = asset === "Vika-3d-animated-optimized.glb"
+        ? [asset, "Vika-3d-animated.glb"] : [asset];
+      const paths = assetNames.flatMap(name => [`${BASE}img/models/${name}`, `${BASE}img/model/${name}`]);
       const tryPath = (index:number) => {
         const url=paths[index];
         const fail=(error:any)=>{
@@ -1763,8 +1765,12 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
     const BRIDGE_X = -57, BRIDGE_Z = -48, BRIDGE_SPAN = 13.6, BRIDGE_WIDTH = 3.6;
     const BRIDGE_Y = groundY(BRIDGE_X,BRIDGE_Z) + .58;
     const riverCenterX = (z:number) => -57 + Math.sin(((z + 94) / 6) * .42) * 4.2;
+    const NORTH_BRIDGE_Z=52, NORTH_BRIDGE_X=riverCenterX(NORTH_BRIDGE_Z);
+    const NORTH_BRIDGE_Y=groundY(NORTH_BRIDGE_X,NORTH_BRIDGE_Z)+.58;
     const inRiverWater = (x:number,z:number) => z >= -94 && z <= 98 && Math.abs(x-riverCenterX(z)) < RIVER_HALF + HERO_RADIUS*.18;
-    const onRiverBridge = (x:number,z:number) => Math.abs(x-BRIDGE_X) <= BRIDGE_SPAN/2-.12 && Math.abs(z-BRIDGE_Z) <= BRIDGE_WIDTH/2-.16;
+    const withinBridge=(x:number,z:number,cx:number,cz:number)=>Math.abs(x-cx)<=BRIDGE_SPAN/2-.12&&Math.abs(z-cz)<=BRIDGE_WIDTH/2-.16;
+    const onRiverBridge = (x:number,z:number) => withinBridge(x,z,BRIDGE_X,BRIDGE_Z)||(northBridgeRepaired&&withinBridge(x,z,NORTH_BRIDGE_X,NORTH_BRIDGE_Z));
+    const bridgeHeight=(x:number,z:number)=>withinBridge(x,z,BRIDGE_X,BRIDGE_Z)?BRIDGE_Y:NORTH_BRIDGE_Y;
     // 0 = barred shut, 1 = fully open. Used both by the visual gate and collision passage.
     let villageGateProgress = villageGateOpenRef.current ? 1 : 0;
     const addRectCollider=(x:number,z:number,w:number,d:number,rot=0,pad=0.12)=>colliders.push({kind:"rect",x,z,w:w+pad*2,d:d+pad*2,rot});
@@ -1788,7 +1794,9 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
         // Interior bounds leave a clear opening toward the door at the front (positive Z).
         return x<heroHomeX-2.72 || x>heroHomeX+2.72 || z<heroHomeZ-2.05 || z>heroHomeZ+2.30;
       }
-      // The river is solid movement terrain only where the wooden bridge deck exists.
+      // The northern crossing stays blocked from either bank until its repair quest is complete.
+      if(!northBridgeRepaired&&hits(x,z,{kind:"rect",x:NORTH_BRIDGE_X,z:NORTH_BRIDGE_Z,w:BRIDGE_SPAN+.6,d:BRIDGE_WIDTH+.5,rot:0}))return true;
+      // Water can be crossed only on an open bridge deck.
       if(inRiverWater(x,z) && !onRiverBridge(x,z)) return true;
       // The front gate physically blocks the opening until the leaves have swung far enough.
       if(villageGateProgress < .78 && hits(x,z,{kind:"segment",x1:-3.15,z1:gateFrontZ,x2:3.15,z2:gateFrontZ,r:.20})) return true;
@@ -1967,6 +1975,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
     road([[-64,-48],[-70,-48],[-72,-48]],1.58);
     road([[-64,-48],[-67,-40],[-68,-27],[-68,-11],[-65,8]],1.62);
     road([[-65,8],[-68,24],[-70,37],[-72,48]],1.50);
+    road([[-35,44],[-42,49],[NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.5,NORTH_BRIDGE_Z]],1.65);
+    road([[NORTH_BRIDGE_X-BRIDGE_SPAN/2-1.5,NORTH_BRIDGE_Z],[-72,52],[-72,48]],1.55);
 
     const signTexture=(label:string)=>{
       const c=document.createElement("canvas");c.width=512;c.height=128;const ctx=c.getContext("2d")!;
@@ -2006,6 +2016,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
     addSignpost(-67,-41,[{label:"Камень Шёпота",target:[-72,-48],color:0x744025},{label:"Старый хутор",target:[-65,8],color:0x83562f},{label:"Мост",target:[-57,-48],color:0x5d4934}]);
     addSignpost(35,39,[{label:"Дом героя",target:[75,33],color:0x80502d},{label:"Камень Феху",target:[50,60],color:0x89522c}]);
     addSignpost(36,-26,[{label:"Три Норны",target:[58,-28],color:0x67472e},{label:"Круг силы",target:[5,-70],color:0x744a29},{label:"Деревня",target:[0,44],color:0x8a5a32}]);
+    addSignpost(-38,47,[{label:northBridgeRepaired?"Северный мост":"Мост закрыт",target:[NORTH_BRIDGE_X,NORTH_BRIDGE_Z],color:0x625e54}]);
 
     const woodTex=canvasTex("wood");woodTex.repeat.set(2,1);
     const roofTex=canvasTex("roof");roofTex.repeat.set(2,2);
@@ -2793,41 +2804,67 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
     objects.push(rune);
     addCircleCollider(50,60,1.55,.1);
 
-    // Old floating dock/platform removed. Only the straight river bridge remains.
-    // Straight river bridge replaces the old floating dock.
-    const riverBridge=new THREE.Group();
-    riverBridge.userData={id:"port",label:"Речной мост"};
-    const bridgeX=BRIDGE_X, bridgeZ=BRIDGE_Z, bridgeY=BRIDGE_Y;
-    riverBridge.position.set(bridgeX,bridgeY,bridgeZ);
-    const bridgeWood=mat(0x5b3a25,1), bridgeDark=mat(0x332219,1);
-    const span=BRIDGE_SPAN, deckW=BRIDGE_WIDTH;
-    for(let i=0;i<17;i++){
-      const plank=box(.78,.24,deckW,0x67432b,1);
-      plank.position.set(-span/2+.48+i*.80,0,0);
-      riverBridge.add(plank);
-    }
-    for(const zSide of [-1,1]){
-      const railZ=zSide*(deckW/2-.18);
-      for(let i=0;i<6;i++){
-        const x=-span/2+.55+i*(span-1.1)/5;
-        const post=box(.18,1.55,.18,0x3d281c,1);
-        post.position.set(x,.82,railZ);
-        riverBridge.add(post);
+    // Two crossings share the uploaded FBX. The second opens after the carpenter quest.
+    const makeStoneBridgeBase=(x:number,z:number,y:number,id:string,label:string)=>{
+      const g=new THREE.Group();g.position.set(x,y,z);
+      const fallback=new THREE.Group();
+      const deck=box(BRIDGE_SPAN,.24,BRIDGE_WIDTH,0x777b76,1);fallback.add(deck);
+      for(const side of [-1,1]){
+        const rail=box(BRIDGE_SPAN-.4,.65,.18,0x555c58,1);
+        rail.position.set(0,.42,side*(BRIDGE_WIDTH/2-.1));fallback.add(rail);
+        addSegmentCollider(x-BRIDGE_SPAN/2+.35,z+side*(BRIDGE_WIDTH/2-.18),x+BRIDGE_SPAN/2-.35,z+side*(BRIDGE_WIDTH/2-.18),.10,.02);
       }
-      const topRail=box(span-.8,.16,.16,0x3d281c,1);
-      topRail.position.set(0,1.45,railZ);
-      riverBridge.add(topRail);
-      const midRail=box(span-.8,.12,.12,0x4b3020,1);
-      midRail.position.set(0,.92,railZ);
-      riverBridge.add(midRail);
+      g.add(fallback);addMesh(g,id,label);
+      return {g,fallback};
+    };
+    const riverBridge=makeStoneBridgeBase(BRIDGE_X,BRIDGE_Z,BRIDGE_Y,"port","Речной мост");
+    const northBridge=makeStoneBridgeBase(NORTH_BRIDGE_X,NORTH_BRIDGE_Z,NORTH_BRIDGE_Y,"northBridge",northBridgeRepaired?"Северный мост":"Северный мост — проход закрыт");
+    if(!northBridgeRepaired){
+      // Visible barriers on BOTH banks agree with the closed-crossing collision.
+      for(const side of [-1,1]){
+        const barrier=new THREE.Group();barrier.position.x=side*(BRIDGE_SPAN/2+.2);
+        for(const zz of [-BRIDGE_WIDTH/2,BRIDGE_WIDTH/2]){
+          const post=box(.23,1.8,.23,0x554537,1);post.position.set(0,.9,zz);barrier.add(post);
+        }
+        for(const tilt of [-.22,.22]){
+          const brace=box(.18,.18,BRIDGE_WIDTH+.15,0x8a7050,1);brace.rotation.x=tilt;brace.position.y=.94;barrier.add(brace);
+        }
+        northBridge.g.add(barrier);
+      }
     }
-    const beamA=box(span-.4,.28,.24,0x332219,1);beamA.position.set(0,-.26,-1.25);riverBridge.add(beamA);
-    const beamB=beamA.clone();beamB.position.z=1.25;riverBridge.add(beamB);
-    addMesh(riverBridge,"port","Речной мост");objects.push(riverBridge);
-    // Only the two railings block movement. The previous full-deck collider made
-    // the entire bridge impassable.
-    addSegmentCollider(bridgeX-span/2+.35,bridgeZ-deckW/2+.18,bridgeX+span/2-.35,bridgeZ-deckW/2+.18,.10,.02);
-    addSegmentCollider(bridgeX-span/2+.35,bridgeZ+deckW/2-.18,bridgeX+span/2-.35,bridgeZ+deckW/2-.18,.10,.02);
+    loadGlbWithFolderFallback("Bridge.fbx",(asset:any)=>{
+      const source=asset.scene as THREE.Object3D;source.updateMatrixWorld(true);
+      const bounds=new THREE.Box3().setFromObject(source),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
+      if(size.x<=0||size.y<=0||size.z<=0)return;
+      // Bake FBX transforms so the authored Z-span crosses the river along world X.
+      // The deck surface is the highest vertex in the model's bottom 12 percent.
+      let deckY=bounds.min.y;
+      source.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        const positions=o.geometry.attributes.position;
+        const point=new THREE.Vector3();
+        for(let i=0;i<positions.count;i++){
+          point.fromBufferAttribute(positions,i).applyMatrix4(o.matrixWorld);
+          if(point.y<bounds.min.y+size.y*.12)deckY=Math.max(deckY,point.y);
+        }
+      });
+      const prepared=new THREE.Group();
+      source.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        const geometry=o.geometry.clone();geometry.applyMatrix4(o.matrixWorld);
+        geometry.translate(-center.x,-deckY,-center.z);
+        geometry.scale(BRIDGE_WIDTH/size.x,5.0/size.y,BRIDGE_SPAN/size.z);
+        geometry.rotateY(-Math.PI/2);geometry.computeBoundingBox();geometry.computeBoundingSphere();
+        const oldMaterials=Array.isArray(o.material)?o.material:[o.material];
+        const materials=oldMaterials.map((m:any)=>new THREE.MeshStandardMaterial({name:m.name,color:/LightWood/i.test(m.name)?0x81857f:0x4d5552,roughness:.96,metalness:0}));
+        const mesh=new THREE.Mesh(geometry,Array.isArray(o.material)?materials:materials[0]);
+        mesh.castShadow=true;mesh.receiveShadow=true;prepared.add(mesh);
+      });
+      for(const bridge of [riverBridge,northBridge]){
+        const model=prepared.clone(true);model.position.y=.12;
+        bridge.g.add(model);bridge.fallback.visible=false;
+      }
+    },"STONE FBX BRIDGES");
 
     // Utility clutter makes the village feel inhabited.
     const barrel=(x:number,z:number)=>{const b=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,1,12),mat(0x65432c,1));b.position.set(x,groundY(x,z)+.5,z);scene.add(b);for(const y of [.25,.76]){const r=new THREE.Mesh(new THREE.TorusGeometry(.51,.045,6,18),mat(0x302824,.7,.1));r.rotation.x=Math.PI/2;r.position.set(x,groundY(x,z)+y,z);scene.add(r);}};
@@ -4231,10 +4268,18 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
       const now=performance.now();
       if(now-attackStartedAt<650)return;
       attackStartedAt=now;
+      if(heroAnim?.mode==="clips"&&heroAnim.actions.attack){
+        const action=heroAnim.actions.attack as THREE.AnimationAction;
+        heroAnim.current?.fadeOut(.08);
+        action.reset();action.enabled=true;action.setEffectiveWeight(1);action.setLoop(THREE.LoopOnce,1);action.clampWhenFinished=true;action.fadeIn(.05).play();
+        heroAnim.current=action;
+        heroAnim.attackUntil=now+Math.max(650,action.getClip().duration*1000);
+        heroAnim.fallen=false;
+      }
     };
 
     const heroAsset=skin==="valkyrie"
-      ? "Yggdrasil_Valkyrie_Raven_Guard.glb"
+      ? "Vika-3d-animated-optimized.glb"
       : "Yggdrasil_Viking_Jarl.glb";
 
     loadGlbWithFolderFallback(heroAsset,(gltf:any)=>{
@@ -4257,8 +4302,10 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
         }
       });
 
-      // Original articulated Valkyrie and Viking use the same world scale.
-      model.scale.setScalar(.78);
+      const hasNativeClips=skin==="valkyrie"&&gltf.animations?.length>0;
+      // Vika is authored at roughly one metre in Blender units; the existing
+      // procedural heroes are approximately three metres tall before scaling.
+      model.scale.setScalar(hasNativeClips?2.32:.78);
       model.rotation.y=0;
       model.position.set(0,0,0);
       model.updateMatrixWorld(true);
@@ -4304,7 +4351,19 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
       // heroes have articulated limbs and use the rigged branch below.
       const isV6MultiView=/v6_.*_multiview/i.test(heroAsset);
 
-      if(projectedFront || isV6MultiView){
+      if(hasNativeClips){
+        const mixer=new THREE.AnimationMixer(model);
+        const findClip=(...names:string[])=>names.map(name=>THREE.AnimationClip.findByName(gltf.animations,name)).find(Boolean) as THREE.AnimationClip|undefined;
+        const idleClip=findClip("sword_idle","idle")||gltf.animations[0];
+        const walkClip=findClip("walk_loop","walk")||idleClip;
+        const attackClip=findClip("sword_attack","attack");
+        const fallClip=findClip("fall","death");
+        const idle=mixer.clipAction(idleClip),walk=mixer.clipAction(walkClip);
+        const attack=attackClip?mixer.clipAction(attackClip):null;
+        const fall=fallClip?mixer.clipAction(fallClip):null;
+        idle.play();
+        heroAnim={mode:"clips",model,mixer,actions:{idle,walk,attack,fall},current:idle,attackUntil:0,fallen:false,phase:1.2};
+      }else if(projectedFront || isV6MultiView){
         // V5/V6 experimental textured heroes keep the artwork/model intact.
         // For V6 we use a subtle full-body walking motion because its current
         // compatibility pivots are not parents of every visible mesh yet.
@@ -4385,6 +4444,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
       {id:"ashgrove",label:"Роща Ясеня",x:-5,z:75,r:7.5},{id:"threeThreads",label:"Колодец Трёх Норн",x:58,z:-28,r:6.8},{id:"forestCache",label:"Забытый тайник",x:-72,z:48,r:4.2},
       {id:"runefield",label:"Поле Рун",x:18,z:55,r:8.0},{id:"oldfarm",label:"Дверь Старого хутора",x:-65.45,z:8.55,r:3.2},{id:"deer",label:"Поляна Четырёх Оленей",x:43,z:32,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:62,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:68,z:8,r:8.5},{id:"heroHome",label:"Дверь дома героя",x:75,z:32.75,r:2.8},{id:"deepGrove",label:"Глубокая роща",x:-45,z:75,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:-30,z:15,r:7.5},{id:"powerCircle",label:"Круг Силы — Монолит",x:5,z:-70,r:6.5},{id:"whisperStone",label:"Камень Шёпота",x:-72,z:-48,r:6.5},
       {id:"elder",label:"Старейшина",x:9,z:-8,r:3.2},{id:"blacksmith",label:"Кузнец",x:-6,z:-3,r:3.2},
+      {id:"northBridge",label:northBridgeRepaired?"Северный мост":"Северный мост — проход закрыт",x:NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.6,z:NORTH_BRIDGE_Z,r:3.8},
       {id:"gate",label:"Ворота Мидгарда",x:0,z:44,r:6},{id:"tower",label:"Сторожевая башня",x:29,z:25,r:4}
     ];
 
@@ -4429,7 +4489,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
         hero.rotation.y=Math.PI;
         cameraDir.current.x=0;cameraDir.current.z=-1;
       }
-      const hy=onRiverBridge(q.x,q.z)?BRIDGE_Y+.12:groundY(q.x,q.z);
+      const hy=onRiverBridge(q.x,q.z)?bridgeHeight(q.x,q.z)+.12:groundY(q.x,q.z);
       const moving=!encounterLocked&&l>.05;
       hero.position.set(q.x,hy+.04,q.z);
       // Keep the latest map position independently from the forge. This also
@@ -4480,7 +4540,21 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
         sparkMat.opacity=impact*.96;
         strikeSparks.scale.setScalar(.45+impact*(1.05+h.str*.035));
         strikeLight.intensity=impact*(1.35+h.str*.16);
-        if(heroAnim.mode==="projected" || heroAnim.mode==="multiview"){
+        if(heroAnim.mode==="clips"){
+          const transition=(next:THREE.AnimationAction|null,fade=.16)=>{
+            if(!next||heroAnim.current===next)return;
+            heroAnim.current?.fadeOut(fade);next.reset();next.enabled=true;next.setEffectiveWeight(1);next.fadeIn(fade).play();heroAnim.current=next;
+          };
+          if(whisperNow==="defeat"&&heroAnim.actions.fall&&!heroAnim.fallen){
+            const fall=heroAnim.actions.fall as THREE.AnimationAction;
+            heroAnim.current?.fadeOut(.10);fall.reset();fall.enabled=true;fall.setEffectiveWeight(1);fall.setLoop(THREE.LoopOnce,1);fall.clampWhenFinished=true;fall.fadeIn(.08).play();
+            heroAnim.current=fall;heroAnim.fallen=true;heroAnim.attackUntil=Number.POSITIVE_INFINITY;
+          }else if(whisperNow!=="defeat"){
+            if(heroAnim.fallen){heroAnim.fallen=false;heroAnim.attackUntil=0;}
+            if(now>=heroAnim.attackUntil)transition(moving?heroAnim.actions.walk:heroAnim.actions.idle);
+          }
+          heroAnim.mixer.update(dt);
+        }else if(heroAnim.mode==="projected" || heroAnim.mode==="multiview"){
           // Very small vertical step + body sway: enough to read as walking
           // without deforming the projected artwork.
           heroAnim.model.position.y=heroAnim.baseY+(moving?Math.abs(Math.sin(walkT))*0.035:0);
@@ -4620,7 +4694,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
     raf=requestAnimationFrame(loop);
 
     return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
-  },[h.id,skin,weapon,on,eventDone,start.x,start.z,rememberPosition]);
+  },[h.id,skin,weapon,on,eventDone,start.x,start.z,rememberPosition,northBridgeRepaired]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
   const stopJoy=()=>{if(knob.current)knob.current.style.transform="translate(0,0)";state.current.dx=0;state.current.dz=0;};
@@ -4649,7 +4723,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
           </svg>
           <span className="map-landmark" style={{left:"49%",top:"53%"}}>⌂<small>Кузница</small></span>
           <span className="map-landmark" style={{left:"51%",top:"50%"}}>◉<small>Мимир</small></span>
-          <span className="map-landmark" style={{left:"18%",top:"77%"}}>═<small>Мост</small></span>
+          <span className="map-landmark" style={{left:"18%",top:"77%"}}>═<small>Речной мост</small></span>
+          <span className="map-landmark" style={{left:"16%",top:"21%",color:northBridgeRepaired?"#456249":"#a33b1f"}}>═<small>{northBridgeRepaired?"Северный мост":"Мост закрыт"}</small></span>
           <span className="map-landmark" style={{left:"20%",top:"29%"}}>ᛟ<small>Норны</small></span>
           <span className="map-landmark" style={{left:"49%",top:"25%"}}>⌗<small>Ворота</small></span>
           <span className="map-landmark" style={{left:"93%",top:"32%"}}>⌂<small>Дом</small></span>
@@ -4765,7 +4840,7 @@ const [roadT, setRoadT] = useState(0.06);
     // Warm only the selected hero. The second character is loaded later when
     // actually chosen, which keeps the first launch lighter on a slow route.
     const asset=save.heroSkin==="valkyrie"
-      ? "Yggdrasil_Valkyrie_Raven_Guard.glb"
+      ? "Vika-3d-animated-optimized.glb"
       : "Yggdrasil_Viking_Jarl.glb";
     cachedGlbBuffer(`${BASE}img/models/${asset}`).catch(()=>{});
   }, [save.heroSkin]);
@@ -5071,7 +5146,7 @@ const [roadT, setRoadT] = useState(0.06);
       const homeMessages:Record<string,string>={
         warriorHouse:"Дом дружинника. За дверью слышно, как точат клинок перед вечерним дозором.",
         fisher2:"Дом рыбака Халли. На крыльце сохнут сети, принесённые с северной реки.",
-        carpenter:"Дом плотника Бьёрна. Изнутри доносится стук резца по ясеню.",
+        carpenter:"Плотник Бьёрн осматривает инструменты: «Северный мост у дороги от врат повреждён. Я закрыл проход с обеих сторон. Для ремонта понадобятся крепкие доски и новые крепления».",
         hunter2:"Дом охотницы Рандви. Над дверью висит связка тёмных стрел.",
         family:"Дом семьи Торстейна. В окне горит спокойный домашний свет.",
         fisher:"Дом рыбака Эйнара. Хозяин ещё не вернулся с реки.",
@@ -5080,8 +5155,12 @@ const [roadT, setRoadT] = useState(0.06);
         craftsman:"Дом ремесленника Торвальда. Внутри звенят небольшие молотки."
       };
       if(homeMessages[id]){say(homeMessages[id]);return;}
+      if (id === "northBridge") {
+        say(save.done.includes("bridge:north:repaired")?"Северный мост восстановлен. Проход свободен.":"Северный мост повреждён. Проход закрыт с обеих сторон. Плотник Бьёрн пока осматривает повреждения.");
+        return;
+      }
       if (id === "port") {
-        say("У причала: «Река ведёт к землям, где Мидгард заканчивается. Когда-нибудь здесь начнётся путь дальше.»");
+        say("Каменный речной мост. Этот переход открыт и ведёт к западному берегу.");
         return;
       }
       if (id === "rune") {
@@ -5244,6 +5323,7 @@ const [roadT, setRoadT] = useState(0.06);
       eventDone={save.done.includes("forest:choice")}
       start={midgardReturn.current}
       rememberPosition={rememberMidgardPosition}
+      northBridgeRepaired={save.done.includes("bridge:north:repaired")}
       whisperResolved={save.done.includes("whisper:battle")||save.done.includes("whisper:wisdom")}
       whisperStats={{
         maxHp:heroDef.hp+forgeLevel("armor")*3+forgeLevel("helmet")*2,
