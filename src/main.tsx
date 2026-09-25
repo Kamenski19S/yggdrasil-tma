@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 
 THREE.Cache.enabled = true;
 
@@ -1468,6 +1469,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
     // Restore the real GLB spruce layer: 30 trees spread around Midgard.
     // The spruce is intentionally darkened; no procedural firs are re-enabled.
     const gltfLoader = new GLTFLoader();
+    const fbxLoader = new FBXLoader();
     let glbTreesAlive = true;
     const glbTreeInstances: THREE.Object3D[] = [];
 
@@ -1559,7 +1561,14 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
           if(!glbTreesAlive)return;
           const absolute=new URL(url,window.location.href).href;
           const basePath=absolute.slice(0,absolute.lastIndexOf("/")+1);
-          gltfLoader.parse(buffer,basePath,onLoad,fail);
+          // Keep the shared scene/animations interface for both model formats.
+          // FBX parse errors reach the same folder fallback through catch(fail).
+          if(/\.fbx$/i.test(new URL(absolute).pathname)){
+            const model=fbxLoader.parse(buffer,basePath);
+            onLoad({scene:model,animations:model.animations});
+          }else{
+            gltfLoader.parse(buffer,basePath,onLoad,fail);
+          }
         }).catch(fail);
       };
       tryPath(0);
@@ -4225,7 +4234,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
     };
 
     const heroAsset=skin==="valkyrie"
-      ? "Vika-3d-animated-optimized.glb?v=vika1"
+      ? "Yggdrasil_Valkyrie_Raven_Guard.glb"
       : "Yggdrasil_Viking_Jarl.glb";
 
     loadGlbWithFolderFallback(heroAsset,(gltf:any)=>{
@@ -4248,11 +4257,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
         }
       });
 
-      const isAnimatedWoman=heroAsset.startsWith("Vika-3d-animated-optimized.glb");
-
-      // The Blender-exported woman is already close to real-world human scale.
-      // Keep the legacy Viking at its tuned size.
-      model.scale.setScalar(isAnimatedWoman?2.9:.78);
+      // Original articulated Valkyrie and Viking use the same world scale.
+      model.scale.setScalar(.78);
       model.rotation.y=0;
       model.position.set(0,0,0);
       model.updateMatrixWorld(true);
@@ -4294,82 +4300,11 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
       }
 
       const projectedFront=model.getObjectByName("HeroVisual_Front") as THREE.Object3D | null;
-      // The new Blender character carries its own complete animation library.
-      // Three.js AnimationMixer plays the exported Actions directly instead of
-      // procedurally rotating individual limbs.
+      // Legacy V6 characters keep compatibility motion. Both current Yggdrasil
+      // heroes have articulated limbs and use the rigged branch below.
       const isV6MultiView=/v6_.*_multiview/i.test(heroAsset);
 
-      if(isAnimatedWoman&&gltf.animations?.length){
-        const mixer=new THREE.AnimationMixer(model);
-        const clips=gltf.animations as THREE.AnimationClip[];
-        const findClip=(...names:string[])=>{
-          const wanted=names.map(n=>n.toLowerCase());
-          return clips.find((clip)=>{
-            const nm=String(clip.name||"").toLowerCase();
-            return wanted.some(w=>nm===w||nm.endsWith("|"+w));
-          });
-        };
-        const idleClip=findClip("idle","sword_idle","Idle_Neutral","Idle");
-        const walkClip=findClip("walk_loop","Walk");
-        const runClip=findClip("Run");
-        const attackClip=findClip("sword_attack","kick","Sword_Slash","Punch_Right","Punch_Left");
-        const fallClip=findClip("fall","death","Death");
-        const actions:{
-          idle?:THREE.AnimationAction;
-          walk?:THREE.AnimationAction;
-          run?:THREE.AnimationAction;
-          attack?:THREE.AnimationAction;
-          fall?:THREE.AnimationAction;
-        }={};
-        if(idleClip)actions.idle=mixer.clipAction(idleClip);
-        if(walkClip)actions.walk=mixer.clipAction(walkClip);
-        if(runClip)actions.run=mixer.clipAction(runClip);
-        if(attackClip)actions.attack=mixer.clipAction(attackClip);
-        if(fallClip)actions.fall=mixer.clipAction(fallClip);
-
-        for(const key of ["idle","walk","run"] as const){
-          const action=actions[key];
-          if(action){
-            action.setLoop(THREE.LoopRepeat,Infinity);
-            action.clampWhenFinished=false;
-          }
-        }
-        if(actions.attack){
-          actions.attack.setLoop(THREE.LoopOnce,1);
-          actions.attack.clampWhenFinished=true;
-          actions.attack.setDuration(.68);
-        }
-        if(actions.fall){
-          actions.fall.setLoop(THREE.LoopOnce,1);
-          actions.fall.clampWhenFinished=true;
-        }
-
-        let current="";
-        const setAction=(name:"idle"|"walk"|"run"|"attack"|"fall")=>{
-          let desired=name;
-          if(!actions[desired]){
-            desired=name==="walk"&&actions.run?"run":"idle";
-          }
-          const next=actions[desired];
-          if(!next||current===desired)return;
-          const previous=current?actions[current as keyof typeof actions]:undefined;
-          next.enabled=true;
-          next.reset().setEffectiveWeight(1).play();
-          if(previous&&previous!==next)previous.crossFadeTo(next,(desired==="attack"||desired==="fall")?.08:.14,false);
-          current=desired;
-        };
-        setAction("idle");
-        heroAnim={
-          mode:"mixer",
-          model,
-          mixer,
-          actions,
-          setAction,
-          phase:0,
-          weapon:new THREE.Object3D()
-        };
-        console.log("[HERO ANIMATIONS]",clips.map(c=>c.name));
-      }else if(projectedFront || isV6MultiView){
+      if(projectedFront || isV6MultiView){
         // V5/V6 experimental textured heroes keep the artwork/model intact.
         // For V6 we use a subtle full-body walking motion because its current
         // compatibility pivots are not parents of every visible mesh yet.
@@ -4545,17 +4480,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
         sparkMat.opacity=impact*.96;
         strikeSparks.scale.setScalar(.45+impact*(1.05+h.str*.035));
         strikeLight.intensity=impact*(1.35+h.str*.16);
-        if(heroAnim.mode==="mixer"){
-          const desired=whisperPhaseRef.current==="defeat"&&heroAnim.actions.fall
-            ?"fall"
-            :attackActive&&heroAnim.actions.attack
-              ?"attack"
-              :moving
-                ?(heroAnim.actions.walk?"walk":"run")
-                :"idle";
-          heroAnim.setAction(desired);
-          heroAnim.mixer.update(dt);
-        }else if(heroAnim.mode==="projected" || heroAnim.mode==="multiview"){
+        if(heroAnim.mode==="projected" || heroAnim.mode==="multiview"){
           // Very small vertical step + body sway: enough to read as walking
           // without deforming the projected artwork.
           heroAnim.model.position.y=heroAnim.baseY+(moving?Math.abs(Math.sin(walkT))*0.035:0);
@@ -4840,7 +4765,7 @@ const [roadT, setRoadT] = useState(0.06);
     // Warm only the selected hero. The second character is loaded later when
     // actually chosen, which keeps the first launch lighter on a slow route.
     const asset=save.heroSkin==="valkyrie"
-      ? "Vika-3d-animated-optimized.glb?v=vika1"
+      ? "Yggdrasil_Valkyrie_Raven_Guard.glb"
       : "Yggdrasil_Viking_Jarl.glb";
     cachedGlbBuffer(`${BASE}img/models/${asset}`).catch(()=>{});
   }, [save.heroSkin]);
