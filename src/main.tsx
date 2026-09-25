@@ -404,6 +404,29 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .mid3d-interact button{width:100%;padding:8px;border-radius:9px;background:#ffd76a;color:#241b06;font-weight:800;font-size:12px}
 .mid3d-rematch{left:10px;top:72px;max-width:168px;padding:9px 11px;border-radius:13px;border:1px solid rgba(255,203,105,.72);background:linear-gradient(145deg,rgba(72,39,20,.94),rgba(28,20,14,.96));color:#ffe5a6;font-size:10px;font-weight:900;line-height:1.25;text-align:left;box-shadow:0 7px 20px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.12);z-index:34;animation:cloudin .24s ease-out}.mid3d-rematch small{display:block;margin-top:3px;color:#d8cbb4;font-size:8px;font-weight:600}.mid3d-rematch:active{transform:scale(.97);filter:brightness(1.12)}
 .whisper-cloud{left:50%;bottom:8%;transform:translateX(-50%);width:min(90vw,390px);padding:14px;border-radius:24px;background:linear-gradient(180deg,#fffef9,#e8ece8);color:#211e18;border:1px solid rgba(104,76,37,.26);box-shadow:0 14px 36px rgba(0,0,0,.48),inset 0 -8px 16px rgba(83,103,91,.12);text-align:center;z-index:35;touch-action:auto}.whisper-cloud:before{content:"";position:absolute;left:26px;bottom:-15px;border-width:15px 18px 0 0;border-style:solid;border-color:#e8ece8 transparent transparent transparent}.whisper-cloud h3{margin:0 0 5px;color:#9a4d1e;font-size:15px}.whisper-cloud p{margin:0 0 9px;font-size:10px;line-height:1.4;color:#4c4a43}.whisper-question{font-size:13px;font-weight:900;line-height:1.38;margin:7px 0 8px}.whisper-answer,.whisper-action{width:100%;padding:9px;margin-top:6px;border-radius:11px;border:1px solid rgba(61,77,66,.25);background:rgba(255,255,255,.82);color:#242b26;font-size:11px;font-weight:800}.whisper-answer.good{background:#d9f3df;color:#1c7137;border-color:#54a66d}.whisper-answer.bad{background:#f5d8d1;color:#9b3022;border-color:#d56a58}.whisper-answer.off{opacity:.45}.whisper-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.whisper-action{margin:0;min-height:48px;background:linear-gradient(145deg,#fff9e8,#ded4bc);border-color:#a68248}.whisper-action.rune{background:linear-gradient(145deg,#eadcff,#b99ae9);color:#382059}.whisper-action.shield{background:linear-gradient(145deg,#dff3ff,#9bcbe5);color:#173d50}.whisper-action.rest{background:linear-gradient(145deg,#dff0d7,#9dc590);color:#24451e}.whisper-action:disabled{opacity:.48}.whisper-log{min-height:28px;margin:0 0 8px;font-size:10px;line-height:1.35;color:#5b4935;font-style:italic}.whisper-close{width:100%;padding:10px;border-radius:11px;background:linear-gradient(145deg,#c47a31,#793b1d);color:#fff7e8;font-size:11px;font-weight:900}.whisper-bars{left:8px;right:8px;top:18%;display:flex;justify-content:space-between;align-items:flex-start;z-index:32;pointer-events:none}.whisper-unit{width:44%;display:flex;flex-direction:column;align-items:center;padding:6px;border-radius:12px;background:rgba(5,9,7,.72);border:1px solid rgba(255,255,255,.22);box-shadow:0 6px 18px rgba(0,0,0,.32)}.whisper-unit b{font-size:10px;color:#fff3d6}.whisper-unit small{font-size:8px;color:#cfddd2;margin-top:2px}.whisper-pips{display:flex;gap:5px;margin-bottom:4px}.whisper-pip{width:12px;height:12px;border-radius:50%;background:#1e2822;border:1px solid rgba(255,255,255,.25)}.whisper-reward-icon{font-size:38px;filter:drop-shadow(0 0 10px #ff9d3e)}.whisper-reward-name{font-size:14px;font-weight:900;color:#8f3d18;margin:4px 0}.whisper-reward-rarity{display:inline-block;padding:3px 8px;border-radius:8px;background:#4e2618;color:#ffc873;font-size:9px;text-transform:uppercase;letter-spacing:.8px}.whisper-battle-fx{position:absolute;inset:-15%;z-index:34;pointer-events:none;animation:battleFlash .48s ease-out}.whisper-battle-fx.hit{background:linear-gradient(110deg,transparent 43%,rgba(255,242,195,.95) 49%,rgba(255,106,35,.88) 52%,transparent 58%)}.whisper-battle-fx.rune{background:radial-gradient(circle,rgba(171,118,255,.82),rgba(81,182,255,.38) 22%,transparent 57%)}.whisper-battle-fx.guard{background:radial-gradient(circle at 30% 48%,rgba(218,53,35,.58),transparent 38%)}
+/* Combat HUD: health remains above the world; actions sit directly over the scene. */
+.whisper-bars{top:10px;left:10px;right:10px;gap:12px}
+.whisper-unit{width:min(42%,168px);min-height:42px;padding:7px 5px;background:rgba(7,13,10,.82);border-color:rgba(223,201,151,.27);border-radius:13px;backdrop-filter:blur(5px)}
+.whisper-unit b{font-size:clamp(11px,3.3vw,14px);color:#e6b76f;line-height:1.15}
+.whisper-unit small{font-size:11px;color:#d9dfd9;line-height:1.2}
+.whisper-combat-hud{left:50%;bottom:47px;transform:translateX(-50%);width:min(calc(100% - 16px),420px);z-index:36;touch-action:auto}
+.whisper-combat-energy{display:flex;align-items:center;justify-content:space-between;padding:0 15% 8px;pointer-events:none}
+.whisper-combat-energy .whisper-pips{margin:0;gap:5px}
+.whisper-combat-energy .whisper-pip{display:block;width:10px;height:10px;border-color:rgba(195,245,208,.55);box-shadow:inset 0 1px 2px rgba(0,0,0,.5)}
+.whisper-combat-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;align-items:start}
+.whisper-combat-action{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;padding:0;border:0;background:none;color:#fff6e5;text-align:center;font:inherit;touch-action:manipulation;cursor:pointer}
+.whisper-combat-icon{position:relative;display:grid;place-items:center;width:min(100%,64px);aspect-ratio:1;border:3px ridge #d6a352;border-radius:7px;background:radial-gradient(circle at 48% 40%,#55402a 0%,#241d17 65%,#100e0d 100%);box-shadow:inset 0 0 0 2px #5d3b20,inset 0 0 16px rgba(0,0,0,.75),0 4px 9px rgba(0,0,0,.6),0 0 0 1px #281709;color:#ffd06d;font-size:34px;line-height:1;text-shadow:0 0 11px #ffb341,0 2px 3px #211008}
+.whisper-combat-icon:after{content:"";position:absolute;inset:4px;border:1px solid rgba(252,204,112,.25);border-radius:2px;pointer-events:none}
+.whisper-combat-action.rune .whisper-combat-icon{font-family:serif;font-size:48px;color:#ffd071}
+.whisper-combat-action.rest .whisper-combat-icon{font-size:31px}
+.whisper-combat-action b{font-size:clamp(9px,2.6vw,12px);line-height:1.12;white-space:nowrap;text-shadow:0 2px 3px #060807,0 0 6px #060807}
+.whisper-combat-action small{font-size:clamp(9px,2.6vw,11px);color:#e5e6df;line-height:1.1;text-shadow:0 2px 3px #060807,0 0 6px #060807}
+.whisper-combat-action:active .whisper-combat-icon{transform:scale(.94);filter:brightness(1.25)}
+.whisper-combat-action:focus-visible .whisper-combat-icon{outline:2px solid #fff4ca;outline-offset:3px}
+.whisper-combat-action:disabled{opacity:.55;cursor:default}
+.whisper-combat-log{position:absolute;left:50%;bottom:100%;transform:translateX(-50%);width:max-content;max-width:90%;margin-bottom:13px;padding:6px 10px;border:1px solid rgba(231,194,124,.35);border-radius:9px;background:rgba(8,15,11,.84);color:#f3e5c9;font-size:10px;line-height:1.25;text-align:center;text-shadow:0 1px 2px #000;box-shadow:0 3px 12px rgba(0,0,0,.35);pointer-events:none}
+@media(max-width:360px){.whisper-combat-hud{width:calc(100% - 12px)}.whisper-combat-actions{gap:3px}.whisper-combat-icon{width:min(100%,54px);font-size:28px}.whisper-combat-action.rune .whisper-combat-icon{font-size:41px}.whisper-combat-action b,.whisper-combat-action small{font-size:9px}.whisper-combat-energy{padding-left:12%;padding-right:12%}.whisper-combat-energy .whisper-pips{gap:4px}}
+@media(max-height:480px){.whisper-combat-hud{bottom:37px}.whisper-combat-icon{width:min(100%,50px)}.whisper-combat-log{margin-bottom:6px}}
 .mid3d-door-prompt{right:15px;top:43%;width:142px;padding:10px 10px 9px;border-radius:15px;background:#fffdf7;color:#17130e;border:1px solid rgba(82,51,23,.28);box-shadow:0 8px 24px rgba(0,0,0,.32);text-align:left}.mid3d-door-prompt:before{content:"";position:absolute;left:-10px;top:25px;border-width:8px 10px 8px 0;border-style:solid;border-color:transparent #fffdf7 transparent transparent}.mid3d-door-prompt b{display:block;margin-bottom:8px;color:#17130e;font-size:12px;line-height:1.15}.mid3d-door-prompt button{width:100%;padding:8px 6px;border-radius:9px;border:1px solid #77451f;background:linear-gradient(145deg,#d4924d,#8d5127);color:#fff8e9;font-size:10px;font-weight:900;box-shadow:inset 0 1px rgba(255,255,255,.3),0 3px 8px rgba(66,31,8,.25)}.mid3d-door-prompt button:active{transform:scale(.96);filter:brightness(1.1)}
 .mid3d-map-shade{position:absolute;inset:0;z-index:40;background:rgba(3,7,5,.72);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:14px}
 .mid3d-map-panel{position:relative;width:min(92vw,390px);max-height:86%;padding:14px;border-radius:18px;background:linear-gradient(145deg,#f7f0dc,#d8c8a6);border:2px solid #ba8d43;color:#322716;box-shadow:0 18px 42px rgba(0,0,0,.65),inset 0 0 28px rgba(112,75,31,.14);overflow:auto;touch-action:auto}
@@ -4601,7 +4624,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
   const rewardIcon=whisperReward.includes("Кеназ")?"ᚲ":whisperReward.includes("Эликсир")?"🧪":whisperReward.includes("Капель")&&!whisperReward.includes("и «")?"🔥":"⚔️";
 
   return <div className="content mid3d-scene" ref={mount} style={{touchAction:"none",userSelect:"none",WebkitUserSelect:"none"}} onPointerDown={startJoyFromZone} onPointerMove={moveJoyFromZone} onPointerUp={endJoyFromZone} onPointerCancel={endJoyFromZone} onContextMenu={e=>e.preventDefault()}>
-    <div className="mid3d-ui mid3d-top"><div className="mid3d-pill"><b>МИДГАРД</b><span>Деревня • река • лес • святилища</span></div><div className="mid3d-pill"><b>ᛟ</b><span>Мир живёт вокруг тебя</span></div></div>
+    {whisperPhase==="closed"&&<div className="mid3d-ui mid3d-top"><div className="mid3d-pill"><b>МИДГАРД</b><span>Деревня • река • лес • святилища</span></div><div className="mid3d-pill"><b>ᛟ</b><span>Мир живёт вокруг тебя</span></div></div>}
     {near.endsWith("|whisperStone")&&whisperResolved&&whisperPhase==="closed"&&<button className="mid3d-ui mid3d-rematch" onPointerDown={e=>e.stopPropagation()} onClick={beginWhisperRematch}>⚔ Пройти испытание ещё раз<small>Повторный бой без награды</small></button>}
     {!heroReady&&<div className="mid3d-ui mid3d-hero-load"><b>{heroLoadFailed?"ᚾ":"ᛉ"}</b><span>{heroLoadFailed?"Герой не загрузился":"ПРОБУЖДЕНИЕ ГЕРОЯ"}</span></div>}
     {mapOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}>
@@ -4651,8 +4674,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:ygg")}}>🌳 Зов Иггдрасиля — пережить смертельный удар</button>
     </div>}
     {whisperBattleStartedRef.current&&whisperPhase!=="closed"&&whisperPhase!=="question"&&<div className="mid3d-ui whisper-bars">
-      <div className="whisper-unit"><span className="whisper-pips">{whisperPips(whisperHeroEnergy)}</span><b>{h.race}</b><small>❤ {whisperHeroHp}/{whisperStats.maxHp}</small></div>
-      <div className="whisper-unit"><span className="whisper-pips">{whisperPips(whisperGuardEnergy)}</span><b>{WHISPER_GUARD.name}</b><small>❤ {whisperGuardHp}/{WHISPER_GUARD.hp}</small></div>
+      <div className="whisper-unit"><b>{h.race}</b><small>❤ {whisperHeroHp}/{whisperStats.maxHp}</small></div>
+      <div className="whisper-unit"><b>{WHISPER_GUARD.name}</b><small>❤ {whisperGuardHp}/{WHISPER_GUARD.hp}</small></div>
     </div>}
     {whisperFx&&whisperPhase==="fight"&&<i key={whisperFx.key} className={"mid3d-ui whisper-battle-fx "+whisperFx.kind}/>}
     {whisperPhase==="question"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
@@ -4660,13 +4683,17 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
       <div className="whisper-question">{WHISPER_QUEST.q}</div>
       {WHISPER_QUEST.a.map((answer,i)=><button key={answer} className={"whisper-answer"+(whisperAnswer!==null?(i===WHISPER_QUEST.c?" good":i===whisperAnswer?" bad":" off"):"")} onClick={()=>answerWhisperInWorld(i)}>{answer}</button>)}
     </div>}
-    {whisperPhase==="fight"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
-      <h3>⚔ Бой у Камня шёпота</h3><div className="whisper-log">{whisperLog}</div>
-      <div className="whisper-actions">
-        <button className="whisper-action" disabled={whisperBusy} onClick={()=>whisperFightAction("hit")}>⚔ Удар оружием<br/><small>−1 энергия</small></button>
-        <button className="whisper-action rune" disabled={whisperBusy} onClick={()=>whisperFightAction("rune")}>ᚲ Руна Кеназ<br/><small>−2 энергии</small></button>
-        <button className="whisper-action shield" disabled={whisperBusy} onClick={()=>whisperFightAction("shield")}>🛡 Поднять щит<br/><small>−1 энергия</small></button>
-        <button className="whisper-action rest" disabled={whisperBusy} onClick={()=>whisperFightAction("restore")}>🌿 Перевести дух<br/><small>+2 энергии</small></button>
+    {whisperPhase==="fight"&&<div className="mid3d-ui whisper-combat-hud" onPointerDown={e=>e.stopPropagation()}>
+      <div className="whisper-combat-log" role="status" aria-live="polite">{whisperLog}</div>
+      <div className="whisper-combat-energy">
+        <span className="whisper-pips" aria-label={`Энергия героя: ${whisperHeroEnergy} из ${COMBAT_ENERGY}`}>{whisperPips(whisperHeroEnergy)}</span>
+        <span className="whisper-pips" aria-label={`Энергия Хродвитнира: ${whisperGuardEnergy} из ${COMBAT_ENERGY}`}>{whisperPips(whisperGuardEnergy)}</span>
+      </div>
+      <div className="whisper-combat-actions">
+        <button className="whisper-combat-action" disabled={whisperBusy} onClick={()=>whisperFightAction("hit")}><span className="whisper-combat-icon" aria-hidden="true">🪓</span><b>Удар оружием</b><small>−1 энергия</small></button>
+        <button className="whisper-combat-action shield" disabled={whisperBusy} onClick={()=>whisperFightAction("shield")}><span className="whisper-combat-icon" aria-hidden="true">🛡️</span><b>Поднять щит</b><small>−1 энергия</small></button>
+        <button className="whisper-combat-action rune" disabled={whisperBusy} onClick={()=>whisperFightAction("rune")}><span className="whisper-combat-icon" aria-hidden="true">ᚲ</span><b>Руна Кеназ</b><small>−2 энергии</small></button>
+        <button className="whisper-combat-action rest" disabled={whisperBusy} onClick={()=>whisperFightAction("restore")}><span className="whisper-combat-icon" aria-hidden="true">🌿</span><b>Перевести дух</b><small>+2 энергии</small></button>
       </div>
     </div>}
     {whisperPhase==="reward"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
@@ -4692,7 +4719,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
     {whisperPhase==="closed"&&<><div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" title="Удар оружием" onPointerDown={e=>e.stopPropagation()} onClick={()=>{attackActionRef.current?.();if("vibrate" in navigator)navigator.vibrate(12);}}>⚔</button>
     <button className="mid3d-ui mid3d-action" aria-label="Карта Мидгарда" title="Карта Мидгарда" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapHero({x:state.current.x,z:state.current.z});setMapOpen(true);}}>ᚠ</button></>}
-    <div className="mid3d-ui mid3d-hint">{insideHome?(moving?"Ты внутри дома":"Дом героя • отдых • сундук • выход"):moving?"Исследуй Мидгард":"Ворота • площадь • кузница • Мимир • норны • лес"}</div>
+    {whisperPhase==="closed"&&<div className="mid3d-ui mid3d-hint">{insideHome?(moving?"Ты внутри дома":"Дом героя • отдых • сундук • выход"):moving?"Исследуй Мидгард":"Ворота • площадь • кузница • Мимир • норны • лес"}</div>}
   </div>;
 }
 
