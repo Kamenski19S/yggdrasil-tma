@@ -4225,7 +4225,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
     };
 
     const heroAsset=skin==="valkyrie"
-      ? "Medieval_Woman_Animated.glb?v=actions2"
+      ? "Vika-3d-animated-optimized.glb?v=vika1"
       : "Yggdrasil_Viking_Jarl.glb";
 
     loadGlbWithFolderFallback(heroAsset,(gltf:any)=>{
@@ -4248,7 +4248,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
         }
       });
 
-      const isAnimatedWoman=heroAsset.startsWith("Medieval_Woman_Animated.glb");
+      const isAnimatedWoman=heroAsset.startsWith("Vika-3d-animated-optimized.glb");
 
       // The Blender-exported woman is already close to real-world human scale.
       // Keep the legacy Viking at its tuned size.
@@ -4309,10 +4309,10 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
             return wanted.some(w=>nm===w||nm.endsWith("|"+w));
           });
         };
-        const idleClip=findClip("Idle_Neutral","Idle");
-        const walkClip=findClip("Walk");
+        const idleClip=findClip("idle","sword_idle","Idle_Neutral","Idle");
+        const walkClip=findClip("walk_loop","Walk");
         const runClip=findClip("Run");
-        const attackClip=findClip("Sword_Slash","Punch_Right","Punch_Left");
+        const attackClip=findClip("sword_attack","kick","Sword_Slash","Punch_Right","Punch_Left");
         const actions:{
           idle?:THREE.AnimationAction;
           walk?:THREE.AnimationAction;
@@ -4831,7 +4831,7 @@ const [roadT, setRoadT] = useState(0.06);
     // Warm only the selected hero. The second character is loaded later when
     // actually chosen, which keeps the first launch lighter on a slow route.
     const asset=save.heroSkin==="valkyrie"
-      ? "Medieval_Woman_Animated.glb?v=actions2"
+      ? "Vika-3d-animated-optimized.glb?v=vika1"
       : "Yggdrasil_Viking_Jarl.glb";
     cachedGlbBuffer(`${BASE}img/models/${asset}`).catch(()=>{});
   }, [save.heroSkin]);
