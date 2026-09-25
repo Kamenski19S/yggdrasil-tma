@@ -1937,7 +1937,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       surface(width*1.10,.075,pathEdgeMaterial,.10);
       surface(width,.102,pathMaterial,.08);
     };
-    const HOME_SCALE=1.30;
+    const HOME_SCALE=1.30, BUILDING_HEIGHT=1.25;
     const villageHomes=[
       {asset:vikingHouseAsset,id:"warriorHouse",label:"Дом дружинника",x:-21,z:-21,rot:0,sx:1.02,sy:1.02,sz:.78,w:9,d:7},
       {asset:vikingHouseAsset,id:"fisher2",label:"Дом рыбака Халли",x:-21,z:8,rot:0,sx:.86,sy:.90,sz:.58,w:7.8,d:5.8},
@@ -2034,30 +2034,106 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const woodTex=canvasTex("wood");woodTex.repeat.set(2,1);
     const roofTex=canvasTex("roof");roofTex.repeat.set(2,2);
 
-    const homeMaterials:{material:THREE.MeshStandardMaterial;roof:boolean}[]=[];
-    const homeTextures:{wall:THREE.Texture|null;roof:THREE.Texture|null}={wall:null,roof:null};
+    // Work in model coordinates so repairs follow the model's later world scale.
+    const repairBuilding=(root:THREE.Object3D)=>{
+      if(root.userData.buildingRepaired)return;
+      root.userData.buildingRepaired=true;root.updateWorldMatrix(true,true);
+      const inverse=root.matrixWorld.clone().invert();
+      const meshes:THREE.Mesh[]=[];root.traverse(o=>{if((o as THREE.Mesh).isMesh)meshes.push(o as THREE.Mesh);});
+      const localGeometry=(o:THREE.Mesh)=>o.geometry.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inverse,o.matrixWorld));
+      const localBounds=(o:THREE.Mesh)=>{const g=localGeometry(o);g.computeBoundingBox();const b=g.boundingBox!.clone();g.dispose();return b;};
+      const rewrite=(o:THREE.Mesh,change:(v:THREE.Vector3)=>void)=>{
+        const g=localGeometry(o),p=g.attributes.position,v=new THREE.Vector3();
+        for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i);change(v);p.setXYZ(i,v.x,v.y,v.z);}
+        // Convert back to mesh coordinates without changing siblings or shared source geometry.
+        g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inverse,o.matrixWorld).invert());
+        g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();o.geometry=g;
+      };
+      // This asset's wing roof was authored at Z=0 while its wing ends at Z=4.46.
+      const wing=meshes.find(o=>/^Herbalist_Wing$/.test(o.name));
+      if(wing){const center=localBounds(wing).getCenter(new THREE.Vector3());
+        meshes.filter(o=>/Herbalist_Wing_Roof/.test(o.name)).forEach(o=>rewrite(o,v=>{v.x+=center.x;v.z+=center.z;}));
+        meshes.filter(o=>/Herbalist_Wing_Gable/.test(o.name)).forEach(o=>rewrite(o,v=>{v.x+=center.x;}));}
+      // The hero home's roof was narrower than its outer walls.
+      if(meshes.some(o=>o.name==="FrontWall_AboveDoor")){
+        meshes.filter(o=>/^Roof_[LR]$/.test(o.name)).forEach(o=>rewrite(o,v=>{v.x*=1.28;}));
+      }
+      const windows=meshes.filter(o=>{
+        const mats=Array.isArray(o.material)?o.material:[o.material];
+        return /win/i.test(o.name)&&mats.some(m=>/window/i.test(m.name)&&!/dark|beam/i.test(m.name));
+      }).map(o=>({o,center:localBounds(o).getCenter(new THREE.Vector3())}));
+      // Move glazing and its frame together around the same centre.
+      meshes.filter(o=>/window|win[lrvh\d_-]|upperwin|lwin|rwin/i.test(o.name)).forEach(o=>{
+        if(!windows.length)return;const c=localBounds(o).getCenter(new THREE.Vector3());
+        const nearest=windows.reduce((a,b)=>c.distanceToSquared(a.center)<c.distanceToSquared(b.center)?a:b);
+        if(c.distanceTo(nearest.center)>1.1)return;
+        rewrite(o,v=>{v.x=nearest.center.x+(v.x-nearest.center.x)*1.25;});
+      });
+      const doors=meshes.filter(o=>/(^Door$|^Main_Door$|^Side_Door$|_Door$|^DoorRecess$)/i.test(o.name))
+        .map(o=>({o,center:localBounds(o).getCenter(new THREE.Vector3())}));
+      meshes.filter(o=>/door/i.test(o.name)&&!/wall|above/i.test(o.name)).forEach(o=>{
+        if(!doors.length)return;const c=localBounds(o).getCenter(new THREE.Vector3());
+        const near=doors.reduce((a,b)=>c.distanceToSquared(a.center)<c.distanceToSquared(b.center)?a:b);
+        rewrite(o,v=>{v.x=near.center.x+(v.x-near.center.x)*1.20;});
+      });
+      // Replace short/stepped gables with solid profiles meeting the actual roof surface.
+      const roofMeshes=meshes.filter(o=>/roof|aframe|thatch/i.test(o.name)&&!/ridge|batten|beam|tower|lip/i.test(o.name));
+      const probes=roofMeshes.map(o=>{const m=new THREE.Mesh(localGeometry(o),new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));m.updateMatrixWorld(true);return m;});
+      const gables=meshes.filter(o=>/gable/i.test(o.name)&&!/window|(?:^|_)win(?:_|$)|frame|beam/i.test(o.name));
+      const groups:{items:THREE.Mesh[];bounds:THREE.Box3}[]=[];
+      gables.forEach(o=>{const b=localBounds(o),z=b.getCenter(new THREE.Vector3()).z;
+        const group=groups.find(g=>Math.abs(g.bounds.getCenter(new THREE.Vector3()).z-z)<.22);
+        if(group){group.items.push(o);group.bounds.union(b);}else groups.push({items:[o],bounds:b});});
+      const ray=new THREE.Raycaster(),down=new THREE.Vector3(0,-1,0);
+      groups.forEach(({items,bounds})=>{
+        const z=bounds.getCenter(new THREE.Vector3()).z,base=bounds.min.y;
+        const outline:THREE.Vector2[]=[];
+        for(let i=0;i<=48;i++){
+          const x=THREE.MathUtils.lerp(bounds.min.x,bounds.max.x,i/48);
+          ray.set(new THREE.Vector3(x,100,z),down);
+          const hit=ray.intersectObjects(probes,false)[0];
+          if(!hit||hit.point.y<base)return; // Keep original if this is not beneath a roof.
+          outline.push(new THREE.Vector2(x,hit.point.y-.035));
+        }
+        const shape=new THREE.Shape();shape.moveTo(bounds.min.x,base);
+        outline.forEach(p=>shape.lineTo(p.x,p.y));shape.lineTo(bounds.max.x,base);shape.closePath();
+        const geometry=new THREE.ExtrudeGeometry(shape,{depth:Math.max(.16,bounds.max.z-bounds.min.z),bevelEnabled:false,steps:1});
+        geometry.translate(0,0,bounds.min.z);
+        const first=items[0],material=(Array.isArray(first.material)?first.material[0]:first.material).clone();
+        const fill=new THREE.Mesh(geometry,material);fill.name=first.name+"_FittedWall";fill.castShadow=true;fill.receiveShadow=true;
+        items.forEach(o=>o.visible=false);root.add(fill);
+      });
+      probes.forEach(o=>{o.geometry.dispose();(o.material as THREE.Material).dispose();});
+      root.updateWorldMatrix(true,true);
+    };
+
+    const homeMaterials:{material:THREE.MeshStandardMaterial;key:"wall"|"roof"|"forge"|"elder"}[]=[];
+    const homeTextures:Record<"wall"|"roof"|"forge"|"elder",THREE.Texture|null>={wall:null,roof:null,forge:null,elder:null};
     const setHomeMap=(material:THREE.MeshStandardMaterial,texture:THREE.Texture)=>{
       material.map=texture;material.color.setHex(0xffffff);material.roughness=.95;
       material.bumpMap=null;material.roughnessMap=null;material.needsUpdate=true;
     };
-    const loadHomeTexture=(name:string,roof:boolean)=>new THREE.TextureLoader().load(`${BASE}img/models/${name}`,texture=>{
+    const loadHomeTexture=(name:string,key:"wall"|"roof"|"forge"|"elder")=>new THREE.TextureLoader().load(`${BASE}img/models/${name}`,texture=>{
       if(!glbTreesAlive){texture.dispose();return;}
       texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
       texture.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());texture.needsUpdate=true;
-      homeTextures[roof?"roof":"wall"]=texture;
-      homeMaterials.filter(p=>p.roof===roof).forEach(p=>setHomeMap(p.material,texture));
+      homeTextures[key]=texture;
+      homeMaterials.filter(p=>p.key===key).forEach(p=>setHomeMap(p.material,texture));
     },undefined,()=>console.warn(`House texture unavailable: ${name}`));
-    const pendingHomeBrick=loadHomeTexture("T_RedBrick_BaseColor1.png",false);
-    const pendingHomeRoof=loadHomeTexture("T_RoundTilesBaseColorr1.png",true);
-    const applyHomeTextures=(root:THREE.Object3D)=>{
+    const pendingHomeBrick=loadHomeTexture("T_RedBrick_BaseColor1.png","wall");
+    const pendingHomeRoof=loadHomeTexture("T_RoundTilesBaseColorr1.png","roof");
+    const pendingForgeStone=loadHomeTexture("T_Forge_WhiteStone.png","forge");
+    const pendingElderBrick=loadHomeTexture("T_Elder_SandBrick.png","elder");
+    const applyHomeTextures=(root:THREE.Object3D,theme:"wall"|"forge"|"elder"="wall")=>{
+      repairBuilding(root);
       root.updateWorldMatrix(true,true);
       root.traverse((o:any)=>{
         if(!o.isMesh)return;
         const name=String(o.name),materials=Array.isArray(o.material)?o.material:[o.material];
         const roof=/roof|aframe|canopy|thatch/i.test(name)&&!/ridge|batten|beam/i.test(name);
-        const wall=/wall|gable|main(?:$|_block)|barn_(?:left|right)side|stonebase|upper$|keep|wing$|tower(?!roof|window|band)|chimney(?!cap)|^cabin$|hunter_base|left_stone/i.test(name);
+        const wall=(theme==="forge"&&/foundation|buttress|pillar|jamb|lintel|crown|chimney|main_block|hearth_base/i.test(name))||/wall|gable|main(?:$|_block)|barn_(?:left|right)side|stonebase|upper$|keep|wing$|tower(?!roof|window|band)|chimney(?!cap)|^cabin$|hunter_base|left_stone/i.test(name);
         if(!roof&&!wall)return;
-        if(/window|door|frame|beam|post|rail|step|porch|platform|foundation/i.test(name)&&!roof)return;
+        if(/window|door|frame|beam|post|rail|step|porch|platform|foundation/i.test(name)&&!roof&&theme!=="forge")return;
         const geo=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();
         const pos=geo.attributes.position,uv=new Float32Array(pos.count*2);
         const pts=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()],n=new THREE.Vector3(),a=new THREE.Vector3(),b=new THREE.Vector3();
@@ -2073,8 +2149,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         }
         geo.setAttribute("uv",new THREE.BufferAttribute(uv,2));o.geometry=geo;
         const changed=materials.map((m:THREE.MeshStandardMaterial)=>{
-          const material=m.clone();homeMaterials.push({material,roof});
-          const texture=homeTextures[roof?"roof":"wall"];if(texture)setHomeMap(material,texture);
+          const material=m.clone(),key=roof?"roof":theme;homeMaterials.push({material,key});
+          const texture=homeTextures[key];if(texture)setHomeMap(material,texture);
           return material;
         });
         o.material=Array.isArray(o.material)?changed:changed[0];
@@ -2083,7 +2159,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
 
     // Detailed Nordic longhouse.
     const house=(x:number,z:number,w:number,d:number,rot:number,label:string,id:string,wallColor:number,roofColor:number)=>{
-      const g=new THREE.Group(); g.rotation.y=rot; g.position.set(x,groundY(x,z),z); g.userData={id,label}; g.scale.setScalar(HOME_SCALE);
+      const g=new THREE.Group(); g.rotation.y=rot; g.position.set(x,groundY(x,z),z); g.userData={id,label}; g.scale.set(HOME_SCALE,HOME_SCALE*BUILDING_HEIGHT,HOME_SCALE);
       const logMat=new THREE.MeshStandardMaterial({name:"HouseWall",map:woodTex,color:wallColor,roughness:.94,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.014});
       const foundation=box(w+.7,.55,d+.7,0x575a53,1); foundation.position.y=.28; g.add(foundation);
 
@@ -2145,9 +2221,9 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       loadGlbWithFolderFallback(p.asset,(gltf:any)=>{
         if(!glbTreesAlive)return;
         const model=gltf.scene.clone(true);markMeshes(model);
-        model.scale.set(p.sx*HOME_SCALE,p.sy*HOME_SCALE,p.sz*HOME_SCALE);
+        model.scale.set(p.sx*HOME_SCALE,p.sy*HOME_SCALE*BUILDING_HEIGHT,p.sz*HOME_SCALE);
         model.rotation.y=p.rot;model.position.set(p.x,groundY(p.x,p.z),p.z);
-        addMesh(model,p.id,p.label);objects.push(model);applyHomeTextures(model);
+        addMesh(model,p.id,p.label);objects.push(model);applyHomeTextures(model,p.id==="house"?"elder":"wall");
       },p.label);
     });
 
@@ -2169,12 +2245,12 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
 
       // Source is compact (~6 x 6 m). Slightly widen it so it reads well
       // on the existing smithy plot without becoming oversized.
-      forgeModel.scale.set(1.14, 1.08, 1.02);
+      forgeModel.scale.set(1.14,1.08*BUILDING_HEIGHT,1.02);
       forgeModel.rotation.set(0, 0, 0);
       forgeModel.position.set(-10, groundY(-10,-5), -5);
       forgeModel.userData = { id:"forge", label:"Кузница" };
 
-      addMesh(forgeModel,"forge","Кузница");applyHomeTextures(forgeModel);
+      addMesh(forgeModel,"forge","Кузница");applyHomeTextures(forgeModel,"forge");
       console.log('[FORGE] loaded', `${BASE}img/models/${forgeAsset}`);
     }, 'FORGE');
 
@@ -2184,7 +2260,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const forgeDoorPivot=new THREE.Group();
     // The hinge must sit in the facade plane. The previous z=-1.62 placed the
     // leaf well in front of the porch, so it looked detached from the doorway.
-    forgeDoorPivot.position.set(-10.92,groundY(-10,-2.72)+1.38,-2.72);
+    forgeDoorPivot.position.set(-10-.92*1.2,groundY(-10,-5)+1.38*BUILDING_HEIGHT,-2.72);forgeDoorPivot.scale.set(1.2,BUILDING_HEIGHT,1);
     const forgeDoor=new THREE.Mesh(new THREE.BoxGeometry(1.84,2.76,.14),mat(0x392318,.82,.04));
     forgeDoor.position.x=.92;
     forgeDoorPivot.add(forgeDoor);
@@ -2336,7 +2412,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         o.receiveShadow = true;
         o.frustumCulled = true;
       });
-      barnModel.scale.set(.84*HOME_SCALE,.90*HOME_SCALE,.70*HOME_SCALE);
+      barnModel.scale.set(.84*HOME_SCALE,.90*HOME_SCALE*BUILDING_HEIGHT,.70*HOME_SCALE);
       barnModel.rotation.set(0,.08,0);
       barnModel.position.set(-19,groundY(-19,35),35);
       barnModel.userData={id:"barn",label:"Амбар"};
@@ -2357,7 +2433,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         o.receiveShadow = true;
         o.frustumCulled = true;
       });
-      shedModel.scale.set(HOME_SCALE,.92*HOME_SCALE,.70*HOME_SCALE);
+      shedModel.scale.set(HOME_SCALE,.92*HOME_SCALE*BUILDING_HEIGHT,.70*HOME_SCALE);
       shedModel.rotation.set(0,-.20,0);
       shedModel.position.set(17,groundY(17,34),34);
       shedModel.userData={id:"shed",label:"Сарай"};
@@ -2419,7 +2495,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         o.receiveShadow = true;
         o.frustumCulled = true;
       });
-      oldFarmModel.scale.set(.85*HOME_SCALE,.75*HOME_SCALE,.62*HOME_SCALE);
+      oldFarmModel.scale.set(.85*HOME_SCALE,.75*HOME_SCALE*BUILDING_HEIGHT,.62*HOME_SCALE);
       oldFarmModel.rotation.set(0,.12,0);
       oldFarmModel.position.set(-65,groundY(-65,5),5);
       oldFarmModel.userData={id:"oldfarm",label:"Старый хутор"};
@@ -3545,7 +3621,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         else o.material=applyDeepGroveLook(o.material);
       });
 
-      grove.scale.setScalar(.86*HOME_SCALE);
+      grove.scale.set(.86*HOME_SCALE,.86*HOME_SCALE*BUILDING_HEIGHT,.86*HOME_SCALE);
       grove.rotation.y=-.38;
       grove.position.set(0,0,0);
       grove.updateMatrixWorld(true);
@@ -3868,7 +3944,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     // a short porch and a modest fenced yard. This is the hero's own dwelling, not another NPC house.
     const heroHomeX=80, heroHomeZ=30;
     const heroCabin=new THREE.Group();
-    heroCabin.position.set(heroHomeX,groundY(heroHomeX,heroHomeZ),heroHomeZ);heroCabin.scale.setScalar(HOME_SCALE);
+    heroCabin.position.set(heroHomeX,groundY(heroHomeX,heroHomeZ),heroHomeZ);heroCabin.scale.set(HOME_SCALE,HOME_SCALE*BUILDING_HEIGHT,HOME_SCALE);
     const cabinStoneMat=mat(0x5b5a53,1);
     // Build the cabin as real wall segments, leaving a physical doorway in the front wall.
     // This makes the transition into the interior possible without teleporting through a solid box.
@@ -3883,7 +3959,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const doorFrameR=box(.16,2.18,.34,0x2b211b,1); doorFrameR.position.set(.66,1.28,2.72); heroCabin.add(doorFrameR);
     const doorFrameTop=box(1.48,.16,.34,0x2b211b,1); doorFrameTop.position.set(0,2.34,2.72); heroCabin.add(doorFrameTop);
     // Door on a hinge: it visibly swings open before the hero enters.
-    const doorPivot=new THREE.Group(); doorPivot.position.set(-.57,0,2.72); heroCabin.add(doorPivot);
+    const doorPivot=new THREE.Group(); doorPivot.position.set(-.57*1.2,0,2.72);doorPivot.scale.x=1.2; heroCabin.add(doorPivot);
     const cabinDoor=box(1.14,2.05,.12,0x302219,1); cabinDoor.position.set(.57,1.28,0); doorPivot.add(cabinDoor);
     const doorHandle=new THREE.Mesh(new THREE.SphereGeometry(.08,8,6),mat(0xb48a4b,1)); doorHandle.position.set(.86,1.25,.10); doorPivot.add(doorHandle);
     const windowMat=new THREE.MeshStandardMaterial({color:0xd39b4f,emissive:0x9a5c20,emissiveIntensity:1.25,roughness:.45});
@@ -3945,7 +4021,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
 
     // Interior: a real small room occupying the same 3D space. The roof is hidden while inside
     // so the follow camera can see the room instead of clipping through the ceiling.
-    const homeInterior=new THREE.Group(); homeInterior.position.set(heroHomeX,groundY(heroHomeX,heroHomeZ),heroHomeZ); homeInterior.visible=false;homeInterior.scale.setScalar(HOME_SCALE);
+    const homeInterior=new THREE.Group(); homeInterior.position.set(heroHomeX,groundY(heroHomeX,heroHomeZ),heroHomeZ); homeInterior.visible=false;homeInterior.scale.set(HOME_SCALE,HOME_SCALE*BUILDING_HEIGHT,HOME_SCALE);
     const floor=box(7.0,.16,5.0,0x4b3424,1); floor.position.y=.50; homeInterior.add(floor);
     const innerBack=box(7.0,2.65,.18,0x3f2b20,1); innerBack.position.set(0,1.8,-2.45); homeInterior.add(innerBack);
     const innerLeft=box(.18,2.65,4.9,0x3f2b20,1); innerLeft.position.set(-3.45,1.8,0); homeInterior.add(innerLeft);
@@ -4516,7 +4592,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         hero.rotation.y=Math.PI;
         cameraDir.current.x=0;cameraDir.current.z=-1;
       }
-      const hy=insideHomeRef.current?groundY(heroHomeX,heroHomeZ)+.58*HOME_SCALE:onRiverBridge(q.x,q.z)?bridgeHeight(q.x,q.z)+.12:groundY(q.x,q.z);
+      const hy=insideHomeRef.current?groundY(heroHomeX,heroHomeZ)+.58*HOME_SCALE*BUILDING_HEIGHT:onRiverBridge(q.x,q.z)?bridgeHeight(q.x,q.z)+.12:groundY(q.x,q.z);
       const moving=!encounterLocked&&l>.05;
       hero.position.set(q.x,hy+.04,q.z);
       // Keep the latest map position independently from the forge. This also
@@ -4720,7 +4796,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
+    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
   },[h.id,skin,weapon,on,eventDone,start.x,start.z,rememberPosition,northBridgeRepaired]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
