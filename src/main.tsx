@@ -4252,7 +4252,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, wh
 
       // The Blender-exported woman is already close to real-world human scale.
       // Keep the legacy Viking at its tuned size.
-      model.scale.setScalar(isAnimatedWoman?2.25:.78);
+      model.scale.setScalar(isAnimatedWoman?2.9:.78);
       model.rotation.y=0;
       model.position.set(0,0,0);
       model.updateMatrixWorld(true);
