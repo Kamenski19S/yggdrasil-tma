@@ -4305,7 +4305,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       const hasNativeClips=skin==="valkyrie"&&gltf.animations?.length>0;
       // Vika is authored at roughly one metre in Blender units; the existing
       // procedural heroes are approximately three metres tall before scaling.
-      model.scale.setScalar(hasNativeClips?2.32:.78);
+      model.scale.setScalar(hasNativeClips?3.944:.78);
       model.rotation.y=0;
       model.position.set(0,0,0);
       model.updateMatrixWorld(true);
