@@ -1808,6 +1808,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       }
       // The northern crossing stays blocked from either bank until its repair quest is complete.
       if(!northBridgeRepaired&&hits(x,z,{kind:"rect",x:NORTH_BRIDGE_X,z:NORTH_BRIDGE_Z,w:BRIDGE_SPAN+.6,d:BRIDGE_WIDTH+.5,rot:0}))return true;
+      // A ward protects the cache itself until the northern bridge is repaired.
+      if(!northBridgeRepaired&&Math.hypot(x+72,z-48)<3.25+HERO_RADIUS)return true;
       // Water can be crossed only on an open bridge deck.
       if(inRiverWater(x,z) && !onRiverBridge(x,z)) return true;
       // Each gate blocks its own opening until its leaves have swung far enough.
@@ -3579,9 +3581,9 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     // Forgotten Cache — ornate cyan/gold fantasy chest GLB.
     // Keeps the original interaction id/location while replacing the old hollow-oak visual.
     // This filename is intentionally stable: replace the GLB to iterate on the chest without touching code.
-    const forgottenCacheAsset='Midgard_Forgotten_Cache_Chest_V3_YUP.glb';
+    const forgottenCacheAsset='Golden_Chest_Light.glb';
     const forgottenCacheRoot=new THREE.Group();
-    forgottenCacheRoot.userData={id:'forestCache',label:'Забытый тайник'};
+    forgottenCacheRoot.userData={id:'forestCache',label:'Золотой сундук'};
     forgottenCacheRoot.position.set(-72,groundY(-72,48),48);
     scene.add(forgottenCacheRoot);
     objects.push(forgottenCacheRoot);
@@ -3591,7 +3593,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       markMeshes(chest);
       chest.traverse((o:any)=>{
         if(!o.isMesh)return;
-        o.castShadow=true;
+        o.castShadow=false;
         o.receiveShadow=true;
         const tune=(m:any)=>{
           if(!m)return m;
@@ -3608,20 +3610,29 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         };
         if(Array.isArray(o.material))o.material=o.material.map(tune);else o.material=tune(o.material);
       });
-      chest.scale.setScalar(.72);
-      chest.rotation.y=2.15;
+      chest.scale.setScalar(1.48);
+      chest.rotation.y=.10;
       chest.position.set(0,0,0);
       chest.updateMatrixWorld(true);
       const bb=new THREE.Box3().setFromObject(chest);
       chest.position.y-=bb.min.y;
       chest.updateMatrixWorld(true);
       forgottenCacheRoot.add(chest);
-      const cacheGlow=new THREE.PointLight(0x38cfee,2.16,6.5,2);
+      const cacheGlow=new THREE.PointLight(0xffc161,1.1,6.5,2);
       cacheGlow.position.set(0,1.15,.45);
       forgottenCacheRoot.add(cacheGlow);
       console.log('[FORGOTTEN CACHE] GLB loaded',forgottenCacheAsset);
     },'FORGOTTEN CACHE');
     addCircleCollider(-72,48,2.15,.08);
+    if(!northBridgeRepaired){
+      const ward=new THREE.Mesh(new THREE.TorusGeometry(3.8,.085,8,64),new THREE.MeshBasicMaterial({color:0xe1af42,transparent:true,opacity:.88}));
+      ward.rotation.x=Math.PI/2;ward.position.set(-72,groundY(-72,48)+.15,48);scene.add(ward);
+      for(let i=0;i<4;i++){
+        const a=i*Math.PI/2;
+        const mark=new THREE.Mesh(new THREE.CylinderGeometry(.11,.16,1.15,7),new THREE.MeshStandardMaterial({color:0x9d7532,emissive:0x9d6216,emissiveIntensity:.6}));
+        mark.position.set(-72+Math.cos(a)*3.8,groundY(-72+Math.cos(a)*3.8,48+Math.sin(a)*3.8)+.55,48+Math.sin(a)*3.8);scene.add(mark);
+      }
+    }
 
     // Right forest expansion: detailed landmark clearings. The goal is a cinematic
     // handcrafted look rather than a ring of identical primitive stones.
@@ -4030,6 +4041,18 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     scene.add(threeThreads);
     objects.push(threeThreads);
     addCircleCollider(threeThreadsX,threeThreadsZ,3.4,.1);
+    const rubyChestX=65,rubyChestZ=-32;
+    loadGlbWithFolderFallback('Ruby_Chest_Light.glb',(gltf:any)=>{
+      if(!glbTreesAlive)return;
+      const chest=gltf.scene;
+      chest.scale.setScalar(1.42);
+      chest.rotation.y=-.25;
+      chest.updateMatrixWorld(true);
+      chest.position.set(rubyChestX,groundY(rubyChestX,rubyChestZ)-new THREE.Box3().setFromObject(chest).min.y,rubyChestZ);
+      addMesh(chest,'nornsChest','Красный сундук Норн');
+      chest.traverse((o:any)=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=true;}});
+    },'NORNS CHEST');
+    addCircleCollider(rubyChestX,rubyChestZ,1.0,.08);
 
     // 2) CIRCLE OF POWER --------------------------------------------------------
     const powerCircle=new THREE.Group();
@@ -4822,7 +4845,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       {id:"forge",label:"Дверь кузницы Вёлунда",x:-10,z:-2.55,r:2.5},
       {id:"mimir",label:"Колодец Мимира",x:1,z:0,r:4.8},{id:"norns",label:"Прядильня норн",x:-52,z:38,r:5.4},
       {id:"rune",label:"Древний камень Феху",x:50,z:60,r:4.5},{id:"port",label:"Речной мост",x:-57,z:-48,r:6},
-      {id:"ashgrove",label:"Роща Ясеня",x:-5,z:75,r:7.5},{id:"threeThreads",label:"Колодец Трёх Норн",x:58,z:-28,r:6.8},{id:"forestCache",label:"Забытый тайник",x:-72,z:48,r:4.2},
+      {id:"ashgrove",label:"Роща Ясеня",x:-5,z:75,r:7.5},{id:"threeThreads",label:"Колодец Трёх Норн",x:58,z:-28,r:6.8},{id:"nornsChest",label:"Красный сундук Норн",x:65,z:-32,r:3.0},{id:"forestCache",label:"Золотой сундук",x:-72,z:48,r:7.0},
       {id:"runefield",label:"Поле Рун",x:18,z:55,r:8.0},{id:"oldfarm",label:"Дверь Старого хутора",x:-64.4,z:10.8,r:3.2},{id:"deer",label:"Поляна Четырёх Оленей",x:43,z:32,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:62,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:68,z:8,r:8.5},{id:"heroHome",label:"Дверь дома героя",x:heroHomeX,z:heroHomeZ+4.7*HOME_SCALE,r:3.2},{id:"deepGrove",label:"Глубокая роща",x:-45,z:75,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:-30,z:15,r:7.5},{id:"powerCircle",label:"Круг Силы — Монолит",x:5,z:-70,r:6.5},{id:"whisperStone",label:"Камень Шёпота",x:-72,z:-48,r:6.5},
       {id:"elder",label:"Старейшина",x:9,z:-8,r:3.2},{id:"blacksmith",label:"Кузнец",x:-6,z:-3,r:3.2},
       {id:"northBridge",label:northBridgeRepaired?"Северный мост":"Северный мост — проход закрыт",x:NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.6,z:NORTH_BRIDGE_Z,r:3.8},
@@ -5132,7 +5155,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
           <span className="map-landmark goal" style={{left:"49%",top:"53%"}}>ᚠ<small>Цель</small></span>
           <span className="map-landmark hero" style={{left:`${((mapHero.x+88)/176)*100}%`,top:`${100-((mapHero.z+89)/178)*100}%`}}>◆<small>Ты здесь</small></span>
         </div>
-        <div className="mid3d-map-goal"><b>Следующая цель: Кузница.</b><br/>Иди к центру деревни. Руна Феху отмечает нужное место огненным сиянием.</div>
+        <div className="mid3d-map-goal"><b>{northBridgeRepaired?'Северный мост открыт':'Путь к золотому сундуку'}</b><br/>{northBridgeRepaired?'Перейди мост и открой золотой сундук напротив него.':'Выбери нить у колодца Норн, открой красный сундук, собери доски и крепления и помоги Бьёрну починить мост.'}</div>
         <button className="mid3d-map-close" onClick={()=>setMapOpen(false)}>Закрыть карту и продолжить путь</button>
       </div>
     </div>}
@@ -5199,7 +5222,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       const villageGate=id==="gate"||id==="gateRear";
       const selectedGateOpen=id==="gateRear"?rearGateOpen:villageGateOpen;
       const whisper=id==="whisperStone";
-      return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{villageGate?(selectedGateOpen?"Створки открыты, тяжёлый засов снят":"Ворота заперты большим деревянным засовом"):home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода"):whisper?(whisperResolved?"Камень помнит завершённое испытание":"Из янтарного света доносится древний вопрос"):"Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else if(id==="gate"||id==="gateRear")gateActionRef.current?.(id);else if(id==="whisperStone"&&!whisperResolved)beginWhisperEncounter();else on(id,{x:state.current.x,z:state.current.z});}}>{villageGate?(selectedGateOpen?"Закрыть ворота и поставить засов":"Снять засов и открыть ворота"):home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):whisper?(whisperResolved?"Прикоснуться к камню":"Слушать шёпот"):"Взаимодействовать"}</button></div>;
+      return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{id==='forestCache'&&!northBridgeRepaired?'Защитное кольцо спадёт после ремонта Северного моста':id==='nornsChest'&&!eventDone?'Сначала выбери нить у колодца Норн':villageGate?(selectedGateOpen?"Створки открыты, тяжёлый засов снят":"Ворота заперты большим деревянным засовом"):home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода"):whisper?(whisperResolved?"Камень помнит завершённое испытание":"Из янтарного света доносится древний вопрос"):"Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else if(id==="gate"||id==="gateRear")gateActionRef.current?.(id);else if(id==="whisperStone"&&!whisperResolved)beginWhisperEncounter();else on(id,{x:state.current.x,z:state.current.z});}}>{id==='forestCache'&&!northBridgeRepaired?'Осмотреть печать':id==='nornsChest'&&!eventDone?'Осмотреть сундук':id==='forestCache'||id==='nornsChest'?'Открыть сундук':villageGate?(selectedGateOpen?"Закрыть ворота и поставить засов":"Снять засов и открыть ворота"):home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):whisper?(whisperResolved?"Прикоснуться к камню":"Слушать шёпот"):"Взаимодействовать"}</button></div>;
     })()}
     {whisperPhase==="closed"&&<><div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" title="Удар оружием" onPointerDown={e=>e.stopPropagation()} onClick={()=>{attackActionRef.current?.();if("vibrate" in navigator)navigator.vibrate(12);}}>⚔</button>
@@ -5373,7 +5396,7 @@ const [roadT, setRoadT] = useState(0.06);
     let dmg = 0; let log = ""; let nhen = hen; let nmen = men; let nshield = shield;
     if (kind === "hit") {
       setCombatFx({kind:"hit",key:Date.now()});
-      dmg = heroDef!.str + forgeLevel("default") + rnd(4);
+      dmg = heroDef!.str + forgeLevel("default") + (save.runes.includes('uruzStrength')?2:0) + rnd(4);
       if(hen>0)nhen=Math.max(0,hen-1);else{dmg=Math.ceil(dmg*.55);log="Силы иссякли — удар слабее. ";}
       if (save.powers.includes("fireOath")) { dmg += 5; setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "fireOath") })); log += "Огненный обет! "; }
       if (heroDef!.id === "berserk" && hhp <= Math.max(heroDef!.hp,hmax) / 2) { dmg *= 2; log += "Медвежья ярость! "; }
@@ -5531,6 +5554,19 @@ const [roadT, setRoadT] = useState(0.06);
         say('Колодец Трёх Норн светится изнутри. Серебряная, золотая и алая нити сходятся над водой — прошлое, настоящее и будущее здесь связаны воедино.');
         return;
       }
+      if(id==="nornsChest"){
+        if(!save.done.includes('forest:choice')){
+          say('Красный сундук ждёт, пока ты выберешь нить у колодца Трёх Норн.');return;
+        }
+        if(save.done.includes('chest:norns')){
+          say('Красный сундук уже открыт. Подсказка Норн: возьми доски на Старом хуторе, крепления у Торвальда и отнеси их плотнику Бьёрну для ремонта Северного моста.');return;
+        }
+        setSave(s=>s.done.includes('chest:norns')?s:{...s,
+          done:[...new Set([...s.done,'chest:norns'])],
+          potions:[...s.potions,'lifeElixir'],runes:[...new Set([...s.runes,'uruzStrength'])]});
+        haptic('success');say('В красном сундуке: Эликсир жизни и руна силы Уруз ᚢ. Норны оставили подсказку: доски лежат на Старом хуторе, крепления — у мастера Торвальда. Отнеси оба предмета плотнику Бьёрну: он откроет Северный мост и путь к золотому сундуку.');
+        return;
+      }
       if (id === "forge") {
         say("Вёлунд открывает дверь кузницы. Огонь горна отзывается на Капли силы.");
         enterForge(position);
@@ -5539,6 +5575,19 @@ const [roadT, setRoadT] = useState(0.06);
       if(id === "blacksmith"){
         say("Вёлунд: «Выбери сталь у двери кузницы. Горн уже разожжён».");
         return;
+      }
+      if(id==='craftsman'&&save.done.includes('chest:norns')&&!save.done.includes('bridge:fittings')){
+        setSave(s=>({...s,done:[...new Set([...s.done,'bridge:fittings'])]}));
+        haptic('success');say('Торвальд вручает железные крепления для Северного моста. Теперь найди доски на Старом хуторе и возвращайся к Бьёрну.');return;
+      }
+      if(id==='carpenter'){
+        if(save.done.includes('bridge:north:repaired')){say('Бьёрн: «Мост крепок. Путь к золотому сундуку открыт».');return;}
+        if(!save.done.includes('chest:norns')){say('Бьёрн: «Сначала спроси совета у Норн и открой красный сундук возле колодца. Там будет подсказка о ремонте моста».');return;}
+        if(!save.done.includes('bridge:boards')||!save.done.includes('bridge:fittings')){
+          say('Бьёрн: «Для ремонта ещё нужны '+(!save.done.includes('bridge:boards')?'доски со Старого хутора':'')+(!save.done.includes('bridge:boards')&&!save.done.includes('bridge:fittings')?' и ':'')+(!save.done.includes('bridge:fittings')?'крепления от Торвальда':'')+'».');return;
+        }
+        setSave(s=>s.done.includes('bridge:north:repaired')?s:{...s,done:[...new Set([...s.done,'bridge:north:repaired'])]});
+        haptic('success');say('Бьёрн укрепил Северный мост. Заграждения сняты, защитное кольцо золотого сундука погасло. Теперь можно открыть сундук напротив моста.');return;
       }
       if (id === "house" || id === "elder") {
         say("Старейшина: «За северной дорогой начинается лес. Но ночью там слышны голоса, которых не знает ни один охотник.»");
@@ -5585,6 +5634,10 @@ const [roadT, setRoadT] = useState(0.06);
         return;
       }
       if (id === "oldfarm") {
+        if(save.done.includes('chest:norns')&&!save.done.includes('bridge:boards')){
+          setSave(s=>({...s,done:[...new Set([...s.done,'bridge:boards'])]}));
+          haptic('success');say('В амбаре Старого хутора найдены крепкие доски для Северного моста. Возьми крепления у Торвальда и отнеси всё плотнику Бьёрну.');return;
+        }
         if (save.done.includes("forest:past")) {
           if (!save.done.includes("forest:past:reward")) {
             setSave(s => ({ ...s, sparks: s.sparks + 20, done: [...new Set([...s.done, "forest:past:reward"])] }));
@@ -5599,11 +5652,15 @@ const [roadT, setRoadT] = useState(0.06);
         return;
       }
       if (id === "forestCache") {
-        if (!save.done.includes("forest:cache")) {
-          setSave(s => ({ ...s, sparks: s.sparks + 18, done: [...new Set([...s.done, "forest:cache"])] }));
-          haptic("success");
-          say("Под плоским камнем спрятан старый охотничий мешок. Внутри руна и 18 ✨. Кто-то оставил это не случайно.");
-        } else say("Тайник пуст. На камне осталась лишь вырезанная руна.");
+        if(!save.done.includes('bridge:north:repaired')){say('Золотой сундук защищён кольцом Норн. Выполни подсказку из красного сундука и помоги Бьёрну починить Северный мост.');return;}
+        if(!save.done.includes('chest:gold')){
+          setSave(s=>s.done.includes('chest:gold')?s:{...s,
+            done:[...new Set([...s.done,'chest:gold'])],sparks:s.sparks+18,
+            runes:[...new Set([...s.runes,'raidoPath','algizGuard'])],
+            potions:[...s.potions,'northernMoss','frostDraught'],
+            ownedWeapons:[...new Set([...s.ownedWeapons,'axe','spear'])]});
+          haptic('success');say('Золотой сундук открыт! Ты получил руны Райдо ᚱ и Альгиз ᛉ, два эликсира — северного мха и ледяной, Северный топор, Копьё и 18 ✨. Всё хранится в Чертоге.');
+        } else say('Золотой сундук уже открыт. Найденные руны, эликсиры и оружие хранятся в Чертоге.');
         return;
       }
       if (id === "forestWhisper") {
@@ -5728,7 +5785,7 @@ const [roadT, setRoadT] = useState(0.06);
       whisperResolved={save.done.includes("whisper:battle")||save.done.includes("whisper:wisdom")}
       whisperStats={{
         maxHp:heroDef.hp+forgeLevel("armor")*3+forgeLevel("helmet")*2,
-        attack:heroDef.str+forgeLevel("default"),
+        attack:heroDef.str+forgeLevel("default")+(save.runes.includes('uruzStrength')?2:0),
         runeAttack:heroDef.en+2,
         defense:Math.floor((forgeLevel("armor")+forgeLevel("helmet"))/2)
       }}
@@ -5969,13 +6026,13 @@ const [roadT, setRoadT] = useState(0.06);
               <div className="hall-slots"><button className="hall-slot on" onClick={()=>say("Надета базовая броня.")}>♜</button><button className="hall-slot on" onClick={()=>say("Экипирован базовый щит.")}>◉</button><button className="hall-slot on" onClick={()=>say("Надеты базовые сапоги.")}>⌁</button></div>
               <span className="hall-count">Базовый набор</span>
             </div>
-            <button className="hall-section" onClick={()=>say(save.potions.length?"Эликсир северного мха готов к будущему бою.":"Эликсиры появятся здесь после первых наград.")}>
+            <button className="hall-section" onClick={()=>say(save.potions.length?"В Чертоге хранятся: "+save.potions.map(id=>({lifeElixir:'Эликсир жизни',northernMoss:'Эликсир северного мха',frostDraught:'Ледяной эликсир'} as Record<string,string>)[id]||id).join(', ')+'.':"Эликсиры появятся здесь после первых наград.")}>
               <span className="hall-icon">🧪</span><h3>Эликсиры</h3>
               <p>Лечение, сила, защита и руническая энергия. Зелья расходуются во время путешествий.</p>
               <div className="hall-slots"><span className="hall-slot"><i className="vial" style={{"--vial":"#d94332"} as React.CSSProperties}/></span><span className="hall-slot"><i className="vial" style={{"--vial":"#359ada"} as React.CSSProperties}/></span><span className="hall-slot"><i className="vial" style={{"--vial":"#57a85a"} as React.CSSProperties}/></span></div>
               <span className="hall-count">{save.potions.length?save.potions.length+" эликсир":"Пока пусто"}</span>
             </button>
-            <button className="hall-section" onClick={()=>say(save.runes.length?"Осколок Кеназ хранится в Чертоге.":"Выбор боевых и путевых рун откроется после первого испытания.")}>
+            <button className="hall-section" onClick={()=>say(save.runes.length?"Найденные руны: "+save.runes.map(id=>({uruzStrength:'Уруз — сила (+2 к удару)',raidoPath:'Райдо — путь',algizGuard:'Альгиз — защита',kenazShard:'Кеназ — огонь'} as Record<string,string>)[id]||id).join(', ')+'.':"Выбор боевых и путевых рун откроется после первого испытания.")}>
               <span className="hall-icon">ᛉ</span><h3>Руны</h3>
               <p>Боевая, защитная и путевая руны. Их силу герой сможет менять перед выходом из Чертога.</p>
               <div className="hall-slots"><span className="hall-slot on">ᚦ</span><span className="hall-slot">ᛉ</span><span className="hall-slot">ᚱ</span></div>
