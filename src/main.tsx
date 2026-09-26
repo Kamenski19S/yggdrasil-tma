@@ -1852,33 +1852,59 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     // Living river: broad low-poly water ribbon with subtle surface displacement.
     const riverPts:{x:number;z:number}[]=[];
     for(let i=0;i<=32;i++) riverPts.push({z:-94+i*6,x:-57+Math.sin(i*.42)*4.2});
-    const riverVerts:number[]=[]; const riverIdx:number[]=[]; const riverHalf=RIVER_HALF;
+    const riverVerts:number[]=[]; const riverUvs:number[]=[]; const riverIdx:number[]=[]; const riverHalf=RIVER_HALF;
     for(let i=0;i<riverPts.length;i++){
       const p=riverPts[i],prev=riverPts[Math.max(0,i-1)],next=riverPts[Math.min(riverPts.length-1,i+1)];
       const dx=next.x-prev.x,dz=next.z-prev.z,len=Math.max(.001,Math.hypot(dx,dz)),nx=-dz/len,nz=dx/len,edge=groundY(p.x,p.z)+.055;
-      for(const side of [-1,1]){const off=riverHalf*side;riverVerts.push(p.x+nx*off,edge+Math.sin(i*1.7+side)*.035,p.z+nz*off);}
+      for(const side of [-1,1]){
+        const off=riverHalf*side;
+        riverVerts.push(p.x+nx*off,edge+Math.sin(i*1.7+side)*.035,p.z+nz*off);
+        riverUvs.push((side+1)/2,(p.z+94)/7.5);
+      }
       if(i<riverPts.length-1){const k=i*2;riverIdx.push(k,k+1,k+2,k+1,k+3,k+2);}
     }
-    const riverGeo=new THREE.BufferGeometry();riverGeo.setAttribute("position",new THREE.Float32BufferAttribute(riverVerts,3));riverGeo.setIndex(riverIdx);riverGeo.computeVertexNormals();
-    const riverMat=new THREE.MeshStandardMaterial({color:0x315f69,roughness:.52,metalness:0,transparent:true,opacity:.9});
+    const riverGeo=new THREE.BufferGeometry();riverGeo.setAttribute("position",new THREE.Float32BufferAttribute(riverVerts,3));riverGeo.setAttribute("uv",new THREE.Float32BufferAttribute(riverUvs,2));riverGeo.setIndex(riverIdx);riverGeo.computeVertexNormals();
+    const riverMat=new THREE.MeshStandardMaterial({color:0xd8f3f4,roughness:.4,metalness:.04,transparent:true,opacity:.94,side:THREE.DoubleSide});
     const river=new THREE.Mesh(riverGeo,riverMat);
     river.receiveShadow=true;scene.add(river);
 
     // Shallow-bank shelves: slightly lighter water near the edges makes the river read as deep in the center.
-    const bankWaterMat=new THREE.MeshStandardMaterial({color:0x4f7880,roughness:.68,metalness:0,transparent:true,opacity:.58,side:THREE.DoubleSide});
+    const bankWaterMat=new THREE.MeshStandardMaterial({color:0xb5e2e9,roughness:.6,metalness:0,transparent:true,opacity:.58,side:THREE.DoubleSide});
     for(const side of [-1,1]){
-      const verts:number[]=[]; const idx:number[]=[]; const shelf=1.18;
+      const verts:number[]=[]; const uvs:number[]=[]; const idx:number[]=[]; const shelf=1.18;
       for(let i=0;i<riverPts.length;i++){
         const p=riverPts[i],prev=riverPts[Math.max(0,i-1)],next=riverPts[Math.min(riverPts.length-1,i+1)];
         const dx=next.x-prev.x,dz=next.z-prev.z,len=Math.max(.001,Math.hypot(dx,dz)),nx=-dz/len,nz=dx/len;
         const inner=riverHalf*side, outer=(riverHalf-shelf)*side;
         verts.push(p.x+nx*inner,groundY(p.x,p.z)+.072,p.z+nz*inner);
         verts.push(p.x+nx*outer,groundY(p.x,p.z)+.078,p.z+nz*outer);
+        uvs.push((side+1)/2,(p.z+94)/7.5,(outer/riverHalf+1)/2,(p.z+94)/7.5);
         if(i<riverPts.length-1){const k=i*2;idx.push(k,k+1,k+2,k+1,k+3,k+2);}
       }
-      const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setIndex(idx);g.computeVertexNormals();
+      const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));g.setIndex(idx);g.computeVertexNormals();
       const m=new THREE.Mesh(g,bankWaterMat);m.receiveShadow=true;scene.add(m);
     }
+
+    const mimirGoldMaterials:THREE.MeshStandardMaterial[]=[];
+    const mimirWaterMaterials:THREE.MeshStandardMaterial[]=[riverMat,bankWaterMat];
+    let mimirGoldTexture:THREE.Texture|null=null;
+    let mimirWaterTexture:THREE.Texture|null=null;
+    new THREE.TextureLoader().load(`${BASE}img/models/T_Mimir_Gold.jpg`,texture=>{
+      if(!glbTreesAlive){texture.dispose();return;}
+      texture.colorSpace=THREE.SRGBColorSpace;
+      texture.wrapS=texture.wrapT=THREE.MirroredRepeatWrapping;
+      texture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+      mimirGoldTexture=texture;
+      mimirGoldMaterials.forEach(m=>{m.map=texture;m.needsUpdate=true;});
+    },undefined,error=>console.warn("Mimir gold texture unavailable",error));
+    new THREE.TextureLoader().load(`${BASE}img/models/T_Mimir_Water.jpg`,texture=>{
+      if(!glbTreesAlive){texture.dispose();return;}
+      texture.colorSpace=THREE.SRGBColorSpace;
+      texture.wrapS=texture.wrapT=THREE.MirroredRepeatWrapping;
+      texture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+      mimirWaterTexture=texture;
+      mimirWaterMaterials.forEach(m=>{m.map=texture;m.needsUpdate=true;});
+    },undefined,error=>console.warn("Mimir water texture unavailable",error));
 
     // Soft current streaks: low-cost elongated planes that drift along the river direction.
     const currentStreaks:Array<{mesh:THREE.Mesh;phase:number;speed:number}>=[];
@@ -1968,7 +1994,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const villageHomes=[
       {asset:vikingHouseAsset,id:"warriorHouse",label:"Дом дружинника",x:-21,z:-21,rot:0,sx:1.02,sy:1.02,sz:.78,w:9,d:7},
       {asset:vikingHouseAsset,id:"fisher2",label:"Дом рыбака Халли",x:-21,z:8,rot:Math.PI/2,sx:.86,sy:.90,sz:.58,w:7.8,d:5.8},
-      {asset:vikingHouseAsset,id:"carpenter",label:"Дом плотника Бьёрна",x:-20,z:22,rot:0,sx:.82,sy:.86,sz:.56,w:7.8,d:5.8},
+      {asset:vikingHouseAsset,id:"carpenter",label:"Дом плотника Бьёрна",x:-20,z:22,rot:Math.PI/2,sx:.82,sy:.86,sz:.56,w:7.8,d:5.8},
       {asset:vikingHouseAsset,id:"hunter2",label:"Дом охотницы Рандви",x:22,z:20,rot:0,sx:.88,sy:.92,sz:.58,w:7.8,d:5.8},
       {asset:vikingHouseAsset,id:"family",label:"Дом семьи Торстейна",x:9,z:16,rot:0,sx:.84,sy:.88,sz:.57,w:7.8,d:5.8},
       {asset:elderHouseAsset,id:"house",label:"Дом старейшины Хальвдана",x:16,z:-21,rot:0,sx:1.02,sy:.82,sz:.90,w:10.85,d:7.85},
@@ -2322,12 +2348,9 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     forgeLight.position.set(-10,groundY(-10,-5)+1.75,-3.8);
     scene.add(forgeLight);
 
-    // Central square: stone edging, market tables, banners and a large bonfire.
+    // Central square: stone edging around Mimir's well.
     const square=new THREE.Mesh(new THREE.CircleGeometry(8.5,32),new THREE.MeshStandardMaterial({color:0x6b5a47,roughness:1}));square.rotation.x=-Math.PI/2;square.position.set(1,groundY(1,0)+.05,0);square.receiveShadow=true;scene.add(square);
     for(let i=0;i<18;i++){const a=i/18*Math.PI*2;const s=new THREE.Mesh(new THREE.DodecahedronGeometry(.38,1),mat(0x6b6b63,1));s.position.set(1+Math.cos(a)*8.8,groundY(1+Math.cos(a)*8.8,Math.sin(a)*8.8)+.22,Math.sin(a)*8.8);scene.add(s);}
-    const table=(x:number,z:number)=>{const g=new THREE.Group();const top=box(2.8,.22,1.0,0x684329,1);top.position.y=1.05;g.add(top);for(const px of [-1.05,1.05]){const l=box(.16,1,.16,0x3b291d,1);l.position.set(px,.5,-.32);g.add(l);const r=l.clone();r.position.z=.32;g.add(r);}g.position.set(x,groundY(x,z),z);scene.add(g);};
-    table(-4,2);table(7,3);
-
     const fire=(x:number,z:number,scale:number)=>{const g=new THREE.Group();g.position.set(x,groundY(x,z),z);for(let i=0;i<7;i++){const a=i/7*Math.PI*2;const s=new THREE.Mesh(new THREE.DodecahedronGeometry(.32*scale,1),mat(0x5d5a52,1));s.position.set(Math.cos(a)*.7*scale,.25*scale,Math.sin(a)*.7*scale);g.add(s);}const log1=box(.2*scale,.2*scale,1.5*scale,0x4a2d1b,1),log2=log1.clone();log1.rotation.y=.55;log2.rotation.y=-.55;log1.position.y=log2.position.y=.38*scale;g.add(log1,log2);const fm=new THREE.MeshStandardMaterial({color:0xff8128,emissive:0xff4d0a,emissiveIntensity:4});const flame=new THREE.Mesh(new THREE.ConeGeometry(.5*scale,1.35*scale,8),fm);flame.position.y=1.02*scale;g.add(flame);scene.add(g);const light=new THREE.PointLight(0xff8a3c,2.4*scale,12*scale,2);light.position.set(x,groundY(x,z)+2*scale,z);scene.add(light);fires.push({light,flame,phase:midHash(x,z)*8});return g;};
     // Village center: Mimir's well replaces the bonfire; the existing 18-stone circle stays.
     const villageMimir=new THREE.Group();
@@ -2336,8 +2359,11 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
 
     const villageWellWater=new THREE.Mesh(
       new THREE.CircleGeometry(1.18,32),
-      new THREE.MeshStandardMaterial({color:0x174b58,emissive:0x0c3d48,emissiveIntensity:1.9,roughness:.16,metalness:.04})
+      new THREE.MeshStandardMaterial({color:0xcdefff,emissive:0x082128,emissiveIntensity:.15,roughness:.23,metalness:.06})
     );
+    const fallbackWellWaterMaterial=villageWellWater.material as THREE.MeshStandardMaterial;
+    mimirWaterMaterials.push(fallbackWellWaterMaterial);
+    if(mimirWaterTexture){fallbackWellWaterMaterial.map=mimirWaterTexture;fallbackWellWaterMaterial.needsUpdate=true;}
     villageWellWater.rotation.x=-Math.PI/2; villageWellWater.position.y=.5; villageMimir.add(villageWellWater);
 
     for(let i=0;i<3;i++){
@@ -2379,10 +2405,42 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     loadGlbWithFolderFallback(mimirWellAsset,(gltf:any)=>{
       if(!glbTreesAlive)return;
       const model=gltf.scene.clone(true);markMeshes(model);
-      model.traverse((o:any)=>{if(!o.isMesh)return;o.visible=true;o.castShadow=true;o.receiveShadow=true;o.frustumCulled=true;});
       model.scale.setScalar(.76);
       model.rotation.set(0,0,0);
       model.position.set(1,groundY(1,0),0);
+      model.updateWorldMatrix(true,true);
+      const gold=new THREE.MeshStandardMaterial({color:0xf7e5b7,roughness:.52,metalness:.35,side:THREE.DoubleSide});
+      const water=new THREE.MeshStandardMaterial({color:0xcdefff,roughness:.23,metalness:.06,transparent:true,opacity:.94,side:THREE.DoubleSide});
+      mimirGoldMaterials.push(gold);mimirWaterMaterials.push(water);
+      if(mimirGoldTexture)gold.map=mimirGoldTexture;
+      if(mimirWaterTexture)water.map=mimirWaterTexture;
+      model.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        o.visible=true;o.castShadow=true;o.receiveShadow=true;o.frustumCulled=true;
+        const name=String(o.name);
+        const isWater=/^Mimir_(Pool|Waterfall|Stream)$/.test(name);
+        const isGold=/^Mimir_(Base|InnerFloor)$/.test(name)||/^RingStone_/.test(name);
+        if(!isWater&&!isGold)return;
+        // The GLB has positions but no UVs. Project each triangle along its
+        // dominant face so the supplied photographs appear on every surface.
+        const geometry=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();
+        const pos=geometry.getAttribute("position");
+        const uvs=new Float32Array(pos.count*2);
+        const pts=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()];
+        const a=new THREE.Vector3(),b=new THREE.Vector3(),normal=new THREE.Vector3();
+        for(let i=0;i<pos.count;i+=3){
+          for(let k=0;k<3;k++)pts[k].fromBufferAttribute(pos,i+k).applyMatrix4(o.matrixWorld);
+          normal.crossVectors(a.subVectors(pts[1],pts[0]),b.subVectors(pts[2],pts[0])).normalize();
+          const top=Math.abs(normal.y)>.5,side=Math.abs(normal.x)>Math.abs(normal.z);
+          for(let k=0;k<3;k++){
+            const p=pts[k];uvs[(i+k)*2]=(top?p.x:side?p.z:p.x)/2.4;
+            uvs[(i+k)*2+1]=(top?p.z:p.y)/2.4;
+          }
+        }
+        geometry.setAttribute("uv",new THREE.BufferAttribute(uvs,2));
+        o.geometry=geometry;o.material=isWater?water:gold;
+        if(isWater){o.castShadow=false;o.receiveShadow=false;}
+      });
       model.userData={id:"mimir",label:"Колодец Мимира"};
       villageMimir.visible=false;
       addMesh(model,"mimir","Колодец Мимира");objects.push(model);
@@ -2415,12 +2473,6 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       for(const px of [-1.15,1.15])for(const pz of [-.55,.55]){const p=box(.16,1.15,.16,0x432b1e,1);p.position.set(px,.55,pz);g.add(p);}
       for(const px of [-1.15,1.15]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,.18,14),mat(0x292622,1));w.rotation.z=Math.PI/2;w.position.set(px,.52,-.92);g.add(w);}
       const shaft=box(.16,.16,2.4,0x49301f,1);shaft.rotation.x=Math.PI/2;shaft.position.set(0,.72,-2.0);g.add(shaft);addMesh(g);
-    };
-    const bench=(x:number,z:number,rot=0)=>{
-      const g=new THREE.Group();g.position.set(x,groundY(x,z),z);g.rotation.y=rot;
-      const top=box(2.2,.16,.5,0x704a2d,1);top.position.y=.85;g.add(top);
-      for(const px of [-.78,.78]){const l=box(.12,.8,.12,0x3f2a1d,1);l.position.set(px,.4,0);g.add(l);}
-      addMesh(g);
     };
     const wellMarker=(x:number,z:number)=>{
       const g=new THREE.Group();g.position.set(x,groundY(x,z),z);
@@ -2476,17 +2528,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
 
     // Legacy procedural fisher storage removed; it duplicated the newer village buildings.
     for(const p0 of [[-25,33,1.0],[-14,37,.85],[-25,37,.8],[24,32,.9],[24,38,.72],[31,5,.9]] as Array<[number,number,number]>) hay(p0[0],p0[1],p0[2]);
-    cart(-12,31,.18); cart(27,-12,-.55); bench(-12,19,.18); bench(25,29,-.2);
+    cart(-12,31,.18); cart(27,-12,-.55);
     // A second line of modest homes is now supplied by Viking GLB clones above.
-    // Small market corner near the square.
-    const stall=(x:number,z:number,rot:number)=>{
-      const g=new THREE.Group();g.position.set(x,groundY(x,z),z);g.rotation.y=rot;
-      const top=box(3.0,.18,1.25,0x70462a,1);top.position.y=1.45;g.add(top);
-      for(const px of [-1.25,1.25])for(const pz of [-.48,.48]){const p=box(.13,1.45,.13,0x412b1d,1);p.position.set(px,.72,pz);g.add(p);}
-      // Triangular canopy removed; leave only the low market table/posts.
-      addMesh(g);
-    };
-    stall(-5,-7,.12);stall(8,-5,-.18);stall(6,7,.5);
     // Hearths, wood piles and small objects around homes.
     // Firewood piles are disabled completely.
     // No stacked logs are created anywhere near houses or doorways.
@@ -4780,6 +4823,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       moteMat.opacity=.19+.07*(.5+.5*Math.sin(now*.00055));
 
       ripples.forEach((r)=>{const pulse=.72+.28*Math.sin(now*.0016+r.phase);r.mesh.scale.set(pulse,pulse*.42,pulse);const m=r.mesh.material as THREE.MeshBasicMaterial;m.opacity=.055+.055*(.5+.5*Math.sin(now*.0016+r.phase));});
+      if(mimirWaterTexture)mimirWaterTexture.offset.y=(now*.000006)%2;
       currentStreaks.forEach((r)=>{const drift=Math.sin(now*.00055*r.speed+r.phase)*.9;r.mesh.position.y=groundY(r.mesh.position.x,r.mesh.position.z)+.095+drift*.008;const m=r.mesh.material as THREE.MeshBasicMaterial;m.opacity=.045+.045*(.5+.5*Math.sin(now*.0011*r.speed+r.phase));});
 
       fires.forEach(f=>{f.light.intensity=2.0+Math.sin(now*.012+f.phase)*.5;f.flame.scale.y=.9+Math.sin(now*.009+f.phase)*.12;});
@@ -4827,7 +4871,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
+    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
   },[h.id,skin,weapon,on,eventDone,start.x,start.z,rememberPosition,northBridgeRepaired]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
