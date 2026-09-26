@@ -2537,8 +2537,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       x:number;z:number;radius:number;speed:number;phase:number;groundOffset:number;
     }>=[];
     const animalPlacements=[
-      {asset:'Cow.glb',label:'Корова',x:14,z:41,height:1.72,radius:0,speed:0,phase:0,pose:'Eating'},
-      {asset:'Horse.glb',label:'Лошадь у сарая',x:21,z:41,height:2.28,radius:0,speed:0,phase:1,pose:'Idle'},
+      {asset:'Cow.glb',label:'Корова',x:10,z:32,height:1.72,radius:0,speed:0,phase:0,pose:'Eating'},
+      {asset:'Horse.glb',label:'Лошадь у сарая',x:25,z:32,height:2.28,radius:0,speed:0,phase:1,pose:'Idle'},
       {asset:'Horse_White.glb',label:'Лошадь на лугу',x:34,z:45,height:2.25,radius:4.2,speed:.25,phase:1.2,pose:'Walk'},
       {asset:'Wolf.glb',label:'Волк',x:72,z:-13,height:1.12,radius:3.2,speed:.35,phase:2.1,pose:'Walk'},
       {asset:'Fox.glb',label:'Лисица',x:70,z:43,height:.82,radius:2.8,speed:.30,phase:.4,pose:'Walk'}
@@ -2573,7 +2573,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       const root=gltf.scene;
       const size=new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
       root.scale.setScalar(6.8/Math.max(.01,size.z));
-      const z=-28,x=riverCenterX(z);
+      const z=-40,x=riverCenterX(z);
       root.rotation.y=Math.atan2(riverCenterX(z+2)-riverCenterX(z-2),4);
       root.updateWorldMatrix(true,true);
       const bottom=new THREE.Box3().setFromObject(root).min.y;
@@ -5036,6 +5036,9 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
             <circle cx="49" cy="53" r="13" fill="none" stroke="#a58a56" strokeWidth=".8" opacity=".7"/>
           </svg>
           <span className="map-landmark" style={{left:"49%",top:"53%"}}>⌂<small>Кузница</small></span>
+          <span className="map-landmark" style={{left:"56%",top:"32%"}}>🐄<small>Сарай</small></span>
+          <span className="map-landmark" style={{left:"69%",top:"25%"}}>🐎<small>Луг</small></span>
+          <span className="map-landmark" style={{left:"18%",top:"68%"}}>⛵<small>Лодка</small></span>
           <span className="map-landmark" style={{left:"51%",top:"50%"}}>◉<small>Мимир</small></span>
           <span className="map-landmark" style={{left:"18%",top:"77%"}}>═<small>Речной мост</small></span>
           <span className="map-landmark" style={{left:"16%",top:"21%",color:northBridgeRepaired?"#456249":"#a33b1f"}}>═<small>{northBridgeRepaired?"Северный мост":"Мост закрыт"}</small></span>
