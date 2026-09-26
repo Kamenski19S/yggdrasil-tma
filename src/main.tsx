@@ -2535,7 +2535,14 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       let source=animalSources.get(asset);
       if(!source){
         source=new Promise((resolve,reject)=>loadGlbWithFolderFallback(asset,resolve,asset,()=>reject(new Error(`Failed to load ${asset}`))))
-          .then((gltf:any)=>{prepareAnimalFur(asset,gltf.scene);return gltf;});
+          .then((gltf:any)=>{
+            prepareAnimalFur(asset,gltf.scene);
+            // Prime the source skinned-mesh bounds before SkeletonUtils.clone.
+            // Otherwise the clone's first bounding-box calculation includes
+            // the FBX armature's 100x scale twice and shrinks every animal.
+            new THREE.Box3().setFromObject(gltf.scene);
+            return gltf;
+          });
         animalSources.set(asset,source);
       }
       return source;
