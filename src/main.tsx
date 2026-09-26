@@ -1763,6 +1763,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const fires: Array<{light:THREE.PointLight; flame:THREE.Object3D; phase:number}> = [];
     const npcs: THREE.Object3D[] = [];
     const wildlife: Array<{g:THREE.Object3D; x:number; z:number; r:number; speed:number; phase:number; kind:string}> = [];
+    const displayChests:THREE.Object3D[]=[];
 
     // Collision layer: separate from visual meshes so future realistic assets can
     // replace the current models without changing player movement.
@@ -3587,6 +3588,9 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     forgottenCacheRoot.position.set(-72,groundY(-72,48),48);
     scene.add(forgottenCacheRoot);
     objects.push(forgottenCacheRoot);
+    displayChests.push(forgottenCacheRoot);
+    const goldGroundShadow=new THREE.Mesh(new THREE.CircleGeometry(1.38,32),new THREE.MeshBasicMaterial({color:0x17110b,transparent:true,opacity:.27,depthWrite:false}));
+    goldGroundShadow.rotation.x=-Math.PI/2;goldGroundShadow.position.set(-72,groundY(-72,48)+.04,48);scene.add(goldGroundShadow);
 
     loadGlbWithFolderFallback(forgottenCacheAsset,(gltf:any)=>{
       const chest=gltf.scene;
@@ -3611,7 +3615,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         if(Array.isArray(o.material))o.material=o.material.map(tune);else o.material=tune(o.material);
       });
       chest.scale.setScalar(1.48);
-      chest.rotation.y=.10;
+      chest.rotation.y=0;
       chest.position.set(0,0,0);
       chest.updateMatrixWorld(true);
       const bb=new THREE.Box3().setFromObject(chest);
@@ -4046,12 +4050,15 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       if(!glbTreesAlive)return;
       const chest=gltf.scene;
       chest.scale.setScalar(1.42);
-      chest.rotation.y=-.25;
+      chest.rotation.y=0;
       chest.updateMatrixWorld(true);
       chest.position.set(rubyChestX,groundY(rubyChestX,rubyChestZ)-new THREE.Box3().setFromObject(chest).min.y,rubyChestZ);
       addMesh(chest,'nornsChest','Красный сундук Норн');
       chest.traverse((o:any)=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=true;}});
+      displayChests.push(chest);
     },'NORNS CHEST');
+    const rubyGroundShadow=new THREE.Mesh(new THREE.CircleGeometry(1.33,32),new THREE.MeshBasicMaterial({color:0x180c10,transparent:true,opacity:.25,depthWrite:false}));
+    rubyGroundShadow.rotation.x=-Math.PI/2;rubyGroundShadow.position.set(rubyChestX,groundY(rubyChestX,rubyChestZ)+.04,rubyChestZ);scene.add(rubyGroundShadow);
     addCircleCollider(rubyChestX,rubyChestZ,1.0,.08);
 
     // 2) CIRCLE OF POWER --------------------------------------------------------
@@ -5021,6 +5028,9 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
           ? new THREE.Vector3(q.x-cd.x*1.0,hy+3.65,q.z-cd.z*1.0)
           : new THREE.Vector3(q.x-cd.x*2.0,hy+7.2,q.z-cd.z*2.0+11.8);
       camera.position.lerp(target,battleView ? .075 : insideHomeRef.current ? .09 : .055);
+      for(const chest of displayChests){
+        chest.rotation.y=Math.atan2(camera.position.x-chest.position.x,camera.position.z-chest.position.z);
+      }
       if(battleView)camera.lookAt(whisperX,groundY(whisperX,whisperZ)+1.7,whisperZ+4.5);
       else camera.lookAt(q.x+(insideHomeRef.current?cd.x*.9:cd.x*1.9),hy+(insideHomeRef.current?1.25:1.2),q.z+(insideHomeRef.current?cd.z*.9:cd.z*1.9));
       let found="",foundId="";
