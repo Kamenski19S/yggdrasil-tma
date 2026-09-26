@@ -451,14 +451,14 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .forge-head{position:relative;flex:0 0 auto;min-height:166px;overflow:hidden;padding:14px 16px;border-radius:18px;border:1px solid #9a5a27;background:linear-gradient(145deg,rgba(82,42,19,.95),rgba(17,15,12,.96));box-shadow:inset 0 0 28px rgba(255,107,31,.13),0 8px 20px rgba(0,0,0,.35);text-align:center}.forge-head:before{content:"ᚲ";position:absolute;right:-3px;top:-22px;font-size:105px;color:rgba(255,146,53,.07);transform:rotate(10deg)}
 .forge-title{color:#ffc66c;font-size:18px;font-weight:900;letter-spacing:.7px;margin-top:1px}.forge-master{color:#d9c5a6;font-size:10px;line-height:1.35;margin:4px auto 8px;max-width:310px}.forge-advice{position:relative;margin:0 auto 9px;padding:7px 10px;max-width:310px;border-radius:10px;background:rgba(255,232,176,.09);border:1px solid rgba(255,199,92,.30);color:#ffe3a6;font-size:9px;line-height:1.35}.forge-wallet{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:11px;background:rgba(4,7,5,.72);border:1px solid rgba(255,196,94,.34);font-size:11px;color:#ffe0a0}.forge-wallet b{color:#ffb34d;font-size:13px}
 .forge-free{margin:10px 0 5px;padding:7px 9px;border-radius:10px;background:rgba(255,224,132,.09);border:1px dashed rgba(255,215,106,.42);color:#e9d4a4;font-size:9px;line-height:1.35}.forge-free.ready{color:#fff0b2;box-shadow:inset 0 0 13px rgba(255,174,57,.1)}
-.forge-wall{position:relative;overflow:hidden;width:100%;aspect-ratio:4/5.2;margin:10px 0 5px;border:7px ridge #76502b;border-radius:13px;background:repeating-linear-gradient(0deg,#35251a 0 10px,#432e1c 11px 64px,#251b14 65px 68px);box-shadow:inset 0 0 32px #100c0a,0 7px 18px #0008}
+.forge-wall{position:relative;flex:0 0 auto;overflow:hidden;width:100%;aspect-ratio:5/4.5;margin:6px 0 4px;border:5px ridge #76502b;border-radius:13px;background:repeating-linear-gradient(0deg,#35251a 0 10px,#432e1c 11px 64px,#251b14 65px 68px);box-shadow:inset 0 0 32px #100c0a,0 7px 18px #0008}
 .forge-wall canvas{display:block;width:100%;height:100%}
-.forge-wall-labels{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(5,1fr);pointer-events:none}
-.forge-wall-label{display:flex;align-items:flex-end;justify-content:center;padding:0 1px 3px;color:#ffe6ad;font-size:7px;font-weight:800;text-align:center;text-shadow:0 1px 3px #000,0 0 6px #000;line-height:1.1}
+.forge-wall-labels{position:absolute;inset:0;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(4,1fr);pointer-events:none}
+.forge-wall-label{display:flex;align-items:flex-end;justify-content:center;padding:0 1px 2px;border:1px solid #b9873c66;background:linear-gradient(180deg,transparent 58%,#21170eca);color:#ffe6ad;font-size:6px;font-weight:800;text-align:center;text-shadow:0 1px 3px #000,0 0 6px #000;line-height:1.1}
 .forge-wall-label.owned{color:#b8f0b4}
 .forge-wall-note{font-size:10px;line-height:1.4;color:#e5cdaa;margin:5px 2px 9px}
 .forge-group-title{display:flex;align-items:center;gap:7px;margin:15px 2px 7px;color:#eacb91;font-size:11px;font-weight:900;letter-spacing:.8px;text-transform:uppercase}.forge-group-title:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(226,165,80,.42),transparent)}
-.forge-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.forge-item{position:relative;min-height:88px;padding:7px 4px 6px;border-radius:12px;border:1px solid #9c7535;background:linear-gradient(145deg,#6f4b1d,#271b0e 56%,#11100d);color:#fff0c5;box-shadow:inset 0 0 13px rgba(255,207,91,.09),0 4px 9px rgba(0,0,0,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;touch-action:manipulation}.forge-item:active{transform:scale(.96);filter:brightness(1.18)}.forge-item .fi-icon{font-size:23px;line-height:1;filter:drop-shadow(0 0 6px rgba(255,188,72,.42))}.forge-item .fi-name{font-size:8px;font-weight:800;line-height:1.12}.forge-item .fi-level{font-size:7px;color:#f3cb78}.forge-item .fi-cost{margin-top:1px;padding:2px 5px;border-radius:6px;background:rgba(7,7,5,.56);font-size:7px;color:#ffbd58}.forge-item.free{border-color:#ffd76a;box-shadow:inset 0 0 15px rgba(255,213,90,.16),0 0 9px rgba(255,166,47,.18)}.forge-item.selected{border-color:#ffe18a;box-shadow:inset 0 0 18px rgba(255,220,119,.2),0 0 14px rgba(255,135,37,.35)}.forge-item.locked{filter:saturate(.25);opacity:.56}.forge-item.locked .fi-cost{color:#9e9582}.forge-item.maxed{border-color:#9cdaae;background:linear-gradient(145deg,#37583f,#15241a 60%,#0b100c)}
+.forge-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}.forge-item{position:relative;min-height:49px;padding:3px 2px;border-radius:8px;border:1px solid #9c7535;background:linear-gradient(145deg,#6f4b1d,#271b0e 56%,#11100d);color:#fff0c5;box-shadow:inset 0 0 9px rgba(255,207,91,.09),0 2px 5px rgba(0,0,0,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;touch-action:manipulation}.forge-item:active{transform:scale(.96);filter:brightness(1.18)}.forge-item .fi-icon{font-size:16px;line-height:1;filter:drop-shadow(0 0 6px rgba(255,188,72,.42))}.forge-item .fi-name{font-size:7px;font-weight:800;line-height:1.12}.forge-item .fi-level{font-size:6px;color:#f3cb78}.forge-item .fi-cost{padding:1px 3px;border-radius:5px;background:rgba(7,7,5,.56);font-size:6px;color:#ffbd58}.forge-item.free{border-color:#ffd76a;box-shadow:inset 0 0 10px rgba(255,213,90,.16),0 0 6px rgba(255,166,47,.18)}.forge-item.selected{border-color:#ffe18a;box-shadow:inset 0 0 10px rgba(255,220,119,.2),0 0 8px rgba(255,135,37,.35)}.forge-item.locked{filter:saturate(.25);opacity:.56}.forge-item.locked .fi-cost{color:#9e9582}.forge-item.maxed{border-color:#9cdaae;background:linear-gradient(145deg,#37583f,#15241a 60%,#0b100c)}
 .forge-note{margin:14px 0 6px;padding:10px 12px;border-radius:12px;border:1px solid rgba(213,155,75,.25);background:rgba(5,7,5,.62);font-size:9px;line-height:1.45;color:#bba98e}.forge-note b{color:#f1c979}.forge-exit{width:100%;margin-top:8px;padding:12px;border-radius:12px;border:1px solid #ff765a;background:radial-gradient(circle at 50% 0,rgba(255,201,96,.42),transparent 42%),linear-gradient(135deg,#b31f27,#5d0711 64%,#260207);color:#fff0db;font-size:11px;font-weight:900;box-shadow:inset 0 0 18px rgba(255,133,48,.23),0 0 14px rgba(198,28,27,.28);text-shadow:0 1px 4px #350006}.forge-exit:active{transform:scale(.98);filter:brightness(1.12)}
 .forge-transition{position:fixed;inset:0;z-index:80;background:radial-gradient(circle,rgba(255,151,46,.32),rgba(5,5,4,.94) 58%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#ffd47b;pointer-events:all}.forge-transition b{display:flex;align-items:center;justify-content:center;width:104px;height:104px;border-radius:50%;border:2px solid rgba(255,198,89,.72);background:radial-gradient(circle,rgba(255,178,56,.3),rgba(68,29,9,.42) 55%,transparent 57%);font-size:54px;box-shadow:0 0 26px rgba(255,116,25,.65),inset 0 0 25px rgba(255,188,77,.35);animation:forgePortal .72s ease-out}.forge-transition span{font-size:10px;letter-spacing:1.3px;text-transform:uppercase;text-shadow:0 2px 8px #000}
 `;
@@ -4701,11 +4701,11 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
 
       hero.add(model);
 
-      // Vika's animation moves her left hand, but her source GLB has no sword.
+      // Vika's animation moves her right hand, but her source GLB has no sword.
       // Attach the existing lightweight sword to the animated hand bone.
       if(skin==="valkyrie"){
         // GLTFLoader strips the colon from Mixamo bone names while binding animations.
-        const hand=model.getObjectByName("mixamorigLeftHand") || model.getObjectByName("mixamorig:LeftHand") || model.getObjectByName("LeftHand");
+        const hand=model.getObjectByName("mixamorigRightHand") || model.getObjectByName("mixamorig:RightHand") || model.getObjectByName("RightHand");
         if(hand)loadGlbWithFolderFallback('Sword.glb',(swordGlb:any)=>{
           if(!glbTreesAlive)return;
           const blade=swordGlb.scene;
@@ -5250,7 +5250,7 @@ function ForgeWeaponWall({owned}:{owned:string[]}) {
     const scene=new THREE.Scene();
     scene.add(new THREE.HemisphereLight(0xffe8c5,0x6c584c,2.8));
     const lamp=new THREE.DirectionalLight(0xffbd74,2.2);lamp.position.set(-3,7,8);scene.add(lamp);
-    const camera=new THREE.OrthographicCamera(-4.5,4.5,5.85,-5.85,.1,100);
+    const camera=new THREE.OrthographicCamera(-5.5,5.5,4.7,-4.7,.1,100);
     camera.position.set(0,0,22);camera.lookAt(0,0,0);
     const loader=new GLTFLoader();
     let active=true;
@@ -5270,8 +5270,8 @@ function ForgeWeaponWall({owned}:{owned:string[]}) {
         const center=box.getCenter(new THREE.Vector3());
         item.position.set(-center.x,-center.y,-center.z);
         const mount=new THREE.Group();mount.add(item);
-        mount.scale.setScalar(1.55/span);
-        mount.position.set((index%4-1.5)*2.23,(2-Math.floor(index/4))*2.28+.22,0);
+        mount.scale.setScalar(1.48/span);
+        mount.position.set((index%5-2)*2.17,(1.5-Math.floor(index/5))*2.28+.22,0);
         scene.add(mount);
         renderer.render(scene,camera);
       }).catch(error=>console.warn('Forge display model unavailable',asset,error));
