@@ -11,6 +11,62 @@ const tg: any = (window as any).Telegram?.WebApp;
 const BASE: string = (import.meta as any).env?.BASE_URL || "/";
 const GLB_CACHE_NAME = "yggdrasil-glb-v1";
 const glbRequests = new Map<string, Promise<ArrayBuffer>>();
+const STEEL_WEAPONS = new Set(['Sword.glb','Sword_2.glb','Sword_Big.glb','Axe.glb','Axe_Small.glb','Axe_Double.glb','Spear.glb','Hammer_Small.glb','Hammer_Double.glb']);
+let steelBladeTexture:THREE.Texture|null=null;
+
+function textureSteelOnWeapon(root:THREE.Object3D,asset:string){
+  if(!STEEL_WEAPONS.has(asset))return;
+  if(!steelBladeTexture){
+    steelBladeTexture=new THREE.TextureLoader().load(`${BASE}img/models/Steel_Brushed_Blade.jpg`);
+    steelBladeTexture.colorSpace=THREE.SRGBColorSpace;
+    steelBladeTexture.anisotropy=4;
+  }
+  const meshes:THREE.Mesh[]=[];
+  root.traverse(o=>{if((o as THREE.Mesh).isMesh)meshes.push(o as THREE.Mesh);});
+  for(const mesh of meshes){
+    const source=mesh.geometry.index?mesh.geometry.toNonIndexed():mesh.geometry;
+    const positions=source.getAttribute('position'),colors=source.getAttribute('color'),normals=source.getAttribute('normal');
+    if(!positions||!colors||!normals||Array.isArray(mesh.material))continue;
+    const wood={pos:[] as number[],normal:[] as number[],color:[] as number[]};
+    const steel={pos:[] as number[],normal:[] as number[],color:[] as number[],uv:[] as number[]};
+    source.computeBoundingBox();
+    const bounds=source.boundingBox!;
+    for(let i=0;i<positions.count;i+=3){
+      let metal=0;
+      for(let j=i;j<i+3;j++)if(colors.getZ(j)>colors.getX(j)*1.03&&colors.getX(j)>.085)metal++;
+      const target=metal>=2?steel:wood;
+      for(let j=i;j<i+3;j++){
+        target.pos.push(positions.getX(j),positions.getY(j),positions.getZ(j));
+        target.normal.push(normals.getX(j),normals.getY(j),normals.getZ(j));
+        if(target===steel){
+          const shade=colors.getX(j);
+          target.color.push(.58+shade,.60+shade,.64+shade);
+          steel.uv.push((positions.getZ(j)-bounds.min.z)/Math.max(.001,bounds.max.z-bounds.min.z),(positions.getX(j)-bounds.min.x)/Math.max(.001,bounds.max.x-bounds.min.x));
+        }else target.color.push(colors.getX(j),colors.getY(j),colors.getZ(j));
+      }
+    }
+    if(!steel.pos.length)continue;
+    const makeGeometry=(data:typeof wood,uv?:number[])=>{
+      const geometry=new THREE.BufferGeometry();
+      geometry.setAttribute('position',new THREE.Float32BufferAttribute(data.pos,3));
+      geometry.setAttribute('normal',new THREE.Float32BufferAttribute(data.normal,3));
+      geometry.setAttribute('color',new THREE.Float32BufferAttribute(data.color,3));
+      if(uv)geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+      return geometry;
+    };
+    mesh.geometry=makeGeometry(wood);
+    const steelMaterial=(mesh.material as THREE.MeshStandardMaterial).clone();
+    steelMaterial.map=steelBladeTexture;
+    steelMaterial.metalness=.55;
+    steelMaterial.roughness=.48;
+    steelMaterial.vertexColors=true;
+    steelMaterial.needsUpdate=true;
+    const blade=new THREE.Mesh(makeGeometry(steel,steel.uv),steelMaterial);
+    blade.castShadow=mesh.castShadow;
+    blade.receiveShadow=mesh.receiveShadow;
+    mesh.add(blade);
+  }
+}
 
 async function cachedGlbBuffer(url:string):Promise<ArrayBuffer>{
   const absolute=new URL(url,window.location.href).href;
@@ -2335,6 +2391,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       loadGlbWithFolderFallback(asset,(gltf:any)=>{
         if(!glbTreesAlive)return;
         const item=gltf.scene;
+        textureSteelOnWeapon(item,asset);
         item.updateMatrixWorld(true);
         const bounds=new THREE.Box3().setFromObject(item);
         const size=bounds.getSize(new THREE.Vector3());
@@ -4709,6 +4766,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         if(hand)loadGlbWithFolderFallback('Sword.glb',(swordGlb:any)=>{
           if(!glbTreesAlive)return;
           const blade=swordGlb.scene;
+          textureSteelOnWeapon(blade,'Sword.glb');
           blade.updateMatrixWorld(true);
           const bounds=new THREE.Box3().setFromObject(blade);
           const size=bounds.getSize(new THREE.Vector3());
@@ -5262,6 +5320,7 @@ function ForgeWeaponWall({owned}:{owned:string[]}) {
       })).then(gltf=>{
         if(!active)return;
         const item=gltf.scene as THREE.Object3D;
+        textureSteelOnWeapon(item,asset);
         item.updateMatrixWorld(true);
         const box=new THREE.Box3().setFromObject(item);
         const size=box.getSize(new THREE.Vector3());
