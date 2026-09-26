@@ -1890,6 +1890,15 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const mimirWaterMaterials:Array<THREE.MeshBasicMaterial|THREE.MeshStandardMaterial>=[riverMat,bankWaterMat];
     let mimirGoldTexture:THREE.Texture|null=null;
     let mimirWaterTexture:THREE.Texture|null=null;
+    const sacredStoneMaterials=[0,1,2].map(()=>new THREE.MeshStandardMaterial({color:0xffffff,roughness:.98}));
+    const sacredStoneTextures:THREE.Texture[]=[];
+    sacredStoneMaterials.forEach((material,i)=>new THREE.TextureLoader().load(`${BASE}img/models/Stone_Sacred_${i+1}.jpg`,texture=>{
+      if(!glbTreesAlive){texture.dispose();return;}
+      texture.colorSpace=THREE.SRGBColorSpace;
+      texture.wrapS=texture.wrapT=THREE.MirroredRepeatWrapping;
+      texture.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
+      sacredStoneTextures.push(texture);material.map=texture;material.needsUpdate=true;
+    },undefined,error=>console.warn('Sacred stone texture unavailable',i+1,error)));
     new THREE.TextureLoader().load(`${BASE}img/models/T_Mimir_Gold.jpg`,texture=>{
       if(!glbTreesAlive){texture.dispose();return;}
       texture.colorSpace=THREE.SRGBColorSpace;
@@ -2352,7 +2361,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
 
     // Central square: stone edging around Mimir's well.
     const square=new THREE.Mesh(new THREE.CircleGeometry(8.5,32),new THREE.MeshStandardMaterial({color:0x6b5a47,roughness:1}));square.rotation.x=-Math.PI/2;square.position.set(1,groundY(1,0)+.05,0);square.receiveShadow=true;scene.add(square);
-    for(let i=0;i<18;i++){const a=i/18*Math.PI*2;const s=new THREE.Mesh(new THREE.DodecahedronGeometry(.38,1),mat(0x6b6b63,1));s.position.set(1+Math.cos(a)*8.8,groundY(1+Math.cos(a)*8.8,Math.sin(a)*8.8)+.22,Math.sin(a)*8.8);scene.add(s);}
+    for(let i=0;i<18;i++){const a=i/18*Math.PI*2;const s=new THREE.Mesh(new THREE.DodecahedronGeometry(.38,1),sacredStoneMaterials[i%3]);s.position.set(1+Math.cos(a)*8.8,groundY(1+Math.cos(a)*8.8,Math.sin(a)*8.8)+.22,Math.sin(a)*8.8);scene.add(s);}
     const fire=(x:number,z:number,scale:number)=>{const g=new THREE.Group();g.position.set(x,groundY(x,z),z);for(let i=0;i<7;i++){const a=i/7*Math.PI*2;const s=new THREE.Mesh(new THREE.DodecahedronGeometry(.32*scale,1),mat(0x5d5a52,1));s.position.set(Math.cos(a)*.7*scale,.25*scale,Math.sin(a)*.7*scale);g.add(s);}const log1=box(.2*scale,.2*scale,1.5*scale,0x4a2d1b,1),log2=log1.clone();log1.rotation.y=.55;log2.rotation.y=-.55;log1.position.y=log2.position.y=.38*scale;g.add(log1,log2);const fm=new THREE.MeshStandardMaterial({color:0xff8128,emissive:0xff4d0a,emissiveIntensity:4});const flame=new THREE.Mesh(new THREE.ConeGeometry(.5*scale,1.35*scale,8),fm);flame.position.y=1.02*scale;g.add(flame);scene.add(g);const light=new THREE.PointLight(0xff8a3c,2.4*scale,12*scale,2);light.position.set(x,groundY(x,z)+2*scale,z);scene.add(light);fires.push({light,flame,phase:midHash(x,z)*8});return g;};
     // Village center: Mimir's well replaces the bonfire; the existing 18-stone circle stays.
     const villageMimir=new THREE.Group();
@@ -2443,7 +2452,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         }
         geometry.setAttribute("uv",new THREE.BufferAttribute(uvs,2));
         geometry.computeVertexNormals();
-        o.geometry=geometry;o.material=isWater?water:gold;
+        o.geometry=geometry;o.material=isWater?water:/^RingStone_/.test(name)?sacredStoneMaterials[Number(name.match(/\d+/)?.[0]||0)%3]:gold;
         if(isWater){o.castShadow=false;o.receiveShadow=false;}
       });
       model.userData={id:"mimir",label:"Колодец Мимира"};
@@ -3642,7 +3651,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       m.lookAt(b); return m;
     };
     function irregularRock(g:THREE.Group,x:number,y:number,z:number,s:number,color:number,seed:number){
-      const r=new THREE.Mesh(new THREE.DodecahedronGeometry(s,1),mat(color,1));
+      const r=new THREE.Mesh(new THREE.DodecahedronGeometry(s,1),g.userData.id==='whisperStone'?mat(color,1):sacredStoneMaterials[Math.abs(seed)%3]);
       r.scale.set(.72+midHash(seed,1)*.62,.55+midHash(seed,2)*.85,.68+midHash(seed,3)*.55);
       r.rotation.set(midHash(seed,4)*1.2,midHash(seed,5)*Math.PI,midHash(seed,6)*1.1); r.position.set(x,y,z); g.add(r); return r;
     }
@@ -4016,7 +4025,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         }
         geometry.setAttribute('uv',new THREE.BufferAttribute(uvs,2));
         geometry.computeVertexNormals();
-        o.geometry=geometry;o.material=isColumn?nornsColumns:nornsStone;
+        o.geometry=geometry;o.material=isColumn?nornsColumns:sacredStoneMaterials[2];
       });
 
       const bb=new THREE.Box3().setFromObject(well);
@@ -4057,7 +4066,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       const a=i/20*Math.PI*2,rr=5.1+(i%2)*2.2;
       addGroundRune(powerCircle,Math.cos(a)*rr,Math.sin(a)*rr,fieldGlyphs[(i+2)%fieldGlyphs.length],i%2?0x8b78ff:0x63dff4,.38,a+.2);
     }
-    const monolith=new THREE.Mesh(new THREE.DodecahedronGeometry(1.25,1),new THREE.MeshStandardMaterial({color:0x25292b,roughness:.9,metalness:.16}));
+    const monolith=new THREE.Mesh(new THREE.DodecahedronGeometry(1.25,1),sacredStoneMaterials[1]);
     monolith.scale.set(.9,2.8,.7); monolith.position.y=2.45; monolith.rotation.set(.05,.2,-.08); powerCircle.add(monolith);
 
     // Large golden Sowilo/Sowilo rune on the central monolith.
