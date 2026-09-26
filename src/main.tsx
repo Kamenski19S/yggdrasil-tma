@@ -580,19 +580,6 @@ function addRibbonRoad(scene: THREE.Scene, points: Array<[number, number]>, widt
   road.receiveShadow = true;
   scene.add(road);
 
-  // Неровные края дороги — несколько тёмных пятен дают грунту глубину без текстур.
-  for (let i = 0; i < points.length - 1; i += 2) {
-    const [x, z] = points[i];
-    const s = 0.5 + midHash(x, z) * 0.7;
-    const mud = new THREE.Mesh(
-      new THREE.CircleGeometry(s, 7),
-      midMat(0x554433, 1)
-    );
-    mud.rotation.x = -Math.PI / 2;
-    mud.position.set(x + (midHash(z, x) - 0.5) * width, midHeight(x, z) + 0.055, z);
-    mud.scale.set(1.8, 0.55, 1);
-    scene.add(mud);
-  }
 }
 
 function gableRoof(width: number, depth: number, color: number) {
@@ -2362,8 +2349,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     forgeLight.position.set(-10,groundY(-10,-5)+1.75,-3.8);
     scene.add(forgeLight);
 
-    // Central square: stone edging around Mimir's well.
-    const square=new THREE.Mesh(new THREE.CircleGeometry(8.5,32),new THREE.MeshStandardMaterial({color:0x6b5a47,roughness:1}));square.rotation.x=-Math.PI/2;square.position.set(1,groundY(1,0)+.05,0);square.receiveShadow=true;scene.add(square);
+    // Keep the stone edging around Mimir's well; the grass stays visible.
     for(let i=0;i<18;i++){const a=i/18*Math.PI*2;const s=new THREE.Mesh(new THREE.DodecahedronGeometry(.38,1),sacredStoneMaterials[i%3]);s.position.set(1+Math.cos(a)*8.8,groundY(1+Math.cos(a)*8.8,Math.sin(a)*8.8)+.22,Math.sin(a)*8.8);scene.add(s);}
     const fire=(x:number,z:number,scale:number)=>{const g=new THREE.Group();g.position.set(x,groundY(x,z),z);for(let i=0;i<7;i++){const a=i/7*Math.PI*2;const s=new THREE.Mesh(new THREE.DodecahedronGeometry(.32*scale,1),mat(0x5d5a52,1));s.position.set(Math.cos(a)*.7*scale,.25*scale,Math.sin(a)*.7*scale);g.add(s);}const log1=box(.2*scale,.2*scale,1.5*scale,0x4a2d1b,1),log2=log1.clone();log1.rotation.y=.55;log2.rotation.y=-.55;log1.position.y=log2.position.y=.38*scale;g.add(log1,log2);const fm=new THREE.MeshStandardMaterial({color:0xff8128,emissive:0xff4d0a,emissiveIntensity:4});const flame=new THREE.Mesh(new THREE.ConeGeometry(.5*scale,1.35*scale,8),fm);flame.position.y=1.02*scale;g.add(flame);scene.add(g);const light=new THREE.PointLight(0xff8a3c,2.4*scale,12*scale,2);light.position.set(x,groundY(x,z)+2*scale,z);scene.add(light);fires.push({light,flame,phase:midHash(x,z)*8});return g;};
     // Village center: Mimir's well replaces the bonfire; the existing 18-stone circle stays.
@@ -2782,9 +2768,6 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const purpleRuneMat=new THREE.MeshBasicMaterial({color:0xc58cff,transparent:true,opacity:.86,depthWrite:false,side:THREE.DoubleSide});
     const goldRuneMat=new THREE.MeshBasicMaterial({color:0xffd76a,transparent:true,opacity:.9,depthWrite:false,side:THREE.DoubleSide});
 
-    // Mossy ritual ground.
-    const fieldGround=new THREE.Mesh(new THREE.CircleGeometry(12.2,48),new THREE.MeshStandardMaterial({color:0x283a2c,roughness:1,transparent:true,opacity:.92}));
-    fieldGround.rotation.x=-Math.PI/2; fieldGround.position.y=.018; runeField.add(fieldGround);
 
     // Central monumental altar with a glowing rune face.
     const altarBase=new THREE.Mesh(new THREE.CylinderGeometry(2.15,2.55,.48,10),fieldDarkMat);
@@ -3057,16 +3040,6 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const nornsX=-52,nornsZ=38;
     nornsRoot.position.set(nornsX,groundY(nornsX,nornsZ),nornsZ);
 
-    // A shallow dark-blue pool beneath the wheel so the yarn rests visually "by the water".
-    const nornsWater=new THREE.Mesh(
-      new THREE.CircleGeometry(3.8,40),
-      new THREE.MeshStandardMaterial({
-        color:0x315b61,roughness:.28,metalness:.04,transparent:true,opacity:.86
-      })
-    );
-    nornsWater.rotation.x=-Math.PI/2;
-    nornsWater.position.y=.025;
-    nornsRoot.add(nornsWater);
 
     loadGlbWithFolderFallback(nornsWheelAsset,(gltf:any)=>{
       const wheel=gltf.scene;
@@ -3538,7 +3511,6 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const hoddFallbackStart=scene.children.length;
     const hoddX=62,hoddZ=78;
     const hodd=new THREE.Group(); hodd.userData={id:'hoddmimir',label:'Лес Ходдмимира'};
-    const hoddGround=new THREE.Mesh(new THREE.CircleGeometry(11.5,44),new THREE.MeshStandardMaterial({color:0x203b2b,roughness:1,transparent:true,opacity:.86})); hoddGround.rotation.x=-Math.PI/2; hoddGround.position.set(hoddX,groundY(hoddX,hoddZ)+.025,hoddZ);scene.add(hoddGround);
     const trunkMat=new THREE.MeshStandardMaterial({map:barkTexture,color:0xffffff,roughness:1,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.034});
     const worldTrunk=new THREE.Mesh(new THREE.CylinderGeometry(1.35,2.1,10.5,13),trunkMat); worldTrunk.position.set(hoddX,groundY(hoddX,hoddZ)+5.25,hoddZ); worldTrunk.rotation.z=-.05; scene.add(worldTrunk);
     for(let i=0;i<8;i++){
@@ -3700,8 +3672,6 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
 
     const makeForgottenCamp=(x:number,z:number)=>{
       const g=new THREE.Group(); g.position.set(x,groundY(x,z),z); g.userData={id:'hunterCamp',label:'Забытая стоянка'};
-      const earth=new THREE.Mesh(new THREE.CircleGeometry(8.7,40),new THREE.MeshStandardMaterial({color:0x31382c,roughness:1,transparent:true,opacity:.78}));
-      earth.rotation.x=-Math.PI/2; earth.position.y=.025; earth.scale.set(1.18,.92,1); g.add(earth);
 
       // Collapsed Viking wagon: crooked frame, rotten planks and a broken spoked wheel.
       const wagon=new THREE.Group(); wagon.position.set(-1.45,.05,-.65); wagon.rotation.y=-.34; g.add(wagon);
@@ -3797,13 +3767,6 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     deepGroveRoot.userData={id:'deepGrove',label:'Глубокая роща'};
     deepGroveRoot.position.set(deepGroveX,groundY(deepGroveX,deepGroveZ),deepGroveZ);
 
-    const deepGroveFloor=new THREE.Mesh(
-      new THREE.CircleGeometry(8.8,44),
-      new THREE.MeshStandardMaterial({color:0x2f412e,roughness:1,transparent:true,opacity:.78})
-    );
-    deepGroveFloor.rotation.x=-Math.PI/2;
-    deepGroveFloor.position.y=.02;
-    deepGroveRoot.add(deepGroveFloor);
 
     loadGlbWithFolderFallback(deepGroveAsset,(gltf:any)=>{
       const grove=gltf.scene;
@@ -3922,19 +3885,6 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     threeThreads.position.set(threeThreadsX,groundY(threeThreadsX,threeThreadsZ),threeThreadsZ);
     threeThreads.userData={id:"threeThreads",label:"Колодец Трёх Норн"};
 
-    // Soft sacred clearing under the GLB.
-    const nornsWellGround=new THREE.Mesh(
-      new THREE.CircleGeometry(9.2,48),
-      new THREE.MeshStandardMaterial({
-        color:0x344b32,
-        roughness:1,
-        transparent:true,
-        opacity:.72
-      })
-    );
-    nornsWellGround.rotation.x=-Math.PI/2;
-    nornsWellGround.position.y=.018;
-    threeThreads.add(nornsWellGround);
 
     loadGlbWithFolderFallback(threeNornsWellAsset,(gltf:any)=>{
       if(!glbTreesAlive)return;
@@ -4053,8 +4003,6 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const powerX=5, powerZ=-70;
     powerCircle.position.set(powerX,groundY(powerX,powerZ),powerZ);
     powerCircle.userData={id:"powerCircle",label:"Круг Силы"};
-    const powerGround=new THREE.Mesh(new THREE.CircleGeometry(10.8,48),new THREE.MeshStandardMaterial({color:0x1d2b26,roughness:1,transparent:true,opacity:.94}));
-    powerGround.rotation.x=-Math.PI/2; powerGround.position.y=.02; powerCircle.add(powerGround);
     for(const [r,w,c,op] of [[3.2,.075,0xd47cff,.8],[6.2,.06,0x6a9cff,.68],[9.2,.045,0xb77dff,.58]] as Array<[number,number,number,number]>) {
       const ring=new THREE.Mesh(new THREE.TorusGeometry(r,w,8,96),new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:op,depthWrite:false}));
       ring.rotation.x=Math.PI/2; ring.position.y=.07; powerCircle.add(ring);
@@ -4098,13 +4046,6 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     whisperStone.position.set(whisperX,groundY(whisperX,whisperZ),whisperZ);
     whisperStone.userData={id:"whisperStone",label:"Камень Шёпота"};
 
-    const whisperGround=new THREE.Mesh(
-      new THREE.CircleGeometry(8.6,40),
-      new THREE.MeshStandardMaterial({color:0x241b14,roughness:1,transparent:true,opacity:.92})
-    );
-    whisperGround.rotation.x=-Math.PI/2;
-    whisperGround.position.y=.02;
-    whisperStone.add(whisperGround);
 
     const whisperRing=new THREE.Mesh(
       new THREE.TorusGeometry(5.8,.09,8,96),
@@ -4192,9 +4133,6 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       const g=new THREE.Group();
       g.position.set(x,groundY(x,z),z);
 
-      const floorColor=style==='shadow'?0x202821:style==='power'?0x20242b:style==='fate'?0x2c302d:0x304333;
-      const floor=new THREE.Mesh(new THREE.CircleGeometry(style==='grove'?9.8:7.8,40),new THREE.MeshStandardMaterial({color:floorColor,roughness:1,transparent:true,opacity:.68}));
-      floor.rotation.x=-Math.PI/2; floor.position.y=.025; g.add(floor);
 
       const ring=new THREE.Mesh(new THREE.TorusGeometry(style==='grove'?7.2:5.8,.045,7,64),new THREE.MeshBasicMaterial({color:accent,transparent:true,opacity:style==='shadow'?.32:.46,depthWrite:false}));
       ring.rotation.x=Math.PI/2; ring.position.y=.055; g.add(ring);
