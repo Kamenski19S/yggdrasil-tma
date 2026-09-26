@@ -3164,10 +3164,23 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
 
     // Forest life inspired    // Forest life inspired by the Edda: four deer associated with Yggdrasil and a wandering squirrel.
     // They are game-world manifestations in Midgard, not claims that the literal cosmic animals live here.
+    const deerFur=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.96});
+    const deerFurLight=new THREE.MeshStandardMaterial({color:0xffe4ce,roughness:.96});
+    let deerFurTexture:THREE.Texture|null=null;
+    new THREE.TextureLoader().load(`${BASE}img/models/T_Deer_OrangeFur.jpg`,texture=>{
+      if(!glbTreesAlive){texture.dispose();return;}
+      texture.colorSpace=THREE.SRGBColorSpace;
+      texture.wrapS=texture.wrapT=THREE.MirroredRepeatWrapping;
+      texture.repeat.set(1.6,1.2);
+      texture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+      deerFurTexture=texture;
+      deerFur.map=texture;deerFurLight.map=texture;
+      deerFur.needsUpdate=deerFurLight.needsUpdate=true;
+    },undefined,error=>console.warn('Deer fur texture unavailable',error));
     const deer = (x:number,z:number,s:number,phase:number) => {
       const g=new THREE.Group();
-      const fur=new THREE.MeshStandardMaterial({color:0x6b4a31,roughness:.96});
-      const furLight=new THREE.MeshStandardMaterial({color:0x87603f,roughness:.96});
+      const fur=deerFur;
+      const furLight=deerFurLight;
       const dark=new THREE.MeshStandardMaterial({color:0x30251e,roughness:1});
       const ant=new THREE.MeshStandardMaterial({color:0xb9ad98,roughness:.9});
       const eyeMat=new THREE.MeshStandardMaterial({color:0x17130f,roughness:.25});
@@ -3748,6 +3761,24 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
 
     // 1) WELL OF THE THREE NORNS ------------------------------------------------
     const threeNornsWellAsset='Midgard_Well_Three_Norns_V1_YUP.glb';
+    const nornsStone=new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide,toneMapped:false});
+    const nornsColumns=new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide,toneMapped:false});
+    let nornsStoneTexture:THREE.Texture|null=null;
+    let nornsColumnTexture:THREE.Texture|null=null;
+    new THREE.TextureLoader().load(`${BASE}img/models/T_Norns_Stone.jpg`,texture=>{
+      if(!glbTreesAlive){texture.dispose();return;}
+      texture.colorSpace=THREE.SRGBColorSpace;
+      texture.wrapS=texture.wrapT=THREE.MirroredRepeatWrapping;
+      texture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+      nornsStoneTexture=texture;nornsStone.map=texture;nornsStone.needsUpdate=true;
+    },undefined,error=>console.warn('Norns stone texture unavailable',error));
+    new THREE.TextureLoader().load(`${BASE}img/models/T_Norns_FlutedMarble.jpg`,texture=>{
+      if(!glbTreesAlive){texture.dispose();return;}
+      texture.colorSpace=THREE.SRGBColorSpace;
+      texture.wrapS=THREE.RepeatWrapping;texture.wrapT=THREE.ClampToEdgeWrapping;
+      texture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+      nornsColumnTexture=texture;nornsColumns.map=texture;nornsColumns.needsUpdate=true;
+    },undefined,error=>console.warn('Norns column texture unavailable',error));
     const threeThreads=new THREE.Group();
     const threeThreadsX=58, threeThreadsZ=-28;
     threeThreads.position.set(threeThreadsX,groundY(threeThreadsX,threeThreadsZ),threeThreadsZ);
@@ -3768,6 +3799,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     threeThreads.add(nornsWellGround);
 
     loadGlbWithFolderFallback(threeNornsWellAsset,(gltf:any)=>{
+      if(!glbTreesAlive)return;
       const well=gltf.scene;
       markMeshes(well);
 
@@ -3804,10 +3836,43 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         else o.material=tune(o.material);
       });
 
-      well.scale.setScalar(.95);
+      // Lift the entire structure together so the suspended threads still meet the roof.
+      well.scale.set(.95,1.18,.95);
       well.rotation.y=.18;
       well.position.set(0,0,0);
-      well.updateMatrixWorld(true);
+      well.updateWorldMatrix(true,true);
+
+      well.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        const name=String(o.name);
+        const isColumn=/^PillarShaft_\d+$/.test(name);
+        const isStone=/^(Platform_\d+|EdgeStone_\d+|Pillar(Base|Cap)_\d+|Roof_Stone_Ring|Roof_Wood_Underside|RoofRock_\d+)$/.test(name);
+        if(!isColumn&&!isStone)return;
+        // The model has positions only. Give stone faces planar UVs, and wrap
+        // the marble around each shaft so its flutes run vertically.
+        const geometry=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();
+        const pos=geometry.getAttribute('position');
+        const uvs=new Float32Array(pos.count*2);
+        const points=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()];
+        const a=new THREE.Vector3(),b=new THREE.Vector3(),normal=new THREE.Vector3();
+        const bounds=new THREE.Box3().setFromObject(o),center=bounds.getCenter(new THREE.Vector3());
+        for(let i=0;i<pos.count;i+=3){
+          for(let k=0;k<3;k++)points[k].fromBufferAttribute(pos,i+k).applyMatrix4(o.matrixWorld);
+          normal.crossVectors(a.subVectors(points[1],points[0]),b.subVectors(points[2],points[0])).normalize();
+          const top=Math.abs(normal.y)>.5,side=Math.abs(normal.x)>Math.abs(normal.z);
+          const around=points.map(p=>Math.atan2(p.z-center.z,p.x-center.x)/(Math.PI*2)+.5);
+          if(Math.max(...around)-Math.min(...around)>.5)for(let k=0;k<3;k++)if(around[k]<.5)around[k]+=1;
+          for(let k=0;k<3;k++){
+            const p=points[k];
+            uvs[(i+k)*2]=isColumn?around[k]:(top?p.x:side?p.z:p.x)/2.4;
+            // Keep the photograph's horizontal plinth outside the shaft UVs.
+            uvs[(i+k)*2+1]=isColumn?.11+.88*(p.y-bounds.min.y)/Math.max(.01,bounds.max.y-bounds.min.y):(top?p.z:p.y)/2.4;
+          }
+        }
+        geometry.setAttribute('uv',new THREE.BufferAttribute(uvs,2));
+        geometry.computeVertexNormals();
+        o.geometry=geometry;o.material=isColumn?nornsColumns:nornsStone;
+      });
 
       const bb=new THREE.Box3().setFromObject(well);
       well.position.y-=bb.min.y;
@@ -4875,7 +4940,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
+    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();deerFurTexture?.dispose();nornsStoneTexture?.dispose();nornsColumnTexture?.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
   },[h.id,skin,weapon,on,eventDone,start.x,start.z,rememberPosition,northBridgeRepaired]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
