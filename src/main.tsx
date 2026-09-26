@@ -1932,7 +1932,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     for(let i=0;i<52;i++){
       const pi=Math.min(riverPts.length-1,Math.floor(i*.62)),p=riverPts[pi],prev=riverPts[Math.max(0,pi-1)],next=riverPts[Math.min(riverPts.length-1,pi+1)];
       const dx=next.x-prev.x,dz=next.z-prev.z,len=Math.max(.001,Math.hypot(dx,dz)),side=i%2===0?-1:1,rr=.34+midHash(i,15)*.72,off=riverHalf+side*(.25+midHash(i,16)*1.4);
-      const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(rr,1),mat(0x5e625a,1));
+      const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(rr,1),sacredStoneMaterials[i%3]);
       stone.position.set(p.x+(-dz/len)*off,groundY(p.x,p.z)+.18,p.z+(dx/len)*off);stone.scale.y=.5+midHash(i,17)*.35;
       // Decorative bank stones remain visible but never block the player.
       addMesh(stone);
@@ -1943,7 +1943,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       const pi=Math.min(riverPts.length-1,1+Math.floor(midHash(i,1520)*(riverPts.length-2))),p=riverPts[pi],prev=riverPts[Math.max(0,pi-1)],next=riverPts[Math.min(riverPts.length-1,pi+1)];
       const dx=next.x-prev.x,dz=next.z-prev.z,len=Math.max(.001,Math.hypot(dx,dz));
       const across=(midHash(i,1521)-.5)*6.4;
-      const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(.16+midHash(i,1522)*.3,1),mat(0x68736d,1));
+      const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(.16+midHash(i,1522)*.3,1),sacredStoneMaterials[i%3]);
       stone.position.set(p.x+(-dz/len)*across,groundY(p.x,p.z)+.045,p.z+(dx/len)*across);
       stone.scale.y=.35+midHash(i,1523)*.45;stone.rotation.set(midHash(i,1524)*2,midHash(i,1525)*2,midHash(i,1526)*2);scene.add(stone);
     }
@@ -2429,7 +2429,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       if(mimirWaterTexture)water.map=mimirWaterTexture;
       model.traverse((o:any)=>{
         if(!o.isMesh)return;
-        o.visible=true;o.castShadow=true;o.receiveShadow=true;o.frustumCulled=true;
+        o.visible=!/^Mimir_(Barrel|Crate)$/.test(o.name);o.castShadow=true;o.receiveShadow=true;o.frustumCulled=true;
         const name=String(o.name);
         const isWater=/^Mimir_(Pool|Waterfall|Stream)$/.test(name);
         const isGold=/^Mimir_(Base|InnerFloor)$/.test(name)||/^RingStone_/.test(name);
@@ -2452,7 +2452,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         }
         geometry.setAttribute("uv",new THREE.BufferAttribute(uvs,2));
         geometry.computeVertexNormals();
-        o.geometry=geometry;o.material=isWater?water:/^RingStone_/.test(name)?sacredStoneMaterials[Number(name.match(/\d+/)?.[0]||0)%3]:gold;
+        o.geometry=geometry;o.material=isWater?water:gold;
         if(isWater){o.castShadow=false;o.receiveShadow=false;}
       });
       model.userData={id:"mimir",label:"Колодец Мимира"};
@@ -2709,7 +2709,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     for(let i=0;i<34;i++){
       const x=-84+midHash(i,610)*168,z=-82+midHash(i,611)*164;
       if(Math.hypot(x,z-2)<24) continue;
-      const s=.25+midHash(i,612)*.55;const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(s,1),mat(0x575b55,1));rock.scale.y=.55;rock.position.set(x,groundY(x,z)+s*.28,z);rock.rotation.set(midHash(i,613),midHash(i,614),midHash(i,615));addMesh(rock);
+      const s=.25+midHash(i,612)*.55;const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(s,1),sacredStoneMaterials[i%3]);rock.scale.y=.55;rock.position.set(x,groundY(x,z)+s*.28,z);rock.rotation.set(midHash(i,613),midHash(i,614),midHash(i,615));addMesh(rock);
     }
 
     // Old human settlement — a quiet abandoned farmstead beyond the village.
@@ -2754,6 +2754,13 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       ctx.shadowBlur=4; ctx.globalAlpha=.55; ctx.font="bold 118px serif"; ctx.fillText(glyph,128,132);
       const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=4; return t;
     };
+    const goldenStoneRune=(glyph:string)=>{
+      const c=document.createElement('canvas');c.width=c.height=256;
+      const ctx=c.getContext('2d')!;ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.font='bold 175px serif';ctx.shadowColor='#ffbc47';ctx.shadowBlur=12;
+      ctx.fillStyle='#ffd56a';ctx.fillText(glyph,128,133);
+      const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t;
+    };
     const addGroundRune=(g:THREE.Group,x:number,z:number,glyph:string,color:number,size=.72,rot=0)=>{
       const hex="#"+color.toString(16).padStart(6,"0");
       const m=new THREE.MeshBasicMaterial({map:runeGroundTexture(glyph,hex),transparent:true,depthWrite:false,side:THREE.DoubleSide});
@@ -2766,8 +2773,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const runeFieldX=18, runeFieldZ=55;
     runeField.position.set(runeFieldX,groundY(runeFieldX,runeFieldZ),runeFieldZ);
     runeField.userData={id:"runefield",label:"Поле Рун"};
-    const fieldStoneMat=new THREE.MeshStandardMaterial({color:0x59615d,roughness:.94,metalness:.04});
-    const fieldDarkMat=new THREE.MeshStandardMaterial({color:0x3b4440,roughness:1});
+    const fieldStoneMat=sacredStoneMaterials[0];
+    const fieldDarkMat=sacredStoneMaterials[1];
     const cyanRuneMat=new THREE.MeshBasicMaterial({color:0x7de8ff,transparent:true,opacity:.92,depthWrite:false,side:THREE.DoubleSide});
     const purpleRuneMat=new THREE.MeshBasicMaterial({color:0xc58cff,transparent:true,opacity:.86,depthWrite:false,side:THREE.DoubleSide});
     const goldRuneMat=new THREE.MeshBasicMaterial({color:0xffd76a,transparent:true,opacity:.9,depthWrite:false,side:THREE.DoubleSide});
@@ -2785,7 +2792,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     altarCrown.scale.set(.72,1.15,.55); altarCrown.position.set(0,2.72,.02); altarCrown.rotation.z=.06; runeField.add(altarCrown);
     // Central stone: one large glowing Eihwaz rune (ᛇ), pushed clearly
     // in front of the altar face so it cannot disappear inside the mesh.
-    const eihwazTex=runeGroundTexture('ᛇ','#8fe8ff');
+    const eihwazTex=goldenStoneRune('ᛇ');
     const eihwaz=new THREE.Mesh(
       new THREE.PlaneGeometry(1.42,2.25),
       new THREE.MeshBasicMaterial({
@@ -2810,7 +2817,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     eihwaz.renderOrder=8;
     runeField.add(eihwaz);
 
-    const altarGlow=new THREE.PointLight(0x73dfff,1.55,8.5,2);
+    const altarGlow=new THREE.PointLight(0xffc965,1.0,8.5,2);
     altarGlow.position.set(
       Math.sin(altarFaceRot)*1.45,
       2.0,
@@ -2824,46 +2831,27 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       ring.rotation.x=Math.PI/2; ring.position.y=.055; runeField.add(ring);
     }
     const fieldGlyphs=["ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᚷ","ᚹ","ᚺ","ᚾ","ᛁ","ᛃ","ᛇ","ᛈ","ᛉ","ᛏ"];
-    for(let i=0;i<16;i++){
-      const a=i/16*Math.PI*2;
-      addGroundRune(runeField,Math.cos(a)*8.55,Math.sin(a)*8.55,fieldGlyphs[i],i%3===0?0xe5b95b:(i%3===1?0x77e5f5:0xb887ef),.62,a+.18);
-    }
-    for(let i=0;i<12;i++){
-      const a=i/12*Math.PI*2+.13;
-      addGroundRune(runeField,Math.cos(a)*5.45,Math.sin(a)*5.45,fieldGlyphs[(i+5)%fieldGlyphs.length],i%2?0x74dff2:0xc18bed,.38,a);
-    }
+    // Each standing stone has one rune; the old overlapping ground glyphs are removed.
 
     // Outer ring of irregular monolithic menhirs.
-    // Every large stone now carries several neon-painted runes in different colours.
-    const runeNeonColors=[
-      {hex:'#58bfff',light:0x58bfff}, // blue
-      {hex:'#63ff86',light:0x63ff86}, // green
-      {hex:'#ff4f55',light:0xff4f55}, // red
-      {hex:'#fff15a',light:0xfff15a}, // yellow
-      {hex:'#ffffff',light:0xffffff}, // white
-      {hex:'#ffd36a',light:0xffd36a}, // gold
-      {hex:'#cfd8df',light:0xcfd8df}, // silver
-    ];
+    // Distinct Elder Futhark glyphs, one in the centre of each menhir.
     for(let i=0;i<10;i++){
       const a=i/10*Math.PI*2+.16; const rr=9.15+(.5-midHash(i,1202))*1.0;
       const h=2.4+midHash(i,1203)*2.0; const w=.72+midHash(i,1204)*.48;
-      const st=new THREE.Mesh(new THREE.DodecahedronGeometry(.82+midHash(i,1205)*.22,1),fieldStoneMat);
+      const st=new THREE.Mesh(new THREE.DodecahedronGeometry(.82+midHash(i,1205)*.22,1),sacredStoneMaterials[i%3]);
       st.scale.set(w,h,0.72+midHash(i,1206)*.28);
       st.position.set(Math.cos(a)*rr,st.scale.y*.58,Math.sin(a)*rr);
       st.rotation.set((midHash(i,1207)-.5)*.22,a+(midHash(i,1208)-.5)*.3,(midHash(i,1209)-.5)*.18);
       runeField.add(st);
 
-      // Three runes per stone, vertically staggered. MeshBasicMaterial keeps the
-      // paint bright like neon without adding a costly light for every glyph.
+      // A single readable golden rune centred on the outward face.
       const faceX=st.position.x+Math.cos(a)*(.70+st.scale.z*.08);
       const faceZ=st.position.z+Math.sin(a)*(.70+st.scale.z*.08);
-      const runeCount=3;
-      for(let r=0;r<runeCount;r++){
-        const glyph=fieldGlyphs[(i*2+r*5)%fieldGlyphs.length];
-        const cc=runeNeonColors[(i+r*2)%runeNeonColors.length];
-        const tex=runeGroundTexture(glyph,cc.hex);
+      {
+        const glyph=fieldGlyphs[i];
+        const tex=goldenStoneRune(glyph);
         const mark=new THREE.Mesh(
-          new THREE.PlaneGeometry(.68+r*.055,.92+r*.055),
+          new THREE.PlaneGeometry(.88,1.30),
           new THREE.MeshBasicMaterial({
             map:tex,
             color:0xffffff,
@@ -2877,7 +2865,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         );
         mark.position.set(
           faceX,
-          st.position.y*(.48+.18*r),
+          st.position.y+.12,
           faceZ
         );
         mark.rotation.y=-a+Math.PI*.5;
@@ -2885,9 +2873,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
         runeField.add(mark);
       }
 
-      // One soft coloured halo per stone (not per rune) for atmosphere and mobile performance.
-      const primary=runeNeonColors[i%runeNeonColors.length];
-      const gl=new THREE.PointLight(primary.light,.28,3.2,2);
+      const gl=new THREE.PointLight(0xffc76a,.18,3.2,2);
       gl.position.set(st.position.x,st.position.y*.68,st.position.z);
       runeField.add(gl);
     }
@@ -3109,13 +3095,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     rune.userData={id:"rune",label:"Древний камень Феху"};
     rune.position.set(50,groundY(50,60),60);
 
-    const fehuStoneMat=new THREE.MeshStandardMaterial({
-      color:0xb9933f,
-      roughness:.72,
-      metalness:.16,
-      emissive:0x3a2606,
-      emissiveIntensity:.22
-    });
+    const fehuStoneMat=sacredStoneMaterials[2];
 
     const stone=new THREE.Mesh(
       new THREE.DodecahedronGeometry(1.45,1),
@@ -3127,7 +3107,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     rune.add(stone);
 
     // Large green Fehu on the front face.
-    const fehuTex=runeGroundTexture('ᚠ','#58ff74');
+    const fehuTex=goldenStoneRune('ᚠ');
     const fehuMark=new THREE.Mesh(
       new THREE.PlaneGeometry(1.34,2.02),
       new THREE.MeshBasicMaterial({
@@ -3144,7 +3124,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     fehuMark.renderOrder=8;
     rune.add(fehuMark);
 
-    const fehuGlow=new THREE.PointLight(0x58ff74,.85,5.5,2);
+    const fehuGlow=new THREE.PointLight(0xffc76a,.85,5.5,2);
     fehuGlow.position.set(0,2.0,.75);
     rune.add(fehuGlow);
 
@@ -3518,7 +3498,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
 
     // Short stepping-stone path so the entrance reads clearly from a distance.
     for(let i=0;i<5;i++){
-      const st=new THREE.Mesh(new THREE.DodecahedronGeometry(.44-.035*i,1),groveStoneMat);
+      const st=new THREE.Mesh(new THREE.DodecahedronGeometry(.44-.035*i,1),sacredStoneMaterials[i%3]);
       st.scale.set(1.25,.20,.78);
       st.position.set((i%2?-.10:.10),.12,5.05+i*.72);
       ashGrove.add(st);
@@ -3566,7 +3546,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     // Deeply carved luminous runes on the trunk.
     for(let i=0;i<9;i++){const glyph=['ᚱ','ᛉ','ᛟ','ᚦ','ᚨ','ᚠ','ᚷ','ᛏ','ᚢ'][i];const tex=runeGroundTexture(glyph,i%2?'#63d9ef':'#f0c65d');const q=new THREE.Mesh(new THREE.PlaneGeometry(.7,.9),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide}));q.position.set(hoddX+Math.sin(i*.63)*1.42,groundY(hoddX,hoddZ)+1.0+i*.78,hoddZ+Math.cos(i*.63)*1.42);q.rotation.y=Math.PI*.5-i*.16;scene.add(q);}
     // Sacred stone altar and eternal fire at the roots.
-    const altar2=new THREE.Mesh(new THREE.DodecahedronGeometry(1.35,1),mat(0x4f5852,1));altar2.scale.set(1.45,.7,1.15);altar2.position.set(hoddX,groundY(hoddX,hoddZ)+.75,hoddZ+1.6);scene.add(altar2);
+    const altar2=new THREE.Mesh(new THREE.DodecahedronGeometry(1.35,1),sacredStoneMaterials[0]);altar2.scale.set(1.45,.7,1.15);altar2.position.set(hoddX,groundY(hoddX,hoddZ)+.75,hoddZ+1.6);scene.add(altar2);
     fire(hoddX,hoddZ+2.1,.72);
     const hoddRing=new THREE.Mesh(new THREE.TorusGeometry(6.7,.06,8,64),new THREE.MeshStandardMaterial({color:0x8bcfd1,emissive:0x235f62,emissiveIntensity:1.9,transparent:true,opacity:.62}));hoddRing.rotation.x=Math.PI/2;hoddRing.position.set(hoddX,groundY(hoddX,hoddZ)+.055,hoddZ);scene.add(hoddRing);
     for(let i=0;i<22;i++){const a=midHash(i,1410)*Math.PI*2,rr=1.8+midHash(i,1411)*8.2,x=hoddX+Math.cos(a)*rr,z=hoddZ+Math.sin(a)*rr;addGroundRune(hodd,(x-hoddX),(z-hoddZ),['ᚱ','ᛉ','ᛟ','ᚦ','ᚨ','ᚠ'][i%6],i%2?0x67d3df:0xe0b55a,.35,midHash(i,1412)*Math.PI);}
@@ -3592,7 +3572,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     // The four deer are a deliberate Yggdrasil reference: they roam a separate clearing.    // The four deer are a deliberate Yggdrasil reference: they roam a separate clearing.
     const deerClearingX=43, deerClearingZ=32;
     for(let i=0;i<4;i++) deer(deerClearingX+(i-1.5)*2.8,deerClearingZ+(i%2?2.8:-2.8),1.20+midHash(i,1440)*.18,10+i);
-    const deerStone=new THREE.Mesh(new THREE.DodecahedronGeometry(.72,1),mat(0x575d56,1));deerStone.position.set(deerClearingX,groundY(deerClearingX,deerClearingZ)+.5,deerClearingZ);scene.add(deerStone);
+    const deerStone=new THREE.Mesh(new THREE.DodecahedronGeometry(.72,1),sacredStoneMaterials[1]);deerStone.position.set(deerClearingX,groundY(deerClearingX,deerClearingZ)+.5,deerClearingZ);scene.add(deerStone);
     const deerRing=new THREE.Mesh(new THREE.TorusGeometry(5.8,.045,7,48),new THREE.MeshStandardMaterial({color:0x7e8b72,emissive:0x303d2a,emissiveIntensity:.8,transparent:true,opacity:.48}));deerRing.rotation.x=Math.PI/2;deerRing.position.set(deerClearingX,groundY(deerClearingX,deerClearingZ)+.035,deerClearingZ);scene.add(deerRing);
     squirrel(ashGroveX+5,ashGroveZ+1);
 
@@ -3651,7 +3631,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       m.lookAt(b); return m;
     };
     function irregularRock(g:THREE.Group,x:number,y:number,z:number,s:number,color:number,seed:number){
-      const r=new THREE.Mesh(new THREE.DodecahedronGeometry(s,1),g.userData.id==='whisperStone'?mat(color,1):sacredStoneMaterials[Math.abs(seed)%3]);
+      const r=new THREE.Mesh(new THREE.DodecahedronGeometry(s,1),sacredStoneMaterials[Math.abs(seed)%3]);
       r.scale.set(.72+midHash(seed,1)*.62,.55+midHash(seed,2)*.85,.68+midHash(seed,3)*.55);
       r.rotation.set(midHash(seed,4)*1.2,midHash(seed,5)*Math.PI,midHash(seed,6)*1.1); r.position.set(x,y,z); g.add(r); return r;
     }
@@ -4204,12 +4184,12 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
 
       // Two asymmetric marker stones create a recognizable entrance silhouette.
       for(const side of [-1,1]){
-        const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.48+midHash(side+Math.round(x),Math.round(z))*0.22,1),new THREE.MeshStandardMaterial({color:style==='shadow'?0x303638:0x59615a,roughness:1}));
+        const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.48+midHash(side+Math.round(x),Math.round(z))*0.22,1),sacredStoneMaterials[(Math.abs(Math.round(x+z))+side+3)%3]);
         rock.scale.set(.8,1.65,.72);
         rock.position.set(side*2.35,.62,style==='grove'?-.15:.35);
         rock.rotation.set(.05,side*.28,-side*.10);
         g.add(rock);
-        const rune=addFloatingRune(g,glyph,side*2.35,1.25,.73,accent,.34,side*.08);
+        const rune=addFloatingRune(g,glyph,side*2.35,1.25,.73,0xffd56a,.34,side*.08);
         rune.rotation.x=0;
       }
 
@@ -4520,7 +4500,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       const s=.10+midHash(i,152)*.24;
       const rock=new THREE.Mesh(
         new THREE.DodecahedronGeometry(s,1),
-        new THREE.MeshStandardMaterial({color:i%3===0?0x555b54:0x66665d,roughness:.98,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.018})
+        sacredStoneMaterials[i%3]
       );
       rock.scale.set(1.0+midHash(i,153)*1.3,.55+midHash(i,154)*.7,.72+midHash(i,155)*1.15);
       rock.rotation.set(midHash(i,156)*1.7,midHash(i,157)*Math.PI,midHash(i,158)*1.7);
