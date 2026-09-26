@@ -2530,6 +2530,60 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     }, 'SHED');
     addRectCollider(17,34,7.45*HOME_SCALE,5.20*HOME_SCALE,-.20,.04);
 
+    // Animal FBXs were converted to compact GLBs with their original bone
+    // animation clips and baked material colors. Texture UVs can be added later.
+    const animatedAnimals:Array<{
+      root:THREE.Object3D;mixer:THREE.AnimationMixer;
+      x:number;z:number;radius:number;speed:number;phase:number;groundOffset:number;
+    }>=[];
+    const animalPlacements=[
+      {asset:'Cow.glb',label:'Корова',x:14,z:41,height:1.72,radius:0,speed:0,phase:0,pose:'Eating'},
+      {asset:'Horse.glb',label:'Лошадь у сарая',x:21,z:41,height:2.28,radius:0,speed:0,phase:1,pose:'Idle'},
+      {asset:'Horse_White.glb',label:'Лошадь на лугу',x:34,z:45,height:2.25,radius:4.2,speed:.25,phase:1.2,pose:'Walk'},
+      {asset:'Wolf.glb',label:'Волк',x:72,z:-13,height:1.12,radius:3.2,speed:.35,phase:2.1,pose:'Walk'},
+      {asset:'Fox.glb',label:'Лисица',x:70,z:43,height:.82,radius:2.8,speed:.30,phase:.4,pose:'Walk'}
+    ];
+    for(const p of animalPlacements){
+      loadGlbWithFolderFallback(p.asset,(gltf:any)=>{
+        if(!glbTreesAlive)return;
+        const root=gltf.scene;
+        const bounds=new THREE.Box3().setFromObject(root);
+        const height=Math.max(.01,bounds.getSize(new THREE.Vector3()).y);
+        root.scale.setScalar(p.height/height);
+        root.updateWorldMatrix(true,true);
+        const grounded=new THREE.Box3().setFromObject(root);
+        const groundOffset=-grounded.min.y;
+        root.position.set(p.x,groundY(p.x,p.z)+groundOffset,p.z);
+        root.rotation.y=p.phase;
+        root.userData={label:p.label};
+        root.traverse((o:any)=>{if(o.isSkinnedMesh)o.frustumCulled=false;});
+        addMesh(root);
+        const mixer=new THREE.AnimationMixer(root);
+        const clip=gltf.animations.find((a:THREE.AnimationClip)=>a.name.endsWith(`|${p.pose}`))
+          ||gltf.animations.find((a:THREE.AnimationClip)=>a.name.endsWith('|Idle'));
+        if(clip)mixer.clipAction(clip).play();
+        animatedAnimals.push({root,mixer,x:p.x,z:p.z,radius:p.radius,speed:p.speed,phase:p.phase,groundOffset});
+      },p.label);
+    }
+
+    // A Viking boat floats downstream of the main bridge, clear of the crossing.
+    const floatingBoats:Array<{root:THREE.Object3D;baseY:number}>=[];
+    loadGlbWithFolderFallback('Viking_Boat.glb',(gltf:any)=>{
+      if(!glbTreesAlive)return;
+      const root=gltf.scene;
+      const size=new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
+      root.scale.setScalar(6.8/Math.max(.01,size.z));
+      const z=-28,x=riverCenterX(z);
+      root.rotation.y=Math.atan2(riverCenterX(z+2)-riverCenterX(z-2),4);
+      root.updateWorldMatrix(true,true);
+      const bottom=new THREE.Box3().setFromObject(root).min.y;
+      const baseY=groundY(x,z)+.09-bottom-.18;
+      root.position.set(x,baseY,z);
+      root.userData={label:'Лодка викингов'};
+      addMesh(root);
+      floatingBoats.push({root,baseY});
+    },'VIKING BOAT');
+
     // Legacy procedural fisher storage removed; it duplicated the newer village buildings.
     for(const p0 of [[-25,33,1.0],[-14,37,.85],[-25,37,.8],[24,32,.9],[24,38,.72],[31,5,.9]] as Array<[number,number,number]>) hay(p0[0],p0[1],p0[2]);
     cart(-12,31,.18); cart(27,-12,-.55);
@@ -4896,6 +4950,19 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       currentStreaks.forEach((r)=>{const drift=Math.sin(now*.00055*r.speed+r.phase)*.9;r.mesh.position.y=groundY(r.mesh.position.x,r.mesh.position.z)+.095+drift*.008;const m=r.mesh.material as THREE.MeshBasicMaterial;m.opacity=.045+.045*(.5+.5*Math.sin(now*.0011*r.speed+r.phase));});
 
       fires.forEach(f=>{f.light.intensity=2.0+Math.sin(now*.012+f.phase)*.5;f.flame.scale.y=.9+Math.sin(now*.009+f.phase)*.12;});
+      animatedAnimals.forEach(animal=>{
+        animal.mixer.update(dt);
+        if(!animal.radius)return;
+        const angle=now*.001*animal.speed+animal.phase;
+        const x=animal.x+Math.cos(angle)*animal.radius;
+        const z=animal.z+Math.sin(angle)*animal.radius*.65;
+        animal.root.position.set(x,groundY(x,z)+animal.groundOffset,z);
+        animal.root.rotation.y=Math.atan2(-Math.sin(angle),Math.cos(angle)*.65);
+      });
+      floatingBoats.forEach(({root,baseY},i)=>{
+        root.position.y=baseY+Math.sin(now*.0011+i)*.045;
+        root.rotation.z=Math.sin(now*.0008+i)*.014;
+      });
       wildlife.forEach((w,i)=>{
         if(w.kind==='deer'){
           const dx=w.g.position.x-hero.position.x, dz=w.g.position.z-hero.position.z, dist=Math.hypot(dx,dz);
