@@ -1770,7 +1770,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       | { kind:"circle"; x:number; z:number; r:number }
       | { kind:"segment"; x1:number; z1:number; x2:number; z2:number; r:number };
     const colliders: Collider[] = [];
-    const HERO_RADIUS = 0.62;
+    const HERO_RADIUS = 0.558;
     const RIVER_HALF = 5.4;
     const BRIDGE_X = -57, BRIDGE_Z = -48, BRIDGE_SPAN = 13.6, BRIDGE_WIDTH = 4.8;
     const BRIDGE_Y = groundY(BRIDGE_X,BRIDGE_Z) + .58;
@@ -1967,17 +1967,21 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const HOME_SCALE=1.30, BUILDING_HEIGHT=1.25;
     const villageHomes=[
       {asset:vikingHouseAsset,id:"warriorHouse",label:"Дом дружинника",x:-21,z:-21,rot:0,sx:1.02,sy:1.02,sz:.78,w:9,d:7},
-      {asset:vikingHouseAsset,id:"fisher2",label:"Дом рыбака Халли",x:-21,z:8,rot:0,sx:.86,sy:.90,sz:.58,w:7.8,d:5.8},
+      {asset:vikingHouseAsset,id:"fisher2",label:"Дом рыбака Халли",x:-21,z:8,rot:Math.PI/2,sx:.86,sy:.90,sz:.58,w:7.8,d:5.8},
       {asset:vikingHouseAsset,id:"carpenter",label:"Дом плотника Бьёрна",x:-20,z:22,rot:0,sx:.82,sy:.86,sz:.56,w:7.8,d:5.8},
       {asset:vikingHouseAsset,id:"hunter2",label:"Дом охотницы Рандви",x:22,z:20,rot:0,sx:.88,sy:.92,sz:.58,w:7.8,d:5.8},
       {asset:vikingHouseAsset,id:"family",label:"Дом семьи Торстейна",x:9,z:16,rot:0,sx:.84,sy:.88,sz:.57,w:7.8,d:5.8},
       {asset:elderHouseAsset,id:"house",label:"Дом старейшины Хальвдана",x:16,z:-21,rot:0,sx:1.02,sy:.82,sz:.90,w:10.85,d:7.85},
-      {asset:fisherHouseAsset,id:"fisher",label:"Дом рыбака Эйнара",x:21,z:-7,rot:0,sx:.95,sy:.94,sz:.65,w:8.85,d:6.85},
-      {asset:hunterHouseAsset,id:"hunter",label:"Дом охотника Ульва",x:17,z:6,rot:0,sx:.94,sy:.90,sz:.64,w:8.85,d:6.85},
+      {asset:fisherHouseAsset,id:"fisher",label:"Дом рыбака Эйнара",x:21,z:-7,rot:-Math.PI/2,sx:.95,sy:.94,sz:.65,w:8.85,d:6.85},
+      {asset:hunterHouseAsset,id:"hunter",label:"Дом охотника Ульва",x:17,z:6,rot:-Math.PI/2,sx:.94,sy:.90,sz:.64,w:8.85,d:6.85},
       {asset:herbalistHouseAsset,id:"herbalist",label:"Дом травницы Сигрид",x:-8,z:-21,rot:0,sx:.91,sy:.88,sz:.62,w:8.85,d:6.85},
-      {asset:craftsmanHouseAsset,id:"craftsman",label:"Дом ремесленника Торвальда",x:-22,z:-6,rot:0,sx:.86,sy:.82,sz:.64,w:8.85,d:6.85}
+      {asset:craftsmanHouseAsset,id:"craftsman",label:"Дом ремесленника Торвальда",x:-22,z:-6,rot:Math.PI/2,sx:.86,sy:.82,sz:.64,w:8.85,d:6.85}
     ];
-    const homeDestinations=villageHomes.map(p=>({id:p.id,label:p.label,x:p.x,z:p.z+p.d*HOME_SCALE/2+1.1,r:3.0}));
+    // Front doors face local +Z. Rotate their approach points with the houses.
+    const homeDestinations=villageHomes.map(p=>{
+      const approach=p.d*HOME_SCALE/2+1.1;
+      return {id:p.id,label:p.label,x:p.x+Math.sin(p.rot)*approach,z:p.z+Math.cos(p.rot)*approach,r:3.0};
+    });
 
     // Village roads connect the front and rear gates.
     road([[0,43.5],[0,35],[0,27],[1,18],[1,9],[1,2]],2.35);
@@ -2015,8 +2019,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     road([[-64,-48],[-70,-48],[-72,-48]],1.58);
     road([[-64,-48],[-67,-40],[-68,-27],[-68,-11],[-65,8]],1.62);
     road([[-65,8],[-68,24],[-70,37],[-72,48]],1.50);
-    road([[-35,44],[-42,49],[NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.5,NORTH_BRIDGE_Z]],1.65);
-    road([[NORTH_BRIDGE_X-BRIDGE_SPAN/2-1.5,NORTH_BRIDGE_Z],[-72,52],[-72,48]],1.55);
+    road([[-35,44],[-42,49],[NORTH_BRIDGE_X+BRIDGE_SPAN/2+.15,NORTH_BRIDGE_Z]],1.65);
+    road([[NORTH_BRIDGE_X-BRIDGE_SPAN/2-.15,NORTH_BRIDGE_Z],[-72,52],[-72,48]],1.55);
 
     const signTexture=(label:string)=>{
       const c=document.createElement("canvas");c.width=512;c.height=128;const ctx=c.getContext("2d")!;
@@ -4445,7 +4449,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       const hasNativeClips=skin==="valkyrie"&&gltf.animations?.length>0;
       // Vika is authored at roughly one metre in Blender units; the existing
       // procedural heroes are approximately three metres tall before scaling.
-      model.scale.setScalar(hasNativeClips?3.944:.78);
+      model.scale.setScalar((hasNativeClips?3.944:.78)*.9);
       model.rotation.y=0;
       model.position.set(0,0,0);
       model.updateMatrixWorld(true);
