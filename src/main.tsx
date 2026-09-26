@@ -161,7 +161,9 @@ const REALMS: Realm[] = [
 const NAV = [{ id: "tree", ic: "ᚱ", t: "Путь" }, { id: "hero", ic: "ᛗ", t: "Герой" }, { id: "gift", ic: "ᚷ", t: "Дар" }, { id: "hall", ic: "ᛟ", t: "Чертог" }];
 type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" } | { t: "hero" } | { t: "gift" } | { t: "hall" } | { t: "craft" } | { t: "forge" } | { t: "trial"; id: string } | { t: "fight"; id: string };
 type HeroSkin = "viking" | "valkyrie";
-type HeroWeapon = "default";
+type HeroWeapon = "default"|"knife"|"axe"|"mace"|"spear";
+const WEAPON_POWER:Record<HeroWeapon,number>={default:0,knife:1,axe:3,mace:2,spear:2};
+const WEAPON_ASSET:Record<Exclude<HeroWeapon,"default">,string>={knife:'Sword_2.glb',axe:'Axe.glb',mace:'Hammer_Small.glb',spear:'Spear.glb'};
 type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; ownedWeapons: string[]; potions: string[]; runes: string[]; forgeLevels: Record<string,number>; forgeFreeUsed: boolean };
 const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", ownedWeapons: ["default"], potions: [], runes: [], forgeLevels: {}, forgeFreeUsed: false };
 const loadSave = (): Save => {
@@ -177,7 +179,7 @@ const loadSave = (): Save => {
       const hd = s.hero ? HEROES.find((x:any)=>x.id===s.hero.id) : null;
       s.heroSkin = hd?.gender === "f" ? "valkyrie" : "viking";
     }
-    if (!s.heroWeapon) s.heroWeapon = "default";
+    if (!Object.prototype.hasOwnProperty.call(WEAPON_POWER,s.heroWeapon)|| (s.heroWeapon!=="default"&&!s.ownedWeapons.includes(s.heroWeapon))) s.heroWeapon = "default";
     if (!s.watch) s.watch = Date.now();
     return s as Save;
   } catch {
@@ -509,9 +511,10 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .forge-free{margin:10px 0 5px;padding:7px 9px;border-radius:10px;background:rgba(255,224,132,.09);border:1px dashed rgba(255,215,106,.42);color:#e9d4a4;font-size:9px;line-height:1.35}.forge-free.ready{color:#fff0b2;box-shadow:inset 0 0 13px rgba(255,174,57,.1)}
 .forge-wall{position:relative;flex:0 0 auto;overflow:hidden;width:100%;aspect-ratio:5/4.5;margin:6px 0 4px;border:5px ridge #76502b;border-radius:13px;background:repeating-linear-gradient(0deg,#35251a 0 10px,#432e1c 11px 64px,#251b14 65px 68px);box-shadow:inset 0 0 32px #100c0a,0 7px 18px #0008}
 .forge-wall canvas{display:block;width:100%;height:100%}
-.forge-wall-labels{position:absolute;inset:0;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(4,1fr);pointer-events:none}
+.forge-wall-labels{position:absolute;inset:0;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(4,1fr)}
 .forge-wall-label{display:flex;align-items:flex-end;justify-content:center;padding:0 1px 2px;border:1px solid #b9873c66;background:linear-gradient(180deg,transparent 58%,#21170eca);color:#ffe6ad;font-size:6px;font-weight:800;text-align:center;text-shadow:0 1px 3px #000,0 0 6px #000;line-height:1.1}
 .forge-wall-label.owned{color:#b8f0b4}
+.forge-wall-label.equipped{border:2px solid #93e697;box-shadow:inset 0 0 11px #59d97790}.forge-wall-label:active{background:#bb783955}
 .forge-wall-note{font-size:10px;line-height:1.4;color:#e5cdaa;margin:5px 2px 9px}
 .forge-group-title{display:flex;align-items:center;gap:7px;margin:15px 2px 7px;color:#eacb91;font-size:11px;font-weight:900;letter-spacing:.8px;text-transform:uppercase}.forge-group-title:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(226,165,80,.42),transparent)}
 .forge-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}.forge-item{position:relative;min-height:49px;padding:3px 2px;border-radius:8px;border:1px solid #9c7535;background:linear-gradient(145deg,#6f4b1d,#271b0e 56%,#11100d);color:#fff0c5;box-shadow:inset 0 0 9px rgba(255,207,91,.09),0 2px 5px rgba(0,0,0,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;touch-action:manipulation}.forge-item:active{transform:scale(.96);filter:brightness(1.18)}.forge-item .fi-icon{font-size:16px;line-height:1;filter:drop-shadow(0 0 6px rgba(255,188,72,.42))}.forge-item .fi-name{font-size:7px;font-weight:800;line-height:1.12}.forge-item .fi-level{font-size:6px;color:#f3cb78}.forge-item .fi-cost{padding:1px 3px;border-radius:5px;background:rgba(7,7,5,.56);font-size:6px;color:#ffbd58}.forge-item.free{border-color:#ffd76a;box-shadow:inset 0 0 10px rgba(255,213,90,.16),0 0 6px rgba(255,166,47,.18)}.forge-item.selected{border-color:#ffe18a;box-shadow:inset 0 0 10px rgba(255,220,119,.2),0 0 8px rgba(255,135,37,.35)}.forge-item.locked{filter:saturate(.25);opacity:.56}.forge-item.locked .fi-cost{color:#9e9582}.forge-item.maxed{border-color:#9cdaae;background:linear-gradient(145deg,#37583f,#15241a 60%,#0b100c)}
@@ -4758,15 +4761,17 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
 
       hero.add(model);
 
-      // Vika's animation moves her right hand, but her source GLB has no sword.
-      // Attach the existing lightweight sword to the animated hand bone.
-      if(skin==="valkyrie"){
+      // Equip the chosen model on the animated weapon hand.
+      if(skin==="valkyrie"||weapon!=="default"){
         // GLTFLoader strips the colon from Mixamo bone names while binding animations.
-        const hand=model.getObjectByName("mixamorigRightHand") || model.getObjectByName("mixamorig:RightHand") || model.getObjectByName("RightHand");
-        if(hand)loadGlbWithFolderFallback('Sword.glb',(swordGlb:any)=>{
+        const hand=skin==="valkyrie"
+          ? model.getObjectByName("mixamorigRightHand") || model.getObjectByName("mixamorig:RightHand") || model.getObjectByName("RightHand")
+          : model.getObjectByName("WeaponSocket_R") || model.getObjectByName("WeaponSocket_L");
+        const asset=weapon==="default"?'Sword.glb':WEAPON_ASSET[weapon];
+        if(hand&&asset)loadGlbWithFolderFallback(asset,(swordGlb:any)=>{
           if(!glbTreesAlive)return;
           const blade=swordGlb.scene;
-          textureSteelOnWeapon(blade,'Sword.glb');
+          textureSteelOnWeapon(blade,asset);
           blade.updateMatrixWorld(true);
           const bounds=new THREE.Box3().setFromObject(blade);
           const size=bounds.getSize(new THREE.Vector3());
@@ -4774,13 +4779,13 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
           const center=bounds.getCenter(new THREE.Vector3());
           blade.position.set(-center.x,-bounds.min.y,-center.z);
           const grip=new THREE.Group();
-          grip.scale.setScalar(.57/size.y);
-          grip.position.set(0,-.065,.015);
+          grip.scale.setScalar((skin==="valkyrie"?(weapon==="spear"?.82:.57):1.15)/size.y);
+          grip.position.set(0,skin==="valkyrie"?-.065:0,.015);
           grip.rotation.x=-.20;
           grip.add(blade);
           blade.traverse((o:any)=>{if(o.isMesh)o.castShadow=true;});
           hand.add(grip);
-        },'VALKYRIE SWORD');
+        },'HERO WEAPON');
       }
 
       const armL=model.getObjectByName("Arm_L_Pivot") as THREE.Object3D | null;
@@ -5295,7 +5300,7 @@ const FORGE_WEAPON_MODELS = [
   ['Shield_Heater.glb','Щит',''],['Shield_Heater_2.glb','Щит II',''],['Shield_Celtic_Golden.glb','Золотой щит','']
 ] as const;
 
-function ForgeWeaponWall({owned}:{owned:string[]}) {
+function ForgeWeaponWall({owned,selected,onChoose}:{owned:string[];selected:HeroWeapon;onChoose:(asset:string,name:string,id:string)=>void}) {
   const canvas=useRef<HTMLCanvasElement>(null);
   useEffect(()=>{
     const target=canvas.current;
@@ -5337,8 +5342,8 @@ function ForgeWeaponWall({owned}:{owned:string[]}) {
     });
     return()=>{active=false;scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.dispose();};
   },[]);
-  return <><div className="forge-wall"><canvas ref={canvas}/><div className="forge-wall-labels">{FORGE_WEAPON_MODELS.map(([asset,name,id])=><span className={'forge-wall-label'+(id&&owned.includes(id)?' owned':'')} key={asset}>{name}</span>)}</div></div>
-    <p className="forge-wall-note">Оружие на стене — образцы Вёлунда. Найденные предметы сохраняются у героя и остаются с ним при переходе между мирами. Остальные нужно заслужить.</p></>;
+  return <><div className="forge-wall"><canvas ref={canvas}/><div className="forge-wall-labels">{FORGE_WEAPON_MODELS.map(([asset,name,id])=><button type="button" className={'forge-wall-label'+(id&&owned.includes(id)?' owned':'')+(id===selected?' equipped':'')} key={asset} aria-label={'Взять '+name} onClick={()=>onChoose(asset,name,id)}>{name}</button>)}</div></div>
+    <p className="forge-wall-note">Нажми на полученное оружие, чтобы взять его в руку. Другие образцы ещё охраняют защитники; для луков потребуются стрелы.</p></>;
 }
 
 function App() {
@@ -5426,6 +5431,16 @@ const [roadT, setRoadT] = useState(0.06);
     haptic("success");
     say((cost===0?"Первая ковка бесплатна. ":"")+item.name+": закалка +1");
   };
+  const chooseForgeWeapon=(asset:string,name:string,id:string)=>{
+    if(asset.startsWith('Bow_')){say('Для '+name+' нужны стрелы. Добавим их вместе с заданиями лучников.');return;}
+    if(asset.startsWith('Shield_')){say(name+' — защитное снаряжение. Его наденем на вторую руку отдельно.');return;}
+    if(!id||!save.ownedWeapons.includes(id)){
+      say(name+' пока хранится у защитника. Победи его, чтобы забрать оружие.');return;
+    }
+    const selected=id as HeroWeapon;
+    if(save.heroWeapon===selected){say(name+' уже в руке.');return;}
+    setSave(s=>({...s,heroWeapon:selected}));haptic('success');say(name+' в руке. Сила оружия: +'+WEAPON_POWER[selected]+'.');
+  };
   const rnd = (n: number) => Math.floor(Math.random() * n);
   const trialIdx = (id: string) => save.trials.filter(t => t.startsWith(id + ":")).length;
   const openGate = (r: Realm) => { if (save.artifacts.includes(r.id)) { say("Мир покорён. Артефакт хранится в листе героя."); return; } haptic(); setScreen({ t: "trial", id: r.id }); };
@@ -5506,11 +5521,11 @@ const [roadT, setRoadT] = useState(0.06);
     let dmg = 0; let log = ""; let nhen = hen; let nmen = men; let nshield = shield;
     if (kind === "hit") {
       setCombatFx({kind:"hit",key:Date.now()});
-      dmg = heroDef!.str + forgeLevel("default") + (save.runes.includes('uruzStrength')?2:0) + rnd(4);
+      dmg = heroDef!.str + WEAPON_POWER[save.heroWeapon] + forgeLevel(save.heroWeapon) + (save.runes.includes('uruzStrength')?2:0) + rnd(4);
       if(hen>0)nhen=Math.max(0,hen-1);else{dmg=Math.ceil(dmg*.55);log="Силы иссякли — удар слабее. ";}
       if (save.powers.includes("fireOath")) { dmg += 5; setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "fireOath") })); log += "Огненный обет! "; }
       if (heroDef!.id === "berserk" && hhp <= Math.max(heroDef!.hp,hmax) / 2) { dmg *= 2; log += "Медвежья ярость! "; }
-      log += "Ты бьёшь: " + heroDef!.weapon + " — −" + dmg + " хозяину.";
+      log += "Ты бьёшь: " + (save.heroWeapon==="default"?heroDef!.weapon:FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]||heroDef!.weapon) + " — −" + dmg + " хозяину.";
     }
     if (kind === "rune") {
       if (hen < 2) { say("Для рунического удара нужно 2 деления энергии."); return; }
@@ -5895,7 +5910,7 @@ const [roadT, setRoadT] = useState(0.06);
       whisperResolved={save.done.includes("whisper:battle")||save.done.includes("whisper:wisdom")}
       whisperStats={{
         maxHp:heroDef.hp+forgeLevel("armor")*3+forgeLevel("helmet")*2,
-        attack:heroDef.str+forgeLevel("default")+(save.runes.includes('uruzStrength')?2:0),
+        attack:heroDef.str+WEAPON_POWER[save.heroWeapon]+forgeLevel(save.heroWeapon)+(save.runes.includes('uruzStrength')?2:0),
         runeAttack:heroDef.en+2,
         defense:Math.floor((forgeLevel("armor")+forgeLevel("helmet"))/2)
       }}
@@ -6045,13 +6060,13 @@ const [roadT, setRoadT] = useState(0.06);
             </div>
             <div className="hrow">🗡 Оружие в руке</div>
             <div className="chips">
-              <button
-                className={"chip"+(save.heroWeapon==="default"?" on":"")}
-                onClick={()=>{setSave(s=>({...s,heroWeapon:"default"}));haptic();}}
-              >{save.heroSkin==="valkyrie"?"Меч валькирии":"Секира викинга"}</button>
+              {(['default','knife','axe','mace','spear'] as HeroWeapon[]).filter(id=>id==='default'||save.ownedWeapons.includes(id)).map(id=><button key={id}
+                className={"chip"+(save.heroWeapon===id?" on":"")}
+                onClick={()=>{setSave(s=>({...s,heroWeapon:id}));haptic();}}
+              >{id==='default'?(save.heroSkin==='valkyrie'?'Меч валькирии':'Секира викинга'):FORGE_WEAPON_MODELS.find(item=>item[2]===id)?.[1]} · +{WEAPON_POWER[id]}</button>)}
             </div>
             <div className="dim" style={{marginTop:8}}>
-              Новое оружие будет добавляться в склад и появляться здесь для экипировки.
+              Найденное оружие можно менять здесь и на стене кузницы.
             </div>
             <div className="hrow">🌀 {heroDef.ability}: {heroDef.abilityDesc}</div>
             <div className="hrow">🔥 Капель силы: <b>{save.sparks}</b> • 🏺 Артефактов: <b>{save.artifacts.length}/9</b></div>
@@ -6103,7 +6118,7 @@ const [roadT, setRoadT] = useState(0.06);
             ? "Следующая закалка оплачивается Каплями силы. Цена растёт вместе с уровнем предмета."
             : "Дар кузнеца: первое улучшение любого доступного предмета бесплатно."}</div>
           <div className="forge-group-title">Стена оружия Вёлунда</div>
-          <ForgeWeaponWall owned={[...save.ownedWeapons,'shield']}/>
+          <ForgeWeaponWall owned={[...save.ownedWeapons,'shield']} selected={save.heroWeapon} onChoose={chooseForgeWeapon}/>
           <div className="forge-group-title">Оружие</div>
           <div className="forge-grid">{weapons.map(forgeButton)}</div>
           <div className="forge-group-title">Экипировка</div>
@@ -6128,8 +6143,8 @@ const [roadT, setRoadT] = useState(0.06);
           <div className="hall-grid">
             <div className="hall-section">
               <span className="hall-icon">⚔️</span><h3>Оружие</h3>
-              <p>{save.heroSkin==="valkyrie"?"Меч валькирии":"Секира викинга"} сейчас в руке. Найденное оружие сохраняется здесь после боёв.</p>
-              <div className="hall-slots"><button className="hall-slot on" onClick={()=>say("Это оружие уже экипировано.")}>⚔</button><button className={"hall-slot"+(save.ownedWeapons.length>1?" on":"")} onClick={()=>say(save.ownedWeapons.length>1?"Наградное оружие найдено. Смену оружия добавим следующим этапом.":"Ячейка свободна: оружие ещё не найдено.")}>{save.ownedWeapons.length>1?"🗡":"＋"}</button><button className={"hall-slot"+(save.ownedWeapons.length>2?" on":"")} onClick={()=>say(save.ownedWeapons.length>2?"Ещё одно оружие хранится в Чертоге.":"Ячейка свободна: оружие ещё не найдено.")}>{save.ownedWeapons.length>2?"🪓":"＋"}</button></div>
+              <p>{save.heroWeapon==='default'?(save.heroSkin==='valkyrie'?'Меч валькирии':'Секира викинга'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} сейчас в руке. Нажми на найденное оружие, чтобы сменить его.</p>
+              <div className="hall-slots">{(['default','knife','axe','mace','spear'] as HeroWeapon[]).filter(id=>id==='default'||save.ownedWeapons.includes(id)).map(id=><button key={id} title={id==='default'?'Основное оружие':FORGE_WEAPON_MODELS.find(item=>item[2]===id)?.[1]} className={'hall-slot'+(save.heroWeapon===id?' on':'')} onClick={()=>{setSave(s=>({...s,heroWeapon:id}));haptic();}}>{id==='default'?'⚔':id==='axe'?'🪓':id==='spear'?'🔱':id==='mace'?'🔨':'🗡'}</button>)}</div>
               <span className="hall-count">{save.ownedWeapons.length} предмет{save.ownedWeapons.length===1?"":"а"}</span>
             </div>
             <div className="hall-section">
