@@ -2494,20 +2494,20 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       markMeshes(barnModel);
       barnModel.traverse((o:any) => {
         if (!o.isMesh) return;
-        o.visible = true;
+        o.visible = !/^Barn_(?:PenRail_|Gate_Diag_)/.test(o.name);
         o.castShadow = true;
         o.receiveShadow = true;
         o.frustumCulled = true;
       });
       barnModel.scale.set(.84*HOME_SCALE,.90*HOME_SCALE*BUILDING_HEIGHT,.70*HOME_SCALE);
-      barnModel.rotation.set(0,.08,0);
+      barnModel.rotation.set(0,Math.PI/2,0);
       barnModel.position.set(-19,groundY(-19,35),35);
       barnModel.userData={id:"barn",label:"Амбар"};
       addMesh(barnModel,"barn","Амбар");applyHomeTextures(barnModel);
       objects.push(barnModel);
       console.log('[BARN] loaded', `${BASE}img/models/${barnAsset}`);
     }, 'BARN');
-    addRectCollider(-19,35,8.55*HOME_SCALE,5.25*HOME_SCALE,.08,.04);
+    addRectCollider(-19,35,8.55*HOME_SCALE,5.25*HOME_SCALE,Math.PI/2,.04);
 
     loadGlbWithFolderFallback(shedAsset, (gltf:any) => {
       if (!glbTreesAlive) return;
@@ -2537,11 +2537,13 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       x:number;z:number;radius:number;speed:number;phase:number;groundOffset:number;
     }>=[];
     const animalPlacements=[
-      {asset:'Cow.glb',label:'Корова',x:12,z:27,height:1.72,radius:1.6,speed:.20,phase:0,pose:'Walk'},
-      {asset:'Horse.glb',label:'Лошадь у сарая',x:20,z:26,height:2.28,radius:1.3,speed:.20,phase:1,pose:'Walk'},
-      {asset:'Horse_White.glb',label:'Лошадь на лугу',x:21,z:54,height:2.25,radius:4.2,speed:.25,phase:1.2,pose:'Walk'},
-      {asset:'Wolf.glb',label:'Волк',x:46,z:-16,height:1.12,radius:3.2,speed:.35,phase:2.1,pose:'Walk'},
-      {asset:'Fox.glb',label:'Лисица',x:43,z:36,height:.82,radius:2.8,speed:.30,phase:.4,pose:'Walk'}
+      {asset:'Cow.glb',label:'Корова',x:12,z:27,height:2.924,radius:1.6,speed:.20,phase:0,pose:'Walk'},
+      {asset:'Horse.glb',label:'Лошадь у сарая',x:20,z:26,height:5.016,radius:1.3,speed:.20,phase:1,pose:'Walk'},
+      {asset:'Horse_White.glb',label:'Лошадь на лугу',x:21,z:54,height:4.95,radius:4.2,speed:.25,phase:1.2,pose:'Walk'},
+      {asset:'Horse.glb',label:'Лошадь под навесом',x:-19,z:32,height:4.95,radius:0,speed:0,phase:Math.PI/2,pose:'Idle'},
+      {asset:'Horse_White.glb',label:'Белая лошадь под навесом',x:-19,z:38,height:4.95,radius:0,speed:0,phase:Math.PI/2,pose:'Idle'},
+      {asset:'Wolf.glb',label:'Волк',x:46,z:-16,height:2.016,radius:3.2,speed:.35,phase:2.1,pose:'Walk'},
+      {asset:'Fox.glb',label:'Лисица',x:43,z:36,height:1.64,radius:2.8,speed:.30,phase:.4,pose:'Walk'}
     ];
     for(const p of animalPlacements){
       loadGlbWithFolderFallback(p.asset,(gltf:any)=>{
@@ -5037,6 +5039,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
           </svg>
           <span className="map-landmark" style={{left:"49%",top:"53%"}}>⌂<small>Кузница</small></span>
           <span className="map-landmark" style={{left:"57%",top:"35%"}}>🐄<small>Сарай</small></span>
+          <span className="map-landmark" style={{left:"39%",top:"30%"}}>🐎<small>Навес</small></span>
           <span className="map-landmark" style={{left:"62%",top:"20%"}}>🐎<small>Луг</small></span>
           <span className="map-landmark" style={{left:"74%",top:"30%"}}>🦊<small>Лиса</small></span>
           <span className="map-landmark" style={{left:"76%",top:"59%"}}>🐺<small>Волк</small></span>
