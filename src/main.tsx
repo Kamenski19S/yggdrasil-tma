@@ -164,8 +164,10 @@ type HeroSkin = "viking" | "valkyrie";
 type HeroWeapon = "default"|"knife"|"axe"|"mace"|"spear";
 const WEAPON_POWER:Record<HeroWeapon,number>={default:0,knife:1,axe:3,mace:2,spear:2};
 const WEAPON_ASSET:Record<Exclude<HeroWeapon,"default">,string>={knife:'Sword_2.glb',axe:'Axe.glb',mace:'Hammer_Small.glb',spear:'Spear.glb'};
-type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; ownedWeapons: string[]; potions: string[]; runes: string[]; forgeLevels: Record<string,number>; forgeFreeUsed: boolean };
-const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", ownedWeapons: ["default"], potions: [], runes: [], forgeLevels: {}, forgeFreeUsed: false };
+type GearId="armor"|"shield"|"helmet"|"boots";
+const GEAR_IDS:GearId[]=["armor","shield","helmet","boots"];
+type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; ownedWeapons: string[]; equippedGear: GearId[]; potions: string[]; runes: string[]; forgeLevels: Record<string,number>; forgeFreeUsed: boolean };
+const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", ownedWeapons: ["default"], equippedGear:[], potions: [], runes: [], forgeLevels: {}, forgeFreeUsed: false };
 const loadSave = (): Save => {
   try {
     const s:any = { ...DEF, ...JSON.parse(localStorage.getItem("yggdrasil") || "") };
@@ -174,6 +176,8 @@ const loadSave = (): Save => {
     if (!Array.isArray(s.potions)) s.potions = [];
     if (!Array.isArray(s.runes)) s.runes = [];
     if (!s.forgeLevels || typeof s.forgeLevels !== "object" || Array.isArray(s.forgeLevels)) s.forgeLevels = {};
+    if(!Array.isArray(s.equippedGear))s.equippedGear=GEAR_IDS.filter(id=>Number(s.forgeLevels[id]||0)>0);
+    s.equippedGear=s.equippedGear.filter((id:string)=>GEAR_IDS.includes(id as GearId));
     if (typeof s.forgeFreeUsed !== "boolean") s.forgeFreeUsed = false;
     if (s.heroSkin !== "viking" && s.heroSkin !== "valkyrie") {
       const hd = s.hero ? HEROES.find((x:any)=>x.id===s.hero.id) : null;
@@ -515,6 +519,10 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .forge-wall-label{display:flex;align-items:flex-end;justify-content:center;padding:0 1px 2px;border:1px solid #b9873c66;background:linear-gradient(180deg,transparent 58%,#21170eca);color:#ffe6ad;font-size:6px;font-weight:800;text-align:center;text-shadow:0 1px 3px #000,0 0 6px #000;line-height:1.1}
 .forge-wall-label.owned{color:#b8f0b4}
 .forge-wall-label.equipped{border:2px solid #93e697;box-shadow:inset 0 0 11px #59d97790}.forge-wall-label:active{background:#bb783955}
+.spark-drop{display:inline-block;vertical-align:-1px;width:11px;height:15px;margin:0 2px 0 1px;border-radius:70% 70% 65% 8%;transform:rotate(-45deg);background:linear-gradient(135deg,#ffed9a 12%,#ffae35 48%,#ed5323 83%);box-shadow:0 0 5px #ff9a35a8}.spark-drop:after{content:"";position:absolute;top:3px;left:2px;width:3px;height:4px;border-radius:100%;background:#fff3b1a8}
+.sparks .spark-drop,.forge-wallet .spark-drop{width:15px;height:20px;vertical-align:-3px}
+.forge-equipped{display:flex;align-items:center;justify-content:space-between;gap:7px;padding:8px 9px;border:1px solid #d9a749;border-radius:10px;background:#352314;color:#ffe6a7;font-size:9px;font-weight:800}.forge-equipped button{padding:6px 7px;background:#b97e32;border:1px solid #ffe5a2;border-radius:7px;color:#1b1208;font-size:8px;font-weight:900}
+.forge-gear-actions{display:flex;gap:5px;width:100%}.forge-gear-actions button{flex:1;min-height:25px;padding:3px 1px;border-radius:6px;border:1px solid #bf914f;background:#44301a;color:#ffe6a7;font-size:7px;font-weight:800}.forge-gear-actions button.on{background:#31704a;border-color:#a6e0a5}.forge-gear-actions button:disabled{opacity:.58}
 .forge-wall-note{font-size:10px;line-height:1.4;color:#e5cdaa;margin:5px 2px 9px}
 .forge-group-title{display:flex;align-items:center;gap:7px;margin:15px 2px 7px;color:#eacb91;font-size:11px;font-weight:900;letter-spacing:.8px;text-transform:uppercase}.forge-group-title:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(226,165,80,.42),transparent)}
 .forge-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}.forge-item{position:relative;min-height:49px;padding:3px 2px;border-radius:8px;border:1px solid #9c7535;background:linear-gradient(145deg,#6f4b1d,#271b0e 56%,#11100d);color:#fff0c5;box-shadow:inset 0 0 9px rgba(255,207,91,.09),0 2px 5px rgba(0,0,0,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;touch-action:manipulation}.forge-item:active{transform:scale(.96);filter:brightness(1.18)}.forge-item .fi-icon{font-size:16px;line-height:1;filter:drop-shadow(0 0 6px rgba(255,188,72,.42))}.forge-item .fi-name{font-size:7px;font-weight:800;line-height:1.12}.forge-item .fi-level{font-size:6px;color:#f3cb78}.forge-item .fi-cost{padding:1px 3px;border-radius:5px;background:rgba(7,7,5,.56);font-size:6px;color:#ffbd58}.forge-item.free{border-color:#ffd76a;box-shadow:inset 0 0 10px rgba(255,213,90,.16),0 0 6px rgba(255,166,47,.18)}.forge-item.selected{border-color:#ffe18a;box-shadow:inset 0 0 10px rgba(255,220,119,.2),0 0 8px rgba(255,135,37,.35)}.forge-item.locked{filter:saturate(.25);opacity:.56}.forge-item.locked .fi-cost{color:#9e9582}.forge-item.maxed{border-color:#9cdaae;background:linear-gradient(145deg,#37583f,#15241a 60%,#0b100c)}
@@ -1162,7 +1170,7 @@ function midHero3d(h: HeroDef) {
 type WhisperCombatStats={maxHp:number;attack:number;runeAttack:number;defense:number};
 type WhisperPhase="closed"|"question"|"fight"|"reward"|"defeat";
 
-function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, northBridgeRepaired, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string }) {
+function Midgard3D({ h, skin, weapon, gear, on, eventDone, start, rememberPosition, northBridgeRepaired, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -1252,7 +1260,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       setWhisperGuardEnergy(v=>Math.max(0,v-1));guardAttackAtRef.current=performance.now();setWhisperFx({kind:"guard",key:Date.now()});
       whisperTimers.current.push(window.setTimeout(()=>{
         const raw=WHISPER_GUARD.atk+Math.floor(Math.random()*3);
-        const damage=Math.max(1,Math.ceil((raw-whisperStats.defense)*(shielded?.3:1)));
+        const damage=Math.max(1,Math.ceil((raw-whisperStats.defense)*(shielded?(gear.includes('shield')?.3:.6):1)));
         const next=Math.max(0,whisperHeroHp-damage);
         setWhisperHeroHp(next);setWhisperShield(false);setWhisperBusy(false);
         if(next<=0){setWhisperLog("Хродвитнир оказался сильнее. Камень позволит повторить испытание.");setWhisperPhaseSafe("defeat");}
@@ -4761,6 +4769,55 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
 
       hero.add(model);
 
+      // Starter gear is lightweight geometry attached to the animated rig.
+      const bone=(name:string)=>model.getObjectByName('mixamorig'+name)||model.getObjectByName('mixamorig:'+name);
+      const isVika=skin==='valkyrie';
+      const leather=new THREE.MeshStandardMaterial({color:0x604329,roughness:.88,metalness:.12});
+      const trim=new THREE.MeshStandardMaterial({color:0x92714a,roughness:.68,metalness:.42});
+      const chestAnchor=isVika?bone('Spine2'):model;
+      if(gear.includes('armor')&&chestAnchor){
+        const cuirass=new THREE.Mesh(new THREE.DodecahedronGeometry(1,0),leather);
+        cuirass.scale.set(isVika?.15:.46,isVika?.16:.55,isVika?.065:.19);
+        cuirass.position.set(0,isVika?.04:1.45,isVika?.085:.21);
+        chestAnchor.add(cuirass);
+        const buckle=new THREE.Mesh(new THREE.BoxGeometry(isVika?.07:.20,isVika?.035:.09,isVika?.02:.05),trim);
+        buckle.position.set(0,isVika?-.045:1.28,isVika?.15:.40);
+        chestAnchor.add(buckle);
+      }
+      const headAnchor=isVika?bone('Head'):model;
+      if(gear.includes('helmet')&&headAnchor){
+        const helmet=new THREE.Mesh(new THREE.SphereGeometry(isVika?.145:.42,12,8,0,Math.PI*2,0,Math.PI*.57),trim);
+        helmet.position.set(0,isVika?.09:2.7,0);
+        headAnchor.add(helmet);
+      }
+      if(gear.includes('boots')){
+        for(const [side,name] of [[-1,'LeftFoot'],[1,'RightFoot']] as Array<[number,string]>){
+          const foot=isVika?bone(name):model;
+          if(!foot)continue;
+          const boot=new THREE.Mesh(new THREE.SphereGeometry(1,9,7),leather);
+          boot.scale.set(isVika?.092:.20,isVika?.11:.24,isVika?.15:.32);
+          boot.position.set(isVika?0:side*.26,isVika?0:.27,isVika?.045:.12);
+          foot.add(boot);
+        }
+      }
+      if(gear.includes('shield')){
+        const shieldHand=isVika?bone('LeftHand'):model.getObjectByName('WeaponSocket_L');
+        if(shieldHand)loadGlbWithFolderFallback('Shield_Round.glb',(shieldGlb:any)=>{
+          if(!glbTreesAlive)return;
+          const shieldModel=shieldGlb.scene;
+          shieldModel.updateMatrixWorld(true);
+          const bounds=new THREE.Box3().setFromObject(shieldModel);
+          const size=bounds.getSize(new THREE.Vector3());
+          const span=Math.max(size.x,size.y,size.z);
+          if(span<.001)return;
+          const center=bounds.getCenter(new THREE.Vector3());
+          shieldModel.position.set(-center.x,-center.y,-center.z);
+          const mount=new THREE.Group();mount.scale.setScalar((isVika?.38:1.1)/span);
+          mount.position.set(0,isVika?-.025:0,isVika?.10:.12);
+          mount.add(shieldModel);shieldHand.add(mount);
+        },'HERO SHIELD');
+      }
+
       // Equip the chosen model on the animated weapon hand.
       if(skin==="valkyrie"||weapon!=="default"){
         // GLTFLoader strips the colon from Mixamo bone names while binding animations.
@@ -5172,7 +5229,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     raf=requestAnimationFrame(loop);
 
     return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();deerFurTexture?.dispose();nornsStoneTexture?.dispose();nornsColumnTexture?.dispose();furTextures.forEach(texture=>texture.dispose());lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
-  },[h.id,skin,weapon,on,eventDone,start.x,start.z,rememberPosition,northBridgeRepaired]);
+  },[h.id,skin,weapon,gear.join(','),on,eventDone,start.x,start.z,rememberPosition,northBridgeRepaired]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
   const stopJoy=()=>{if(knob.current)knob.current.style.transform="translate(0,0)";state.current.dx=0;state.current.dz=0;};
@@ -5265,7 +5322,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       </div>
     </div>}
     {whisperPhase==="reward"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
-      <div className="whisper-reward-icon">{whisperReplay?"ᚦ":rewardIcon}</div><div className="whisper-reward-rarity">{whisperReplay?"Повторное испытание":"Награда Мидгарда"}</div>
+      <div className="whisper-reward-icon">{whisperReplay?"ᚦ":rewardIcon==="🔥"?<SparkDrop/>:rewardIcon}</div><div className="whisper-reward-rarity">{whisperReplay?"Повторное испытание":"Награда Мидгарда"}</div>
       <div className="whisper-reward-name">{whisperReward}</div><p>{whisperLog}</p>
       <button className="whisper-close" onClick={closeWhisperEncounter}>{whisperReplay?"Завершить тренировку":"Забрать награду и продолжить путь"}</button>
     </div>}
@@ -5291,6 +5348,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     {whisperPhase==="closed"&&<div className="mid3d-ui mid3d-hint">{insideHome?(moving?"Ты внутри дома":"Дом героя • отдых • сундук • выход"):moving?"Исследуй Мидгард":"Ворота • площадь • кузница • Мимир • норны • лес"}</div>}
   </div>;
 }
+
+function SparkDrop(){return <span className="spark-drop" aria-label="Капля силы"/>;}
 
 const FORGE_WEAPON_MODELS = [
   ['Sword.glb','Меч','default'],['Sword_2.glb','Меч II','knife'],['Sword_Big.glb','Большой меч',''],['Sword_Golden.glb','Золотой меч',''],
@@ -5420,13 +5479,22 @@ const [roadT, setRoadT] = useState(0.06);
     {id:"boots",icon:"🥾",name:"Походные сапоги",kind:"gear",owned:true},
   ];
   const forgeLevel=(id:string)=>Math.max(0,Number(save.forgeLevels[id]||0));
+  const equipped=(id:GearId)=>save.equippedGear.includes(id);
+  const gearLevel=(id:GearId)=>equipped(id)?forgeLevel(id):0;
+  const gearHp=()=>gearLevel('armor')*3+gearLevel('helmet')*2+(equipped('armor')?4:0)+(equipped('helmet')?2:0);
+  const gearDefense=()=>Math.floor((gearLevel('armor')+gearLevel('helmet'))/2)+(equipped('armor')?1:0);
+  const toggleGear=(id:GearId)=>{
+    const isOn=equipped(id);
+    setSave(s=>({...s,equippedGear:isOn?s.equippedGear.filter(gear=>gear!==id):[...s.equippedGear,id]}));
+    haptic();say((isOn?'Снято: ':'Надето: ')+(forgeItems.find(item=>item.id===id)?.name||id));
+  };
   const forgeCost=(id:string)=>save.forgeFreeUsed?5+forgeLevel(id)*5:0;
   const improveForgeItem=(item:typeof forgeItems[number])=>{
     if(!item.owned){say("Этот предмет ещё нужно получить в награду за испытание.");return;}
     const level=forgeLevel(item.id);
     if(level>=5){say(item.name+" уже достиг максимальной закалки Мидгарда.");return;}
     const cost=forgeCost(item.id);
-    if(save.sparks<cost){say("Недостаточно Капель силы. Нужно: "+cost+" 🔥");return;}
+    if(save.sparks<cost){say("Недостаточно Капель силы. Нужно: "+cost);return;}
     setSave(s=>({...s,sparks:s.sparks-cost,forgeFreeUsed:true,forgeLevels:{...s.forgeLevels,[item.id]:(s.forgeLevels[item.id]||0)+1}}));
     haptic("success");
     say((cost===0?"Первая ковка бесплатна. ":"")+item.name+": закалка +1");
@@ -5484,7 +5552,7 @@ const [roadT, setRoadT] = useState(0.06);
   const startFight = (id: string) => {
     const m = MASTERS[id];
     const ash = save.powers.includes("ashBreath");
-    const forgedHp=forgeLevel("armor")*3+forgeLevel("helmet")*2;
+    const forgedHp=gearHp();
     const fightMaxHp=heroDef!.hp+forgedHp+(ash?25:0);
     setMhp(m.hp);
     setHhp(fightMaxHp);
@@ -5534,7 +5602,7 @@ const [roadT, setRoadT] = useState(0.06);
       log = "Руническое заклинание вспыхивает: −" + dmg + " хозяину.";
     }
     if (kind === "shield") { if(hen<1){say("Нет энергии, чтобы удержать щит.");return;} nhen=hen-1;nshield = true; log = "Ты поднимаешь щит — удар ослабнет."; }
-    if (kind === "restore") { const restored=2+(forgeLevel("boots")>=3?1:0);nhen=Math.min(COMBAT_ENERGY,hen+restored);log="Ты переводишь дыхание и восстанавливаешь "+restored+" деления энергии."; }
+    if (kind === "restore") { const restored=2+(equipped('boots')?1:0)+(gearLevel('boots')>=3?1:0);nhen=Math.min(COMBAT_ENERGY,hen+restored);log="Ты переводишь дыхание и восстанавливаешь "+restored+" деления энергии."; }
     const nm = mhp - dmg;
     if (nm <= 0) {
       setMhp(0); setHen(nhen); setMen(nmen); setOver("win");
@@ -5545,9 +5613,9 @@ const [roadT, setRoadT] = useState(0.06);
     }
     let md = m.atk + rnd(3); let mlog = "";
     if(nmen<=0){md=0;nmen=2;mlog=" "+m.name+" вынужден перевести дыхание и восстанавливает энергию.";}else nmen=Math.max(0,nmen-1);
-    const forgedDefense=Math.floor((forgeLevel("armor")+forgeLevel("helmet"))/2);
+    const forgedDefense=gearDefense();
     md=Math.max(1,md-forgedDefense);
-    if (nshield) { md = Math.max(0,Math.ceil(md * 0.3)-forgeLevel("shield")); mlog += " Щит принял большую часть удара."; }
+    if (nshield) { md = Math.max(0,Math.ceil(md * (equipped('shield')?.3:.6))-gearLevel('shield')-(equipped('shield')?1:0)); mlog += " Щит принял большую часть удара."; }
     if (save.powers.includes("iceOath")) { md = Math.ceil(md * 0.65); setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "iceOath") })); mlog += " Ледяной обет сковал удар врага."; }
     if (heroDef!.id === "dwarf") md = Math.ceil(md * 0.75);
     let nh = hhp;
@@ -5581,7 +5649,7 @@ const [roadT, setRoadT] = useState(0.06);
         {screen.t === "forge" && <button className="back" onClick={() => go({ t: "realm", id:"midgard" })}>← Мидгард · Кузница</button>}
         {screen.t === "trial" && <div className="title">🗝 Испытание</div>}
         {screen.t === "fight" && <div className="title">⚔ Бой</div>}
-        <div className="sparks">🔥 {save.sparks} Капель силы</div>
+        <div className="sparks"><SparkDrop/> {save.sparks} Капель силы</div>
       </div>
 
       {forgeTransition&&<div className="forge-transition"><b>ᚲ</b><span>Дверь кузницы открывается</span></div>}
@@ -5902,6 +5970,7 @@ const [roadT, setRoadT] = useState(0.06);
       h={heroDef}
       skin={save.heroSkin}
       weapon={save.heroWeapon}
+      gear={save.equippedGear}
       on={interact}
       eventDone={save.done.includes("forest:choice")}
       start={midgardReturn.current}
@@ -5909,10 +5978,10 @@ const [roadT, setRoadT] = useState(0.06);
       northBridgeRepaired={save.done.includes("bridge:north:repaired")}
       whisperResolved={save.done.includes("whisper:battle")||save.done.includes("whisper:wisdom")}
       whisperStats={{
-        maxHp:heroDef.hp+forgeLevel("armor")*3+forgeLevel("helmet")*2,
+        maxHp:heroDef.hp+gearHp(),
         attack:heroDef.str+WEAPON_POWER[save.heroWeapon]+forgeLevel(save.heroWeapon)+(save.runes.includes('uruzStrength')?2:0),
         runeAttack:heroDef.en+2,
-        defense:Math.floor((forgeLevel("armor")+forgeLevel("helmet"))/2)
+        defense:gearDefense()
       }}
       onWhisperCorrect={finishWhisperCorrect}
       onWhisperWin={finishWhisperBattle}
@@ -6029,7 +6098,7 @@ const [roadT, setRoadT] = useState(0.06);
               <button className="btn gold" onClick={() => fightAct(realm.id, "hit")}>⚔ Удар: {heroDef!.weapon} (−1 энергия)</button>
               <button className="btn rune" onClick={() => fightAct(realm.id, "rune")}>🌀 Руническое заклинание (−2 энергии)</button>
               <button className="btn shield" onClick={() => fightAct(realm.id, "shield")}>🛡 Щит (−1 энергия)</button>
-              <button className="btn ghost" onClick={() => fightAct(realm.id, "restore")}>🌿 Перевести дыхание (+{2+(forgeLevel("boots")>=3?1:0)} энергии)</button>
+              <button className="btn ghost" onClick={() => fightAct(realm.id, "restore")}>🌿 Перевести дыхание (+{2+(equipped('boots')?1:0)+(gearLevel('boots')>=3?1:0)} энергии)</button>
             </div>)}
             {over === "win" && <button className="btn gold" onClick={() => nextStep(realm.id)}>Забрать награду →</button>}
             {over === "lose" && <button className="btn ghost" onClick={() => go({ t: "tree" })}>Древо возрождает тебя</button>}
@@ -6045,7 +6114,7 @@ const [roadT, setRoadT] = useState(0.06);
             <div className="stats">
               <div className="stat"><b>⚔ {heroDef.str}</b><span>сила</span></div>
               <div className="stat"><b>✨ {heroDef.en}</b><span>энергия</span></div>
-              <div className="stat"><b>❤ {heroDef.hp+forgeLevel("armor")*3+forgeLevel("helmet")*2}</b><span>здоровье</span></div>
+              <div className="stat"><b>❤ {heroDef.hp+gearHp()}</b><span>здоровье</span></div>
             </div>
             <div className="hrow">🎭 Облик героя</div>
             <div className="chips">
@@ -6068,8 +6137,10 @@ const [roadT, setRoadT] = useState(0.06);
             <div className="dim" style={{marginTop:8}}>
               Найденное оружие можно менять здесь и на стене кузницы.
             </div>
+            <div className="hrow">🛡 Экипировка</div>
+            <div className="chips">{GEAR_IDS.map(id=><button key={id} className={'chip'+(equipped(id)?' on':'')} onClick={()=>toggleGear(id)}>{id==='armor'?'Броня':id==='helmet'?'Шлем':id==='shield'?'Щит':'Сапоги'} · {equipped(id)?'надето':'надеть'}</button>)}</div>
             <div className="hrow">🌀 {heroDef.ability}: {heroDef.abilityDesc}</div>
-            <div className="hrow">🔥 Капель силы: <b>{save.sparks}</b> • 🏺 Артефактов: <b>{save.artifacts.length}/9</b></div>
+            <div className="hrow"><SparkDrop/> Капель силы: <b>{save.sparks}</b> • 🏺 Артефактов: <b>{save.artifacts.length}/9</b></div>
             {save.artifacts.length > 0 && <div className="hrow">🏺 {save.artifacts.map(a => ARTIFACTS[a]).join(", ")}</div>}
           </div>
         </div>
@@ -6087,7 +6158,7 @@ const [roadT, setRoadT] = useState(0.06);
               {claimed ? <button className="btn" disabled>Дар получен • вернись завтра</button> : <button className="btn gold" onClick={claimGift}>Забрать дар +{LADDER[next - 1]} ✨</button>}
             </div>
             <div className="card center"><div className="big">⏳</div><div className="qhead2">Дозор героя</div><p className="dim">Капли силы собираются, даже когда приложение закрыто: 3 в час, до 12 часов.</p>
-              <button className="btn gold" onClick={collectWatch}>Завершить дозор · +{watchGain()} 🔥</button>
+              <button className="btn gold" onClick={collectWatch}>Завершить дозор · +{watchGain()} <SparkDrop/></button>
             </div>
           </div>
         );
@@ -6100,11 +6171,16 @@ const [roadT, setRoadT] = useState(0.06);
           const level=forgeLevel(item.id);
           const maxed=level>=5;
           const free=!save.forgeFreeUsed&&item.owned&&!maxed;
-          return <button key={item.id} className={"forge-item"+(!item.owned?" locked":"")+(free?" free":"")+(maxed?" maxed":"")} onClick={()=>improveForgeItem(item)}>
-            <span className="fi-icon">{item.icon}</span>
-            <span className="fi-name">{item.name}</span>
-            <span className="fi-level">{level>0?"Закалка +"+level:"Без улучшений"}</span>
-            <span className="fi-cost">{!item.owned?"Не найдено":maxed?"Высшая закалка":free?"Бесплатно":forgeCost(item.id)+" 🔥"}</span>
+          const label=<><span className="fi-icon">{item.icon}</span><span className="fi-name">{item.name}</span><span className="fi-level">{level>0?"Закалка +"+level:"Без улучшений"}</span></>;
+          if(item.kind==='gear'){
+            const on=equipped(item.id as GearId);
+            return <div key={item.id} className={'forge-item'+(on?' selected':'')}>{label}<div className="forge-gear-actions">
+              <button className={on?'on':''} onClick={()=>toggleGear(item.id as GearId)}>{on?'Снять':'Надеть'}</button>
+              <button disabled={maxed} onClick={()=>improveForgeItem(item)}>{maxed?'★':free?'0':<>{forgeCost(item.id)}<SparkDrop/></>}</button>
+            </div></div>;
+          }
+          return <button key={item.id} className={"forge-item"+(!item.owned?" locked":"")+(item.id===save.heroWeapon?" selected":"")+(free?" free":"")+(maxed?" maxed":"")} onClick={()=>improveForgeItem(item)}>
+            {label}<span className="fi-cost">{!item.owned?"Не найдено":maxed?"Высшая закалка":free?"Бесплатно":<>{forgeCost(item.id)} <SparkDrop/></>}</span>
           </button>;
         };
         return <div key="forge" className="scroll forge-screen" ref={element=>{if(element&&!element.dataset.forgeEntered){element.scrollTop=0;element.dataset.forgeEntered='yes';}}}>
@@ -6112,13 +6188,15 @@ const [roadT, setRoadT] = useState(0.06);
             <div className="forge-title">Кузница Вёлунда</div>
             <div className="forge-master">«Сталь помнит каждый бой. Отдай её огню — и она вернётся сильнее».</div>
             <div className="forge-advice"><b>Совет:</b> сначала закали основное оружие. Нажми на доступный предмет — улучшение сработает сразу.</div>
-            <div className="forge-wallet"><span>Запас:</span><b>🔥 {save.sparks}</b><span>Капель силы</span></div>
+            <div className="forge-wallet"><span>Запас:</span><b><SparkDrop/> {save.sparks}</b><span>Капель силы</span></div>
           </div>
           <div className={"forge-free"+(!save.forgeFreeUsed?" ready":"")}>{save.forgeFreeUsed
             ? "Следующая закалка оплачивается Каплями силы. Цена растёт вместе с уровнем предмета."
             : "Дар кузнеца: первое улучшение любого доступного предмета бесплатно."}</div>
           <div className="forge-group-title">Стена оружия Вёлунда</div>
           <ForgeWeaponWall owned={[...save.ownedWeapons,'shield']} selected={save.heroWeapon} onChoose={chooseForgeWeapon}/>
+          <div className="forge-equipped"><span>В руке: {save.heroWeapon==='default'?(save.heroSkin==='valkyrie'?'Меч валькирии':'Секира викинга'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} · сила +{WEAPON_POWER[save.heroWeapon]} · закалка +{forgeLevel(save.heroWeapon)}</span>
+            <button disabled={forgeLevel(save.heroWeapon)>=5} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>Закалить {forgeLevel(save.heroWeapon)>=5?'★':save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/></>:'бесплатно'}</button></div>
           <div className="forge-group-title">Оружие</div>
           <div className="forge-grid">{weapons.map(forgeButton)}</div>
           <div className="forge-group-title">Экипировка</div>
@@ -6134,7 +6212,7 @@ const [roadT, setRoadT] = useState(0.06);
             <div className="big">🏛️</div>
             <div className="qhead2">Чертог героя</div>
             <div className="stats">
-              <div className="stat"><b>🔥 {save.sparks}</b><span>Капли силы</span></div>
+              <div className="stat"><b><SparkDrop/> {save.sparks}</b><span>Капли силы</span></div>
               <div className="stat"><b>🏺 {save.artifacts.length}/9</b><span>артефакты</span></div>
             </div>
             <div className="rank">🏆 Ранг: {rank(save.sparks)}</div>
@@ -6183,7 +6261,7 @@ const [roadT, setRoadT] = useState(0.06);
               <span className="craft-op">＝</span>
               <span className="craft-slot"><b>?</b>результат</span>
             </div>
-            <div className="hrow">🔥 Капли силы: <b>0</b></div>
+            <div className="hrow"><SparkDrop/> Капли силы: <b>0</b></div>
             <button className="btn gold" disabled>Создать предмет</button>
             <button className="btn ghost" onClick={()=>go({t:"hall"})}>Вернуться в Чертог</button>
           </div>
