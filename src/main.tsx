@@ -168,11 +168,12 @@ type GearId="armor"|"shield"|"helmet"|"boots";
 const GEAR_IDS:GearId[]=["armor","shield","helmet","boots"];
 const SHIELD_ASSETS=['Shield_Round.glb','Shield_Round_2.glb','Shield_Heater.glb','Shield_Heater_2.glb','Shield_Celtic_Golden.glb'];
 const shieldForgeKey=(asset:string)=>asset===SHIELD_ASSETS[0]?'shield':'shield:'+asset;
-type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedWeapons: string[]; equippedGear: GearId[]; potions: string[]; runes: string[]; forgeLevels: Record<string,number>; forgeFreeUsed: boolean };
-const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedWeapons: ["default"], equippedGear:[], potions: [], runes: [], forgeLevels: {}, forgeFreeUsed: false };
+type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; equippedGear: GearId[]; potions: string[]; runes: string[]; forgeLevels: Record<string,number>; forgeFreeUsed: boolean };
+const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], equippedGear:[], potions: [], runes: [], forgeLevels: {}, forgeFreeUsed: false };
 const loadSave = (): Save => {
   try {
-    const s:any = { ...DEF, ...JSON.parse(localStorage.getItem("yggdrasil") || "") };
+    const previous:any=JSON.parse(localStorage.getItem("yggdrasil") || "{}");
+    const s:any = { ...DEF, ...previous };
     if (!Array.isArray(s.powers)) s.powers = [];
     if (!Array.isArray(s.ownedWeapons)) s.ownedWeapons = ["default"];
     if (!Array.isArray(s.potions)) s.potions = [];
@@ -181,6 +182,10 @@ const loadSave = (): Save => {
     if(!Array.isArray(s.equippedGear))s.equippedGear=GEAR_IDS.filter(id=>Number(s.forgeLevels[id]||0)>0);
     s.equippedGear=s.equippedGear.filter((id:string)=>GEAR_IDS.includes(id as GearId));
     if(!SHIELD_ASSETS.includes(s.shieldAsset))s.shieldAsset=SHIELD_ASSETS[0];
+    // Keep a previously selected shield when migrating saves from the preview
+    // where all shields were temporarily available.
+    if(!Array.isArray(previous.ownedShields))s.ownedShields=[SHIELD_ASSETS[0],s.shieldAsset];
+    s.ownedShields=[...new Set([SHIELD_ASSETS[0],...s.ownedShields.filter((asset:string)=>SHIELD_ASSETS.includes(asset))])];
     if (typeof s.forgeFreeUsed !== "boolean") s.forgeFreeUsed = false;
     if (s.heroSkin !== "viking" && s.heroSkin !== "valkyrie") {
       const hd = s.hero ? HEROES.find((x:any)=>x.id===s.hero.id) : null;
@@ -4832,7 +4837,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           const mount=new THREE.Group();mount.scale.setScalar((isVika?.38:1.1)/span);
           // Fasten the back of the shield to the middle of the animated forearm.
           mount.position.set(0,isVika?.075:0,isVika?-.016:.12);
-          mount.rotation.y=0;
+          // The GLB's straps face forward at zero rotation; turn them toward
+          // the arm so the painted face points out at the player.
+          mount.rotation.y=Math.PI;
           mount.add(shieldModel);shieldHand.add(mount);
         },'HERO SHIELD');
       }
@@ -5378,7 +5385,7 @@ const FORGE_WEAPON_MODELS = [
   ['Shield_Heater.glb','Щит',''],['Shield_Heater_2.glb','Щит II',''],['Shield_Celtic_Golden.glb','Золотой щит','']
 ] as const;
 
-function ForgeWeaponWall({owned,selected,selectedShield,onChoose}:{owned:string[];selected:HeroWeapon;selectedShield:string|null;onChoose:(asset:string,name:string,id:string)=>void}) {
+function ForgeWeaponWall({owned,ownedShields,selected,selectedShield,onChoose}:{owned:string[];ownedShields:string[];selected:HeroWeapon;selectedShield:string|null;onChoose:(asset:string,name:string,id:string)=>void}) {
   const canvas=useRef<HTMLCanvasElement>(null);
   useEffect(()=>{
     const target=canvas.current;
@@ -5420,8 +5427,8 @@ function ForgeWeaponWall({owned,selected,selectedShield,onChoose}:{owned:string[
     });
     return()=>{active=false;scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.dispose();};
   },[]);
-  return <><div className="forge-wall"><canvas ref={canvas}/><div className="forge-wall-labels">{FORGE_WEAPON_MODELS.map(([asset,name,id])=><button type="button" className={'forge-wall-label'+(id&&owned.includes(id)?' owned':'')+(asset.startsWith('Shield_')?' owned':'')+(asset===selectedShield||(!asset.startsWith('Shield_')&&id===selected)?' equipped':'')} key={asset} aria-label={'Выбрать '+name} onClick={()=>onChoose(asset,name,id)}>{name}</button>)}</div></div>
-    <p className="forge-wall-note">Выбери оружие для правой руки или щит для левой. Нажми на выбранный щит ещё раз, чтобы снять его. Для луков потребуются стрелы.</p></>;
+  return <><div className="forge-wall"><canvas ref={canvas}/><div className="forge-wall-labels">{FORGE_WEAPON_MODELS.map(([asset,name,id])=><button type="button" className={'forge-wall-label'+(id&&owned.includes(id)?' owned':'')+(ownedShields.includes(asset)?' owned':'')+(asset===selectedShield||(!asset.startsWith('Shield_')&&id===selected)?' equipped':'')} key={asset} aria-label={'Выбрать '+name} onClick={()=>onChoose(asset,name,id)}>{name}</button>)}</div></div>
+    <p className="forge-wall-note">Выбери полученное оружие или щит. Остальные щиты откроются по мере прохождения; для луков потребуются стрелы.</p></>;
 }
 
 function App() {
@@ -5507,7 +5514,7 @@ const [roadT, setRoadT] = useState(0.06);
     setSave(s=>({...s,equippedGear:isOn?s.equippedGear.filter(gear=>gear!==id):[...s.equippedGear,id]}));
     haptic();say((isOn?'Снято: ':'Надето: ')+(forgeItems.find(item=>item.id===id)?.name||id));
   };
-  const forgeCost=(id:string)=>save.forgeFreeUsed?5+forgeLevel(id==='shield'?shieldForgeKey(save.shieldAsset):id)*5:0;
+  const forgeCost=(id:string)=>save.forgeFreeUsed?2+forgeLevel(id==='shield'?shieldForgeKey(save.shieldAsset):id)*2:0;
   const improveForgeItem=(item:typeof forgeItems[number])=>{
     if(!item.owned){say("Этот предмет ещё нужно получить в награду за испытание.");return;}
     const key=item.id==='shield'?shieldForgeKey(save.shieldAsset):item.id;
@@ -5522,6 +5529,7 @@ const [roadT, setRoadT] = useState(0.06);
   const chooseForgeWeapon=(asset:string,name:string,id:string)=>{
     if(asset.startsWith('Bow_')){say('Для '+name+' нужны стрелы. Добавим их вместе с заданиями лучников.');return;}
     if(asset.startsWith('Shield_')){
+      if(!save.ownedShields.includes(asset)){say(name+' ещё не получен. Щиты будут открываться за испытания.');return;}
       const already=save.shieldAsset===asset&&equipped('shield');
       setSave(s=>({...s,shieldAsset:asset,equippedGear:already?s.equippedGear.filter(gear=>gear!=='shield'):[...new Set([...s.equippedGear,'shield' as GearId])]}));
       haptic('success');say(already?'Щит снят.':name+' надет на левую руку. Закалка выбрана ниже.');return;
@@ -5976,7 +5984,7 @@ const [roadT, setRoadT] = useState(0.06);
         const key = power[ritual];
         if (!key) return;
         if (save.powers.includes(key)) { say(names[ritual] + " уже пробуждён. Его сила ждёт своего часа."); return; }
-        setSave(s => ({ ...s, powers: [...new Set([...s.powers, key])], done: [...new Set([...s.done, "ritual:" + ritual])] }));
+        setSave(s => ({ ...s, sparks:s.sparks+5, powers: [...new Set([...s.powers, key])], done: [...new Set([...s.done, "ritual:" + ritual])] }));
         const text: Record<string,string> = {
           mimir: "Око Мимира открыто. Следующая тайна может сама выдать себя тебе.",
           norn: "Нить Норн натянулась. Один раз ты сможешь избежать последствий ошибочного пути.",
@@ -5985,7 +5993,7 @@ const [roadT, setRoadT] = useState(0.06);
           ice: "Ледяной обет застыл на тебе. Первый удар врага в следующем бою будет слабее на 35%.",
           ygg: "Зов Иггдрасиля услышан. Один раз смертельный удар вернёт тебя к жизни с 30 здоровья."
         };
-        haptic("success"); say(text[ritual]);
+        haptic("success"); say(text[ritual]+" +5 Капель силы.");
         return;
       }
     };
@@ -6217,7 +6225,7 @@ const [roadT, setRoadT] = useState(0.06);
             ? "Следующая закалка оплачивается Каплями силы. Цена растёт вместе с уровнем предмета."
             : "Дар кузнеца: первое улучшение любого доступного предмета бесплатно."}</div>
           <div className="forge-group-title">Стена оружия Вёлунда</div>
-          <ForgeWeaponWall owned={save.ownedWeapons} selected={save.heroWeapon} selectedShield={equipped('shield')?save.shieldAsset:null} onChoose={chooseForgeWeapon}/>
+          <ForgeWeaponWall owned={save.ownedWeapons} ownedShields={save.ownedShields} selected={save.heroWeapon} selectedShield={equipped('shield')?save.shieldAsset:null} onChoose={chooseForgeWeapon}/>
           <div className="forge-equipped"><span>В руке: {save.heroWeapon==='default'?(save.heroSkin==='valkyrie'?'Меч валькирии':'Секира викинга'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} · сила +{WEAPON_POWER[save.heroWeapon]} · закалка +{forgeLevel(save.heroWeapon)}</span>
             <button disabled={forgeLevel(save.heroWeapon)>=10} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=10?'Максимум +10':<>Закалить {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/></>:'бесплатно'}</>}</button></div>
           <div className="forge-group-title">Экипировка</div>
