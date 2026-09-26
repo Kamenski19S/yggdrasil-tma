@@ -4817,6 +4817,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, on, eventDone, start, re
         if(shieldHand)loadGlbWithFolderFallback('Shield_Round.glb',(shieldGlb:any)=>{
           if(!glbTreesAlive)return;
           const shieldModel=shieldGlb.scene;
+          // This model has a deep rim; flatten only its depth, keeping the face intact.
+          shieldModel.scale.z=.22;
           shieldModel.updateMatrixWorld(true);
           const bounds=new THREE.Box3().setFromObject(shieldModel);
           const size=bounds.getSize(new THREE.Vector3());
@@ -5506,7 +5508,7 @@ const [roadT, setRoadT] = useState(0.06);
   const improveForgeItem=(item:typeof forgeItems[number])=>{
     if(!item.owned){say("Этот предмет ещё нужно получить в награду за испытание.");return;}
     const level=forgeLevel(item.id);
-    if(level>=5){say(item.name+" уже достиг максимальной закалки Мидгарда.");return;}
+    if(level>=(item.kind==='weapon'?10:5)){say(item.name+" уже достиг максимальной закалки Мидгарда.");return;}
     const cost=forgeCost(item.id);
     if(save.sparks<cost){say("Недостаточно Капель силы. Нужно: "+cost);return;}
     setSave(s=>({...s,sparks:s.sparks-cost,forgeFreeUsed:true,forgeLevels:{...s.forgeLevels,[item.id]:(s.forgeLevels[item.id]||0)+1}}));
@@ -6180,7 +6182,6 @@ const [roadT, setRoadT] = useState(0.06);
       })()}
 
       {screen.t === "forge" && (()=>{
-        const weapons=forgeItems.filter(item=>item.kind==="weapon");
         const gear=forgeItems.filter(item=>item.kind==="gear");
         const forgeButton=(item:typeof forgeItems[number])=>{
           const level=forgeLevel(item.id);
@@ -6194,15 +6195,13 @@ const [roadT, setRoadT] = useState(0.06);
               <button disabled={maxed} onClick={()=>improveForgeItem(item)}>{maxed?'★':free?'0':<>{forgeCost(item.id)}<SparkDrop/></>}</button>
             </div></div>;
           }
-          return <button key={item.id} className={"forge-item"+(!item.owned?" locked":"")+(item.id===save.heroWeapon?" selected":"")+(free?" free":"")+(maxed?" maxed":"")} onClick={()=>improveForgeItem(item)}>
-            {label}<span className="fi-cost">{!item.owned?"Не найдено":maxed?"Высшая закалка":free?"Бесплатно":<>{forgeCost(item.id)} <SparkDrop/></>}</span>
-          </button>;
+          return null;
         };
         return <div key="forge" className="scroll forge-screen" ref={element=>{if(element&&!element.dataset.forgeEntered){element.scrollTop=0;element.dataset.forgeEntered='yes';}}}>
           <div className="forge-head">
             <div className="forge-title">Кузница Вёлунда</div>
             <div className="forge-master">«Сталь помнит каждый бой. Отдай её огню — и она вернётся сильнее».</div>
-            <div className="forge-advice"><b>Совет:</b> сначала закали основное оружие. Нажми на доступный предмет — улучшение сработает сразу.</div>
+            <div className="forge-advice"><b>Совет:</b> выбери оружие на стене и закали его кнопкой ниже. Предел оружия +10, экипировки +5.</div>
             <div className="forge-wallet"><span>Запас:</span><b><SparkDrop/> {save.sparks}</b><span>Капель силы</span></div>
           </div>
           <div className={"forge-free"+(!save.forgeFreeUsed?" ready":"")}>{save.forgeFreeUsed
@@ -6211,9 +6210,7 @@ const [roadT, setRoadT] = useState(0.06);
           <div className="forge-group-title">Стена оружия Вёлунда</div>
           <ForgeWeaponWall owned={[...save.ownedWeapons,'shield']} selected={save.heroWeapon} onChoose={chooseForgeWeapon}/>
           <div className="forge-equipped"><span>В руке: {save.heroWeapon==='default'?(save.heroSkin==='valkyrie'?'Меч валькирии':'Секира викинга'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} · сила +{WEAPON_POWER[save.heroWeapon]} · закалка +{forgeLevel(save.heroWeapon)}</span>
-            <button disabled={forgeLevel(save.heroWeapon)>=5} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>Закалить {forgeLevel(save.heroWeapon)>=5?'★':save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/></>:'бесплатно'}</button></div>
-          <div className="forge-group-title">Оружие</div>
-          <div className="forge-grid">{weapons.map(forgeButton)}</div>
+            <button disabled={forgeLevel(save.heroWeapon)>=10} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=10?'Максимум +10':<>Закалить {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/></>:'бесплатно'}</>}</button></div>
           <div className="forge-group-title">Экипировка</div>
           <div className="forge-grid">{gear.map(forgeButton)}</div>
           <div className="forge-note"><b>Закалка действует в бою.</b> Оружие усиливает обычный удар; броня и шлем добавляют здоровье и снижают урон; щит крепче держит защиту; улучшенные сапоги помогают быстрее восстановить энергию.</div>
