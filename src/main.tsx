@@ -1170,7 +1170,7 @@ function midHero3d(h: HeroDef) {
 type WhisperCombatStats={maxHp:number;attack:number;runeAttack:number;defense:number};
 type WhisperPhase="closed"|"question"|"fight"|"reward"|"defeat";
 
-function Midgard3D({ h, skin, weapon, gear, on, eventDone, start, rememberPosition, northBridgeRepaired, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string }) {
+function Midgard3D({ h, skin, weapon, gear, gearLevels, on, eventDone, start, rememberPosition, northBridgeRepaired, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -4769,36 +4769,48 @@ function Midgard3D({ h, skin, weapon, gear, on, eventDone, start, rememberPositi
 
       hero.add(model);
 
-      // Starter gear is lightweight geometry attached to the animated rig.
+      // Tint the existing costume texture according to the animated mesh's bone
+      // weights. No extra meshes are needed for boots, armor or hair.
       const bone=(name:string)=>model.getObjectByName('mixamorig'+name)||model.getObjectByName('mixamorig:'+name);
       const isVika=skin==='valkyrie';
-      const leather=new THREE.MeshStandardMaterial({color:0x604329,roughness:.88,metalness:.12});
-      const trim=new THREE.MeshStandardMaterial({color:0x92714a,roughness:.68,metalness:.42});
-      const chestAnchor=isVika?bone('Spine2'):model;
-      if(gear.includes('armor')&&chestAnchor){
-        const cuirass=new THREE.Mesh(new THREE.DodecahedronGeometry(1,0),leather);
-        cuirass.scale.set(isVika?.15:.46,isVika?.16:.55,isVika?.065:.19);
-        cuirass.position.set(0,isVika?.04:1.45,isVika?.085:.21);
-        chestAnchor.add(cuirass);
-        const buckle=new THREE.Mesh(new THREE.BoxGeometry(isVika?.07:.20,isVika?.035:.09,isVika?.02:.05),trim);
-        buckle.position.set(0,isVika?-.045:1.28,isVika?.15:.40);
-        chestAnchor.add(buckle);
-      }
-      const headAnchor=isVika?bone('Head'):model;
-      if(gear.includes('helmet')&&headAnchor){
-        const helmet=new THREE.Mesh(new THREE.SphereGeometry(isVika?.145:.42,12,8,0,Math.PI*2,0,Math.PI*.57),trim);
-        helmet.position.set(0,isVika?.09:2.7,0);
-        headAnchor.add(helmet);
-      }
-      if(gear.includes('boots')){
-        for(const [side,name] of [[-1,'LeftFoot'],[1,'RightFoot']] as Array<[number,string]>){
-          const foot=isVika?bone(name):model;
-          if(!foot)continue;
-          const boot=new THREE.Mesh(new THREE.SphereGeometry(1,9,7),leather);
-          boot.scale.set(isVika?.092:.20,isVika?.11:.24,isVika?.15:.32);
-          boot.position.set(isVika?0:side*.26,isVika?0:.27,isVika?.045:.12);
-          foot.add(boot);
-        }
+      if(isVika&&gear.some(id=>id==='armor'||id==='helmet'||id==='boots')){
+        model.traverse((object:any)=>{
+          if(!object.isSkinnedMesh||!object.geometry?.getAttribute('skinIndex'))return;
+          const geometry=object.geometry.clone();object.geometry=geometry;
+          const joints=geometry.getAttribute('skinIndex'),weights=geometry.getAttribute('skinWeight');
+          const regions=new Float32Array(joints.count*3);
+          for(let i=0;i<joints.count;i++)for(let k=0;k<4;k++){
+            const joint=joints.getComponent(i,k),weight=weights.getComponent(i,k);
+            if(joint===1||joint===2||joint===3)regions[i*3]+=weight;
+            if(joint===5)regions[i*3+1]+=weight;
+            if(joint===15||joint===16||joint===17||joint===19||joint===20||joint===21)regions[i*3+2]+=weight;
+          }
+          geometry.setAttribute('gearRegion',new THREE.BufferAttribute(regions,3));
+          const tint=(id:GearId)=>{
+            if(!gear.includes(id))return 'vec3(0.0)';
+            const level=Math.min(5,Math.max(0,gearLevels[id]||0));
+            const colors=id==='armor'?['#68c4dc','#46a6d1','#3285bd','#2268ad','#174c9a','#12378a']:id==='boots'?['#8bd4ee','#64b9e5','#489bd7','#317cbe','#235ca5','#17428e']:['#d1b4e8','#b998e0','#a37cd5','#8660c5','#6f48b5','#5734a1'];
+            const c=new THREE.Color(colors[level]);return `vec3(${c.r.toFixed(4)},${c.g.toFixed(4)},${c.b.toFixed(4)})`;
+          };
+          const armor=tint('armor'),hair=tint('helmet'),boots=tint('boots');
+          const recolor=(m:any)=>{
+            if(!m?.isMeshStandardMaterial)return m;
+            const material=m.clone();
+            material.onBeforeCompile=(shader:any)=>{
+              shader.vertexShader='attribute vec3 gearRegion; varying vec3 vGearRegion;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n vGearRegion = gearRegion;');
+              shader.fragmentShader='varying vec3 vGearRegion;\n'+shader.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
+                vec3 originalGear = diffuseColor.rgb;
+                float redCloth = smoothstep(0.035,0.14,originalGear.r-originalGear.g)*smoothstep(0.015,0.09,originalGear.r-originalGear.b);
+                float paleHair = smoothstep(0.20,0.42,dot(originalGear,vec3(0.333)))*(1.0-smoothstep(0.08,0.23,abs(originalGear.r-originalGear.g)+abs(originalGear.g-originalGear.b)));
+                diffuseColor.rgb=mix(diffuseColor.rgb,${armor}*(0.52+0.48*dot(originalGear,vec3(0.333))),clamp(vGearRegion.x*redCloth*1.5*${gear.includes('armor')?'1.0':'0.0'},0.0,1.0));
+                diffuseColor.rgb=mix(diffuseColor.rgb,${hair}*(0.55+0.45*dot(originalGear,vec3(0.333))),clamp(vGearRegion.y*paleHair*1.4*${gear.includes('helmet')?'1.0':'0.0'},0.0,1.0));
+                diffuseColor.rgb=mix(diffuseColor.rgb,${boots}*(0.5+0.5*dot(originalGear,vec3(0.333))),clamp(vGearRegion.z*1.4*${gear.includes('boots')?'1.0':'0.0'},0.0,1.0));`);
+            };
+            material.customProgramCacheKey=()=>`hero-gear-${armor}-${hair}-${boots}`;
+            return material;
+          };
+          object.material=Array.isArray(object.material)?object.material.map(recolor):recolor(object.material);
+        });
       }
       if(gear.includes('shield')){
         const shieldHand=isVika?bone('LeftHand'):model.getObjectByName('WeaponSocket_L');
@@ -4814,6 +4826,8 @@ function Midgard3D({ h, skin, weapon, gear, on, eventDone, start, rememberPositi
           shieldModel.position.set(-center.x,-center.y,-center.z);
           const mount=new THREE.Group();mount.scale.setScalar((isVika?.38:1.1)/span);
           mount.position.set(0,isVika?-.025:0,isVika?.10:.12);
+          // The decorative front faces away from the hero's forearm.
+          mount.rotation.y=Math.PI;
           mount.add(shieldModel);shieldHand.add(mount);
         },'HERO SHIELD');
       }
@@ -5229,7 +5243,7 @@ function Midgard3D({ h, skin, weapon, gear, on, eventDone, start, rememberPositi
     raf=requestAnimationFrame(loop);
 
     return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();deerFurTexture?.dispose();nornsStoneTexture?.dispose();nornsColumnTexture?.dispose();furTextures.forEach(texture=>texture.dispose());lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
-  },[h.id,skin,weapon,gear.join(','),on,eventDone,start.x,start.z,rememberPosition,northBridgeRepaired]);
+  },[h.id,skin,weapon,gear.join(','),gearLevels.armor,gearLevels.helmet,gearLevels.boots,on,eventDone,start.x,start.z,rememberPosition,northBridgeRepaired]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
   const stopJoy=()=>{if(knob.current)knob.current.style.transform="translate(0,0)";state.current.dx=0;state.current.dz=0;};
@@ -5971,6 +5985,7 @@ const [roadT, setRoadT] = useState(0.06);
       skin={save.heroSkin}
       weapon={save.heroWeapon}
       gear={save.equippedGear}
+      gearLevels={save.forgeLevels}
       on={interact}
       eventDone={save.done.includes("forest:choice")}
       start={midgardReturn.current}
