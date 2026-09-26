@@ -3582,7 +3582,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     // Forgotten Cache — ornate cyan/gold fantasy chest GLB.
     // Keeps the original interaction id/location while replacing the old hollow-oak visual.
     // This filename is intentionally stable: replace the GLB to iterate on the chest without touching code.
-    const forgottenCacheAsset='Golden_Chest_Light.glb';
+    const forgottenCacheAsset='Golden_Chest_Light.glb?v=2';
     const forgottenCacheRoot=new THREE.Group();
     forgottenCacheRoot.userData={id:'forestCache',label:'Золотой сундук'};
     forgottenCacheRoot.position.set(-72,groundY(-72,48),48);
@@ -4046,7 +4046,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     objects.push(threeThreads);
     addCircleCollider(threeThreadsX,threeThreadsZ,3.4,.1);
     const rubyChestX=65,rubyChestZ=-32;
-    loadGlbWithFolderFallback('Ruby_Chest_Light.glb',(gltf:any)=>{
+    loadGlbWithFolderFallback('Ruby_Chest_Light.glb?v=2',(gltf:any)=>{
       if(!glbTreesAlive)return;
       const chest=gltf.scene;
       chest.scale.setScalar(1.42);
