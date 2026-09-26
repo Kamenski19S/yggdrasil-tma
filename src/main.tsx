@@ -4704,7 +4704,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       // Vika's animation moves her left hand, but her source GLB has no sword.
       // Attach the existing lightweight sword to the animated hand bone.
       if(skin==="valkyrie"){
-        const hand=model.getObjectByName("mixamorig:LeftHand");
+        // GLTFLoader strips the colon from Mixamo bone names while binding animations.
+        const hand=model.getObjectByName("mixamorigLeftHand") || model.getObjectByName("mixamorig:LeftHand") || model.getObjectByName("LeftHand");
         if(hand)loadGlbWithFolderFallback('Sword.glb',(swordGlb:any)=>{
           if(!glbTreesAlive)return;
           const blade=swordGlb.scene;
@@ -6032,7 +6033,7 @@ const [roadT, setRoadT] = useState(0.06);
             <span className="fi-cost">{!item.owned?"Не найдено":maxed?"Высшая закалка":free?"Бесплатно":forgeCost(item.id)+" 🔥"}</span>
           </button>;
         };
-        return <div className="scroll forge-screen">
+        return <div key="forge" className="scroll forge-screen" ref={element=>{if(element&&!element.dataset.forgeEntered){element.scrollTop=0;element.dataset.forgeEntered='yes';}}}>
           <div className="forge-head">
             <div className="forge-title">Кузница Вёлунда</div>
             <div className="forge-master">«Сталь помнит каждый бой. Отдай её огню — и она вернётся сильнее».</div>
