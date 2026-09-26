@@ -1885,8 +1885,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       const m=new THREE.Mesh(g,bankWaterMat);m.receiveShadow=true;scene.add(m);
     }
 
-    const mimirGoldMaterials:THREE.MeshStandardMaterial[]=[];
-    const mimirWaterMaterials:THREE.MeshStandardMaterial[]=[riverMat,bankWaterMat];
+    const mimirGoldMaterials:THREE.MeshBasicMaterial[]=[];
+    const mimirWaterMaterials:Array<THREE.MeshBasicMaterial|THREE.MeshStandardMaterial>=[riverMat,bankWaterMat];
     let mimirGoldTexture:THREE.Texture|null=null;
     let mimirWaterTexture:THREE.Texture|null=null;
     new THREE.TextureLoader().load(`${BASE}img/models/T_Mimir_Gold.jpg`,texture=>{
@@ -2034,7 +2034,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     road([[35,-32],[32,-42],[25,-52],[15,-62],[5,-70]],1.68);
 
     // West side on the village bank: Norns and the deep ash grove.
-    road([[-35,36],[-42,37],[-49,38]],1.55);
+    // Reach the riverbank beside the Norns' wheel instead of ending in grass.
+    road([[-35,36],[-42,37],[-48,38],[riverCenterX(38)+RIVER_HALF+.05,38]],1.55);
     road([[-35,44],[-39,54],[-43,64],[-45,75]],1.48);
     road([[-35,36],[-35,24],[-35,14],[-35,2],[-35,-10],[-35,-23],[-35,-32],[-40,-38],[-48,-44],[-50,-48]],1.72);
     road([[-35,14],[-32,15],[-31,15]],1.42);
@@ -2409,8 +2410,10 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       model.rotation.set(0,0,0);
       model.position.set(1,groundY(1,0),0);
       model.updateWorldMatrix(true,true);
-      const gold=new THREE.MeshStandardMaterial({color:0xf7e5b7,roughness:.52,metalness:.35,side:THREE.DoubleSide});
-      const water=new THREE.MeshStandardMaterial({color:0xcdefff,roughness:.23,metalness:.06,transparent:true,opacity:.94,side:THREE.DoubleSide});
+      // This GLB contains no normals. Unlit maps retain their gold and blue
+      // colors even on its vertical ring and shallow pool.
+      const gold=new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide,toneMapped:false});
+      const water=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.94,side:THREE.DoubleSide,toneMapped:false});
       mimirGoldMaterials.push(gold);mimirWaterMaterials.push(water);
       if(mimirGoldTexture)gold.map=mimirGoldTexture;
       if(mimirWaterTexture)water.map=mimirWaterTexture;
@@ -2438,6 +2441,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
           }
         }
         geometry.setAttribute("uv",new THREE.BufferAttribute(uvs,2));
+        geometry.computeVertexNormals();
         o.geometry=geometry;o.material=isWater?water:gold;
         if(isWater){o.castShadow=false;o.receiveShadow=false;}
       });
