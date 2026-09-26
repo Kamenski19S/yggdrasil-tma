@@ -2537,11 +2537,11 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       x:number;z:number;radius:number;speed:number;phase:number;groundOffset:number;
     }>=[];
     const animalPlacements=[
-      {asset:'Cow.glb',label:'Корова',x:10,z:32,height:1.72,radius:0,speed:0,phase:0,pose:'Eating'},
-      {asset:'Horse.glb',label:'Лошадь у сарая',x:25,z:32,height:2.28,radius:0,speed:0,phase:1,pose:'Idle'},
-      {asset:'Horse_White.glb',label:'Лошадь на лугу',x:34,z:45,height:2.25,radius:4.2,speed:.25,phase:1.2,pose:'Walk'},
-      {asset:'Wolf.glb',label:'Волк',x:72,z:-13,height:1.12,radius:3.2,speed:.35,phase:2.1,pose:'Walk'},
-      {asset:'Fox.glb',label:'Лисица',x:70,z:43,height:.82,radius:2.8,speed:.30,phase:.4,pose:'Walk'}
+      {asset:'Cow.glb',label:'Корова',x:12,z:27,height:1.72,radius:1.6,speed:.20,phase:0,pose:'Walk'},
+      {asset:'Horse.glb',label:'Лошадь у сарая',x:20,z:26,height:2.28,radius:1.3,speed:.20,phase:1,pose:'Walk'},
+      {asset:'Horse_White.glb',label:'Лошадь на лугу',x:21,z:54,height:2.25,radius:4.2,speed:.25,phase:1.2,pose:'Walk'},
+      {asset:'Wolf.glb',label:'Волк',x:46,z:-16,height:1.12,radius:3.2,speed:.35,phase:2.1,pose:'Walk'},
+      {asset:'Fox.glb',label:'Лисица',x:43,z:36,height:.82,radius:2.8,speed:.30,phase:.4,pose:'Walk'}
     ];
     for(const p of animalPlacements){
       loadGlbWithFolderFallback(p.asset,(gltf:any)=>{
@@ -5036,8 +5036,10 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
             <circle cx="49" cy="53" r="13" fill="none" stroke="#a58a56" strokeWidth=".8" opacity=".7"/>
           </svg>
           <span className="map-landmark" style={{left:"49%",top:"53%"}}>⌂<small>Кузница</small></span>
-          <span className="map-landmark" style={{left:"56%",top:"32%"}}>🐄<small>Сарай</small></span>
-          <span className="map-landmark" style={{left:"69%",top:"25%"}}>🐎<small>Луг</small></span>
+          <span className="map-landmark" style={{left:"57%",top:"35%"}}>🐄<small>Сарай</small></span>
+          <span className="map-landmark" style={{left:"62%",top:"20%"}}>🐎<small>Луг</small></span>
+          <span className="map-landmark" style={{left:"74%",top:"30%"}}>🦊<small>Лиса</small></span>
+          <span className="map-landmark" style={{left:"76%",top:"59%"}}>🐺<small>Волк</small></span>
           <span className="map-landmark" style={{left:"18%",top:"68%"}}>⛵<small>Лодка</small></span>
           <span className="map-landmark" style={{left:"51%",top:"50%"}}>◉<small>Мимир</small></span>
           <span className="map-landmark" style={{left:"18%",top:"77%"}}>═<small>Речной мост</small></span>
