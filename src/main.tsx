@@ -1466,6 +1466,15 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     const terrain = new THREE.Mesh(groundGeo, terrainMat);
     terrain.receiveShadow = true;
     scene.add(terrain);
+    new THREE.TextureLoader().load(`${BASE}img/models/T_Grass_Green.jpg`, texture => {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = texture.wrapT = THREE.MirroredRepeatWrapping;
+      texture.repeat.set(24, 24);
+      texture.anisotropy = 8;
+      terrainMat.map = texture;
+      terrainMat.needsUpdate = true;
+      groundTexture.dispose();
+    }, undefined, error => console.warn("Grass texture unavailable; using painted ground", error));
 
     // ===== NATURAL SPRUCE FOREST + MASSIVE OAK — Y-UP GLB =====
     // Restore the real GLB spruce layer: 30 trees spread around Midgard.
@@ -1904,12 +1913,30 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     }
 
     // A readable footpath network connects the village and every major landmark.
-    // Pale compacted earth replaces the old paired dark tubes that looked like rails.
+    // The uploaded gravel photo supplies the gray stone surface of the paths.
     const pathTexture=canvasTex("road");
     pathTexture.repeat.set(1.2,5.5);
-    const pathMaterial=new THREE.MeshStandardMaterial({map:pathTexture,color:0xc39a61,roughness:1,metalness:0,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
-    const pathEdgeMaterial=new THREE.MeshStandardMaterial({color:0x735b3d,roughness:1,metalness:0,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+    const pathMaterial=new THREE.MeshStandardMaterial({map:pathTexture,color:0xe1e1df,roughness:1,metalness:0,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
+    const pathEdgeMaterial=new THREE.MeshStandardMaterial({color:0x686c65,roughness:1,metalness:0,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+    new THREE.TextureLoader().load(`${BASE}img/models/T_Path_GrayGravel.jpg`, image => {
+      // The lower half of the supplied photo is grass. Keep the gravel portion
+      // so repeating the image along a road does not create bands of grass.
+      const source = image.image as HTMLImageElement;
+      const canvas = document.createElement("canvas");
+      canvas.width = source.naturalWidth;
+      canvas.height = Math.round(source.naturalHeight * .36);
+      canvas.getContext("2d")!.drawImage(source, 0, 0, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
+      const gravel = new THREE.CanvasTexture(canvas);
+      gravel.colorSpace = THREE.SRGBColorSpace;
+      gravel.wrapS = gravel.wrapT = THREE.MirroredRepeatWrapping;
+      gravel.anisotropy = 8;
+      pathMaterial.map = gravel;
+      pathMaterial.needsUpdate = true;
+      pathTexture.dispose();
+      image.dispose();
+    }, undefined, error => console.warn("Path texture unavailable; using painted paths", error));
     const road = (points:Array<[number,number]>, width:number) => {
+      width *= 1.12;
       const controls=points.map(([x,z])=>new THREE.Vector3(x,0,z));
       let routeLength=0;for(let i=1;i<controls.length;i++)routeLength+=controls[i].distanceTo(controls[i-1]);
       const curve=new THREE.CatmullRomCurve3(controls,false,"centripetal");
@@ -1927,7 +1954,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
           const bend=(midHash(i+points.length*29,193)-.5)*wobble*.45;
           verts.push(pts[i].x+px*(half+bend),pts[i].y+yOffset,pts[i].z+pz*(half+bend));
           verts.push(pts[i].x-px*(half-bend),pts[i].y+yOffset+.006,pts[i].z-pz*(half-bend));
-          uvs.push(0,distance/5,1,distance/5);
+          uvs.push(0,distance/2.5,1,distance/2.5);
           // Counter-clockwise winding keeps the visible face and normals upward.
           if(i<pts.length-1){const k=i*2;idx.push(k,k+2,k+1,k+1,k+2,k+3);}
         }
