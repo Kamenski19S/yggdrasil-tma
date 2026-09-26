@@ -3589,8 +3589,6 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     scene.add(forgottenCacheRoot);
     objects.push(forgottenCacheRoot);
     displayChests.push(forgottenCacheRoot);
-    const goldGroundShadow=new THREE.Mesh(new THREE.CircleGeometry(1.38,32),new THREE.MeshBasicMaterial({color:0x17110b,transparent:true,opacity:.27,depthWrite:false}));
-    goldGroundShadow.rotation.x=-Math.PI/2;goldGroundShadow.position.set(-72,groundY(-72,48)+.04,48);scene.add(goldGroundShadow);
 
     loadGlbWithFolderFallback(forgottenCacheAsset,(gltf:any)=>{
       const chest=gltf.scene;
@@ -3619,7 +3617,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       chest.position.set(0,0,0);
       chest.updateMatrixWorld(true);
       const bb=new THREE.Box3().setFromObject(chest);
-      chest.position.y-=bb.min.y;
+      chest.position.y-=bb.min.y+.32;
       chest.updateMatrixWorld(true);
       forgottenCacheRoot.add(chest);
       const cacheGlow=new THREE.PointLight(0xffc161,1.1,6.5,2);
@@ -3628,15 +3626,6 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       console.log('[FORGOTTEN CACHE] GLB loaded',forgottenCacheAsset);
     },'FORGOTTEN CACHE');
     addCircleCollider(-72,48,2.15,.08);
-    if(!northBridgeRepaired){
-      const ward=new THREE.Mesh(new THREE.TorusGeometry(3.8,.085,8,64),new THREE.MeshBasicMaterial({color:0xe1af42,transparent:true,opacity:.88}));
-      ward.rotation.x=Math.PI/2;ward.position.set(-72,groundY(-72,48)+.15,48);scene.add(ward);
-      for(let i=0;i<4;i++){
-        const a=i*Math.PI/2;
-        const mark=new THREE.Mesh(new THREE.CylinderGeometry(.11,.16,1.15,7),new THREE.MeshStandardMaterial({color:0x9d7532,emissive:0x9d6216,emissiveIntensity:.6}));
-        mark.position.set(-72+Math.cos(a)*3.8,groundY(-72+Math.cos(a)*3.8,48+Math.sin(a)*3.8)+.55,48+Math.sin(a)*3.8);scene.add(mark);
-      }
-    }
 
     // Right forest expansion: detailed landmark clearings. The goal is a cinematic
     // handcrafted look rather than a ring of identical primitive stones.
@@ -4057,8 +4046,6 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       chest.traverse((o:any)=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=true;}});
       displayChests.push(chest);
     },'NORNS CHEST');
-    const rubyGroundShadow=new THREE.Mesh(new THREE.CircleGeometry(1.33,32),new THREE.MeshBasicMaterial({color:0x180c10,transparent:true,opacity:.25,depthWrite:false}));
-    rubyGroundShadow.rotation.x=-Math.PI/2;rubyGroundShadow.position.set(rubyChestX,groundY(rubyChestX,rubyChestZ)+.04,rubyChestZ);scene.add(rubyGroundShadow);
     addCircleCollider(rubyChestX,rubyChestZ,1.0,.08);
 
     // 2) CIRCLE OF POWER --------------------------------------------------------
