@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
+import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 THREE.Cache.enabled = true;
 
@@ -2471,20 +2472,6 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       for(let i=0;i<3;i++){const rope=new THREE.Mesh(new THREE.TorusGeometry(.66*s,.025*s,5,18),mat(0x594a2d,1));rope.rotation.y=Math.PI/2;rope.position.y=(.28+i*.34)*s;g.add(rope);}
       addMesh(g);
     };
-    const cart=(x:number,z:number,rot:number)=>{
-      const g=new THREE.Group();g.position.set(x,groundY(x,z),z);g.rotation.y=rot;
-      const bed=box(2.8,.28,1.45,0x65432b,1);bed.position.y=1.0;g.add(bed);
-      for(const px of [-1.15,1.15])for(const pz of [-.55,.55]){const p=box(.16,1.15,.16,0x432b1e,1);p.position.set(px,.55,pz);g.add(p);}
-      for(const px of [-1.15,1.15]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,.18,14),mat(0x292622,1));w.rotation.z=Math.PI/2;w.position.set(px,.52,-.92);g.add(w);}
-      const shaft=box(.16,.16,2.4,0x49301f,1);shaft.rotation.x=Math.PI/2;shaft.position.set(0,.72,-2.0);g.add(shaft);addMesh(g);
-    };
-    const wellMarker=(x:number,z:number)=>{
-      const g=new THREE.Group();g.position.set(x,groundY(x,z),z);
-      for(let i=0;i<10;i++){const a=i/10*Math.PI*2,s=box(.45,.38,.38,0x66655d,1);s.position.set(Math.cos(a)*.95,.19,Math.sin(a)*.95);s.rotation.y=a;g.add(s);}
-      const post1=box(.16,2.2,.16,0x4a3020,1),post2=post1.clone();post1.position.set(-.9,1.2,0);post2.position.set(.9,1.2,0);g.add(post1,post2);
-      const beam=box(2.0,.16,.16,0x3b281b,1);beam.position.y=2.25;g.add(beam);
-      addMesh(g);
-    };
     // Northern farm quarter.
     // Replace only the main village Barn and Shed with their GLB models.
     // The fisherman's storage and old abandoned barn stay procedural for now.
@@ -2494,6 +2481,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       markMeshes(barnModel);
       barnModel.traverse((o:any) => {
         if (!o.isMesh) return;
+        // Leave the three stalls open toward the village path.
         o.visible = !/^Barn_(?:PenRail_|Gate_Diag_)/.test(o.name);
         o.castShadow = true;
         o.receiveShadow = true;
@@ -2530,25 +2518,124 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     }, 'SHED');
     addRectCollider(17,34,7.45*HOME_SCALE,5.20*HOME_SCALE,-.20,.04);
 
-    // Animal FBXs were converted to compact GLBs with their original bone
-    // animation clips and baked material colors. Texture UVs can be added later.
+    // The animal GLBs have skeletons and vertex colors, but no UV coordinates.
+    // Project the supplied coat photos onto their local body axes once per model;
+    // skinned clones then share geometry, textures and animation clips.
+    const furSpecs:Record<string,{file:string;gain:number;u:number;v:number}>={
+      'Cow.glb':{file:'Fur_Cow.jpg',gain:1.3,u:1.1,v:1},
+      'Horse.glb':{file:'Fur_Horse.jpg',gain:6,u:2.4,v:1.5},
+      'Horse_White.glb':{file:'Fur_Horse.jpg',gain:6,u:2.4,v:1.5},
+      'Wolf.glb':{file:'Fur_Wolf.jpg',gain:9,u:2,v:1.6},
+      'Fox.glb':{file:'Fur_Fox.jpg',gain:6,u:2,v:1.6}
+    };
+    const furLoader=new THREE.TextureLoader();
+    const furTextures=new Map<string,THREE.Texture>();
+    const animalSources=new Map<string,Promise<any>>();
+    const getAnimalSource=(asset:string)=>{
+      let source=animalSources.get(asset);
+      if(!source){
+        source=new Promise((resolve,reject)=>loadGlbWithFolderFallback(asset,resolve,asset,()=>reject(new Error(`Failed to load ${asset}`))))
+          .then((gltf:any)=>{prepareAnimalFur(asset,gltf.scene);return gltf;});
+        animalSources.set(asset,source);
+      }
+      return source;
+    };
+    const prepareAnimalFur=(asset:string,root:THREE.Object3D)=>{
+      const spec=furSpecs[asset];
+      let texture=furTextures.get(spec.file);
+      if(!texture){
+        texture=furLoader.load(`${BASE}img/models/${spec.file}`);
+        texture.colorSpace=THREE.SRGBColorSpace;
+        texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
+        texture.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
+        furTextures.set(spec.file,texture);
+      }
+      root.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        const geometry=o.geometry.clone() as THREE.BufferGeometry;
+        geometry.computeBoundingBox();
+        const bounds=geometry.boundingBox!;
+        const span=bounds.getSize(new THREE.Vector3());
+        const pos=geometry.getAttribute('position') as THREE.BufferAttribute;
+        const normal=geometry.getAttribute('normal') as THREE.BufferAttribute;
+        const uv=new Float32Array(pos.count*2);
+        for(let i=0;i<pos.count;i++){
+          const nx=Math.abs(normal.getX(i)),ny=Math.abs(normal.getY(i)),nz=Math.abs(normal.getZ(i));
+          if(ny>nx&&ny>nz){
+            uv[2*i]=(pos.getX(i)-bounds.min.x)/Math.max(.01,span.x)*spec.u;
+            uv[2*i+1]=(pos.getZ(i)-bounds.min.z)/Math.max(.01,span.z)*spec.v;
+          }else if(nz>nx&&nz>ny){
+            uv[2*i]=(pos.getY(i)-bounds.min.y)/Math.max(.01,span.y)*spec.u;
+            uv[2*i+1]=(pos.getX(i)-bounds.min.x)/Math.max(.01,span.x)*spec.v;
+          }else{
+            uv[2*i]=(pos.getY(i)-bounds.min.y)/Math.max(.01,span.y)*spec.u;
+            uv[2*i+1]=(pos.getZ(i)-bounds.min.z)/Math.max(.01,span.z)*spec.v;
+          }
+        }
+        geometry.setAttribute('uv',new THREE.BufferAttribute(uv,2));
+        const originalColor=geometry.getAttribute('color') as THREE.BufferAttribute|undefined;
+        if(originalColor){
+          const colors=originalColor.clone() as THREE.BufferAttribute;
+          for(let i=0;i<colors.count;i++)for(let axis=0;axis<3;axis++){
+            colors.setComponent(i,axis,Math.min(1,colors.getComponent(i,axis)*spec.gain));
+          }
+          geometry.setAttribute('color',colors);
+        }
+        o.geometry=geometry;
+        const material=(o.material as THREE.MeshStandardMaterial).clone();
+        material.color.set(0xffffff);
+        material.map=texture;
+        material.roughness=.96;
+        material.vertexColors=!!originalColor;
+        material.needsUpdate=true;
+        o.material=material;
+      });
+    };
     const animatedAnimals:Array<{
       root:THREE.Object3D;mixer:THREE.AnimationMixer;
       x:number;z:number;radius:number;speed:number;phase:number;groundOffset:number;
     }>=[];
     const animalPlacements=[
-      {asset:'Cow.glb',label:'Корова',x:12,z:27,height:2.924,radius:1.6,speed:.20,phase:0,pose:'Walk'},
+      // Five grazing cows by different homes.
+      {asset:'Cow.glb',label:'Корова у сарая',x:12,z:27,height:2.924,radius:1.6,speed:.20,phase:0,pose:'Walk'},
+      {asset:'Cow.glb',label:'Корова у плотника',x:-12,z:27,height:2.85,radius:1.4,speed:.17,phase:1,pose:'Walk'},
+      {asset:'Cow.glb',label:'Корова у охотника',x:27,z:14,height:2.9,radius:1.6,speed:.18,phase:2,pose:'Walk'},
+      {asset:'Cow.glb',label:'Корова у травницы',x:-8,z:-12,height:2.8,radius:1.3,speed:.16,phase:3,pose:'Walk'},
+      {asset:'Cow.glb',label:'Корова у старейшины',x:25,z:-29,height:2.92,radius:1.5,speed:.19,phase:4,pose:'Walk'},
+      // Eleven horses: two in the shelter, three in the village and six roaming farther out.
       {asset:'Horse.glb',label:'Лошадь у сарая',x:20,z:26,height:5.016,radius:1.3,speed:.20,phase:1,pose:'Walk'},
-      {asset:'Horse_White.glb',label:'Лошадь на лугу',x:21,z:54,height:4.95,radius:4.2,speed:.25,phase:1.2,pose:'Walk'},
+      {asset:'Horse.glb',label:'Лошадь в деревне',x:-8,z:12,height:4.8,radius:1.8,speed:.18,phase:2,pose:'Walk'},
+      {asset:'Horse.glb',label:'Лошадь у южных домов',x:8,z:-15,height:4.9,radius:1.6,speed:.20,phase:3,pose:'Walk'},
       {asset:'Horse.glb',label:'Лошадь под навесом',x:-19,z:32,height:3.7,radius:0,speed:0,phase:Math.PI/2,pose:'Idle'},
-      {asset:'Horse_White.glb',label:'Белая лошадь под навесом',x:-19,z:38,height:3.7,radius:0,speed:0,phase:Math.PI/2,pose:'Idle'},
+      {asset:'Horse_White.glb',label:'Лошадь под навесом справа',x:-19,z:38,height:3.7,radius:0,speed:0,phase:Math.PI/2,pose:'Idle'},
+      {asset:'Horse_White.glb',label:'Лошадь на лугу',x:21,z:54,height:4.95,radius:4.2,speed:.25,phase:1.2,pose:'Walk'},
+      {asset:'Horse.glb',label:'Лошадь в северной роще',x:-31,z:58,height:4.75,radius:3,speed:.18,phase:2.5,pose:'Walk'},
+      {asset:'Horse.glb',label:'Лошадь на восточном лугу',x:43,z:61,height:4.85,radius:3.2,speed:.20,phase:3.5,pose:'Walk'},
+      {asset:'Horse_White.glb',label:'Лошадь у речной тропы',x:-42,z:-24,height:4.8,radius:2.6,speed:.19,phase:4,pose:'Walk'},
+      {asset:'Horse.glb',label:'Лошадь на южном лугу',x:26,z:-47,height:4.9,radius:3.2,speed:.22,phase:5,pose:'Walk'},
+      {asset:'Horse_White.glb',label:'Лошадь возле хутора',x:-68,z:16,height:4.8,radius:2.7,speed:.18,phase:6,pose:'Walk'},
+      // Wolves stay near the woods and foxes follow the outlying paths.
       {asset:'Wolf.glb',label:'Волк',x:46,z:-16,height:2.016,radius:3.2,speed:.35,phase:2.1,pose:'Walk'},
-      {asset:'Fox.glb',label:'Лисица',x:43,z:36,height:1.64,radius:2.8,speed:.30,phase:.4,pose:'Walk'}
+      {asset:'Wolf.glb',label:'Волк',x:56,z:-31,height:2.04,radius:2.8,speed:.31,phase:3,pose:'Walk'},
+      {asset:'Wolf.glb',label:'Волк',x:71,z:-13,height:2.0,radius:3,speed:.33,phase:4,pose:'Walk'},
+      {asset:'Wolf.glb',label:'Волк',x:62,z:12,height:2.05,radius:2.9,speed:.30,phase:5,pose:'Walk'},
+      {asset:'Wolf.glb',label:'Волк',x:-66,z:-10,height:2.0,radius:3.2,speed:.32,phase:6,pose:'Walk'},
+      {asset:'Wolf.glb',label:'Волк',x:-75,z:32,height:2.1,radius:3,speed:.29,phase:7,pose:'Walk'},
+      {asset:'Wolf.glb',label:'Волк',x:-42,z:-57,height:1.98,radius:3.2,speed:.36,phase:8,pose:'Walk'},
+      {asset:'Wolf.glb',label:'Волк',x:17,z:-65,height:2.06,radius:3.1,speed:.33,phase:9,pose:'Walk'},
+      {asset:'Wolf.glb',label:'Волк',x:65,z:70,height:2.02,radius:3.1,speed:.31,phase:10,pose:'Walk'},
+      {asset:'Fox.glb',label:'Лисица',x:43,z:36,height:1.64,radius:2.8,speed:.30,phase:.4,pose:'Walk'},
+      {asset:'Fox.glb',label:'Лисица',x:57,z:30,height:1.62,radius:2.6,speed:.32,phase:1.3,pose:'Walk'},
+      {asset:'Fox.glb',label:'Лисица',x:39,z:8,height:1.67,radius:2.5,speed:.33,phase:2.2,pose:'Walk'},
+      {asset:'Fox.glb',label:'Лисица',x:30,z:-38,height:1.6,radius:2.7,speed:.31,phase:3.1,pose:'Walk'},
+      {asset:'Fox.glb',label:'Лисица',x:-39,z:64,height:1.65,radius:2.8,speed:.35,phase:4,pose:'Walk'},
+      {asset:'Fox.glb',label:'Лисица',x:-70,z:25,height:1.6,radius:2.6,speed:.34,phase:5,pose:'Walk'},
+      {asset:'Fox.glb',label:'Лисица',x:62,z:-43,height:1.66,radius:2.8,speed:.32,phase:6,pose:'Walk'}
     ];
     for(const p of animalPlacements){
-      loadGlbWithFolderFallback(p.asset,(gltf:any)=>{
+      getAnimalSource(p.asset).then((gltf:any)=>{
         if(!glbTreesAlive)return;
-        const root=gltf.scene;
+        const root=cloneSkinned(gltf.scene);
         const bounds=new THREE.Box3().setFromObject(root);
         const height=Math.max(.01,bounds.getSize(new THREE.Vector3()).y);
         root.scale.setScalar(p.height/height);
@@ -2565,7 +2652,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
           ||gltf.animations.find((a:THREE.AnimationClip)=>a.name.endsWith('|Idle'));
         if(clip)mixer.clipAction(clip).play();
         animatedAnimals.push({root,mixer,x:p.x,z:p.z,radius:p.radius,speed:p.speed,phase:p.phase,groundOffset});
-      },p.label);
+      }).catch((error:any)=>console.error(`[${p.label}] FAILED`,error));
     }
 
     // A Viking boat floats downstream of the main bridge, clear of the crossing.
@@ -2588,16 +2675,11 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
 
     // Legacy procedural fisher storage removed; it duplicated the newer village buildings.
     for(const p0 of [[-25,33,1.0],[-14,37,.85],[-25,37,.8],[24,32,.9],[24,38,.72],[31,5,.9]] as Array<[number,number,number]>) hay(p0[0],p0[1],p0[2]);
-    cart(-12,31,.18); cart(27,-12,-.55);
     // A second line of modest homes is now supplied by Viking GLB clones above.
     // Hearths, wood piles and small objects around homes.
     // Firewood piles are disabled completely.
     // No stacked logs are created anywhere near houses or doorways.
     const woodpile=(_x:number,_z:number,_s=1)=>{ return; };
-    // The two decorative wells at (-17,-11) and (-21,-16) stood directly
-    // beside the palisade house. From the gameplay camera their posts looked
-    // like pale sticks floating over both roof slopes, so they are removed.
-    for(const p0 of [[10,-11],[25,-15],[25,13],[-31,15],[-18,41],[34,14]] as Array<[number,number]>) wellMarker(p0[0],p0[1]);
     // Low vegetation and scattered stones fill empty ground without turning it into a particle-heavy scene.
     const bush=(x:number,z:number,s=1)=>{
       const g=new THREE.Group();const y=groundY(x,z);
@@ -2639,7 +2721,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       console.log('[OLD FARM] loaded', `${BASE}img/models/${oldFarmAsset}`);
     }, 'OLD FARM');
     // Legacy procedural old barn removed; the Old Farm GLB is now the sole farmstead structure here.
-    hay(-71,10,.9); cart(-71,1,-.25); wellMarker(-58,4);
+    hay(-71,10,.9);
     const oldField=new THREE.Group();
     oldField.position.set(-63,groundY(-63,47),47);
     for(let r=0;r<6;r++){
@@ -5009,7 +5091,7 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();deerFurTexture?.dispose();nornsStoneTexture?.dispose();nornsColumnTexture?.dispose();lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
+    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();deerFurTexture?.dispose();nornsStoneTexture?.dispose();nornsColumnTexture?.dispose();furTextures.forEach(texture=>texture.dispose());lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;forgeActionRef.current=null;};
   },[h.id,skin,weapon,on,eventDone,start.x,start.z,rememberPosition,northBridgeRepaired]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
