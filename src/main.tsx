@@ -2312,6 +2312,39 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       console.log('[FORGE] loaded', `${BASE}img/models/${forgeAsset}`);
     }, 'FORGE');
 
+    // Real weapon models outside the forge, with the handles resting on a wooden rack.
+    const weaponRack=new THREE.Group();
+    weaponRack.position.set(-6.45,groundY(-6.45,-2.3),-2.3);
+    weaponRack.rotation.y=-.35;
+    for(const offset of [-.85,.85]){
+      const post=new THREE.Mesh(new THREE.CylinderGeometry(.09,.13,1.55,7),midMat(0x593a24,1));
+      post.position.set(offset,.79,0);weaponRack.add(post);
+    }
+    for(const height of [.46,1.27]){
+      const rail=new THREE.Mesh(new THREE.BoxGeometry(2.05,.12,.17),midMat(0x68452b,1));
+      rail.position.y=height;weaponRack.add(rail);
+    }
+    scene.add(weaponRack);
+    ([['Sword.glb',-.58,1.32],['Axe.glb',0,1.16],['Spear.glb',.61,1.65]] as Array<[string,number,number]>).forEach(([asset,x,height])=>{
+      loadGlbWithFolderFallback(asset,(gltf:any)=>{
+        if(!glbTreesAlive)return;
+        const item=gltf.scene;
+        item.updateMatrixWorld(true);
+        const bounds=new THREE.Box3().setFromObject(item);
+        const size=bounds.getSize(new THREE.Vector3());
+        if(size.y<.001)return;
+        const center=bounds.getCenter(new THREE.Vector3());
+        const holder=new THREE.Group();
+        item.position.set(-center.x,-bounds.min.y,-center.z);
+        holder.add(item);
+        holder.scale.setScalar(height/size.y);
+        holder.position.set(x,.13,.18);
+        holder.rotation.z=x<0?-.12:.12;
+        holder.traverse((o:any)=>{if(o.isMesh)o.castShadow=true;});
+        weaponRack.add(holder);
+      },'FORGE WEAPON');
+    });
+
     // A lightweight working door sits over the dark forge entrance. It swings
     // open before the UI transition, while the original doorway remains as the
     // shadowed interior behind it.
@@ -4661,6 +4694,29 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       model.updateMatrixWorld(true);
 
       hero.add(model);
+
+      // Vika's animation moves her left hand, but her source GLB has no sword.
+      // Attach the existing lightweight sword to the animated hand bone.
+      if(skin==="valkyrie"){
+        const hand=model.getObjectByName("mixamorig:LeftHand");
+        if(hand)loadGlbWithFolderFallback('Sword.glb',(swordGlb:any)=>{
+          if(!glbTreesAlive)return;
+          const blade=swordGlb.scene;
+          blade.updateMatrixWorld(true);
+          const bounds=new THREE.Box3().setFromObject(blade);
+          const size=bounds.getSize(new THREE.Vector3());
+          if(size.y<.001)return;
+          const center=bounds.getCenter(new THREE.Vector3());
+          blade.position.set(-center.x,-bounds.min.y,-center.z);
+          const grip=new THREE.Group();
+          grip.scale.setScalar(.57/size.y);
+          grip.position.set(0,-.065,.015);
+          grip.rotation.x=-.20;
+          grip.add(blade);
+          blade.traverse((o:any)=>{if(o.isMesh)o.castShadow=true;});
+          hand.add(grip);
+        },'VALKYRIE SWORD');
+      }
 
       const armL=model.getObjectByName("Arm_L_Pivot") as THREE.Object3D | null;
       const armR=model.getObjectByName("Arm_R_Pivot") as THREE.Object3D | null;
