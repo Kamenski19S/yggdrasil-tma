@@ -2540,8 +2540,8 @@ function Midgard3D({ h, skin, weapon, on, eventDone, start, rememberPosition, no
       {asset:'Cow.glb',label:'Корова',x:12,z:27,height:2.924,radius:1.6,speed:.20,phase:0,pose:'Walk'},
       {asset:'Horse.glb',label:'Лошадь у сарая',x:20,z:26,height:5.016,radius:1.3,speed:.20,phase:1,pose:'Walk'},
       {asset:'Horse_White.glb',label:'Лошадь на лугу',x:21,z:54,height:4.95,radius:4.2,speed:.25,phase:1.2,pose:'Walk'},
-      {asset:'Horse.glb',label:'Лошадь под навесом',x:-19,z:32,height:4.95,radius:0,speed:0,phase:Math.PI/2,pose:'Idle'},
-      {asset:'Horse_White.glb',label:'Белая лошадь под навесом',x:-19,z:38,height:4.95,radius:0,speed:0,phase:Math.PI/2,pose:'Idle'},
+      {asset:'Horse.glb',label:'Лошадь под навесом',x:-19,z:32,height:3.7,radius:0,speed:0,phase:Math.PI/2,pose:'Idle'},
+      {asset:'Horse_White.glb',label:'Белая лошадь под навесом',x:-19,z:38,height:3.7,radius:0,speed:0,phase:Math.PI/2,pose:'Idle'},
       {asset:'Wolf.glb',label:'Волк',x:46,z:-16,height:2.016,radius:3.2,speed:.35,phase:2.1,pose:'Walk'},
       {asset:'Fox.glb',label:'Лисица',x:43,z:36,height:1.64,radius:2.8,speed:.30,phase:.4,pose:'Walk'}
     ];
