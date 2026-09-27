@@ -161,23 +161,28 @@ const REALMS: Realm[] = [
 const NAV = [{ id: "tree", ic: "ᚱ", t: "Путь" }, { id: "hero", ic: "ᛗ", t: "Герой" }, { id: "gift", ic: "ᚷ", t: "Дар" }, { id: "hall", ic: "ᛟ", t: "Чертог" }];
 type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" } | { t: "hero" } | { t: "gift" } | { t: "hall" } | { t: "craft" } | { t: "forge" } | { t: "trial"; id: string } | { t: "fight"; id: string };
 type HeroSkin = "viking" | "valkyrie";
-type HeroWeapon = "default"|"knife"|"axe"|"mace"|"spear"|"bow";
-const WEAPON_POWER:Record<HeroWeapon,number>={default:0,knife:1,axe:3,mace:2,spear:2,bow:2};
-const WEAPON_ASSET:Record<Exclude<HeroWeapon,"default">,string>={knife:'Sword_2.glb',axe:'Axe.glb',mace:'Hammer_Small.glb',spear:'Spear.glb',bow:'Bow_Separate_Optimized.glb'};
+type HeroWeapon = "default"|"knife"|"axe"|"mace"|"spear";
+const WEAPON_POWER:Record<HeroWeapon,number>={default:0,knife:1,axe:3,mace:2,spear:2};
+const WEAPON_ASSET:Record<Exclude<HeroWeapon,"default">,string>={knife:'Sword_2.glb',axe:'Axe.glb',mace:'Hammer_Small.glb',spear:'Spear.glb'};
 type GearId="armor"|"shield"|"helmet"|"boots";
 const GEAR_IDS:GearId[]=["armor","shield","helmet","boots"];
 const SHIELD_ASSETS=['Shield_Round.glb','Shield_Round_2.glb','Shield_Heater.glb','Shield_Heater_2.glb','Shield_Celtic_Golden.glb'];
 const shieldForgeKey=(asset:string)=>asset===SHIELD_ASSETS[0]?'shield':'shield:'+asset;
-type Save = { sparks: number; arrows:number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; equippedGear: GearId[]; potions: string[]; runes: string[]; forgeLevels: Record<string,number>; forgeFreeUsed: boolean };
-const DEF: Save = { sparks: 25, arrows:10, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default","bow"], equippedGear:[], potions: [], runes: [], forgeLevels: {}, forgeFreeUsed: false };
+type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; equippedGear: GearId[]; potions: string[]; runes: string[]; forgeLevels: Record<string,number>; forgeFreeUsed: boolean };
+const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], equippedGear:[], potions: [], runes: [], forgeLevels: {}, forgeFreeUsed: false };
 const loadSave = (): Save => {
   try {
     const previous:any=JSON.parse(localStorage.getItem("yggdrasil") || "{}");
     const s:any = { ...DEF, ...previous };
     if (!Array.isArray(s.powers)) s.powers = [];
     if (!Array.isArray(s.ownedWeapons)) s.ownedWeapons = ["default"];
-    s.arrows=Math.max(0,Math.floor(Number(s.arrows)||0));
-    if(!s.ownedWeapons.includes('bow')){s.ownedWeapons=[...s.ownedWeapons,'bow'];s.arrows+=10;}
+    delete s.arrows;
+    s.ownedWeapons=[...new Set(['default',...s.ownedWeapons.filter((id:string)=>id!=='bow'&&Object.prototype.hasOwnProperty.call(WEAPON_POWER,id))])];
+    // Restore rewards earned before the weapon progression was rearranged.
+    if(s.done?.includes('chest:norns'))s.ownedWeapons=[...new Set([...s.ownedWeapons,'knife'])];
+    if(s.done?.includes('whisper:wisdom')||s.done?.includes('whisper:battle'))s.ownedWeapons=[...new Set([...s.ownedWeapons,'mace'])];
+    if(s.artifacts?.includes('midgard'))s.ownedWeapons=[...new Set([...s.ownedWeapons,'knife','mace','axe','spear'])];
+    delete s.forgeLevels?.bow;
     if (!Array.isArray(s.potions)) s.potions = [];
     if (!Array.isArray(s.runes)) s.runes = [];
     if (!s.forgeLevels || typeof s.forgeLevels !== "object" || Array.isArray(s.forgeLevels)) s.forgeLevels = {};
@@ -1181,7 +1186,7 @@ function midHero3d(h: HeroDef) {
 type WhisperCombatStats={maxHp:number;attack:number;runeAttack:number;defense:number};
 type WhisperPhase="closed"|"question"|"fight"|"reward"|"defeat";
 
-function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onSpendArrow, on, eventDone, start, rememberPosition, northBridgeRepaired, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; arrows:number; onSpendArrow:()=>void; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string }) {
+function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -1219,9 +1224,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
   const insideHomeRef = useRef(false);
   const homeActionRef = useRef<((inside:boolean)=>void)|null>(null);
   const attackActionRef = useRef<(()=>void)|null>(null);
-  const shootActionRef=useRef<(()=>void)|null>(null);
-  const arrowsRef=useRef(arrows),spendArrowRef=useRef(onSpendArrow),onRef=useRef(on);
-  arrowsRef.current=arrows;spendArrowRef.current=onSpendArrow;onRef.current=on;
+  const onRef=useRef(on);
+  onRef.current=on;
   const shieldActionRef = useRef<(()=>void)|null>(null);
   const shieldRaiseUntilRef=useRef(0);
   const [villageGateOpen, setVillageGateOpen] = useState(false);
@@ -1263,7 +1267,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
     if(whisperAnswer!==null)return;
     setWhisperAnswer(answer);
     if(answer===WHISPER_QUEST.c){
-      onWhisperCorrect();setWhisperReward("8 Капель силы");setWhisperLog("Камень признал твоё знание истории Мидгарда.");setWhisperPhaseSafe("reward");
+      onWhisperCorrect();setWhisperReward("8 Капель силы и Цепной шип");setWhisperLog("Камень признал твоё знание истории Мидгарда.");setWhisperPhaseSafe("reward");
     }else{
       whisperBattleStartedRef.current=true;
       setWhisperLog("Хродвитнир выходит из янтарного света. Теперь ответит сталь.");
@@ -1291,8 +1295,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
     setWhisperBusy(true);
     let damage=0;
     if(kind==="hit"){
-      if(weapon==='bow'&&arrowsRef.current<=0){setWhisperBusy(false);setWhisperLog('Стрелы закончились. В кузнице можно изготовить новые.');return;}
-      if(weapon==='bow')shootActionRef.current?.();else attackActionRef.current?.();setWhisperFx({kind:"hit",key:Date.now()});
+      attackActionRef.current?.();setWhisperFx({kind:"hit",key:Date.now()});
       damage=whisperStats.attack+Math.floor(Math.random()*4);
       if(whisperHeroEnergy>0)setWhisperHeroEnergy(v=>Math.max(0,v-1));else damage=Math.ceil(damage*.55);
       setWhisperLog("Герой замахивается и наносит удар сверху.");
@@ -4693,10 +4696,6 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
 
     let heroAnim:any=null;
     let attackStartedAt=-10000;
-    let bowDrawAt=-10000;
-    let bowReleased=true;
-    let bowString:THREE.BufferAttribute|null=null;
-    let bowGrip:THREE.Object3D|null=null;
     const attackGlowMats:THREE.MeshStandardMaterial[]=[];
     const strikeColor=skin==="valkyrie"?0x91ddff:0xff8538;
     const strikeMat=new THREE.MeshBasicMaterial({color:strikeColor,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide});
@@ -4754,34 +4753,6 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
 
     shieldActionRef.current=()=>{
       if(gear.includes('shield'))shieldRaiseUntilRef.current=performance.now()+1250;
-    };
-    let arrowTemplate:THREE.Object3D|null=null;
-    const flyingArrows:Array<{mesh:THREE.Object3D;direction:THREE.Vector3;expires:number}>=[];
-    if(weapon==='bow')loadGlbWithFolderFallback('Arrow_BowSet_Optimized.glb',(gltf:any)=>{
-      if(glbTreesAlive)arrowTemplate=gltf.scene;
-    },'HERO ARROW');
-    shootActionRef.current=()=>{
-      if(weapon!=='bow'||arrowsRef.current<=0||!arrowTemplate||!heroAnim)return;
-      const now=performance.now();if(now-bowDrawAt<850)return;
-      bowDrawAt=now;bowReleased=false;
-      arrowsRef.current--;spendArrowRef.current();
-    };
-    const releaseBowArrow=(now:number)=>{
-      if(!arrowTemplate)return;
-      const projectile=arrowTemplate.clone(true);
-      projectile.updateMatrixWorld(true);
-      const bounds=new THREE.Box3().setFromObject(projectile);
-      const span=bounds.getSize(new THREE.Vector3());
-      const longest=Math.max(span.x,span.y,span.z);
-      if(longest<.001)return;
-      const center=bounds.getCenter(new THREE.Vector3());
-      projectile.position.sub(center);
-      const mount=new THREE.Group();mount.add(projectile);mount.scale.setScalar(.82/longest);
-      const dir=new THREE.Vector3(Math.sin(hero.rotation.y),0,Math.cos(hero.rotation.y));
-      const axis=span.x>span.y&&span.x>span.z?new THREE.Vector3(1,0,0):span.y>span.z?new THREE.Vector3(0,1,0):new THREE.Vector3(0,0,1);
-      mount.quaternion.setFromUnitVectors(axis,dir);
-      mount.position.copy(hero.position).addScaledVector(dir,.58);mount.position.y+=1.2;
-      scene.add(mount);flyingArrows.push({mesh:mount,direction:dir,expires:now+1500});
     };
     const heroAsset=skin==="valkyrie"
       ? "Vika-3d-animated-optimized.glb"
@@ -4865,7 +4836,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
           object.material=Array.isArray(object.material)?object.material.map(recolor):recolor(object.material);
         });
       }
-      if(gear.includes('shield')&&weapon!=='bow'){
+      if(gear.includes('shield')){
         const shieldHand=isVika?bone('LeftForeArm'):model.getObjectByName('WeaponSocket_L');
         if(shieldHand)loadGlbWithFolderFallback(shieldAsset,(shieldGlb:any)=>{
           if(!glbTreesAlive)return;
@@ -4893,36 +4864,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
       if(skin==="valkyrie"||weapon!=="default"){
         // GLTFLoader strips the colon from Mixamo bone names while binding animations.
         const hand=skin==="valkyrie"
-          ? model.getObjectByName(weapon==='bow'?"mixamorigLeftHand":"mixamorigRightHand") || model.getObjectByName(weapon==='bow'?"mixamorig:LeftHand":"mixamorig:RightHand") || model.getObjectByName(weapon==='bow'?"LeftHand":"RightHand")
+          ? model.getObjectByName("mixamorigRightHand") || model.getObjectByName("mixamorig:RightHand") || model.getObjectByName("RightHand")
           : model.getObjectByName("WeaponSocket_R") || model.getObjectByName("WeaponSocket_L");
         const asset=weapon==="default"?'Sword.glb':WEAPON_ASSET[weapon];
-        if(hand&&weapon==='bow'){
-          const bowMount=new THREE.Group();
-          bowMount.position.set(0,-.03,.055);
-          bowGrip=bowMount;
-          // A visible bow is available immediately, even while the detailed GLB loads.
-          const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(0,-.26,0),new THREE.Vector3(-.10,-.15,0),new THREE.Vector3(-.13,0,0),new THREE.Vector3(-.10,.15,0),new THREE.Vector3(0,.26,0)]);
-          bowMount.add(new THREE.Mesh(new THREE.TubeGeometry(curve,18,.012,5,false),new THREE.MeshStandardMaterial({color:0x84502a,roughness:.65})));
-          const stringGeometry=new THREE.BufferGeometry();
-          bowString=new THREE.Float32BufferAttribute([0,-.26,0,0,0,.015,0,.26,0],3);
-          stringGeometry.setAttribute('position',bowString);
-          bowMount.add(new THREE.Line(stringGeometry,new THREE.LineBasicMaterial({color:0xf5dfb0})));
-          hand.add(bowMount);
-          loadGlbWithFolderFallback(asset,(bowGlb:any)=>{
-            if(!glbTreesAlive)return;
-            const bow=bowGlb.scene;
-            bow.updateMatrixWorld(true);
-            const bounds=new THREE.Box3().setFromObject(bow),size=bounds.getSize(new THREE.Vector3());
-            const span=Math.max(size.x,size.y,size.z);
-            if(span<.001)return;
-            const center=bounds.getCenter(new THREE.Vector3());
-            bow.position.sub(center);
-            const detailed=new THREE.Group();detailed.scale.setScalar(.54/span);detailed.add(bow);
-            bowMount.add(detailed);
-            (bowMount.children[0] as THREE.Object3D).visible=false;
-          },'HERO BOW');
-        }
-        if(hand&&asset&&weapon!=='bow')loadGlbWithFolderFallback(asset,(swordGlb:any)=>{
+        if(hand&&asset)loadGlbWithFolderFallback(asset,(swordGlb:any)=>{
           if(!glbTreesAlive)return;
           const blade=swordGlb.scene;
           textureSteelOnWeapon(blade,asset);
@@ -4987,7 +4932,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
         const attack=attackClip?mixer.clipAction(attackClip):null;
         const fall=fallClip?mixer.clipAction(fallClip):null;
         idle.play();
-        heroAnim={mode:"clips",model,mixer,actions:{idle,walk,attack,fall},current:idle,attackUntil:0,fallen:false,phase:1.2,shieldUpper:bone('LeftArm'),shieldLower:bone('LeftForeArm'),bowLeft:bone('LeftArm'),bowRight:bone('RightArm'),bowElbow:bone('RightForeArm'),bowRightHand:bone('RightHand')};
+        heroAnim={mode:"clips",model,mixer,actions:{idle,walk,attack,fall},current:idle,attackUntil:0,fallen:false,phase:1.2,shieldUpper:bone('LeftArm'),shieldLower:bone('LeftForeArm')};
       }else if(projectedFront || isV6MultiView){
         // V5/V6 experimental textured heroes keep the artwork/model intact.
         // For V6 we use a subtle full-body walking motion because its current
@@ -5071,7 +5016,6 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
       const dt=Math.min(.05,(now-last)/1000);last=now;const q=state.current;const l=Math.hypot(q.dx,q.dz);
       const whisperNow=whisperPhaseRef.current;
       const encounterLocked=whisperNow!=="closed";
-      for(let i=flyingArrows.length-1;i>=0;i--){const arrow=flyingArrows[i];if(now>=arrow.expires){scene.remove(arrow.mesh);flyingArrows.splice(i,1);}else arrow.mesh.position.addScaledVector(arrow.direction,dt*23);}
 
       if(forgeDoorOpening){
         forgeDoorProgress=Math.min(1,forgeDoorProgress+dt*1.65);
@@ -5170,37 +5114,6 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
             if(now>=heroAnim.attackUntil)transition(moving?heroAnim.actions.walk:heroAnim.actions.idle);
           }
           heroAnim.mixer.update(dt);
-          if(weapon==='bow'&&!heroAnim.fallen){
-            const elapsed=now-bowDrawAt;
-            const drawing=elapsed>=0&&elapsed<780;
-            const pull=drawing?Math.min(1,elapsed/350)*Math.min(1,(780-elapsed)/220):0;
-            // The left hand aims; the right hand draws back and releases.
-            heroAnim.bowLeft?.rotateX(-.65-.32*pull);
-            heroAnim.bowLeft?.rotateZ(-.28);
-            if(drawing&&bowGrip&&heroAnim.bowRight&&heroAnim.bowRightHand){
-              // Steer the wrist toward the string in world space. This follows
-              // Vika's real skeleton regardless of her current idle/walk clip.
-              const target=bowGrip.getWorldPosition(new THREE.Vector3());
-              const forward=new THREE.Vector3(Math.sin(hero.rotation.y),0,Math.cos(hero.rotation.y));
-              target.addScaledVector(forward,-.10-.24*pull);
-              target.y+=.025;
-              const aim=(joint:THREE.Object3D,strength:number)=>{
-                heroAnim.model.updateMatrixWorld(true);
-                const origin=joint.getWorldPosition(new THREE.Vector3());
-                const wrist=heroAnim.bowRightHand.getWorldPosition(new THREE.Vector3());
-                const current=wrist.sub(origin),desired=target.clone().sub(origin);
-                if(current.lengthSq()<.00001||desired.lengthSq()<.00001)return;
-                const delta=new THREE.Quaternion().setFromUnitVectors(current.normalize(),desired.normalize());
-                const neutral=new THREE.Quaternion(),parent=joint.parent?.getWorldQuaternion(neutral)||neutral;
-                const local=parent.clone().invert().multiply(delta).multiply(parent);
-                joint.quaternion.premultiply(new THREE.Quaternion().identity().slerp(local,strength));
-              };
-              aim(heroAnim.bowRight,.86);
-              if(heroAnim.bowElbow)aim(heroAnim.bowElbow,.82);
-            }
-            if(bowString){bowString.setZ(1,.015+.10*pull);bowString.needsUpdate=true;}
-            if(!bowReleased&&elapsed>=520){bowReleased=true;releaseBowArrow(now);}
-          }
           if(skin==='valkyrie'&&gear.includes('shield')&&!heroAnim.fallen){
             const remaining=shieldRaiseUntilRef.current-now;
             if(remaining>0){
@@ -5366,7 +5279,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();deerFurTexture?.dispose();nornsStoneTexture?.dispose();nornsColumnTexture?.dispose();furTextures.forEach(texture=>texture.dispose());lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;shootActionRef.current=null;shieldActionRef.current=null;forgeActionRef.current=null;};
+    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();deerFurTexture?.dispose();nornsStoneTexture?.dispose();nornsColumnTexture?.dispose();furTextures.forEach(texture=>texture.dispose());lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;shieldActionRef.current=null;forgeActionRef.current=null;};
   },[h.id,skin,weapon,gear.join(','),gearLevels.armor,gearLevels.helmet,gearLevels.boots,shieldAsset,eventDone,start.x,start.z,rememberPosition,northBridgeRepaired]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
@@ -5453,7 +5366,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
         <span className="whisper-pips" aria-label={`Энергия Хродвитнира: ${whisperGuardEnergy} из ${COMBAT_ENERGY}`}>{whisperPips(whisperGuardEnergy)}</span>
       </div>
       <div className="whisper-combat-actions">
-        <button className="whisper-combat-action" disabled={whisperBusy||(weapon==='bow'&&arrows<=0)} onClick={()=>whisperFightAction("hit")}><span className="whisper-combat-icon" aria-hidden="true">{weapon==='bow'?'🏹':'🪓'}</span><b>{weapon==='bow'?'Выстрел':'Удар оружием'}</b><small>{weapon==='bow'?`Стрел: ${arrows}`:'−1 энергия'}</small></button>
+        <button className="whisper-combat-action" disabled={whisperBusy} onClick={()=>whisperFightAction("hit")}><span className="whisper-combat-icon" aria-hidden="true">🪓</span><b>Удар оружием</b><small>−1 энергия</small></button>
         <button className="whisper-combat-action shield" disabled={whisperBusy} onClick={()=>whisperFightAction("shield")}><span className="whisper-combat-icon" aria-hidden="true">🛡️</span><b>Поднять щит</b><small>−1 энергия</small></button>
         <button className="whisper-combat-action rune" disabled={whisperBusy} onClick={()=>whisperFightAction("rune")}><span className="whisper-combat-icon" aria-hidden="true">ᚲ</span><b>Руна Кеназ</b><small>−2 энергии</small></button>
         <button className="whisper-combat-action rest" disabled={whisperBusy} onClick={()=>whisperFightAction("restore")}><span className="whisper-combat-icon" aria-hidden="true">🌿</span><b>Перевести дух</b><small>+2 энергии</small></button>
@@ -5482,8 +5395,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
     })()}
     {whisperPhase==="closed"&&<><div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-block" disabled={!gear.includes('shield')} aria-label="Блок щитом" title="Блок щитом" onPointerDown={e=>e.stopPropagation()} onClick={()=>{shieldActionRef.current?.();if('vibrate' in navigator)navigator.vibrate(15);}}>🛡</button>
-    <button className="mid3d-ui mid3d-strike" aria-label={weapon==='bow'?'Выстрелить из лука':'Удар оружием'} title={weapon==='bow'?'Стрел: '+arrows:'Удар оружием'} onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(weapon==='bow')shootActionRef.current?.();else attackActionRef.current?.();if("vibrate" in navigator)navigator.vibrate(12);}}>{weapon==='bow'?'🏹':'⚔'}</button>
-    {weapon==='bow'&&<span className="mid3d-ui" style={{right:17,bottom:96,color:"#fff3ce",fontWeight:900,textShadow:"0 2px 4px #000"}}>×{arrows}</span>}
+    <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" title="Удар оружием" onPointerDown={e=>e.stopPropagation()} onClick={()=>{attackActionRef.current?.();if("vibrate" in navigator)navigator.vibrate(12);}}>⚔</button>
     <button className="mid3d-ui mid3d-action" aria-label="Карта Мидгарда" title="Карта Мидгарда" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapHero({x:state.current.x,z:state.current.z});setMapOpen(true);}}>ᚠ</button></>}
     {whisperPhase==="closed"&&<div className="mid3d-ui mid3d-hint">{insideHome?(moving?"Ты внутри дома":"Дом героя • отдых • сундук • выход"):moving?"Исследуй Мидгард":"Ворота • площадь • кузница • Мимир • норны • лес"}</div>}
   </div>;
@@ -5494,8 +5406,7 @@ function SparkDrop(){return <span className="spark-drop" aria-label="Капля 
 const FORGE_WEAPON_MODELS = [
   ['Sword.glb','Меч','default'],['Sword_2.glb','Меч II','knife'],['Sword_Big.glb','Большой меч',''],['Sword_Golden.glb','Золотой меч',''],
   ['Axe.glb','Топор','axe'],['Axe_Small.glb','Малый топор',''],['Axe_Double.glb','Двойной топор',''],['Spear.glb','Копьё','spear'],
-  ['Hammer_Small.glb','Молот','mace'],['Hammer_Double.glb','Двойной молот',''],['Bow_Separate_Optimized.glb','Лук','bow'],['Bow_Wooden2.glb','Лук II',''],
-  ['Bow_Golden.glb','Золотой лук',''],['Bow_Evil.glb','Тёмный лук',''],['Shield_Round.glb','Круглый щит','shield'],['Shield_Round_2.glb','Щит II',''],
+  ['Hammer_Small.glb','Молот','mace'],['Hammer_Double.glb','Двойной молот',''],['Shield_Round.glb','Круглый щит','shield'],['Shield_Round_2.glb','Щит II',''],
   ['Shield_Heater.glb','Щит',''],['Shield_Heater_2.glb','Щит II',''],['Shield_Celtic_Golden.glb','Золотой щит','']
 ] as const;
 
@@ -5542,7 +5453,7 @@ function ForgeWeaponWall({owned,ownedShields,selected,selectedShield,onChoose}:{
     return()=>{active=false;scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.dispose();};
   },[]);
   return <><div className="forge-wall"><canvas ref={canvas}/><div className="forge-wall-labels">{FORGE_WEAPON_MODELS.map(([asset,name,id])=><button type="button" className={'forge-wall-label'+(id&&owned.includes(id)?' owned':'')+(ownedShields.includes(asset)?' owned':'')+(asset===selectedShield||(!asset.startsWith('Shield_')&&id===selected)?' equipped':'')} key={asset} aria-label={'Выбрать '+name} onClick={()=>onChoose(asset,name,id)}>{name}</button>)}</div></div>
-    <p className="forge-wall-note">Выбери полученное оружие или щит. Остальные щиты откроются по мере прохождения; для луков потребуются стрелы.</p></>;
+    <p className="forge-wall-note">Выбери полученное оружие или щит. Остальные щиты откроются по мере прохождения.</p></>;
 }
 
 function App() {
@@ -5613,7 +5524,6 @@ const [roadT, setRoadT] = useState(0.06);
     {id:"axe",icon:"🪓",name:"Северный топор",kind:"weapon",owned:save.ownedWeapons.includes("axe")},
     {id:"mace",icon:"⛓✦",name:"Цепной шип",kind:"weapon",owned:save.ownedWeapons.includes("mace")},
     {id:"spear",icon:"🔱",name:"Копьё",kind:"weapon",owned:save.ownedWeapons.includes("spear")},
-    {id:"bow",icon:"🏹",name:"Деревянный лук",kind:"weapon",owned:save.ownedWeapons.includes("bow")},
     {id:"armor",icon:"♜",name:"Нагрудная броня",kind:"gear",owned:true},
     {id:"shield",icon:"🛡️",name:"Круглый щит",kind:"gear",owned:true},
     {id:"helmet",icon:"⛑️",name:"Боевой шлем",kind:"gear",owned:true},
@@ -5642,7 +5552,6 @@ const [roadT, setRoadT] = useState(0.06);
     say((cost===0?"Первая ковка бесплатна. ":"")+item.name+": закалка +1");
   };
   const chooseForgeWeapon=(asset:string,name:string,id:string)=>{
-    if(asset.startsWith('Bow_')&&id!=='bow'){say(name+' пока хранится у защитника.');return;}
     if(asset.startsWith('Shield_')){
       if(!save.ownedShields.includes(asset)){say(name+' ещё не получен. Щиты будут открываться за испытания.');return;}
       const already=save.shieldAsset===asset&&equipped('shield');
@@ -5661,11 +5570,12 @@ const [roadT, setRoadT] = useState(0.06);
   const openGate = (r: Realm) => { if (save.artifacts.includes(r.id)) { say("Мир покорён. Артефакт хранится в листе героя."); return; } haptic(); setScreen({ t: "trial", id: r.id }); };
   const finishTrial = (id: string, idx: number, add: number) => {
     const art = idx === 2;
-    setSave(s => ({ ...s, sparks: s.sparks + add + (art ? 30 : 0), trials: [...s.trials, id + ":" + idx], artifacts: art ? [...s.artifacts, id] : s.artifacts }));
-    if (art) { haptic("success"); say("Мир пройден! Артефакт: " + ARTIFACTS[id]); }
+    setSave(s => ({ ...s, sparks: s.sparks + add + (art ? 30 : 0), trials: [...s.trials, id + ":" + idx], artifacts: art ? [...s.artifacts, id] : s.artifacts,
+      ownedWeapons:art&&id==='midgard'?[...new Set([...s.ownedWeapons,'knife','mace','axe','spear'])]:s.ownedWeapons }));
+    if (art) { haptic("success"); say("Мир пройден! Артефакт: " + ARTIFACTS[id]+(id==='midgard'?'. Все оружие Мидгарда теперь доступно в Чертоге.':'')); }
   };
   const finishWhisperCorrect = () => {
-    setSave(s=>s.done.includes("whisper:wisdom")?s:{...s,sparks:s.sparks+8,done:[...new Set([...s.done,"whisper:wisdom"])]});
+    setSave(s=>s.done.includes("whisper:wisdom")?s:{...s,sparks:s.sparks+8,done:[...new Set([...s.done,"whisper:wisdom"])],ownedWeapons:[...new Set([...s.ownedWeapons,'mace'])]});
     haptic("success");
   };
   const answer = (id: string, ai: number) => {
@@ -5712,30 +5622,17 @@ const [roadT, setRoadT] = useState(0.06);
     setScreen({ t: "fight", id });
   };
   const finishWhisperBattle=()=>{
-    const missing=["knife","axe","mace","spear"].filter(id=>!save.ownedWeapons.includes(id));
-    const roll=rnd(3);
-    const weaponNames:Record<string,string>={knife:"Боевой нож",axe:"Северный топор",mace:"Цепной шип",spear:"Копьё"};
-    const weapon=missing.length?missing[rnd(missing.length)]:"";
-    const reward=roll===0&&weapon
-      ? {kind:"weapon",id:weapon,label:weaponNames[weapon]}
-      : roll===1
-        ? {kind:"potion",id:"northernMoss",label:"Эликсир северного мха"}
-        : {kind:"rune",id:"kenazShard",label:"Осколок руны Кеназ"};
     setSave(s=>{
       if(s.done.includes("whisper:battle"))return s;
       return {...s,sparks:s.sparks+18,done:[...new Set([...s.done,"whisper:battle"])],
-        ownedWeapons:reward.kind==="weapon"?[...new Set([...s.ownedWeapons,reward.id])]:s.ownedWeapons,
-        potions:reward.kind==="potion"?[...s.potions,reward.id]:s.potions,
-        runes:reward.kind==="rune"?[...new Set([...s.runes,reward.id])]:s.runes};
+        ownedWeapons:[...new Set([...s.ownedWeapons,'mace'])],
+        potions:[...s.potions,'northernMoss'],
+        runes:[...new Set([...s.runes,'kenazShard'])]};
     });
-    return reward.label;
+    return 'Цепной шип, эликсир северного мха и осколок Кеназ';
   };
   const fightAct = (id: string, kind: "hit" | "rune" | "shield" | "restore") => {
     if (over) return;
-    if(kind==='hit'&&save.heroWeapon==='bow'){
-      if(save.arrows<=0){say('Стрелы закончились. Изготовь новые в кузнице.');return;}
-      setSave(s=>({...s,arrows:Math.max(0,s.arrows-1)}));
-    }
     const m = MASTERS[id]; const idx = trialIdx(id);
     let dmg = 0; let log = ""; let nhen = hen; let nmen = men; let nshield = shield;
     if (kind === "hit") {
@@ -5907,8 +5804,8 @@ const [roadT, setRoadT] = useState(0.06);
         }
         setSave(s=>s.done.includes('chest:norns')?s:{...s,
           done:[...new Set([...s.done,'chest:norns'])],
-          potions:[...s.potions,'lifeElixir'],runes:[...new Set([...s.runes,'uruzStrength'])]});
-        haptic('success');say('В красном сундуке: Эликсир жизни и руна силы Уруз ᚢ. Норны оставили подсказку: доски лежат на Старом хуторе, крепления — у мастера Торвальда. Отнеси оба предмета плотнику Бьёрну: он откроет Северный мост и путь к золотому сундуку.');
+          potions:[...s.potions,'lifeElixir'],runes:[...new Set([...s.runes,'uruzStrength'])],ownedWeapons:[...new Set([...s.ownedWeapons,'knife'])]});
+        haptic('success');say('В красном сундуке: боевой нож, Эликсир жизни и руна силы Уруз ᚢ. Норны оставили подсказку: доски лежат на Старом хуторе, крепления — у мастера Торвальда. Отнеси оба предмета плотнику Бьёрну: он откроет Северный мост и путь к золотому сундуку.');
         return;
       }
       if (id === "forge") {
@@ -5941,7 +5838,7 @@ const [roadT, setRoadT] = useState(0.06);
         warriorHouse:"Дом дружинника. За дверью слышно, как точат клинок перед вечерним дозором.",
         fisher2:"Дом рыбака Халли. На крыльце сохнут сети, принесённые с северной реки.",
         carpenter:"Плотник Бьёрн осматривает инструменты: «Северный мост у дороги от врат повреждён. Я закрыл проход с обеих сторон. Для ремонта понадобятся крепкие доски и новые крепления».",
-        hunter2:"Дом охотницы Рандви. Над дверью висит связка тёмных стрел.",
+        hunter2:"Дом охотницы Рандви. У порога видны следы охоты.",
         family:"Дом семьи Торстейна. В окне горит спокойный домашний свет.",
         fisher:"Дом рыбака Эйнара. Хозяин ещё не вернулся с реки.",
         hunter:"Дом охотника Ульва. У порога видны свежие следы из леса.",
@@ -5953,13 +5850,7 @@ const [roadT, setRoadT] = useState(0.06);
         say(save.done.includes("bridge:north:repaired")?"Северный мост восстановлен. Проход свободен.":"Северный мост повреждён. Проход закрыт с обеих сторон. Плотник Бьёрн пока осматривает повреждения.");
         return;
       }
-      if (id === "port") {
-        if(!save.done.includes('port:arrows')&&!save.done.includes('port:bow')){
-          setSave(s=>({...s,arrows:s.arrows+15,done:[...new Set([...s.done,'port:arrows'])]}));
-          haptic('success');say('У речного моста охотник оставил 15 стрел для твоего лука.');
-        }else say('Речной мост открыт. Стрелы для лука можно изготовить в кузнице.');
-        return;
-      }
+      if (id === "port") {say("Речной мост открыт. Отсюда начинается дорога к поселению.");return;}
       if (id === "rune") {
         say("Древний камень откликается руной ᚠ. В ладони становится теплее — будто кто-то заметил твой приход.");
         return;
@@ -6127,8 +6018,6 @@ const [roadT, setRoadT] = useState(0.06);
       gear={save.equippedGear}
       gearLevels={save.forgeLevels}
       shieldAsset={save.shieldAsset}
-      arrows={save.arrows}
-      onSpendArrow={()=>setSave(s=>({...s,arrows:Math.max(0,s.arrows-1)}))}
       on={interact}
       eventDone={save.done.includes("forest:choice")}
       start={midgardReturn.current}
@@ -6253,7 +6142,7 @@ const [roadT, setRoadT] = useState(0.06);
             </div>
             <div className="flog">{flog}</div>
             {!over && (<div className="acts">
-              <button className="btn gold" disabled={save.heroWeapon==='bow'&&save.arrows<=0} onClick={() => fightAct(realm.id, "hit")}>{save.heroWeapon==='bow'?`🏹 Выстрел · стрел: ${save.arrows}`:`⚔ Удар: ${heroDef!.weapon} (−1 энергия)`}</button>
+              <button className="btn gold" onClick={() => fightAct(realm.id, "hit")}>⚔ Удар: {heroDef!.weapon} (−1 энергия)</button>
               <button className="btn rune" onClick={() => fightAct(realm.id, "rune")}>🌀 Руническое заклинание (−2 энергии)</button>
               <button className="btn shield" onClick={() => fightAct(realm.id, "shield")}>🛡 Щит (−1 энергия)</button>
               <button className="btn ghost" onClick={() => fightAct(realm.id, "restore")}>🌿 Перевести дыхание (+{2+(equipped('boots')?1:0)+(gearLevel('boots')>=3?1:0)} энергии)</button>
@@ -6287,7 +6176,7 @@ const [roadT, setRoadT] = useState(0.06);
             </div>
             <div className="hrow">🗡 Оружие в руке</div>
             <div className="chips">
-              {(['default','knife','axe','mace','spear','bow'] as HeroWeapon[]).filter(id=>id==='default'||save.ownedWeapons.includes(id)).map(id=><button key={id}
+              {(['default','knife','axe','mace','spear'] as HeroWeapon[]).filter(id=>id==='default'||save.ownedWeapons.includes(id)).map(id=><button key={id}
                 className={"chip"+(save.heroWeapon===id?" on":"")}
                 onClick={()=>{setSave(s=>({...s,heroWeapon:id}));haptic();}}
               >{id==='default'?(save.heroSkin==='valkyrie'?'Меч валькирии':'Секира викинга'):FORGE_WEAPON_MODELS.find(item=>item[2]===id)?.[1]} · +{WEAPON_POWER[id]}</button>)}
@@ -6354,8 +6243,7 @@ const [roadT, setRoadT] = useState(0.06);
             <button disabled={forgeLevel(save.heroWeapon)>=10} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=10?'Максимум +10':<>Закалить {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/></>:'бесплатно'}</>}</button></div>
           <div className="forge-group-title">Экипировка</div>
           <div className="forge-grid">{gear.map(forgeButton)}</div>
-          {save.ownedWeapons.includes('bow')&&<button className="forge-exit" disabled={save.sparks<3||save.arrows>50} onClick={()=>{setSave(s=>({...s,sparks:s.sparks-3,arrows:s.arrows+10}));haptic('success');say('Изготовлено 10 стрел.');}}>🏹 Изготовить 10 стрел · 3 <SparkDrop/> · в запасе {save.arrows}/60</button>}
-          <div className="forge-note"><b>Закалка действует в бою.</b> Оружие усиливает обычный удар; броня и шлем добавляют здоровье и снижают урон; щит крепче держит защиту; улучшенные сапоги помогают быстрее восстановить энергию.</div>
+                    <div className="forge-note"><b>Закалка действует в бою.</b> Оружие усиливает обычный удар; броня и шлем добавляют здоровье и снижают урон; щит крепче держит защиту; улучшенные сапоги помогают быстрее восстановить энергию.</div>
           <button className="forge-exit" onClick={()=>{haptic();go({t:"realm",id:"midgard"});}}>🔥 Открыть дверь и вернуться в Мидгард</button>
         </div>;
       })()}
@@ -6376,7 +6264,7 @@ const [roadT, setRoadT] = useState(0.06);
             <div className="hall-section">
               <span className="hall-icon">⚔️</span><h3>Оружие</h3>
               <p>{save.heroWeapon==='default'?(save.heroSkin==='valkyrie'?'Меч валькирии':'Секира викинга'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} сейчас в руке. Нажми на найденное оружие, чтобы сменить его.</p>
-              <div className="hall-slots">{(['default','knife','axe','mace','spear','bow'] as HeroWeapon[]).filter(id=>id==='default'||save.ownedWeapons.includes(id)).map(id=><button key={id} title={id==='default'?'Основное оружие':FORGE_WEAPON_MODELS.find(item=>item[2]===id)?.[1]} className={'hall-slot'+(save.heroWeapon===id?' on':'')} onClick={()=>{setSave(s=>({...s,heroWeapon:id}));haptic();}}>{id==='default'?'⚔':id==='axe'?'🪓':id==='spear'?'🔱':id==='mace'?'🔨':id==='bow'?'🏹':'🗡'}</button>)}</div>
+              <div className="hall-slots">{(['default','knife','axe','mace','spear'] as HeroWeapon[]).filter(id=>id==='default'||save.ownedWeapons.includes(id)).map(id=><button key={id} title={id==='default'?'Основное оружие':FORGE_WEAPON_MODELS.find(item=>item[2]===id)?.[1]} className={'hall-slot'+(save.heroWeapon===id?' on':'')} onClick={()=>{setSave(s=>({...s,heroWeapon:id}));haptic();}}>{id==='default'?'⚔':id==='axe'?'🪓':id==='spear'?'🔱':id==='mace'?'🔨':'🗡'}</button>)}</div>
               <span className="hall-count">{save.ownedWeapons.length} предмет{save.ownedWeapons.length===1?"":"а"}</span>
             </div>
             <div className="hall-section">
