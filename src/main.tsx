@@ -2202,7 +2202,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
 
     // The river can be crossed only on the wooden bridge. Beyond it a narrow
     // west-bank trail reaches the old farm, forest cache and Whispering Stone.
-    road([[-50,-48],[-57,-48],[-64,-48]],2.05);
+    // Carry the trail under the stone arch and onto the bridge landing.
+    road([[-48,-44],[-49,-46],[-50,-48],[-52,-48],[-57,-48],[-64,-48]],2.05);
     road([[-64,-48],[-70,-48],[-72,-48]],1.58);
     road([[-64,-48],[-67,-40],[-68,-27],[-68,-11],[-65,8]],1.62);
     road([[-65,8],[-68,24],[-70,37],[-72,48]],1.50);
@@ -4896,6 +4897,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     shieldActionRef.current=()=>{
       if(gear.includes('shield'))shieldRaiseUntilRef.current=performance.now()+1250;
     };
+    let shieldGuardMount:THREE.Group|null=null;
     const heroAsset=skin==="valkyrie"
       ? "Vika-3d-animated-optimized.glb"
       : "Yggdrasil_Viking_Jarl.glb";
@@ -4999,6 +5001,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           // the arm so the painted face points out at the player.
           mount.rotation.y=Math.PI;
           mount.add(shieldModel);shieldHand.add(mount);
+          shieldGuardMount=mount;
         },'HERO SHIELD');
       }
 
@@ -5325,12 +5328,15 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           heroAnim.mixer.update(dt);
           if(skin==='valkyrie'&&gear.includes('shield')&&!heroAnim.fallen){
             const remaining=shieldRaiseUntilRef.current-now;
-            if(remaining>0){
-              const lift=Math.min(THREE.MathUtils.clamp((1250-remaining)/170,0,1),THREE.MathUtils.clamp(remaining/260,0,1));
-              const upper=heroAnim.shieldUpper,lower=heroAnim.shieldLower;
-              if(upper){upper.rotateZ(lift*.82);upper.rotateX(-lift*.55);}
-              if(lower)lower.rotateX(-lift*.32);
+            const lift=remaining>0?Math.min(THREE.MathUtils.clamp((1250-remaining)/170,0,1),THREE.MathUtils.clamp(remaining/260,0,1)):0;
+            const upper=heroAnim.shieldUpper,lower=heroAnim.shieldLower;
+            // Mixamo's arm points up its local Y axis. Swing it forward, bend
+            // the elbow, and lift the shield on the forearm to cover the face.
+            if(lift>0){
+              if(upper){upper.rotateX(-lift*1.18);upper.rotateZ(lift*.48);}
+              if(lower)lower.rotateX(lift*.78);
             }
+            if(shieldGuardMount)shieldGuardMount.position.y=.075+lift*.40;
           }
         }else if(heroAnim.mode==="projected" || heroAnim.mode==="multiview"){
           // Very small vertical step + body sway: enough to read as walking
