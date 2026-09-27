@@ -165,15 +165,32 @@ type HeroWeapon = "default"|"knife"|"axe"|"mace"|"spear";
 const WEAPON_POWER:Record<HeroWeapon,number>={default:0,knife:1,axe:3,mace:2,spear:2};
 const WEAPON_ASSET:Record<Exclude<HeroWeapon,"default">,string>={knife:'Dagger.glb',axe:'Axe.glb',mace:'Hammer_Small.glb',spear:'Spear.glb'};
 type GearId="armor"|"shield"|"helmet"|"boots";
+type GatherKind="wood"|"twigs"|"herbs";
+type GatherStock=Record<GatherKind,number>;
+const EMPTY_GATHER_STOCK:GatherStock={wood:0,twigs:0,herbs:0};
+const GATHER_SPOTS:Array<{id:string;kind:GatherKind;x:number;z:number}>=[
+  {id:'sapling1',kind:'wood',x:-15,z:54},{id:'sapling2',kind:'wood',x:-23,z:56},
+  {id:'sapling3',kind:'wood',x:-30,z:60},{id:'sapling4',kind:'wood',x:17,z:59},
+  {id:'sapling5',kind:'wood',x:24,z:63},
+  {id:'shrub1',kind:'twigs',x:-11,z:52},{id:'shrub2',kind:'twigs',x:-21,z:51},
+  {id:'shrub3',kind:'twigs',x:-30,z:65},{id:'shrub4',kind:'twigs',x:14,z:55},
+  {id:'shrub5',kind:'twigs',x:27,z:58},
+  {id:'herb1',kind:'herbs',x:-8,z:-27},{id:'herb2',kind:'herbs',x:-5,z:-27},
+  {id:'herb3',kind:'herbs',x:-12,z:-27},{id:'herb4',kind:'herbs',x:-16,z:-27},
+  {id:'herb5',kind:'herbs',x:9,z:-38},{id:'herb6',kind:'herbs',x:14,z:-41}
+];
 const GEAR_IDS:GearId[]=["armor","shield","helmet","boots"];
 const SHIELD_ASSETS=['Shield_Round.glb','Shield_Round_2.glb','Shield_Heater.glb','Shield_Heater_2.glb','Shield_Celtic_Golden.glb'];
 const shieldForgeKey=(asset:string)=>asset===SHIELD_ASSETS[0]?'shield':'shield:'+asset;
-type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; forgeLevels: Record<string,number>; forgeFreeUsed: boolean };
-const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false };
+type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; forgeLevels: Record<string,number>; forgeFreeUsed: boolean; gathered:string[]; stock:GatherStock };
+const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false,gathered:[],stock:{...EMPTY_GATHER_STOCK} };
 const loadSave = (): Save => {
   try {
     const previous:any=JSON.parse(localStorage.getItem("yggdrasil") || "{}");
     const s:any = { ...DEF, ...previous };
+    if(!Array.isArray(s.gathered))s.gathered=[];
+    s.stock={...EMPTY_GATHER_STOCK,...(s.stock&&typeof s.stock==='object'?s.stock:{})};
+    for(const kind of ['wood','twigs','herbs'] as GatherKind[])s.stock[kind]=Math.max(0,Math.floor(Number(s.stock[kind])||0));
     if (!Array.isArray(s.powers)) s.powers = [];
     if (!Array.isArray(s.ownedWeapons)) s.ownedWeapons = ["default"];
     delete s.arrows;
@@ -478,6 +495,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .mid3d-strike{right:22px;bottom:112px;width:52px;height:52px;border-radius:50%;border:1px solid rgba(255,225,174,.66);background:radial-gradient(circle at 38% 30%,rgba(255,155,75,.98),rgba(126,38,20,.96));color:#fff4df;font-size:22px;font-weight:900;text-shadow:0 1px 4px rgba(0,0,0,.85);box-shadow:0 5px 15px rgba(0,0,0,.42),0 0 12px rgba(255,99,43,.25);touch-action:none}
 .mid3d-strike:active{transform:scale(.88);box-shadow:0 2px 8px rgba(0,0,0,.45),0 0 18px rgba(255,114,54,.55)}
 .mid3d-block{right:22px;bottom:178px;width:52px;height:52px;border-radius:50%;border:1px solid rgba(178,230,255,.83);background:radial-gradient(circle at 38% 30%,#89c2da,#284966);color:#fff;font-size:23px;box-shadow:0 5px 15px rgba(0,0,0,.42);touch-action:none}.mid3d-block:active{transform:scale(.91);filter:brightness(1.25)}.mid3d-block:disabled{opacity:.46}
+.mid3d-bend{right:22px;bottom:244px;width:52px;height:52px;border-radius:50%;border:1px solid rgba(191,232,151,.78);background:radial-gradient(circle at 38% 30%,#61916b,#254b3b);color:#fff8db;font-size:23px;box-shadow:0 5px 15px rgba(0,0,0,.42);touch-action:none}.mid3d-bend:active{transform:scale(.91);filter:brightness(1.2)}
 .mid3d-hero-load{left:50%;top:58%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;color:#f4d36d;text-shadow:0 2px 8px rgba(0,0,0,.85)}
 .mid3d-hero-load b{font-size:34px;line-height:1;animation:heroRunePulse 1.05s ease-in-out infinite}.mid3d-hero-load span{font-size:9px;letter-spacing:.8px;padding:3px 7px;border-radius:8px;background:rgba(4,9,6,.55)}
 .mid3d-hint{left:50%;bottom:9px;transform:translateX(-50%);padding:6px 10px;border-radius:9px;background:rgba(5,10,7,.68);border:1px solid rgba(126,231,135,.18);color:#d0dfd3;font-size:10px;line-height:1.2;white-space:nowrap;pointer-events:none}
@@ -1213,7 +1231,7 @@ const BANDIT_SPECS:BanditSpec[]=[
 ];
 type WhisperPhase="closed"|"question"|"fight"|"reward"|"defeat";
 
-function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin, defeatedBandits, onBanditReward, onBanditKnockout, potions, runes, equippedRune, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; defeatedBandits:string[]; onBanditReward:(id:string)=>void; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void }) {
+function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin, defeatedBandits, onBanditReward, onBanditKnockout, potions, runes, equippedRune, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; defeatedBandits:string[]; onBanditReward:(id:string)=>void; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -1265,6 +1283,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   const attackActionRef = useRef<(()=>void)|null>(null);
   const onRef=useRef(on);
   onRef.current=on;
+  const onGatherRef=useRef(onGather);
+  onGatherRef.current=onGather;
   frostGuardRef.current=frostGuard;
   equippedRuneRef.current=equippedRune;
   banditDefenseRef.current=whisperStats.defense;
@@ -1284,6 +1304,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   };
   const shieldActionRef = useRef<(()=>void)|null>(null);
   const shieldRaiseUntilRef=useRef(0);
+  const bendActionRef=useRef<(()=>void)|null>(null);
+  const gatherActionRef=useRef<((id:string)=>void)|null>(null);
   const [villageGateOpen, setVillageGateOpen] = useState(false);
   const [creditsOpen,setCreditsOpen]=useState(false);
   inventoryPauseRef.current=inventoryOpen||mapOpen||creditsOpen;
@@ -2907,6 +2929,34 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       const a=midHash(i,501)*Math.PI*2,r=18+midHash(i,502)*39,x=Math.cos(a)*r,z=Math.sin(a)*r+4;
       if(Math.abs(x)<9 && Math.abs(z)<14) continue;
       bush(x,z,.65+midHash(i,503)*.75);
+    }
+    // Small harvestable plants are separate from the landmark GLB forest.
+    // Their shapes share a few low-poly meshes; each spot has a persistent ID.
+    const gatherNodes:Array<{spot:typeof GATHER_SPOTS[number];root:THREE.Group;used:boolean;fallAt:number;collider:Collider|null}>=[];
+    const saplingTrunk=new THREE.CylinderGeometry(.085,.14,1.12,6);
+    const saplingCrown=new THREE.ConeGeometry(.62,1.15,7);
+    const shrubLeaf=new THREE.SphereGeometry(.33,7,5);
+    const herbLeaf=new THREE.ConeGeometry(.09,.45,5);
+    const gatherTrunkMat=mat(0x65452e,1),leafMat=mat(0x315944,1),shrubMat=mat(0x466c3d,1),herbMat=mat(0x79aa68,1),flowerMat=mat(0xe0c472,1);
+    for(const spot of GATHER_SPOTS){
+      const root=new THREE.Group();root.position.set(spot.x,groundY(spot.x,spot.z),spot.z);
+      if(spot.kind==='wood'){
+        const trunk=new THREE.Mesh(saplingTrunk,gatherTrunkMat);trunk.position.y=.56;root.add(trunk);
+        for(const height of [1.1,1.55]){const crown=new THREE.Mesh(saplingCrown,leafMat);crown.position.y=height;crown.scale.setScalar(height===1.1?1:.75);root.add(crown);}
+      }else if(spot.kind==='twigs'){
+        for(let j=0;j<4;j++){
+          const crown=new THREE.Mesh(shrubLeaf,shrubMat);crown.position.set(Math.cos(j*2.4)*.33,.42+midHash(j,spot.x)*.22,Math.sin(j*2.4)*.33);root.add(crown);
+        }
+      }else{
+        for(let j=0;j<5;j++){
+          const leaf=new THREE.Mesh(herbLeaf,herbMat);leaf.position.set(Math.cos(j*2.5)*.19,.24,Math.sin(j*2.5)*.19);leaf.rotation.z=(j-2)*.18;root.add(leaf);
+        }
+        const flower=new THREE.Mesh(shrubLeaf,flowerMat);flower.scale.setScalar(.23);flower.position.y=.52;root.add(flower);
+      }
+      const used=gathered.includes(spot.id);root.visible=!used;
+      const collider:Collider|null=spot.kind==='wood'&&!used?{kind:'circle',x:spot.x,z:spot.z,r:.20}:null;
+      if(collider)colliders.push(collider);
+      scene.add(root);gatherNodes.push({spot,root,used,fallAt:0,collider});
     }
     for(let i=0;i<34;i++){
       const x=-84+midHash(i,610)*168,z=-82+midHash(i,611)*164;
@@ -4915,7 +4965,25 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     shieldActionRef.current=()=>{
       if(gear.includes('shield'))shieldRaiseUntilRef.current=performance.now()+1250;
     };
+    let bendStartedAt=-10000,chopUntil=0;
+    bendActionRef.current=()=>{
+      if(skin!=='valkyrie'||whisperPhaseRef.current!=='closed'||insideHomeRef.current)return;
+      bendStartedAt=performance.now();
+      state.current.dx=0;state.current.dz=0;
+    };
+    gatherActionRef.current=(id:string)=>{
+      const node=gatherNodes.find(item=>item.spot.id===id);
+      if(!node||node.used||insideHomeRef.current||whisperPhaseRef.current!=='closed')return;
+      if(Math.hypot(state.current.x-node.spot.x,state.current.z-node.spot.z)>2.6)return;
+      node.used=true;
+      if(node.collider)colliders.splice(colliders.indexOf(node.collider),1);
+      node.fallAt=performance.now()+(node.spot.kind==='herbs'?400:0);
+      if(node.spot.kind==='herbs')bendActionRef.current?.();
+      else{chopUntil=performance.now()+690;attackActionRef.current?.();}
+      onGatherRef.current(node.spot.id,node.spot.kind);
+    };
     let shieldGuardMount:THREE.Group|null=null;
+    let borrowedHatchet:THREE.Group|null=null,heldWeapon:THREE.Group|null=null;
     const shieldIdleOrientation=new THREE.Quaternion().setFromEuler(new THREE.Euler(0,Math.PI,0));
     const shieldFacing=new THREE.Quaternion();
     const guardHeroWorld=new THREE.Quaternion(),guardParentWorld=new THREE.Quaternion();
@@ -5050,7 +5118,17 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           grip.add(blade);
           blade.traverse((o:any)=>{if(o.isMesh)o.castShadow=true;});
           hand.add(grip);
+          heldWeapon=grip;
         },'HERO WEAPON');
+      }
+      if(isVika&&weapon!=='axe'){
+        const hand=bone('RightHand');
+        if(hand){
+          const hatchet=new THREE.Group();hatchet.position.set(0,-.11,.015);
+          const haft=new THREE.Mesh(new THREE.CylinderGeometry(.022,.027,.62,6),gatherTrunkMat);haft.position.y=.18;hatchet.add(haft);
+          const edge=new THREE.Mesh(new THREE.BoxGeometry(.26,.17,.055),mat(0x9ba9ac,.64,.2));edge.position.set(.11,.44,0);hatchet.add(edge);
+          hatchet.visible=false;hand.add(hatchet);borrowedHatchet=hatchet;
+        }
       }
 
       const armL=model.getObjectByName("Arm_L_Pivot") as THREE.Object3D | null;
@@ -5098,7 +5176,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const attack=attackClip?mixer.clipAction(attackClip):null;
         const fall=fallClip?mixer.clipAction(fallClip):null;
         idle.play();
-        heroAnim={mode:"clips",model,mixer,actions:{idle,walk,attack,fall},current:idle,attackUntil:0,fallen:false,phase:1.2,shieldUpper:bone('LeftArm'),shieldLower:bone('LeftForeArm')};
+        heroAnim={mode:"clips",model,baseY:model.position.y,mixer,actions:{idle,walk,attack,fall},current:idle,attackUntil:0,fallen:false,phase:1.2,shieldUpper:bone('LeftArm'),shieldLower:bone('LeftForeArm'),bendSpine:bone('Spine'),bendChest:bone('Spine1'),bendArm:bone('RightArm')};
       }else if(projectedFront || isV6MultiView){
         // V5/V6 experimental textured heroes keep the artwork/model intact.
         // For V6 we use a subtle full-body walking motion because its current
@@ -5293,6 +5371,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       }
       if(heroAnim){
         const walkT=now*.011+heroAnim.phase;
+        const chopping=now<chopUntil&&skin==='valkyrie'&&weapon!=='axe';
+        if(borrowedHatchet)borrowedHatchet.visible=chopping;
+        if(heldWeapon)heldWeapon.visible=!chopping;
         const attackAge=now-attackStartedAt;
         const attackActive=attackAge>=0&&attackAge<680;
         const attackP=attackActive?attackAge/680:0;
@@ -5347,6 +5428,15 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
             if(now>=heroAnim.attackUntil)transition(moving?heroAnim.actions.walk:heroAnim.actions.idle);
           }
           heroAnim.mixer.update(dt);
+          if(skin==='valkyrie'&&!heroAnim.fallen){
+            const age=now-bendStartedAt;
+            const bend=age<0||age>=1450?0:Math.min(THREE.MathUtils.smoothstep(age,0,230),1-THREE.MathUtils.smoothstep(age,990,1450));
+            // Add the lean after the native idle/walk clip, so it also works
+            // with the current GLB which has no dedicated bend animation.
+            if(heroAnim.bendSpine)heroAnim.bendSpine.rotateX(bend*.73);
+            if(heroAnim.bendChest)heroAnim.bendChest.rotateX(bend*.30);
+            if(heroAnim.bendArm)heroAnim.bendArm.rotateX(-bend*.45);
+          }
           if(skin==='valkyrie'&&gear.includes('shield')&&!heroAnim.fallen){
             const remaining=shieldRaiseUntilRef.current-now;
             const lift=remaining>0?Math.min(THREE.MathUtils.clamp((1250-remaining)/170,0,1),THREE.MathUtils.clamp(remaining/260,0,1)):0;
@@ -5446,8 +5536,22 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         if(q.z>heroHomeZ+1.72*HOME_SCALE){found="Дверь — выйти из дома";foundId="heroHomeExit";}
       } else {
         for(const d of destinations){if(Math.hypot(q.x-d.x,q.z-d.z)<d.r){found=d.label;foundId=d.id;break;}}
+        let nearest=2.35;
+        for(const node of gatherNodes){
+          if(node.used)continue;
+          const distance=Math.hypot(q.x-node.spot.x,q.z-node.spot.z);
+          if(distance<nearest){nearest=distance;found=node.spot.kind==='wood'?'Молодая ель':node.spot.kind==='twigs'?'Лесной куст':'Лечебные травы';foundId='gather:'+node.spot.id;}
+        }
       }
       setNear(found?`${found}|${foundId}`:"");
+      for(const node of gatherNodes){
+        if(!node.used)continue;
+        const progress=THREE.MathUtils.clamp((now-node.fallAt)/470,0,1);
+        if(progress<=0)continue;
+        if(node.spot.kind==='wood')node.root.rotation.z=-1.35*progress;
+        else node.root.scale.setScalar(Math.max(.001,1-progress));
+        if(progress>=1)node.root.visible=false;
+      }
       // Slow, irregular wind keeps the vegetation subtly alive.
       windFoliage.forEach((w,i)=>{
         const sway=Math.sin(now*.00125+w.phase)*w.amp + Math.sin(now*.00063+w.phase*1.7+i)*w.amp*.45;
@@ -5594,6 +5698,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     {inventoryOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}><div className="mid3d-map-panel" style={{background:"linear-gradient(145deg,#1b271c,#0e1712)",color:"#fff2d8",borderColor:"#987346"}}>
       <div className="mid3d-map-title" style={{color:"#f5d28a"}}>🎒 Запас Вики</div>
       <div className="mid3d-map-sub" style={{color:"#c3b7a2"}}>Здоровье: {banditHeroHp}/{whisperStats.maxHp} · Ледяная защита: {frostGuard} уд.</div>
+      <div className="inventory-section"><h3>🌿 Материалы</h3><div className="inventory-list"><div className="inventory-item"><span className="inventory-symbol">🪵</span><span className="inventory-detail"><b>Древесина · {stock.wood}</b><small>Плотнику Бьёрну нужно 3</small></span></div><div className="inventory-item"><span className="inventory-symbol">🌱</span><span className="inventory-detail"><b>Ветки · {stock.twigs}</b><small>Плотнику Бьёрну нужно 3</small></span></div><div className="inventory-item"><span className="inventory-symbol">🌿</span><span className="inventory-detail"><b>Травы · {stock.herbs}</b><small>Травнице Сигрид нужно 4</small></span></div></div></div>
       <InventorySection kind="potions" potions={potions} runes={runes} equippedRune={equippedRune} hp={banditHeroHp} maxHp={whisperStats.maxHp} frostGuard={frostGuard} onUsePotion={useMidgardPotion} onEquipRune={onEquipRune}/>
       <InventorySection kind="runes" potions={potions} runes={runes} equippedRune={equippedRune} hp={banditHeroHp} maxHp={whisperStats.maxHp} frostGuard={frostGuard} onUsePotion={useMidgardPotion} onEquipRune={onEquipRune}/>
       <button className="mid3d-map-close" onClick={()=>setInventoryOpen(false)}>Вернуться в игру</button>
@@ -5659,6 +5764,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     </div>}
     {near&&!ritualOpen&&!forestEventOpen&&whisperPhase==="closed"&&(()=>{
       const [label,id]=near.split("|");
+      if(id.startsWith('gather:'))return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{id.startsWith('gather:sapling')?'Вика возьмёт лёгкий рабочий топор. Древесина нужна плотнику.':id.startsWith('gather:herb')?'Вика нагнётся и соберёт травы для Сигрид.':'Срежь ветки для плотника Бьёрна.'}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>gatherActionRef.current?.(id.slice(7))}>{id.startsWith('gather:herb')?'Нагнуться и собрать':id.startsWith('gather:sapling')?'Срубить':'Срезать ветки'}</button></div>;
       if(id==="forge")return <div className="mid3d-ui mid3d-door-prompt"><b>Дверь кузницы</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>forgeActionRef.current?.()}>Открыть ручку</button></div>;
       const villageDoor=["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman","oldfarm"].includes(id);
       if(villageDoor)return <div className="mid3d-ui mid3d-door-prompt"><b>{label}</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>Открыть ручку</button></div>;
@@ -5671,6 +5777,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     })()}
     {whisperPhase==="closed"&&<><div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-block" disabled={!gear.includes('shield')} aria-label="Блок щитом" title="Блок щитом" onPointerDown={e=>e.stopPropagation()} onClick={()=>{shieldActionRef.current?.();if('vibrate' in navigator)navigator.vibrate(15);}}>🛡</button>
+    {skin==='valkyrie'&&<button className="mid3d-ui mid3d-bend" aria-label="Нагнуться" title="Нагнуться" onPointerDown={e=>e.stopPropagation()} onClick={()=>{bendActionRef.current?.();if('vibrate' in navigator)navigator.vibrate(10);}}>↘</button>}
     <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" title="Удар оружием" onPointerDown={e=>e.stopPropagation()} onClick={()=>{attackActionRef.current?.();if("vibrate" in navigator)navigator.vibrate(12);}}>⚔</button>
     <button className="mid3d-ui mid3d-action" style={{top:125,background:"rgba(36,62,41,.94)",color:"#fff1d1"}} aria-label="Запас рун и эликсиров" title="Запас" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapOpen(false);setInventoryOpen(true);}}>🎒</button>
     <button className="mid3d-ui mid3d-action" aria-label="Карта Мидгарда" title="Карта Мидгарда" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapHero({x:state.current.x,z:state.current.z});setMapOpen(true);}}>ᚠ</button></>}
@@ -5794,6 +5901,11 @@ const [roadT, setRoadT] = useState(0.06);
 
   const say = (m: string) => { setToast(m); window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(""), 1800); };
   const haptic = (k: "light" | "success" = "light") => { try { if (k === "success") tg?.HapticFeedback?.notificationOccurred?.("success"); else tg?.HapticFeedback?.impactOccurred?.("light"); } catch {} };
+  const gatherResource=(id:string,kind:GatherKind)=>{
+    if(!GATHER_SPOTS.some(spot=>spot.id===id&&spot.kind===kind)||save.gathered.includes(id))return;
+    setSave(s=>s.gathered.includes(id)?s:{...s,gathered:[...s.gathered,id],stock:{...s.stock,[kind]:s.stock[kind]+1}});
+    haptic();say(kind==='wood'?'🪵 +1 древесина':kind==='twigs'?'🌱 +1 ветки':'🌿 +1 лечебные травы');
+  };
   const go = (s: Screen) => setScreen(s);
   const enterForge=(position?:{x:number;z:number})=>{
     if(forgeTransition)return;
@@ -6152,11 +6264,22 @@ const [roadT, setRoadT] = useState(0.06);
         setSave(s=>({...s,done:[...new Set([...s.done,'bridge:fittings'])]}));
         haptic('success');say('Торвальд вручает железные крепления для Северного моста. Теперь найди доски на Старом хуторе и возвращайся к Бьёрну.');return;
       }
+      if(id==='herbalist'){
+        if(save.done.includes('gather:herbalist')){say('Сигрид: «Благодарю за травы. Эликсир северного мха уже у тебя в запасе».');return;}
+        if(save.stock.herbs<4){say(`Сигрид: «Найди четыре пучка лечебных трав у южной дороги. Сейчас у тебя ${save.stock.herbs} из 4».`);return;}
+        setSave(s=>s.done.includes('gather:herbalist')?s:{...s,stock:{...s.stock,herbs:s.stock.herbs-4},potions:[...s.potions,'northernMoss'],sparks:s.sparks+6,done:[...s.done,'gather:herbalist']});
+        haptic('success');say('Сигрид получила травы и вручила тебе Эликсир северного мха и 6 Капель силы.');return;
+      }
       if(id==='carpenter'){
-        if(save.done.includes('bridge:north:repaired')){say('Бьёрн: «Мост крепок. Путь к золотому сундуку открыт».');return;}
-        if(!save.done.includes('chest:norns')){say('Бьёрн: «Сначала спроси совета у Норн и открой красный сундук возле колодца. Там будет подсказка о ремонте моста».');return;}
+        if(!save.done.includes('gather:carpenter')&&save.stock.wood>=3&&save.stock.twigs>=3){
+          setSave(s=>s.done.includes('gather:carpenter')?s:{...s,stock:{...s.stock,wood:s.stock.wood-3,twigs:s.stock.twigs-3},sparks:s.sparks+8,done:[...s.done,'gather:carpenter']});
+          haptic('success');say('Бьёрн получил древесину и ветки. Награда: 8 Капель силы. Задание ремонта Северного моста остаётся отдельным.');return;
+        }
+        const supplyNote=save.done.includes('gather:carpenter')?'':' Собери ещё древесину ('+save.stock.wood+'/3) и ветки ('+save.stock.twigs+'/3) у северной дороги.';
+        if(save.done.includes('bridge:north:repaired')){say('Бьёрн: «Мост крепок. Путь к золотому сундуку открыт».'+supplyNote);return;}
+        if(!save.done.includes('chest:norns')){say('Бьёрн: «Для ремонта моста спроси совета у Норн и открой красный сундук».'+supplyNote);return;}
         if(!save.done.includes('bridge:boards')||!save.done.includes('bridge:fittings')){
-          say('Бьёрн: «Для ремонта ещё нужны '+(!save.done.includes('bridge:boards')?'доски со Старого хутора':'')+(!save.done.includes('bridge:boards')&&!save.done.includes('bridge:fittings')?' и ':'')+(!save.done.includes('bridge:fittings')?'крепления от Торвальда':'')+'».');return;
+          say('Бьёрн: «Для ремонта ещё нужны '+(!save.done.includes('bridge:boards')?'доски со Старого хутора':'')+(!save.done.includes('bridge:boards')&&!save.done.includes('bridge:fittings')?' и ':'')+(!save.done.includes('bridge:fittings')?'крепления от Торвальда':'')+'».'+supplyNote);return;
         }
         setSave(s=>s.done.includes('bridge:north:repaired')?s:{...s,done:[...new Set([...s.done,'bridge:north:repaired'])]});
         haptic('success');say('Бьёрн укрепил Северный мост. Заграждения сняты, защитное кольцо золотого сундука погасло. Теперь можно открыть сундук напротив моста.');return;
@@ -6375,6 +6498,9 @@ const [roadT, setRoadT] = useState(0.06);
       onEquipRune={equipInventoryRune}
       onFieldHpChange={hp=>setSave(s=>({...s,fieldHp:hp}))}
       onFrostGuardHit={()=>setSave(s=>({...s,frostGuard:Math.max(0,s.frostGuard-1)}))}
+      gathered={save.gathered}
+      stock={save.stock}
+      onGather={gatherResource}
     />;
   }
 
