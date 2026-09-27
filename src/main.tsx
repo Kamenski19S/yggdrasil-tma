@@ -2206,7 +2206,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     road([[-35,44],[-39,54],[-43,64],[-45,75]],1.48);
     road([[-45,75],[-47,67],[-48,59],[NORTH_BRIDGE_X+BRIDGE_SPAN/2+.15,NORTH_BRIDGE_Z]],1.48);
     road([[-35,36],[-35,24],[-35,14],[-35,2],[-35,-10],[-35,-23],[-35,-32],[-40,-38],[-48,-44],[-50,-48]],1.72);
-    road([[-35,14],[-32,15],[-31,15]],1.42);
+    // This short trail used to stop abruptly among the trees. Lead it back
+    // into the path toward the northern bridge instead of leaving a cut edge.
+    road([[-35,14],[-32,15],[-31,15],[-29,21],[-31,28],[-35,36]],1.42);
 
     // The river can be crossed only on the wooden bridge. Beyond it a narrow
     // west-bank trail reaches the old farm, forest cache and Whispering Stone.
@@ -5343,12 +5345,12 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
             // the shield around its own mount to keep its face upright while
             // it stays attached to the forearm at the original position.
             if(lift>0){
-              if(upper)upper.rotateX(-lift*1.15);
-              if(lower)lower.rotateX(-lift*.25);
+              if(upper)upper.rotateX(-lift*2.0);
+              if(lower)lower.rotateX(-lift*.3);
             }
             // The mount faces backwards (Y = PI), so the compensating local
             // X angle has the same sign as the arm's world-space rotation.
-            if(shieldGuardMount)shieldGuardMount.rotation.x=-lift*1.4;
+            if(shieldGuardMount)shieldGuardMount.rotation.x=-lift*2.3;
           }
         }else if(heroAnim.mode==="projected" || heroAnim.mode==="multiview"){
           // Very small vertical step + body sway: enough to read as walking
