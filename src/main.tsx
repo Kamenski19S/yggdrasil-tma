@@ -169,7 +169,7 @@ const GEAR_IDS:GearId[]=["armor","shield","helmet","boots"];
 const SHIELD_ASSETS=['Shield_Round.glb','Shield_Round_2.glb','Shield_Heater.glb','Shield_Heater_2.glb','Shield_Celtic_Golden.glb'];
 const shieldForgeKey=(asset:string)=>asset===SHIELD_ASSETS[0]?'shield':'shield:'+asset;
 type Save = { sparks: number; arrows:number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; equippedGear: GearId[]; potions: string[]; runes: string[]; forgeLevels: Record<string,number>; forgeFreeUsed: boolean };
-const DEF: Save = { sparks: 25, arrows:0, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], equippedGear:[], potions: [], runes: [], forgeLevels: {}, forgeFreeUsed: false };
+const DEF: Save = { sparks: 25, arrows:10, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default","bow"], equippedGear:[], potions: [], runes: [], forgeLevels: {}, forgeFreeUsed: false };
 const loadSave = (): Save => {
   try {
     const previous:any=JSON.parse(localStorage.getItem("yggdrasil") || "{}");
@@ -177,6 +177,7 @@ const loadSave = (): Save => {
     if (!Array.isArray(s.powers)) s.powers = [];
     if (!Array.isArray(s.ownedWeapons)) s.ownedWeapons = ["default"];
     s.arrows=Math.max(0,Math.floor(Number(s.arrows)||0));
+    if(!s.ownedWeapons.includes('bow')){s.ownedWeapons=[...s.ownedWeapons,'bow'];s.arrows+=10;}
     if (!Array.isArray(s.potions)) s.potions = [];
     if (!Array.isArray(s.runes)) s.runes = [];
     if (!s.forgeLevels || typeof s.forgeLevels !== "object" || Array.isArray(s.forgeLevels)) s.forgeLevels = {};
@@ -5483,7 +5484,6 @@ function ForgeWeaponWall({owned,ownedShields,selected,selectedShield,onChoose}:{
 function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
   const [save, setSave] = useState<Save>(loadSave);
-  const [bowTrial,setBowTrial]=useState(false);
   const [pick, setPick] = useState("");
   const [pickName, setPickName] = useState("");
   const [toast, setToast] = useState("");
@@ -5549,7 +5549,7 @@ const [roadT, setRoadT] = useState(0.06);
     {id:"axe",icon:"🪓",name:"Северный топор",kind:"weapon",owned:save.ownedWeapons.includes("axe")},
     {id:"mace",icon:"⛓✦",name:"Цепной шип",kind:"weapon",owned:save.ownedWeapons.includes("mace")},
     {id:"spear",icon:"🔱",name:"Копьё",kind:"weapon",owned:save.ownedWeapons.includes("spear")},
-    {id:"bow",icon:"🏹",name:"Деревянный лук",kind:"weapon",owned:save.ownedWeapons.includes("bow")||bowTrial},
+    {id:"bow",icon:"🏹",name:"Деревянный лук",kind:"weapon",owned:save.ownedWeapons.includes("bow")},
     {id:"armor",icon:"♜",name:"Нагрудная броня",kind:"gear",owned:true},
     {id:"shield",icon:"🛡️",name:"Круглый щит",kind:"gear",owned:true},
     {id:"helmet",icon:"⛑️",name:"Боевой шлем",kind:"gear",owned:true},
@@ -5585,7 +5585,7 @@ const [roadT, setRoadT] = useState(0.06);
       setSave(s=>({...s,shieldAsset:asset,equippedGear:already?s.equippedGear.filter(gear=>gear!=='shield'):[...new Set([...s.equippedGear,'shield' as GearId])]}));
       haptic('success');say(already?'Щит снят.':name+' надет на левую руку. Закалка выбрана ниже.');return;
     }
-    if(!id||(!save.ownedWeapons.includes(id)&&!(id==='bow'&&bowTrial))){
+    if(!id||!save.ownedWeapons.includes(id)){
       say(name+' пока хранится у защитника. Победи его, чтобы забрать оружие.');return;
     }
     const selected=id as HeroWeapon;
@@ -5890,9 +5890,9 @@ const [roadT, setRoadT] = useState(0.06);
         return;
       }
       if (id === "port") {
-        if(!save.ownedWeapons.includes('bow')){
-          setSave(s=>({...s,ownedWeapons:[...new Set([...s.ownedWeapons,'bow'])],arrows:s.arrows+15,done:[...new Set([...s.done,'port:bow'])]}));
-          haptic('success');say('У речного моста охотник оставил деревянный лук и 15 стрел. Возьми лук со стены кузницы.');
+        if(!save.done.includes('port:arrows')&&!save.done.includes('port:bow')){
+          setSave(s=>({...s,arrows:s.arrows+15,done:[...new Set([...s.done,'port:arrows'])]}));
+          haptic('success');say('У речного моста охотник оставил 15 стрел для твоего лука.');
         }else say('Речной мост открыт. Стрелы для лука можно изготовить в кузнице.');
         return;
       }
@@ -6285,8 +6285,7 @@ const [roadT, setRoadT] = useState(0.06);
             ? "Следующая закалка оплачивается Каплями силы. Цена растёт вместе с уровнем предмета."
             : "Дар кузнеца: первое улучшение любого доступного предмета бесплатно."}</div>
           <div className="forge-group-title">Стена оружия Вёлунда</div>
-          <ForgeWeaponWall owned={bowTrial?[...save.ownedWeapons,'bow']:save.ownedWeapons} ownedShields={save.ownedShields} selected={save.heroWeapon} selectedShield={equipped('shield')?save.shieldAsset:null} onChoose={chooseForgeWeapon}/>
-          {!save.ownedWeapons.includes('bow')&&<button className="forge-exit" onClick={()=>{setBowTrial(true);setSave(s=>({...s,heroWeapon:'bow',arrows:Math.max(s.arrows,10)}));haptic('success');say('Тренировочный лук взят. Можно сразу проверить выстрелы в Мидгарде.');}}>🏹 {bowTrial?'Пополнить стрелы до 10':'Испытать лук · 10 стрел бесплатно'}</button>}
+          <ForgeWeaponWall owned={save.ownedWeapons} ownedShields={save.ownedShields} selected={save.heroWeapon} selectedShield={equipped('shield')?save.shieldAsset:null} onChoose={chooseForgeWeapon}/>
           <div className="forge-equipped"><span>В руке: {save.heroWeapon==='default'?(save.heroSkin==='valkyrie'?'Меч валькирии':'Секира викинга'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} · сила +{WEAPON_POWER[save.heroWeapon]} · закалка +{forgeLevel(save.heroWeapon)}</span>
             <button disabled={forgeLevel(save.heroWeapon)>=10} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=10?'Максимум +10':<>Закалить {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/></>:'бесплатно'}</>}</button></div>
           <div className="forge-group-title">Экипировка</div>
