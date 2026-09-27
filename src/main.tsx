@@ -1184,9 +1184,21 @@ function midHero3d(h: HeroDef) {
 }
 
 type WhisperCombatStats={maxHp:number;attack:number;runeAttack:number;defense:number};
+type BanditSpec={id:string;name:string;x:number;z:number;hp:number;damage:number;sparks:number;reward:string;item?:string;kind?:'weapon'|'potion'|'rune';quantity?:number};
+const BANDIT_SPECS:BanditSpec[]=[
+  {id:'forest',name:'Разбойник у моста',x:-46,z:49,hp:3,damage:9,sparks:12,reward:'Разбойничий кинжал',kind:'weapon',item:'knife'},
+  {id:'grove',name:'Разбойник глубокой рощи',x:-41,z:70,hp:4,damage:10,sparks:13,reward:'Эликсир северного мха',kind:'potion',item:'northernMoss'},
+  {id:'ash',name:'Разбойник у ясеня',x:-29,z:29,hp:4,damage:11,sparks:14,reward:'Осколок руны Кеназ',kind:'rune',item:'kenazShard'},
+  {id:'norns',name:'Разбойник у старой дороги',x:-46,z:-24,hp:5,damage:12,sparks:15,reward:'Морозный настой',kind:'potion',item:'frostDraught'},
+  {id:'runefield',name:'Разбойник рунного поля',x:34,z:64,hp:5,damage:13,sparks:16,reward:'Руна Райдо',kind:'rune',item:'raidoPath'},
+  {id:'deer',name:'Разбойник оленьей поляны',x:66,z:44,hp:6,damage:14,sparks:17,reward:'Руна Альгиз',kind:'rune',item:'algizGuard'},
+  {id:'camp',name:'Разбойник лесной стоянки',x:69,z:-7,hp:6,damage:15,sparks:18,reward:'Руна Уруз',kind:'rune',item:'uruzStrength'},
+  {id:'south',name:'Разбойник южного тракта',x:34,z:-49,hp:7,damage:16,sparks:19,reward:'Эликсир жизни',kind:'potion',item:'lifeElixir'},
+  {id:'west',name:'Разбойник западного берега',x:-70,z:-16,hp:8,damage:17,sparks:21,reward:'Два эликсира северного мха',kind:'potion',item:'northernMoss',quantity:2}
+];
 type WhisperPhase="closed"|"question"|"fight"|"reward"|"defeat";
 
-function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin, banditDefeated, onBanditReward, onBanditKnockout }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; banditDefeated:boolean; onBanditReward:()=>void; onBanditKnockout:()=>void }) {
+function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin, defeatedBandits, onBanditReward, onBanditKnockout }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; defeatedBandits:string[]; onBanditReward:(id:string)=>void; onBanditKnockout:()=>void }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -1200,7 +1212,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   const [heroReady, setHeroReady] = useState(false);
   const [heroLoadFailed, setHeroLoadFailed] = useState(false);
   const [banditHeroHp,setBanditHeroHp]=useState(whisperStats.maxHp);
-  const [banditSeen,setBanditSeen]=useState(false);
+  const [banditOpponent,setBanditOpponent]=useState<{id:string;name:string;hp:number;maxHp:number}|null>(null);
+  const [banditVictory,setBanditVictory]=useState<BanditSpec|null>(null);
+  const banditVictoryRef=useRef<string|null>(null);
   const [banditHit,setBanditHit]=useState(0);
   const banditHpRef=useRef(whisperStats.maxHp);
   const banditDamageRef=useRef<(amount:number)=>void>(()=>{});
@@ -1866,7 +1880,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       | { kind:"segment"; x1:number; z1:number; x2:number; z2:number; r:number };
     const colliders: Collider[] = [];
     const HERO_RADIUS = 0.558;
-    let banditCollision:{x:number;z:number;r:number}|null=null;
+    const banditCollisions:{id:string;x:number;z:number;r:number}[]=[];
     const RIVER_HALF = 5.4;
     const BRIDGE_X = -57, BRIDGE_Z = -48, BRIDGE_SPAN = 13.6, BRIDGE_WIDTH = 4.8;
     const BRIDGE_Y = groundY(BRIDGE_X,BRIDGE_Z) + .58;
@@ -1901,10 +1915,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         // Interior bounds leave a clear opening toward the door at the front (positive Z).
         return x<heroHomeX-2.72*HOME_SCALE || x>heroHomeX+2.72*HOME_SCALE || z<heroHomeZ-2.05*HOME_SCALE || z>heroHomeZ+2.30*HOME_SCALE;
       }
-      if(banditCollision){
-        const distance=Math.hypot(x-banditCollision.x,z-banditCollision.z);
-        const previous=Math.hypot(state.current.x-banditCollision.x,state.current.z-banditCollision.z);
-        const safeDistance=banditCollision.r+HERO_RADIUS;
+      for(const obstacle of banditCollisions){
+        const distance=Math.hypot(x-obstacle.x,z-obstacle.z);
+        const previous=Math.hypot(state.current.x-obstacle.x,state.current.z-obstacle.z);
+        const safeDistance=obstacle.r+HERO_RADIUS;
         if(distance<safeDistance && (previous>=safeDistance || distance<previous-.001))return true;
       }
       // The northern crossing stays blocked from either bank until its repair quest is complete.
@@ -4695,13 +4709,14 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     const npc=(x:number,z:number,id:string,label:string,color:number,phase:number)=>{const g=new THREE.Group();g.userData={id,label,phase,baseX:x,baseZ:z};const body=new THREE.Mesh(new THREE.CapsuleGeometry(.32,.78,4,8),mat(color,.9));body.position.y=.85;g.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.25,12,8),mat(0xc99470,.9));head.position.y=1.58;g.add(head);const cloak=box(.7,.9,.15,0x27251f,1);cloak.position.set(0,.82,-.27);g.add(cloak);g.position.set(x,groundY(x,z),z);addMesh(g,id,label);objects.push(g);npcs.push(g);};
     npc(9,-8,"elder","Старейшина",0x73563f,.4);npc(-6,-3,"blacksmith","Кузнец",0x5c3b2b,1.5);npc(21,1,"hunter","Охотник",0x40523f,2.4);npc(5,10,"villager","Житель Мидгарда",0x59634d,3.4);npc(-16,4,"villager2","Житель деревни",0x654b3a,4.2);
 
-    // One non-hostile preview. Load the rig only when the hero approaches the forest.
-    // Eastern approach to the closed northern bridge, beside the road and signpost.
-    const banditSpot={x:-44,z:47};
-    let banditRequested=false;
-    const banditHide={x:banditSpot.x-2,z:banditSpot.z+2};
-    let banditPreview:{root:THREE.Object3D;actor:THREE.Group;sword:THREE.Group;mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>;current:string;next:number;alerted:boolean;hp:number;deathAt:number;restY:number;enemyNextAttack:number;enemyHitAt:number;health:THREE.Group;healthParts:THREE.Mesh[]}|null=null;
-    const playBandit=(preview:NonNullable<typeof banditPreview>,name:string,now:number)=>{
+    // Share one GLB and its geometry across nine skinned characters. Only load
+    // a character when the player reaches its part of the map.
+    type BanditActor={spec:BanditSpec;root:THREE.Object3D;actor:THREE.Group;sword:THREE.Group;mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>;current:string;next:number;alerted:boolean;hp:number;deathAt:number;restY:number;enemyNextAttack:number;enemyHitAt:number;collider:{id:string;x:number;z:number;r:number}|null};
+    const bandits:BanditActor[]=[];
+    let banditAsset:any=null,banditRequested=false;
+    let banditVictoryTimer=0;
+    let lastBanditHud=0;
+    const playBandit=(preview:BanditActor,name:string,now:number)=>{
       if(preview.current===name&&name==='Run')return;
       if(preview.current===name&&now<preview.next)return;
       if(preview.current!=='Scene')preview.actions[preview.current]?.stop();
@@ -4714,12 +4729,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       preview.current=name;
       preview.next=now+(name==='Run'?480:name==='Attack'?1150:name==='Hit'?570:name==='Death'?Number.POSITIVE_INFINITY:0);
     };
-    const loadBanditPreview=()=>{
-      if(banditRequested)return;
-      banditRequested=true;
-      loadGlbWithFolderFallback('Neutral_Bandit_Animated_Optimized.glb',(gltf:any)=>{
-        if(!glbTreesAlive)return;
-        const root=gltf.scene as THREE.Object3D;
+    const spawnBandit=(spec:BanditSpec)=>{
+        if(!banditAsset||bandits.some(b=>b.spec.id===spec.id))return;
+        const root=cloneSkinned(banditAsset.scene) as THREE.Object3D;
         root.updateMatrixWorld(true);
         const bounds=new THREE.Box3().setFromObject(root),height=bounds.getSize(new THREE.Vector3()).y;
         if(height<.001)return;
@@ -4728,22 +4740,15 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const scaled=new THREE.Box3().setFromObject(root);
         const center=scaled.getCenter(new THREE.Vector3());
         root.position.set(-center.x,-scaled.min.y,-center.z);
-        const actor=new THREE.Group();actor.position.set(banditHide.x,groundY(banditHide.x,banditHide.z),banditHide.z);actor.add(root);
+        const actor=new THREE.Group();actor.position.set(spec.x,groundY(spec.x,spec.z),spec.z);actor.add(root);
         root.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
         scene.add(actor);
-        banditCollision={x:banditHide.x,z:banditHide.z,r:1.42};
-        const health=new THREE.Group();
-        const healthParts:THREE.Mesh[]=[];
-        for(let i=0;i<3;i++){
-          const part=new THREE.Mesh(new THREE.PlaneGeometry(.37,.12),new THREE.MeshBasicMaterial({color:0xe14332,side:THREE.DoubleSide,depthTest:false}));
-          part.position.x=(i-1)*.41;part.renderOrder=20;health.add(part);healthParts.push(part);
-        }
-        health.visible=false;scene.add(health);
+        const defeated=defeatedBandits.includes(spec.id);
+        const collider=defeated?null:{id:spec.id,x:spec.x,z:spec.z,r:1.42};
+        if(collider)banditCollisions.push(collider);
         const mixer=new THREE.AnimationMixer(root);
         const actions:Record<string,THREE.AnimationAction>={};
-        for(const clip of gltf.animations||[])actions[clip.name]=mixer.clipAction(clip);
-        // Keep the full original rig pose active while procedural partial clips
-        // animate limbs. Switching it off caused the hood to stretch on mobile.
+        for(const clip of banditAsset.animations||[])actions[clip.name]=mixer.clipAction(clip);
         if(actions.Scene){actions.Scene.play();actions.Scene.paused=true;}
         const iron=new THREE.MeshStandardMaterial({color:0xbac5c8,metalness:.72,roughness:.28,side:THREE.DoubleSide});
         const grip=new THREE.MeshStandardMaterial({color:0x38231a,roughness:.9});
@@ -4753,9 +4758,16 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const handle=new THREE.Mesh(new THREE.CylinderGeometry(.043,.05,.29,8),grip);handle.position.y=.03;sword.add(handle);
         const guard=new THREE.Mesh(new THREE.BoxGeometry(.37,.055,.09),iron);guard.position.y=.18;sword.add(guard);
         sword.position.set(.68,1.25,.28);sword.rotation.set(.25,0,-.95);actor.add(sword);
-        banditPreview={root,actor,sword,mixer,actions,current:'Scene',next:0,alerted:false,hp:banditDefeated?0:3,deathAt:banditDefeated?performance.now():0,restY:root.position.y,enemyNextAttack:0,enemyHitAt:0,health,healthParts};
-        if(banditDefeated){banditCollision=null;sword.visible=false;playBandit(banditPreview,'Death',performance.now());}
-      },'BANDIT PREVIEW');
+        const preview:BanditActor={spec,root,actor,sword,mixer,actions,current:'Scene',next:0,alerted:false,hp:defeated?0:spec.hp,deathAt:defeated?performance.now()-1000:0,restY:root.position.y,enemyNextAttack:0,enemyHitAt:0,collider};
+        bandits.push(preview);
+        if(defeated){sword.visible=false;playBandit(preview,'Death',performance.now());}
+    };
+    const loadBandits=()=>{
+      if(banditRequested)return;
+      banditRequested=true;
+      loadGlbWithFolderFallback('Neutral_Bandit_Animated_Optimized.glb',(gltf:any)=>{
+        if(glbTreesAlive)banditAsset=gltf;
+      },'BANDITS');
     };
 
     // Tiny pollen motes drift through the air. One shared Points object keeps draw calls low.
@@ -4823,11 +4835,19 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       const now=performance.now();
       if(now-attackStartedAt<650)return;
       attackStartedAt=now;
-      const target=banditPreview;
-      if(target?.alerted&&target.hp>0&&Math.hypot(hero.position.x-target.actor.position.x,hero.position.z-target.actor.position.z)<3.6){
+      const target=bandits.filter(b=>b.alerted&&b.hp>0&&Math.hypot(hero.position.x-b.actor.position.x,hero.position.z-b.actor.position.z)<4.0).sort((a,b)=>Math.hypot(hero.position.x-a.actor.position.x,hero.position.z-a.actor.position.z)-Math.hypot(hero.position.x-b.actor.position.x,hero.position.z-b.actor.position.z))[0];
+      if(target&&!banditVictoryRef.current){
         target.hp--;
-        target.healthParts.forEach((part,i)=>{part.visible=i<target.hp;});
-        if(target.hp===0){banditCollision=null;target.deathAt=now;target.sword.visible=false;onBanditReward();}
+        target.enemyHitAt=0;
+        setBanditOpponent({id:target.spec.id,name:target.spec.name,hp:target.hp,maxHp:target.spec.hp});
+        if(target.hp===0){
+          if(target.collider)banditCollisions.splice(banditCollisions.indexOf(target.collider),1);
+          target.collider=null;target.deathAt=now;target.sword.visible=false;
+          banditVictoryRef.current=target.spec.id;
+          onBanditReward(target.spec.id);
+          window.clearTimeout(banditVictoryTimer);
+          banditVictoryTimer=window.setTimeout(()=>setBanditVictory(target.spec),950);
+        }
         playBandit(target,target.hp?'Hit':'Death',now);
       }
       if(heroAnim?.mode==="clips"&&heroAnim.actions.attack){
@@ -5141,24 +5161,37 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       const hy=insideHomeRef.current?groundY(heroHomeX,heroHomeZ)+.58*HOME_SCALE*BUILDING_HEIGHT:onRiverBridge(q.x,q.z)?bridgeHeight(q.x,q.z)+.12:groundY(q.x,q.z);
       const moving=!encounterLocked&&l>.05;
       hero.position.set(q.x,hy+.04,q.z);
-      if(!banditRequested&&Math.hypot(q.x-banditSpot.x,q.z-banditSpot.z)<34)loadBanditPreview();
-      if(banditPreview){
-        const preview=banditPreview;
+      if(!banditRequested&&BANDIT_SPECS.some(spec=>Math.hypot(q.x-spec.x,q.z-spec.z)<34))loadBandits();
+      if(banditAsset)BANDIT_SPECS.forEach(spec=>{
+        if(Math.hypot(q.x-spec.x,q.z-spec.z)<33)spawnBandit(spec);
+      });
+      for(const preview of bandits){
         const dx=q.x-preview.actor.position.x,dz=q.z-preview.actor.position.z;
         const distance=Math.hypot(dx,dz);
-        if(!preview.alerted&&Math.hypot(q.x-banditHide.x,q.z-banditHide.z)<9){preview.alerted=true;setBanditSeen(true);}
-        preview.health.visible=preview.alerted&&preview.hp>0;
-        preview.health.position.set(preview.actor.position.x,preview.actor.position.y+3.35,preview.actor.position.z);
-        preview.health.quaternion.copy(camera.quaternion);
-        if(preview.alerted&&preview.hp>0){
+        if(distance>43)continue;
+        if(preview.hp>0&&preview.alerted&&distance>18){preview.alerted=false;preview.enemyHitAt=0;}
+        if(preview.hp>0&&!preview.alerted){
+          const homeX=preview.spec.x-preview.actor.position.x,homeZ=preview.spec.z-preview.actor.position.z;
+          const homeDistance=Math.hypot(homeX,homeZ);
+          if(homeDistance>.04){
+            const homeStep=Math.min(homeDistance,dt*2.1);
+            preview.actor.position.x+=homeX/homeDistance*homeStep;
+            preview.actor.position.z+=homeZ/homeDistance*homeStep;
+            preview.actor.position.y=groundY(preview.actor.position.x,preview.actor.position.z);
+            if(preview.collider){preview.collider.x=preview.actor.position.x;preview.collider.z=preview.actor.position.z;}
+            playBandit(preview,'Run',now);
+          }
+        }
+        if(!preview.alerted&&preview.hp>0&&Math.hypot(q.x-preview.spec.x,q.z-preview.spec.z)<9)preview.alerted=true;
+        if(preview.alerted&&preview.hp>0&&!banditVictoryRef.current&&!encounterLocked){
           if(preview.current==='Hit'&&now<preview.next){/* Finish the hit reaction. */}
           else if(distance>2.5){
             playBandit(preview,'Run',now);
             const step=Math.min(distance-2.5,dt*2.1);
-            preview.actor.position.x+=dx/distance*step;
-            preview.actor.position.z+=dz/distance*step;
+            const nx=preview.actor.position.x+dx/distance*step,nz=preview.actor.position.z+dz/distance*step;
+            if(!inRiverWater(nx,nz)||onRiverBridge(nx,nz)){preview.actor.position.x=nx;preview.actor.position.z=nz;}
             preview.actor.position.y=groundY(preview.actor.position.x,preview.actor.position.z);
-            if(banditCollision){banditCollision.x=preview.actor.position.x;banditCollision.z=preview.actor.position.z;}
+            if(preview.collider){preview.collider.x=preview.actor.position.x;preview.collider.z=preview.actor.position.z;}
           }else if(now>=preview.enemyNextAttack){
             preview.enemyNextAttack=now+1850;
             preview.enemyHitAt=now+560;
@@ -5169,9 +5202,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         preview.mixer.update(dt);
         if(preview.enemyHitAt&&now>=preview.enemyHitAt&&preview.hp>0){
           preview.enemyHitAt=0;
-          if(Math.hypot(q.x-preview.actor.position.x,q.z-preview.actor.position.z)<3.15){
+          if(!banditVictoryRef.current&&!encounterLocked&&Math.hypot(q.x-preview.actor.position.x,q.z-preview.actor.position.z)<3.15){
             const guarding=shieldRaiseUntilRef.current>now&&gear.includes('shield');
-            banditDamageRef.current(guarding?2:9);
+            const damage=Math.max(1,preview.spec.damage-whisperStats.defense);
+            banditDamageRef.current(guarding?Math.max(1,Math.ceil(damage*.25)):damage);
           }
         }
         if(preview.current==='Attack'&&now<preview.next){
@@ -5187,6 +5221,12 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           preview.root.rotation.x=-1.38*fall;
           preview.root.position.y=preview.restY-.3*fall;
         }
+      }
+      if(now-lastBanditHud>200){
+        lastBanditHud=now;
+        const nearest=bandits.filter(b=>b.alerted&&b.hp>0&&Math.hypot(q.x-b.actor.position.x,q.z-b.actor.position.z)<15).sort((a,b)=>Math.hypot(q.x-a.actor.position.x,q.z-a.actor.position.z)-Math.hypot(q.x-b.actor.position.x,q.z-b.actor.position.z))[0];
+        if(nearest&&!banditVictoryRef.current)setBanditOpponent(prev=>prev?.id===nearest.spec.id&&prev.hp===nearest.hp?prev:{id:nearest.spec.id,name:nearest.spec.name,hp:nearest.hp,maxHp:nearest.spec.hp});
+        else if(!banditVictoryRef.current)setBanditOpponent(prev=>prev?null:prev);
       }
       // Keep the latest map position independently from the forge. This also
       // covers exits through Hero, Gift, Hall and the world tree navigation.
@@ -5415,8 +5455,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();deerFurTexture?.dispose();nornsStoneTexture?.dispose();nornsColumnTexture?.dispose();furTextures.forEach(texture=>texture.dispose());lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;shieldActionRef.current=null;forgeActionRef.current=null;};
-  },[h.id,skin,weapon,gear.join(','),gearLevels.armor,gearLevels.helmet,gearLevels.boots,shieldAsset,eventDone,start.x,start.z,rememberPosition,northBridgeRepaired]);
+    return()=>{window.clearTimeout(banditVictoryTimer);rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();deerFurTexture?.dispose();nornsStoneTexture?.dispose();nornsColumnTexture?.dispose();furTextures.forEach(texture=>texture.dispose());lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;shieldActionRef.current=null;forgeActionRef.current=null;};
+  },[h.id,skin,weapon,gear.join(','),gearLevels.armor,gearLevels.helmet,gearLevels.boots,shieldAsset,eventDone,rememberPosition,northBridgeRepaired]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
   const stopJoy=()=>{if(knob.current)knob.current.style.transform="translate(0,0)";state.current.dx=0;state.current.dz=0;};
@@ -5430,7 +5470,17 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
 
   return <div className="content mid3d-scene" ref={mount} style={{touchAction:"none",userSelect:"none",WebkitUserSelect:"none"}} onPointerDown={startJoyFromZone} onPointerMove={moveJoyFromZone} onPointerUp={endJoyFromZone} onPointerCancel={endJoyFromZone} onContextMenu={e=>e.preventDefault()}>
     {whisperPhase==="closed"&&<div className="mid3d-ui mid3d-top"><div className="mid3d-pill"><b>МИДГАРД</b><span>Деревня • река • лес • святилища</span></div><div className="mid3d-pill"><b>ᛟ</b><span>Мир живёт вокруг тебя</span></div></div>}
-    {banditSeen&&!banditDefeated&&whisperPhase==="closed"&&<div className="mid3d-ui" style={{top:"21%",left:"50%",transform:"translateX(-50%)",width:"min(88vw,300px)",padding:"9px 13px",borderRadius:12,background:"rgba(16,12,11,.86)",border:"1px solid rgba(227,67,50,.65)",color:"#fff",pointerEvents:"none",zIndex:12}}><div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:800,marginBottom:5}}><span>РАЗБОЙНИК</span><span>❤ {banditHeroHp}/{whisperStats.maxHp}</span></div><div style={{height:7,background:"#382b29",borderRadius:8,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.max(0,banditHeroHp/whisperStats.maxHp*100)}%`,background:banditHit?"#ef4c40":"#72c46e",transition:"width .25s"}}/></div></div>}
+    {banditOpponent&&whisperPhase==="closed"&&<div className="mid3d-ui" style={{top:"21%",left:"50%",transform:"translateX(-50%)",width:"min(88vw,290px)",padding:"8px 12px",borderRadius:12,background:"rgba(16,12,11,.87)",border:"1px solid rgba(227,67,50,.55)",color:"#fff",pointerEvents:"none",zIndex:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}><span>Вика</span><span>{banditHeroHp}/{whisperStats.maxHp}</span></div>
+      <div style={{height:5,background:"#382b29",borderRadius:6,overflow:"hidden",marginBottom:6}}><div style={{height:"100%",width:`${Math.max(0,banditHeroHp/whisperStats.maxHp*100)}%`,background:"#72c46e",transition:"width .25s"}}/></div>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}><span>{banditOpponent.name}</span><span>{banditOpponent.hp}/{banditOpponent.maxHp}</span></div>
+      <div style={{height:5,background:"#382b29",borderRadius:6,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.max(0,banditOpponent.hp/banditOpponent.maxHp*100)}%`,background:"#e45244",transition:"width .25s"}}/></div>
+    </div>}
+    {banditVictory&&whisperPhase==="closed"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
+      <div className="whisper-reward-icon">⚔</div><div className="whisper-reward-rarity">{banditVictory.name} повержен</div>
+      <div className="whisper-reward-name">+{banditVictory.sparks} Капель силы</div><p>Добыча: {banditVictory.reward}. Награда уже добавлена к твоим вещам.</p>
+      <button className="whisper-close" onClick={()=>{banditVictoryRef.current=null;setBanditVictory(null);setBanditOpponent(null);}}>Продолжить путь</button>
+    </div>}
     {banditHit>0&&whisperPhase==="closed"&&<i key={banditHit} className="mid3d-ui whisper-battle-fx guard"/>}
     {near.endsWith("|whisperStone")&&whisperResolved&&whisperPhase==="closed"&&<button className="mid3d-ui mid3d-rematch" onPointerDown={e=>e.stopPropagation()} onClick={beginWhisperRematch}>⚔ Пройти испытание ещё раз<small>Повторный бой без награды</small></button>}
     {!heroReady&&<div className="mid3d-ui mid3d-hero-load"><b>{heroLoadFailed?"ᚾ":"ᛉ"}</b><span>{heroLoadFailed?"Герой не загрузился":"ПРОБУЖДЕНИЕ ГЕРОЯ"}</span></div>}
@@ -5778,12 +5828,18 @@ const [roadT, setRoadT] = useState(0.06);
     });
     return 'Малый молот, эликсир северного мха и осколок Кеназ';
   };
-  const rewardBandit=()=>{
+  const rewardBandit=(id:string)=>{
+    const spec=BANDIT_SPECS.find(b=>b.id===id);
+    if(!spec)return;
+    const key=`bandit:${id}:reward`;
     setSave(s=>{
-      if(s.done.includes('bandit:forest:reward'))return s;
-      return {...s,sparks:s.sparks+12,done:[...new Set([...s.done,'bandit:forest:reward'])],ownedWeapons:[...new Set([...s.ownedWeapons,'knife'])]};
+      if(s.done.includes(key))return s;
+      return {...s,sparks:s.sparks+spec.sparks,done:[...new Set([...s.done,key])],
+        ownedWeapons:spec.kind==='weapon'&&spec.item?[...new Set([...s.ownedWeapons,spec.item])]:s.ownedWeapons,
+        potions:spec.kind==='potion'&&spec.item?[...s.potions,...Array(spec.quantity||1).fill(spec.item)]:s.potions,
+        runes:spec.kind==='rune'&&spec.item?[...new Set([...s.runes,spec.item])]:s.runes};
     });
-    haptic('success');say('Разбойник побеждён: +12 Капель силы и разбойничий кинжал.');
+    haptic('success');say(`Победа: +${spec.sparks} Капель силы и ${spec.reward}.`);
   };
   const banditKnockout=()=>{
     setSave(s=>({...s,sparks:Math.max(0,s.sparks-5)}));
@@ -6190,7 +6246,7 @@ const [roadT, setRoadT] = useState(0.06);
       }}
       onWhisperCorrect={finishWhisperCorrect}
       onWhisperWin={finishWhisperBattle}
-      banditDefeated={save.done.includes('bandit:forest:reward')}
+      defeatedBandits={BANDIT_SPECS.filter(b=>save.done.includes(`bandit:${b.id}:reward`)).map(b=>b.id)}
       onBanditReward={rewardBandit}
       onBanditKnockout={banditKnockout}
     />;
