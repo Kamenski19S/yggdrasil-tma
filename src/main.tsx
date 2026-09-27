@@ -4689,7 +4689,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     const banditSpot={x:-44,z:47};
     let banditRequested=false;
     const banditHide={x:banditSpot.x-2,z:banditSpot.z+2};
-    let banditPreview:{root:THREE.Object3D;mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>;current:string;next:number;alerted:boolean;hp:number;footOffset:number;health:THREE.Group;healthParts:THREE.Mesh[]}|null=null;
+    let banditPreview:{root:THREE.Object3D;actor:THREE.Group;sword:THREE.Group;mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>;current:string;next:number;alerted:boolean;hp:number;deathAt:number;restY:number;health:THREE.Group;healthParts:THREE.Mesh[]}|null=null;
     const playBandit=(preview:NonNullable<typeof banditPreview>,name:string,now:number)=>{
       if(preview.current===name&&name==='Run')return;
       if(preview.current===name&&now<preview.next)return;
@@ -4715,10 +4715,11 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         root.scale.multiplyScalar(3.0/height);
         root.updateMatrixWorld(true);
         const scaled=new THREE.Box3().setFromObject(root);
-        const footOffset=-scaled.min.y;
-        root.position.set(banditHide.x,groundY(banditHide.x,banditHide.z)+footOffset,banditHide.z);
+        const center=scaled.getCenter(new THREE.Vector3());
+        root.position.set(-center.x,-scaled.min.y,-center.z);
+        const actor=new THREE.Group();actor.position.set(banditHide.x,groundY(banditHide.x,banditHide.z),banditHide.z);actor.add(root);
         root.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
-        scene.add(root);
+        scene.add(actor);
         banditCollision={x:banditHide.x,z:banditHide.z,r:1.42};
         const health=new THREE.Group();
         const healthParts:THREE.Mesh[]=[];
@@ -4733,18 +4734,15 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         // Keep the full original rig pose active while procedural partial clips
         // animate limbs. Switching it off caused the hood to stretch on mobile.
         if(actions.Scene){actions.Scene.play();actions.Scene.paused=true;}
-        banditPreview={root,mixer,actions,current:'Scene',next:0,alerted:false,hp:3,footOffset,health,healthParts};
-        const hand=root.getObjectByName('DEF-hand.R_0440');
-        if(hand){
-          const iron=new THREE.MeshStandardMaterial({color:0x9aa5a9,metalness:.68,roughness:.34,side:THREE.DoubleSide});
-          const grip=new THREE.MeshStandardMaterial({color:0x38231a,roughness:.9});
-          const sword=new THREE.Group();
-          const blade=new THREE.Mesh(new THREE.BoxGeometry(.12,.69,.035),iron);blade.position.y=.47;sword.add(blade);
-          const tip=new THREE.Mesh(new THREE.ConeGeometry(.07,.18,4),iron);tip.rotation.y=Math.PI/4;tip.position.y=.9;sword.add(tip);
-          const handle=new THREE.Mesh(new THREE.CylinderGeometry(.035,.04,.26,8),grip);handle.position.y=.01;sword.add(handle);
-          const guard=new THREE.Mesh(new THREE.BoxGeometry(.31,.045,.075),iron);guard.position.y=.15;sword.add(guard);
-          sword.rotation.z=-.18;hand.add(sword);
-        }
+        const iron=new THREE.MeshStandardMaterial({color:0xbac5c8,metalness:.72,roughness:.28,side:THREE.DoubleSide});
+        const grip=new THREE.MeshStandardMaterial({color:0x38231a,roughness:.9});
+        const sword=new THREE.Group();
+        const blade=new THREE.Mesh(new THREE.BoxGeometry(.16,.83,.055),iron);blade.position.y=.58;sword.add(blade);
+        const tip=new THREE.Mesh(new THREE.ConeGeometry(.09,.2,4),iron);tip.rotation.y=Math.PI/4;tip.position.y=1.09;sword.add(tip);
+        const handle=new THREE.Mesh(new THREE.CylinderGeometry(.043,.05,.29,8),grip);handle.position.y=.03;sword.add(handle);
+        const guard=new THREE.Mesh(new THREE.BoxGeometry(.37,.055,.09),iron);guard.position.y=.18;sword.add(guard);
+        sword.position.set(.68,1.25,.28);sword.rotation.set(.72,0,1.96);actor.add(sword);
+        banditPreview={root,actor,sword,mixer,actions,current:'Scene',next:0,alerted:false,hp:3,deathAt:0,restY:root.position.y,health,healthParts};
       },'BANDIT PREVIEW');
     };
 
@@ -4814,10 +4812,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       if(now-attackStartedAt<650)return;
       attackStartedAt=now;
       const target=banditPreview;
-      if(target?.alerted&&target.hp>0&&Math.hypot(hero.position.x-target.root.position.x,hero.position.z-target.root.position.z)<3.1){
+      if(target?.alerted&&target.hp>0&&Math.hypot(hero.position.x-target.actor.position.x,hero.position.z-target.actor.position.z)<3.6){
         target.hp--;
         target.healthParts.forEach((part,i)=>{part.visible=i<target.hp;});
-        if(target.hp===0)banditCollision=null;
+        if(target.hp===0){banditCollision=null;target.deathAt=now;target.sword.visible=false;}
         playBandit(target,target.hp?'Hit':'Death',now);
       }
       if(heroAnim?.mode==="clips"&&heroAnim.actions.attack){
@@ -5134,28 +5132,36 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       if(!banditRequested&&Math.hypot(q.x-banditSpot.x,q.z-banditSpot.z)<34)loadBanditPreview();
       if(banditPreview){
         const preview=banditPreview;
-        const dx=q.x-preview.root.position.x,dz=q.z-preview.root.position.z;
+        const dx=q.x-preview.actor.position.x,dz=q.z-preview.actor.position.z;
         const distance=Math.hypot(dx,dz);
         if(!preview.alerted&&Math.hypot(q.x-banditHide.x,q.z-banditHide.z)<9)preview.alerted=true;
         preview.health.visible=preview.alerted&&preview.hp>0;
-        preview.health.position.set(preview.root.position.x,groundY(preview.root.position.x,preview.root.position.z)+3.35,preview.root.position.z);
+        preview.health.position.set(preview.actor.position.x,preview.actor.position.y+3.35,preview.actor.position.z);
         preview.health.quaternion.copy(camera.quaternion);
         if(preview.alerted&&preview.hp>0){
           if(preview.current==='Hit'&&now<preview.next){/* Finish the hit reaction. */}
           else if(distance>2.5){
             playBandit(preview,'Run',now);
             const step=Math.min(distance-2.5,dt*2.1);
-            preview.root.position.x+=dx/distance*step;
-            preview.root.position.z+=dz/distance*step;
-            preview.root.position.y=groundY(preview.root.position.x,preview.root.position.z)+preview.footOffset;
-            if(banditCollision){banditCollision.x=preview.root.position.x;banditCollision.z=preview.root.position.z;}
+            preview.actor.position.x+=dx/distance*step;
+            preview.actor.position.z+=dz/distance*step;
+            preview.actor.position.y=groundY(preview.actor.position.x,preview.actor.position.z);
+            if(banditCollision){banditCollision.x=preview.actor.position.x;banditCollision.z=preview.actor.position.z;}
           }else if(now>=preview.next)playBandit(preview,'Attack',now);
-          preview.root.rotation.y=Math.atan2(dx,dz);
+          preview.actor.rotation.y=Math.atan2(dx,dz);
         }
         preview.mixer.update(dt);
         if(preview.current==='Attack'&&now<preview.next){
           const arm=preview.root.getObjectByName('DEF-upper_arm.R_0457');
-          if(arm)arm.rotateX(-.9*Math.sin(Math.PI*THREE.MathUtils.clamp((1150-(preview.next-now))/850,0,1)));
+          const swing=Math.sin(Math.PI*THREE.MathUtils.clamp((1150-(preview.next-now))/850,0,1));
+          if(arm)arm.rotateX(-1.55*swing);
+          preview.sword.rotation.z=1.96-1.7*swing;
+          preview.sword.rotation.x=.72-.7*swing;
+        }else{preview.sword.rotation.z=1.96;preview.sword.rotation.x=.72;}
+        if(preview.deathAt){
+          const fall=THREE.MathUtils.smoothstep((now-preview.deathAt)/900,0,1);
+          preview.root.rotation.x=-1.38*fall;
+          preview.root.position.y=preview.restY-.3*fall;
         }
       }
       // Keep the latest map position independently from the forge. This also
