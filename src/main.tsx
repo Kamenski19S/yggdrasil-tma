@@ -1855,6 +1855,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       | { kind:"segment"; x1:number; z1:number; x2:number; z2:number; r:number };
     const colliders: Collider[] = [];
     const HERO_RADIUS = 0.558;
+    let banditCollision:{x:number;z:number;r:number}|null=null;
     const RIVER_HALF = 5.4;
     const BRIDGE_X = -57, BRIDGE_Z = -48, BRIDGE_SPAN = 13.6, BRIDGE_WIDTH = 4.8;
     const BRIDGE_Y = groundY(BRIDGE_X,BRIDGE_Z) + .58;
@@ -1888,6 +1889,11 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       if(insideHomeRef.current){
         // Interior bounds leave a clear opening toward the door at the front (positive Z).
         return x<heroHomeX-2.72*HOME_SCALE || x>heroHomeX+2.72*HOME_SCALE || z<heroHomeZ-2.05*HOME_SCALE || z>heroHomeZ+2.30*HOME_SCALE;
+      }
+      if(banditCollision){
+        const distance=Math.hypot(x-banditCollision.x,z-banditCollision.z);
+        const previous=Math.hypot(state.current.x-banditCollision.x,state.current.z-banditCollision.z);
+        if(distance<banditCollision.r+HERO_RADIUS && distance<previous-.001)return true;
       }
       // The northern crossing stays blocked from either bank until its repair quest is complete.
       if(!northBridgeRepaired&&hits(x,z,{kind:"rect",x:NORTH_BRIDGE_X,z:NORTH_BRIDGE_Z,w:BRIDGE_SPAN+.6,d:BRIDGE_WIDTH+.5,rot:0}))return true;
@@ -4682,7 +4688,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     const banditSpot={x:-44,z:47};
     let banditRequested=false;
     const banditHide={x:banditSpot.x-2,z:banditSpot.z+2};
-    let banditPreview:{root:THREE.Object3D;mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>;current:string;next:number;alerted:boolean;hp:number;footOffset:number}|null=null;
+    let banditPreview:{root:THREE.Object3D;mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>;current:string;next:number;alerted:boolean;hp:number;footOffset:number;health:THREE.Group;healthParts:THREE.Mesh[]}|null=null;
     const playBandit=(preview:NonNullable<typeof banditPreview>,name:string,now:number)=>{
       if(preview.current===name&&name==='Run')return;
       if(preview.current===name&&now<preview.next)return;
@@ -4712,13 +4718,21 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         root.position.set(banditHide.x,groundY(banditHide.x,banditHide.z)+footOffset,banditHide.z);
         root.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
         scene.add(root);
+        banditCollision={x:banditHide.x,z:banditHide.z,r:.92};
+        const health=new THREE.Group();
+        const healthParts:THREE.Mesh[]=[];
+        for(let i=0;i<3;i++){
+          const part=new THREE.Mesh(new THREE.PlaneGeometry(.37,.12),new THREE.MeshBasicMaterial({color:0xe14332,side:THREE.DoubleSide,depthTest:false}));
+          part.position.x=(i-1)*.41;part.renderOrder=20;health.add(part);healthParts.push(part);
+        }
+        health.visible=false;scene.add(health);
         const mixer=new THREE.AnimationMixer(root);
         const actions:Record<string,THREE.AnimationAction>={};
         for(const clip of gltf.animations||[])actions[clip.name]=mixer.clipAction(clip);
         // Keep the full original rig pose active while procedural partial clips
         // animate limbs. Switching it off caused the hood to stretch on mobile.
         actions.Scene?.play();
-        banditPreview={root,mixer,actions,current:'Scene',next:0,alerted:false,hp:3,footOffset};
+        banditPreview={root,mixer,actions,current:'Scene',next:0,alerted:false,hp:3,footOffset,health,healthParts};
         const hand=root.getObjectByName('DEF-hand.R_0440')||root.getObjectByName('DEF-hand_R_0440')||root.getObjectByName('ORG-hand.R_0443');
         if(hand)loadGlbWithFolderFallback('Sword_2.glb',(weaponGlb:any)=>{
           if(!glbTreesAlive||!banditPreview)return;
@@ -4805,6 +4819,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       const target=banditPreview;
       if(target?.alerted&&target.hp>0&&Math.hypot(hero.position.x-target.root.position.x,hero.position.z-target.root.position.z)<3.1){
         target.hp--;
+        target.healthParts.forEach((part,i)=>{part.visible=i<target.hp;});
+        if(target.hp===0)banditCollision=null;
         playBandit(target,target.hp?'Hit':'Death',now);
       }
       if(heroAnim?.mode==="clips"&&heroAnim.actions.attack){
@@ -5123,7 +5139,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const preview=banditPreview;
         const dx=q.x-preview.root.position.x,dz=q.z-preview.root.position.z;
         const distance=Math.hypot(dx,dz);
-        if(!preview.alerted&&Math.hypot(q.x-banditHide.x,q.z-banditHide.z)<7)preview.alerted=true;
+        if(!preview.alerted&&Math.hypot(q.x-banditHide.x,q.z-banditHide.z)<9)preview.alerted=true;
+        preview.health.visible=preview.alerted&&preview.hp>0;
+        preview.health.position.set(preview.root.position.x,groundY(preview.root.position.x,preview.root.position.z)+3.35,preview.root.position.z);
+        preview.health.quaternion.copy(camera.quaternion);
         if(preview.alerted&&preview.hp>0){
           if(preview.current==='Hit'&&now<preview.next){/* Finish the hit reaction. */}
           else if(distance>2.5){
@@ -5132,6 +5151,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
             preview.root.position.x+=dx/distance*step;
             preview.root.position.z+=dz/distance*step;
             preview.root.position.y=groundY(preview.root.position.x,preview.root.position.z)+preview.footOffset;
+            if(banditCollision){banditCollision.x=preview.root.position.x;banditCollision.z=preview.root.position.z;}
           }else if(now>=preview.next)playBandit(preview,'Attack',now);
           preview.root.rotation.y=Math.atan2(dx,dz);
         }
