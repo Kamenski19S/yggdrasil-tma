@@ -4681,7 +4681,21 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     // Eastern approach to the closed northern bridge, beside the road and signpost.
     const banditSpot={x:-44,z:47};
     let banditRequested=false;
-    let banditPreview:{root:THREE.Object3D;mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>;current:string;next:number}|null=null;
+    const banditHide={x:banditSpot.x-2,z:banditSpot.z+2};
+    let banditPreview:{root:THREE.Object3D;mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>;current:string;next:number;alerted:boolean;hp:number;footOffset:number}|null=null;
+    const playBandit=(preview:NonNullable<typeof banditPreview>,name:string,now:number)=>{
+      if(preview.current===name&&name==='Run')return;
+      if(preview.current===name&&now<preview.next)return;
+      if(preview.current!=='Scene')preview.actions[preview.current]?.stop();
+      const action=preview.actions[name];
+      if(name!=='Scene'&&action){
+        action.reset().setEffectiveWeight(name==='Run'?.48:.7);
+        action.setLoop(name==='Run'?THREE.LoopRepeat:THREE.LoopOnce,name==='Run'?Infinity:1);
+        action.clampWhenFinished=name==='Death';action.play();
+      }
+      preview.current=name;
+      preview.next=now+(name==='Run'?480:name==='Attack'?1150:name==='Hit'?570:name==='Death'?Number.POSITIVE_INFINITY:0);
+    };
     const loadBanditPreview=()=>{
       if(banditRequested)return;
       banditRequested=true;
@@ -4694,15 +4708,32 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         root.scale.multiplyScalar(3.0/height);
         root.updateMatrixWorld(true);
         const scaled=new THREE.Box3().setFromObject(root);
-        root.position.set(banditSpot.x,groundY(banditSpot.x,banditSpot.z)-scaled.min.y,banditSpot.z);
+        const footOffset=-scaled.min.y;
+        root.position.set(banditHide.x,groundY(banditHide.x,banditHide.z)+footOffset,banditHide.z);
         root.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
         scene.add(root);
         const mixer=new THREE.AnimationMixer(root);
         const actions:Record<string,THREE.AnimationAction>={};
         for(const clip of gltf.animations||[])actions[clip.name]=mixer.clipAction(clip);
-        const idle=actions.Scene||actions.Run;
-        idle?.play();
-        banditPreview={root,mixer,actions,current:actions.Scene?'Scene':'Run',next:performance.now()+3500};
+        // Keep the full original rig pose active while procedural partial clips
+        // animate limbs. Switching it off caused the hood to stretch on mobile.
+        actions.Scene?.play();
+        banditPreview={root,mixer,actions,current:'Scene',next:0,alerted:false,hp:3,footOffset};
+        const hand=root.getObjectByName('DEF-hand.R_0440')||root.getObjectByName('DEF-hand_R_0440')||root.getObjectByName('ORG-hand.R_0443');
+        if(hand)loadGlbWithFolderFallback('Sword_2.glb',(weaponGlb:any)=>{
+          if(!glbTreesAlive||!banditPreview)return;
+          const blade=weaponGlb.scene as THREE.Object3D;
+          textureSteelOnWeapon(blade,'Sword_2.glb');
+          blade.updateMatrixWorld(true);
+          const box=new THREE.Box3().setFromObject(blade),size=box.getSize(new THREE.Vector3());
+          if(size.y<.001)return;
+          blade.position.set(-box.getCenter(new THREE.Vector3()).x,-box.min.y,-box.getCenter(new THREE.Vector3()).z);
+          const sword=new THREE.Group();sword.add(blade);hand.add(sword);
+          sword.updateMatrixWorld(true);
+          const span=new THREE.Box3().setFromObject(sword).getSize(new THREE.Vector3()).length();
+          if(span>.001)sword.scale.setScalar(.9/span);
+          sword.rotation.x=-.25;
+        },'BANDIT SWORD');
       },'BANDIT PREVIEW');
     };
 
@@ -4771,6 +4802,11 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       const now=performance.now();
       if(now-attackStartedAt<650)return;
       attackStartedAt=now;
+      const target=banditPreview;
+      if(target?.alerted&&target.hp>0&&Math.hypot(hero.position.x-target.root.position.x,hero.position.z-target.root.position.z)<3.1){
+        target.hp--;
+        playBandit(target,target.hp?'Hit':'Death',now);
+      }
       if(heroAnim?.mode==="clips"&&heroAnim.actions.attack){
         const action=heroAnim.actions.attack as THREE.AnimationAction;
         heroAnim.current?.fadeOut(.08);
@@ -5085,16 +5121,21 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       if(!banditRequested&&Math.hypot(q.x-banditSpot.x,q.z-banditSpot.z)<34)loadBanditPreview();
       if(banditPreview){
         const preview=banditPreview;
-        preview.mixer.update(dt);
-        if(now>=preview.next){
-          const order=['Scene','Run','Attack','Hit','Death'];
-          const next=order[(order.indexOf(preview.current)+1)%order.length];
-          preview.actions[preview.current]?.stop();
-          const action=preview.actions[next];
-          if(action){action.reset().setLoop(next==='Death'?THREE.LoopOnce:THREE.LoopRepeat, next==='Death'?1:Infinity).play();preview.current=next;}
-          preview.next=now+(next==='Scene'?3500:next==='Run'?3200:next==='Death'?2100:next==='Attack'?1300:950);
+        const dx=q.x-preview.root.position.x,dz=q.z-preview.root.position.z;
+        const distance=Math.hypot(dx,dz);
+        if(!preview.alerted&&Math.hypot(q.x-banditHide.x,q.z-banditHide.z)<7)preview.alerted=true;
+        if(preview.alerted&&preview.hp>0){
+          if(preview.current==='Hit'&&now<preview.next){/* Finish the hit reaction. */}
+          else if(distance>2.5){
+            playBandit(preview,'Run',now);
+            const step=Math.min(distance-2.5,dt*2.1);
+            preview.root.position.x+=dx/distance*step;
+            preview.root.position.z+=dz/distance*step;
+            preview.root.position.y=groundY(preview.root.position.x,preview.root.position.z)+preview.footOffset;
+          }else if(now>=preview.next)playBandit(preview,'Attack',now);
+          preview.root.rotation.y=Math.atan2(dx,dz);
         }
-        preview.root.rotation.y=Math.atan2(Math.sin(now*.00036),Math.cos(now*.00036))+.5;
+        preview.mixer.update(dt);
       }
       // Keep the latest map position independently from the forge. This also
       // covers exits through Hero, Gift, Hall and the world tree navigation.
