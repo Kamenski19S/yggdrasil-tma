@@ -2196,14 +2196,16 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     // West side on the village bank: Norns and the deep ash grove.
     // Reach the riverbank beside the Norns' wheel instead of ending in grass.
     road([[-35,36],[-42,37],[-48,38],[riverCenterX(38)+RIVER_HALF+.05,38]],1.55);
+    // The forest-side trail must rejoin the northern crossing, not stop at
+    // the lone spruce above the riverbank.
     road([[-35,44],[-39,54],[-43,64],[-45,75]],1.48);
+    road([[-45,75],[-47,67],[-48,59],[NORTH_BRIDGE_X+BRIDGE_SPAN/2+.15,NORTH_BRIDGE_Z]],1.48);
     road([[-35,36],[-35,24],[-35,14],[-35,2],[-35,-10],[-35,-23],[-35,-32],[-40,-38],[-48,-44],[-50,-48]],1.72);
     road([[-35,14],[-32,15],[-31,15]],1.42);
 
     // The river can be crossed only on the wooden bridge. Beyond it a narrow
     // west-bank trail reaches the old farm, forest cache and Whispering Stone.
-    // Carry the trail under the stone arch and onto the bridge landing.
-    road([[-48,-44],[-49,-46],[-50,-48],[-52,-48],[-57,-48],[-64,-48]],2.05);
+    road([[-50,-48],[-57,-48],[-64,-48]],2.05);
     road([[-64,-48],[-70,-48],[-72,-48]],1.58);
     road([[-64,-48],[-67,-40],[-68,-27],[-68,-11],[-65,8]],1.62);
     road([[-65,8],[-68,24],[-70,37],[-72,48]],1.50);
@@ -4897,7 +4899,6 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     shieldActionRef.current=()=>{
       if(gear.includes('shield'))shieldRaiseUntilRef.current=performance.now()+1250;
     };
-    let shieldGuardMount:THREE.Group|null=null;
     const heroAsset=skin==="valkyrie"
       ? "Vika-3d-animated-optimized.glb"
       : "Yggdrasil_Viking_Jarl.glb";
@@ -5001,7 +5002,6 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           // the arm so the painted face points out at the player.
           mount.rotation.y=Math.PI;
           mount.add(shieldModel);shieldHand.add(mount);
-          shieldGuardMount=mount;
         },'HERO SHIELD');
       }
 
@@ -5330,13 +5330,13 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
             const remaining=shieldRaiseUntilRef.current-now;
             const lift=remaining>0?Math.min(THREE.MathUtils.clamp((1250-remaining)/170,0,1),THREE.MathUtils.clamp(remaining/260,0,1)):0;
             const upper=heroAnim.shieldUpper,lower=heroAnim.shieldLower;
-            // Mixamo's arm points up its local Y axis. Swing it forward, bend
-            // the elbow, and lift the shield on the forearm to cover the face.
+            // Rotate the arm bones while the shield stays fastened to its
+            // original spot on the forearm. Never translate the shield itself:
+            // model units are enlarged by the hero's scale.
             if(lift>0){
-              if(upper){upper.rotateX(-lift*1.18);upper.rotateZ(lift*.48);}
-              if(lower)lower.rotateX(lift*.78);
+              if(upper){upper.rotateX(lift*1.05);upper.rotateZ(-lift*.24);}
+              if(lower)lower.rotateX(-lift*.62);
             }
-            if(shieldGuardMount)shieldGuardMount.position.y=.075+lift*.40;
           }
         }else if(heroAnim.mode==="projected" || heroAnim.mode==="multiview"){
           // Very small vertical step + body sway: enough to read as walking
