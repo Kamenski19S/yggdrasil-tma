@@ -168,8 +168,8 @@ type GearId="armor"|"shield"|"helmet"|"boots";
 const GEAR_IDS:GearId[]=["armor","shield","helmet","boots"];
 const SHIELD_ASSETS=['Shield_Round.glb','Shield_Round_2.glb','Shield_Heater.glb','Shield_Heater_2.glb','Shield_Celtic_Golden.glb'];
 const shieldForgeKey=(asset:string)=>asset===SHIELD_ASSETS[0]?'shield':'shield:'+asset;
-type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; equippedGear: GearId[]; potions: string[]; runes: string[]; forgeLevels: Record<string,number>; forgeFreeUsed: boolean };
-const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], equippedGear:[], potions: [], runes: [], forgeLevels: {}, forgeFreeUsed: false };
+type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; forgeLevels: Record<string,number>; forgeFreeUsed: boolean };
+const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false };
 const loadSave = (): Save => {
   try {
     const previous:any=JSON.parse(localStorage.getItem("yggdrasil") || "{}");
@@ -185,6 +185,9 @@ const loadSave = (): Save => {
     delete s.forgeLevels?.bow;
     if (!Array.isArray(s.potions)) s.potions = [];
     if (!Array.isArray(s.runes)) s.runes = [];
+    if(typeof s.equippedRune!=="string"||!s.runes.includes(s.equippedRune))s.equippedRune=s.runes.includes('uruzStrength')?'uruzStrength':'';
+    if(s.fieldHp!==null&&(!Number.isFinite(s.fieldHp)||s.fieldHp<0))s.fieldHp=null;
+    if(!Number.isFinite(s.frostGuard)||s.frostGuard<0)s.frostGuard=0;
     if (!s.forgeLevels || typeof s.forgeLevels !== "object" || Array.isArray(s.forgeLevels)) s.forgeLevels = {};
     if(!Array.isArray(s.equippedGear))s.equippedGear=GEAR_IDS.filter(id=>Number(s.forgeLevels[id]||0)>0);
     s.equippedGear=s.equippedGear.filter((id:string)=>GEAR_IDS.includes(id as GearId));
@@ -520,6 +523,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 @keyframes mapPulse{0%,100%{filter:drop-shadow(0 0 2px #f6b144);transform:translate(-50%,-50%) scale(1)}50%{filter:drop-shadow(0 0 8px #ff7a36);transform:translate(-50%,-50%) scale(1.15)}}
 
 .hall-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.hall-section{min-height:126px;padding:12px;border-radius:15px;text-align:left;background:linear-gradient(145deg,#18221b,#0d130f);border:1px solid #2b3c30;box-shadow:0 7px 16px rgba(0,0,0,.28)}
+.inventory-hall{grid-column:1/-1}.inventory-section h3{font-size:14px;margin:4px 0 9px;color:#e9c16c}.inventory-list{display:grid;gap:7px}.inventory-item{display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:8px;padding:7px 8px;border:1px solid rgba(184,150,94,.34);border-radius:10px;background:rgba(10,17,14,.82);color:#f5ead4}.inventory-item.empty{opacity:.48}.inventory-symbol{font-size:23px;text-align:center;color:#e9ca74}.inventory-detail b{display:block;font-size:12px}.inventory-detail small{display:block;font-size:10px;color:#aabaad;line-height:1.3;margin-top:2px}.inventory-item button{border-radius:8px;border:1px solid #bda272;background:#4b3725;color:#fff3d8;padding:6px 8px;font-size:11px;white-space:nowrap}.inventory-item button:disabled{opacity:.45}.inventory-item button.active{background:#426345;border-color:#a6cf92}
 .hall-section:active{transform:scale(.98)}.hall-section h3{font-size:13px;color:#ffd76a;margin:4px 0}.hall-section p{font-size:9px;line-height:1.35;color:#91a598}.hall-section .hall-icon{font-size:29px;display:block}.hall-count{display:inline-block;margin-top:7px;padding:3px 6px;border-radius:7px;background:#0a0e0b;border:1px solid #34473a;font-size:9px;color:#d6e3d8}
 .hall-slots{display:flex;gap:4px;margin-top:10px}.hall-slot{width:42px;height:42px;flex:0 0 42px;border-radius:10px;border:1px solid #4b5d4e;background:#090d0a;display:flex;align-items:center;justify-content:center;font-size:20px}.hall-slot.on{border-color:#ffd76a;box-shadow:0 0 9px rgba(255,215,106,.42)}.hall-slot:active{transform:scale(.91);background:#1b271e}
 .vial{position:relative;width:13px;height:21px;border:1px solid rgba(235,249,255,.72);border-radius:3px 3px 7px 7px;background:linear-gradient(180deg,rgba(255,255,255,.35) 0 35%,var(--vial) 38% 100%);box-shadow:0 0 8px var(--vial)}
@@ -1184,6 +1188,17 @@ function midHero3d(h: HeroDef) {
 }
 
 type WhisperCombatStats={maxHp:number;attack:number;runeAttack:number;defense:number};
+const POTION_CATALOG=[
+  {id:'lifeElixir',name:'Эликсир жизни',effect:'Полностью восстанавливает здоровье Вики',symbol:'❤️'},
+  {id:'northernMoss',name:'Эликсир северного мха',effect:'Восстанавливает 30 здоровья',symbol:'🌿'},
+  {id:'frostDraught',name:'Морозный настой',effect:'Два следующих удара без щита слабее вдвое',symbol:'❄️'}
+] as const;
+const RUNE_CATALOG=[
+  {id:'uruzStrength',name:'Уруз',effect:'Усиленный удар оружием',symbol:'ᚢ'},
+  {id:'algizGuard',name:'Альгиз',effect:'Снижает урон разбойников на 2',symbol:'ᛉ'},
+  {id:'raidoPath',name:'Райдо',effect:'Ускоряет передвижение на 10%',symbol:'ᚱ'},
+  {id:'kenazShard',name:'Кеназ',effect:'Усиливает руническую атаку',symbol:'ᚲ'}
+] as const;
 type BanditSpec={id:string;name:string;x:number;z:number;hp:number;damage:number;sparks:number;reward:string;item?:string;kind?:'weapon'|'potion'|'rune';quantity?:number};
 const BANDIT_SPECS:BanditSpec[]=[
   {id:'forest',name:'Разбойник у моста',x:-46,z:49,hp:3,damage:9,sparks:12,reward:'Разбойничий кинжал',kind:'weapon',item:'knife'},
@@ -1198,7 +1213,7 @@ const BANDIT_SPECS:BanditSpec[]=[
 ];
 type WhisperPhase="closed"|"question"|"fight"|"reward"|"defeat";
 
-function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin, defeatedBandits, onBanditReward, onBanditKnockout }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; defeatedBandits:string[]; onBanditReward:(id:string)=>void; onBanditKnockout:()=>void }) {
+function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin, defeatedBandits, onBanditReward, onBanditKnockout, potions, runes, equippedRune, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; defeatedBandits:string[]; onBanditReward:(id:string)=>void; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -1211,13 +1226,18 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   const [mapHero, setMapHero] = useState({x:0,z:28});
   const [heroReady, setHeroReady] = useState(false);
   const [heroLoadFailed, setHeroLoadFailed] = useState(false);
-  const [banditHeroHp,setBanditHeroHp]=useState(whisperStats.maxHp);
+  const [banditHeroHp,setBanditHeroHp]=useState(fieldHp===null?whisperStats.maxHp:Math.min(whisperStats.maxHp,fieldHp));
+  const [inventoryOpen,setInventoryOpen]=useState(false);
+  const inventoryPauseRef=useRef(false);
   const [banditOpponent,setBanditOpponent]=useState<{id:string;name:string;hp:number;maxHp:number}|null>(null);
   const [banditVictory,setBanditVictory]=useState<BanditSpec|null>(null);
   const banditVictoryRef=useRef<string|null>(null);
   const [banditHit,setBanditHit]=useState(0);
-  const banditHpRef=useRef(whisperStats.maxHp);
-  const banditDamageRef=useRef<(amount:number)=>void>(()=>{});
+  const banditHpRef=useRef(fieldHp===null?whisperStats.maxHp:Math.min(whisperStats.maxHp,fieldHp));
+  const frostGuardRef=useRef(frostGuard);
+  const equippedRuneRef=useRef(equippedRune);
+  const banditDefenseRef=useRef(whisperStats.defense);
+  const banditDamageRef=useRef<(amount:number,guarding:boolean)=>void>(()=>{});
   const [insideHome, setInsideHome] = useState(false);
   const [whisperPhase,setWhisperPhase]=useState<WhisperPhase>("closed");
   const whisperPhaseRef=useRef<WhisperPhase>("closed");
@@ -1245,16 +1265,28 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   const attackActionRef = useRef<(()=>void)|null>(null);
   const onRef=useRef(on);
   onRef.current=on;
-  banditDamageRef.current=(amount:number)=>{
+  frostGuardRef.current=frostGuard;
+  equippedRuneRef.current=equippedRune;
+  banditDefenseRef.current=whisperStats.defense;
+  banditDamageRef.current=(amount:number,guarding:boolean)=>{
+    if(!guarding&&frostGuardRef.current>0){amount=Math.max(1,Math.ceil(amount*.5));frostGuardRef.current--;onFrostGuardHit();}
     const next=banditHpRef.current-amount;
     setBanditHit(Date.now());
     if(next<=0){banditHpRef.current=whisperStats.maxHp;setBanditHeroHp(whisperStats.maxHp);state.current.x=0;state.current.z=28;onBanditKnockout();return;}
-    banditHpRef.current=next;setBanditHeroHp(next);
+    banditHpRef.current=next;setBanditHeroHp(next);onFieldHpChange(next);
+  };
+  const useMidgardPotion=(id:string)=>{
+    if(!onUsePotion(id))return;
+    if(id==='lifeElixir'||id==='northernMoss'){
+      const next=id==='lifeElixir'?whisperStats.maxHp:Math.min(whisperStats.maxHp,banditHpRef.current+30);
+      banditHpRef.current=next;setBanditHeroHp(next);
+    }
   };
   const shieldActionRef = useRef<(()=>void)|null>(null);
   const shieldRaiseUntilRef=useRef(0);
   const [villageGateOpen, setVillageGateOpen] = useState(false);
   const [creditsOpen,setCreditsOpen]=useState(false);
+  inventoryPauseRef.current=inventoryOpen||mapOpen||creditsOpen;
   const villageGateOpenRef = useRef(false);
   const [rearGateOpen,setRearGateOpen]=useState(false);
   const rearGateOpenRef=useRef(false);
@@ -1306,7 +1338,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       setWhisperGuardEnergy(v=>Math.max(0,v-1));guardAttackAtRef.current=performance.now();setWhisperFx({kind:"guard",key:Date.now()});
       whisperTimers.current.push(window.setTimeout(()=>{
         const raw=WHISPER_GUARD.atk+Math.floor(Math.random()*3);
-        const damage=Math.max(1,Math.ceil((raw-whisperStats.defense)*(shielded?(gear.includes('shield')?.3:.6):1)));
+        let damage=Math.max(1,Math.ceil((raw-whisperStats.defense)*(shielded?(gear.includes('shield')?.3:.6):1)));
+        if(!shielded&&frostGuardRef.current>0){damage=Math.max(1,Math.ceil(damage*.5));frostGuardRef.current--;onFrostGuardHit();}
         const next=Math.max(0,whisperHeroHp-damage);
         setWhisperHeroHp(next);setWhisperShield(false);setWhisperBusy(false);
         if(next<=0){setWhisperLog("Хродвитнир оказался сильнее. Камень позволит повторить испытание.");setWhisperPhaseSafe("defeat");}
@@ -4837,7 +4870,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       attackStartedAt=now;
       const target=bandits.filter(b=>b.alerted&&b.hp>0&&Math.hypot(hero.position.x-b.actor.position.x,hero.position.z-b.actor.position.z)<4.0).sort((a,b)=>Math.hypot(hero.position.x-a.actor.position.x,hero.position.z-a.actor.position.z)-Math.hypot(hero.position.x-b.actor.position.x,hero.position.z-b.actor.position.z))[0];
       if(target&&!banditVictoryRef.current){
-        target.hp--;
+        target.hp=Math.max(0,target.hp-(equippedRuneRef.current==='uruzStrength'?2:1));
         target.enemyHitAt=0;
         setBanditOpponent({id:target.spec.id,name:target.spec.name,hp:target.hp,maxHp:target.spec.hp});
         if(target.hp===0){
@@ -5146,7 +5179,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         gate.bar.position.set(-barT*4.9,2.3-barT*.78,1.37+barT*.52);gate.bar.rotation.z=-barT*.28;
       }
       if(!encounterLocked&&l>.05){
-        const step=6.2*dt;
+        const step=6.2*(equippedRuneRef.current==='raidoPath'?1.1:1)*dt;
         moveWithCollision(q,q.x+(q.dx/l)*step,q.z+(q.dz/l)*step);
         hero.rotation.y=Math.atan2(q.dx,q.dz);
         cameraDir.current.x=q.dx/l;
@@ -5183,7 +5216,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           }
         }
         if(!preview.alerted&&preview.hp>0&&Math.hypot(q.x-preview.spec.x,q.z-preview.spec.z)<9)preview.alerted=true;
-        if(preview.alerted&&preview.hp>0&&!banditVictoryRef.current&&!encounterLocked){
+        if(preview.alerted&&preview.hp>0&&!banditVictoryRef.current&&!encounterLocked&&!inventoryPauseRef.current){
           if(preview.current==='Hit'&&now<preview.next){/* Finish the hit reaction. */}
           else if(distance>2.5){
             playBandit(preview,'Run',now);
@@ -5202,10 +5235,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         preview.mixer.update(dt);
         if(preview.enemyHitAt&&now>=preview.enemyHitAt&&preview.hp>0){
           preview.enemyHitAt=0;
-          if(!banditVictoryRef.current&&!encounterLocked&&Math.hypot(q.x-preview.actor.position.x,q.z-preview.actor.position.z)<3.15){
+          if(!banditVictoryRef.current&&!encounterLocked&&!inventoryPauseRef.current&&Math.hypot(q.x-preview.actor.position.x,q.z-preview.actor.position.z)<3.15){
             const guarding=shieldRaiseUntilRef.current>now&&gear.includes('shield');
-            const damage=Math.max(1,preview.spec.damage-whisperStats.defense);
-            banditDamageRef.current(guarding?Math.max(1,Math.ceil(damage*.25)):damage);
+            const damage=Math.max(1,preview.spec.damage-banditDefenseRef.current);
+            banditDamageRef.current(guarding?Math.max(1,Math.ceil(damage*.25)):damage,guarding);
           }
         }
         if(preview.current==='Attack'&&now<preview.next){
@@ -5509,7 +5542,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           <span className="map-landmark" style={{left:"49%",top:"25%"}}>⌗<small>Ворота</small></span>
           <span className="map-landmark" style={{left:"93%",top:"32%"}}>⌂<small>Дом</small></span>
           <span className="map-landmark" style={{left:"47%",top:"8%"}}>♠<small>Роща</small></span>
-          <span className="map-landmark" style={{left:"25%",top:"24%"}}>⚔<small>Разбойник · проверка</small></span>
+          <span className="map-landmark" style={{left:"25%",top:"24%"}}>⚔<small>Разбойник</small></span>
           <span className="map-landmark goal" style={{left:"49%",top:"53%"}}>ᚠ<small>Цель</small></span>
           <span className="map-landmark hero" style={{left:`${((mapHero.x+88)/176)*100}%`,top:`${100-((mapHero.z+89)/178)*100}%`}}>◆<small>Ты здесь</small></span>
         </div>
@@ -5518,6 +5551,13 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         <button className="mid3d-map-close" onClick={()=>setMapOpen(false)}>Закрыть карту и продолжить путь</button>
       </div>
     </div>}
+    {inventoryOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}><div className="mid3d-map-panel" style={{background:"linear-gradient(145deg,#1b271c,#0e1712)",color:"#fff2d8",borderColor:"#987346"}}>
+      <div className="mid3d-map-title" style={{color:"#f5d28a"}}>🎒 Запас Вики</div>
+      <div className="mid3d-map-sub" style={{color:"#c3b7a2"}}>Здоровье: {banditHeroHp}/{whisperStats.maxHp} · Ледяная защита: {frostGuard} уд.</div>
+      <InventorySection kind="potions" potions={potions} runes={runes} equippedRune={equippedRune} hp={banditHeroHp} maxHp={whisperStats.maxHp} frostGuard={frostGuard} onUsePotion={useMidgardPotion} onEquipRune={onEquipRune}/>
+      <InventorySection kind="runes" potions={potions} runes={runes} equippedRune={equippedRune} hp={banditHeroHp} maxHp={whisperStats.maxHp} frostGuard={frostGuard} onUsePotion={useMidgardPotion} onEquipRune={onEquipRune}/>
+      <button className="mid3d-map-close" onClick={()=>setInventoryOpen(false)}>Вернуться в игру</button>
+    </div></div>}
     {creditsOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}><div className="mid3d-map-panel">
       <div className="mid3d-map-title">Авторы и лицензии</div>
       <p><b>Neutral Bandit</b> — <a href="https://sketchfab.com/strong.lazzy" target="_blank" rel="noopener noreferrer">ZakRenat</a>. <a href="https://sketchfab.com/3d-models/neutral-bandit-524cad2cfdc7422f93541cb00008b0d3" target="_blank" rel="noopener noreferrer">Оригинальная модель</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
@@ -5592,12 +5632,25 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     {whisperPhase==="closed"&&<><div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-block" disabled={!gear.includes('shield')} aria-label="Блок щитом" title="Блок щитом" onPointerDown={e=>e.stopPropagation()} onClick={()=>{shieldActionRef.current?.();if('vibrate' in navigator)navigator.vibrate(15);}}>🛡</button>
     <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" title="Удар оружием" onPointerDown={e=>e.stopPropagation()} onClick={()=>{attackActionRef.current?.();if("vibrate" in navigator)navigator.vibrate(12);}}>⚔</button>
+    <button className="mid3d-ui mid3d-action" style={{top:125,background:"rgba(36,62,41,.94)",color:"#fff1d1"}} aria-label="Запас рун и эликсиров" title="Запас" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapOpen(false);setInventoryOpen(true);}}>🎒</button>
     <button className="mid3d-ui mid3d-action" aria-label="Карта Мидгарда" title="Карта Мидгарда" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapHero({x:state.current.x,z:state.current.z});setMapOpen(true);}}>ᚠ</button></>}
     {whisperPhase==="closed"&&<div className="mid3d-ui mid3d-hint">{insideHome?(moving?"Ты внутри дома":"Дом героя • отдых • сундук • выход"):moving?"Исследуй Мидгард":"Ворота • площадь • кузница • Мимир • норны • лес"}</div>}
   </div>;
 }
 
 function SparkDrop(){return <span className="spark-drop" aria-label="Капля силы"/>;}
+function InventorySection({kind,potions,runes,equippedRune,hp,maxHp,frostGuard,onUsePotion,onEquipRune}:{kind:'potions'|'runes';potions:string[];runes:string[];equippedRune:string;hp:number;maxHp:number;frostGuard:number;onUsePotion:(id:string)=>void;onEquipRune:(id:string)=>void}){
+  return <section className="inventory-section"><h3>{kind==='potions'?'🧪 Эликсиры':'ᛉ Руны'}</h3><div className="inventory-list">
+    {kind==='potions'?POTION_CATALOG.map(item=>{
+      const count=potions.filter(id=>id===item.id).length;
+      const unusable=(item.id==='frostDraught'?frostGuard>=2:hp>=maxHp);
+      return <div key={item.id} className={'inventory-item'+(count?'':' empty')}><span className="inventory-symbol">{item.symbol}</span><span className="inventory-detail"><b>{item.name} · {count} шт.</b><small>{item.effect}</small></span><button disabled={!count||unusable} onClick={()=>onUsePotion(item.id)}>{unusable&&count?'Не требуется':'Применить'}</button></div>;
+    }):RUNE_CATALOG.map(item=>{
+      const owned=runes.includes(item.id),active=equippedRune===item.id;
+      return <div key={item.id} className={'inventory-item'+(owned?'':' empty')}><span className="inventory-symbol">{item.symbol}</span><span className="inventory-detail"><b>{item.name} · {owned?'найдена':'не найдена'}</b><small>{item.effect}</small></span><button className={active?'active':''} disabled={!owned||active} onClick={()=>onEquipRune(item.id)}>{active?'Активна':'Выбрать'}</button></div>;
+    })}
+  </div></section>;
+}
 
 const FORGE_WEAPON_MODELS = [
   ['Sword.glb','Меч','default'],['Sword_2.glb','Меч II',''],['Sword_Big.glb','Большой меч',''],['Sword_Golden.glb','Золотой меч',''],
@@ -5828,6 +5881,28 @@ const [roadT, setRoadT] = useState(0.06);
     });
     return 'Малый молот, эликсир северного мха и осколок Кеназ';
   };
+  const useInventoryPotion=(id:string)=>{
+    const item=POTION_CATALOG.find(p=>p.id===id);
+    if(!item||!save.potions.includes(id)){say('Этого эликсира пока нет в запасе.');return false;}
+    const maxHp=(heroDef?.hp||100)+gearHp(),currentHp=Math.min(maxHp,save.fieldHp??maxHp);
+    if(id!=='frostDraught'&&currentHp>=maxHp){say('Здоровье уже восстановлено.');return false;}
+    if(id==='frostDraught'&&save.frostGuard>=2){say('Ледяная защита уже действует на два удара.');return false;}
+    setSave(s=>{
+      const index=s.potions.indexOf(id);
+      if(index<0)return s;
+      const nextPotions=[...s.potions];nextPotions.splice(index,1);
+      return {...s,potions:nextPotions,
+        fieldHp:id==='lifeElixir'?maxHp:id==='northernMoss'?Math.min(maxHp,(s.fieldHp??maxHp)+30):s.fieldHp,
+        frostGuard:id==='frostDraught'?2:s.frostGuard};
+    });
+    haptic('success');say(id==='frostDraught'?'Ледяной настой ослабит два следующих удара.':`${item.name}: здоровье восстановлено.`);
+    return true;
+  };
+  const equipInventoryRune=(id:string)=>{
+    const rune=RUNE_CATALOG.find(r=>r.id===id);
+    if(!rune||!save.runes.includes(id))return;
+    setSave(s=>({...s,equippedRune:id}));haptic();say(`Руна ${rune.name} активна. ${rune.effect}.`);
+  };
   const rewardBandit=(id:string)=>{
     const spec=BANDIT_SPECS.find(b=>b.id===id);
     if(!spec)return;
@@ -5837,12 +5912,13 @@ const [roadT, setRoadT] = useState(0.06);
       return {...s,sparks:s.sparks+spec.sparks,done:[...new Set([...s.done,key])],
         ownedWeapons:spec.kind==='weapon'&&spec.item?[...new Set([...s.ownedWeapons,spec.item])]:s.ownedWeapons,
         potions:spec.kind==='potion'&&spec.item?[...s.potions,...Array(spec.quantity||1).fill(spec.item)]:s.potions,
-        runes:spec.kind==='rune'&&spec.item?[...new Set([...s.runes,spec.item])]:s.runes};
+        runes:spec.kind==='rune'&&spec.item?[...new Set([...s.runes,spec.item])]:s.runes,
+        equippedRune:spec.kind==='rune'&&spec.item&&!s.equippedRune?spec.item:s.equippedRune};
     });
     haptic('success');say(`Победа: +${spec.sparks} Капель силы и ${spec.reward}.`);
   };
   const banditKnockout=()=>{
-    setSave(s=>({...s,sparks:Math.max(0,s.sparks-5)}));
+    setSave(s=>({...s,sparks:Math.max(0,s.sparks-5),fieldHp:(heroDef?.hp||100)+gearHp()}));
     haptic();say('Разбойник сбил Вику с ног. Древо вернуло её к началу пути (−5 Капель силы).');
   };
   const fightAct = (id: string, kind: "hit" | "rune" | "shield" | "restore") => {
@@ -5851,7 +5927,7 @@ const [roadT, setRoadT] = useState(0.06);
     let dmg = 0; let log = ""; let nhen = hen; let nmen = men; let nshield = shield;
     if (kind === "hit") {
       setCombatFx({kind:"hit",key:Date.now()});
-      dmg = heroDef!.str + WEAPON_POWER[save.heroWeapon] + forgeLevel(save.heroWeapon) + (save.runes.includes('uruzStrength')?2:0) + rnd(4);
+      dmg = heroDef!.str + WEAPON_POWER[save.heroWeapon] + forgeLevel(save.heroWeapon) + (save.equippedRune==='uruzStrength'?2:0) + rnd(4);
       if(hen>0)nhen=Math.max(0,hen-1);else{dmg=Math.ceil(dmg*.55);log="Силы иссякли — удар слабее. ";}
       if (save.powers.includes("fireOath")) { dmg += 5; setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "fireOath") })); log += "Огненный обет! "; }
       if (heroDef!.id === "berserk" && hhp <= Math.max(heroDef!.hp,hmax) / 2) { dmg *= 2; log += "Медвежья ярость! "; }
@@ -5860,7 +5936,7 @@ const [roadT, setRoadT] = useState(0.06);
     if (kind === "rune") {
       if (hen < 2) { say("Для рунического удара нужно 2 деления энергии."); return; }
       setCombatFx({kind:"rune",key:Date.now()});
-      nhen = hen - 2; dmg = heroDef!.en + 2 + rnd(5);
+      nhen = hen - 2; dmg = heroDef!.en + 2 + (save.equippedRune==='kenazShard'?2:0) + rnd(5);
       log = "Руническое заклинание вспыхивает: −" + dmg + " хозяину.";
     }
     if (kind === "shield") { if(hen<1){say("Нет энергии, чтобы удержать щит.");return;} nhen=hen-1;nshield = true; log = "Ты поднимаешь щит — удар ослабнет."; }
@@ -5876,8 +5952,9 @@ const [roadT, setRoadT] = useState(0.06);
     let md = m.atk + rnd(3); let mlog = "";
     if(nmen<=0){md=0;nmen=2;mlog=" "+m.name+" вынужден перевести дыхание и восстанавливает энергию.";}else nmen=Math.max(0,nmen-1);
     const forgedDefense=gearDefense();
-    md=Math.max(1,md-forgedDefense);
+    md=Math.max(1,md-forgedDefense-(save.equippedRune==='algizGuard'?2:0));
     if (nshield) { md = Math.max(0,Math.ceil(md * (equipped('shield')?.3:.6))-gearLevel('shield')-(equipped('shield')?1:0)); mlog += " Щит принял большую часть удара."; }
+    if(!nshield&&md>0&&save.frostGuard>0){md=Math.max(1,Math.ceil(md*.5));setSave(s=>({...s,frostGuard:Math.max(0,s.frostGuard-1)}));mlog+=" Морозный настой ослабил удар.";}
     if (save.powers.includes("iceOath")) { md = Math.ceil(md * 0.65); setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "iceOath") })); mlog += " Ледяной обет сковал удар врага."; }
     if (heroDef!.id === "dwarf") md = Math.ceil(md * 0.75);
     let nh = hhp;
@@ -6240,15 +6317,24 @@ const [roadT, setRoadT] = useState(0.06);
       whisperResolved={save.done.includes("whisper:battle")||save.done.includes("whisper:wisdom")}
       whisperStats={{
         maxHp:heroDef.hp+gearHp(),
-        attack:heroDef.str+WEAPON_POWER[save.heroWeapon]+forgeLevel(save.heroWeapon)+(save.runes.includes('uruzStrength')?2:0),
-        runeAttack:heroDef.en+2,
-        defense:gearDefense()
+        attack:heroDef.str+WEAPON_POWER[save.heroWeapon]+forgeLevel(save.heroWeapon)+(save.equippedRune==='uruzStrength'?2:0),
+        runeAttack:heroDef.en+2+(save.equippedRune==='kenazShard'?2:0),
+        defense:gearDefense()+(save.equippedRune==='algizGuard'?2:0)
       }}
       onWhisperCorrect={finishWhisperCorrect}
       onWhisperWin={finishWhisperBattle}
       defeatedBandits={BANDIT_SPECS.filter(b=>save.done.includes(`bandit:${b.id}:reward`)).map(b=>b.id)}
       onBanditReward={rewardBandit}
       onBanditKnockout={banditKnockout}
+      potions={save.potions}
+      runes={save.runes}
+      equippedRune={save.equippedRune}
+      fieldHp={save.fieldHp}
+      frostGuard={save.frostGuard}
+      onUsePotion={useInventoryPotion}
+      onEquipRune={equipInventoryRune}
+      onFieldHpChange={hp=>setSave(s=>({...s,fieldHp:hp}))}
+      onFrostGuardHit={()=>setSave(s=>({...s,frostGuard:Math.max(0,s.frostGuard-1)}))}
     />;
   }
 
@@ -6490,18 +6576,8 @@ const [roadT, setRoadT] = useState(0.06);
               <div className="hall-slots"><button className="hall-slot on" onClick={()=>say("Надета базовая броня.")}>♜</button><button className="hall-slot on" onClick={()=>say("Экипирован базовый щит.")}>◉</button><button className="hall-slot on" onClick={()=>say("Надеты базовые сапоги.")}>⌁</button></div>
               <span className="hall-count">Базовый набор</span>
             </div>
-            <button className="hall-section" onClick={()=>say(save.potions.length?"В Чертоге хранятся: "+save.potions.map(id=>({lifeElixir:'Эликсир жизни',northernMoss:'Эликсир северного мха',frostDraught:'Ледяной эликсир'} as Record<string,string>)[id]||id).join(', ')+'.':"Эликсиры появятся здесь после первых наград.")}>
-              <span className="hall-icon">🧪</span><h3>Эликсиры</h3>
-              <p>Лечение, сила, защита и руническая энергия. Зелья расходуются во время путешествий.</p>
-              <div className="hall-slots"><span className="hall-slot"><i className="vial" style={{"--vial":"#d94332"} as React.CSSProperties}/></span><span className="hall-slot"><i className="vial" style={{"--vial":"#359ada"} as React.CSSProperties}/></span><span className="hall-slot"><i className="vial" style={{"--vial":"#57a85a"} as React.CSSProperties}/></span></div>
-              <span className="hall-count">{save.potions.length?save.potions.length+" эликсир":"Пока пусто"}</span>
-            </button>
-            <button className="hall-section" onClick={()=>say(save.runes.length?"Найденные руны: "+save.runes.map(id=>({uruzStrength:'Уруз — сила (+2 к удару)',raidoPath:'Райдо — путь',algizGuard:'Альгиз — защита',kenazShard:'Кеназ — огонь'} as Record<string,string>)[id]||id).join(', ')+'.':"Выбор боевых и путевых рун откроется после первого испытания.")}>
-              <span className="hall-icon">ᛉ</span><h3>Руны</h3>
-              <p>Боевая, защитная и путевая руны. Их силу герой сможет менять перед выходом из Чертога.</p>
-              <div className="hall-slots"><span className="hall-slot on">ᚦ</span><span className="hall-slot">ᛉ</span><span className="hall-slot">ᚱ</span></div>
-              <span className="hall-count">{1+save.runes.length} {save.runes.length?"руны":"базовая руна"}</span>
-            </button>
+            <div className="hall-section inventory-hall"><InventorySection kind="potions" potions={save.potions} runes={save.runes} equippedRune={save.equippedRune} hp={Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp())} maxHp={(heroDef?.hp??100)+gearHp()} frostGuard={save.frostGuard} onUsePotion={useInventoryPotion} onEquipRune={equipInventoryRune}/></div>
+            <div className="hall-section inventory-hall"><InventorySection kind="runes" potions={save.potions} runes={save.runes} equippedRune={save.equippedRune} hp={Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp())} maxHp={(heroDef?.hp??100)+gearHp()} frostGuard={save.frostGuard} onUsePotion={useInventoryPotion} onEquipRune={equipInventoryRune}/></div>
           </div>
           <button className="craft-entry" onClick={()=>{haptic();go({t:"craft"});}}><b>🔥 Перейти в локацию крафта</b><span>Соединяй оружие, материалы и Капли силы в новые предметы.</span></button>
         </div>
