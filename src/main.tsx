@@ -2121,12 +2121,16 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       pathTexture.dispose();
       image.dispose();
     }, undefined, error => console.warn("Path texture unavailable; using painted paths", error));
-    const road = (points:Array<[number,number]>, width:number) => {
+    const road = (points:Array<[number,number]>, width:number, bridgeLandingY?:number) => {
       width *= 1.12;
       const controls=points.map(([x,z])=>new THREE.Vector3(x,0,z));
       let routeLength=0;for(let i=1;i<controls.length;i++)routeLength+=controls[i].distanceTo(controls[i-1]);
       const curve=new THREE.CatmullRomCurve3(controls,false,"centripetal");
-      const pts=curve.getSpacedPoints(Math.max(8,Math.ceil(routeLength/1.35))).map(p=>new THREE.Vector3(p.x,groundY(p.x,p.z),p.z));
+      const pts=curve.getSpacedPoints(Math.max(8,Math.ceil(routeLength/1.35))).map((p,i,all)=>{
+        const ground=groundY(p.x,p.z);
+        const approach=bridgeLandingY===undefined?0:THREE.MathUtils.smoothstep(i/(all.length-1),.70,1);
+        return new THREE.Vector3(p.x,THREE.MathUtils.lerp(ground,bridgeLandingY??ground,approach),p.z);
+      });
       const surface=(surfaceWidth:number,yOffset:number,material:THREE.Material,wobble:number)=>{
         const verts:number[]=[],uvs:number[]=[],idx:number[]=[];
         let distance=0;
@@ -2209,7 +2213,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     road([[-64,-48],[-70,-48],[-72,-48]],1.58);
     road([[-64,-48],[-67,-40],[-68,-27],[-68,-11],[-65,8]],1.62);
     road([[-65,8],[-68,24],[-70,37],[-72,48]],1.50);
-    road([[-35,44],[-42,49],[NORTH_BRIDGE_X+BRIDGE_SPAN/2+.15,NORTH_BRIDGE_Z]],1.65);
+    // Continue the gravel under the near arch instead of ending in grass just
+    // before the bridge. Overlap the stone landing by a short distance.
+    road([[-35,44],[-42,49],[NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.8,NORTH_BRIDGE_Z],[NORTH_BRIDGE_X+BRIDGE_SPAN/2-1.3,NORTH_BRIDGE_Z]],1.65,NORTH_BRIDGE_Y);
     road([[NORTH_BRIDGE_X-BRIDGE_SPAN/2-.15,NORTH_BRIDGE_Z],[-72,52],[-72,48]],1.55);
 
     const signTexture=(label:string)=>{
@@ -5334,8 +5340,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
             // original spot on the forearm. Never translate the shield itself:
             // model units are enlarged by the hero's scale.
             if(lift>0){
-              if(upper){upper.rotateX(lift*1.05);upper.rotateZ(-lift*.24);}
-              if(lower)lower.rotateX(-lift*.62);
+              if(upper){upper.rotateX(-lift*1.0);upper.rotateZ(-lift*.12);}
+              if(lower)lower.rotateX(-lift*.45);
             }
           }
         }else if(heroAnim.mode==="projected" || heroAnim.mode==="multiview"){
