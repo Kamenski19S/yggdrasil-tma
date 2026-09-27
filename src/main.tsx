@@ -179,6 +179,22 @@ const GATHER_SPOTS:Array<{id:string;kind:GatherKind;x:number;z:number}>=[
   {id:'herb3',kind:'herbs',x:-12,z:-27},{id:'herb4',kind:'herbs',x:-16,z:-27},
   {id:'herb5',kind:'herbs',x:9,z:-38},{id:'herb6',kind:'herbs',x:14,z:-41}
 ];
+// Keep the original spot IDs so existing saves retain their collected plants.
+// New spots are deterministic and avoid the river, village, bridges and shrines.
+for(const [kind,amount,salt] of [['wood',25,1],['twigs',30,2],['herbs',30,3]] as Array<[GatherKind,number,number]>){
+  let placed=0;
+  for(let attempt=0;attempt<500&&placed<amount;attempt++){
+    const rand=(axis:number)=>{const n=Math.sin((attempt+1)*127.1+(salt*7+axis)*311.7)*43758.5453;return n-Math.floor(n);};
+    const x=Math.round(-82+rand(1)*164),z=Math.round(-78+rand(2)*158);
+    const riverX=-57+Math.sin(((z+94)/6)*.42)*4.2;
+    if(Math.abs(x-riverX)<10||Math.abs(x)<33&&z>-36&&z<49)continue;
+    if(Math.abs(Math.abs(x)-35)<3&&z>-43&&z<41)continue;
+    if(Math.abs(z+48)<3&&x>-52&&x<2)continue;
+    if([[5,-70,12],[58,-28,12],[-45,75,10],[-72,-48,10],[-72,48,10],[-64,8,10],[43,32,9]].some(([cx,cz,r])=>Math.hypot(x-cx,z-cz)<r))continue;
+    if(GATHER_SPOTS.some(spot=>Math.hypot(x-spot.x,z-spot.z)<5))continue;
+    GATHER_SPOTS.push({id:`${kind}2_${placed}`,kind,x,z});placed++;
+  }
+}
 const GEAR_IDS:GearId[]=["armor","shield","helmet","boots"];
 const SHIELD_ASSETS=['Shield_Round.glb','Shield_Round_2.glb','Shield_Heater.glb','Shield_Heater_2.glb','Shield_Celtic_Golden.glb'];
 const shieldForgeKey=(asset:string)=>asset===SHIELD_ASSETS[0]?'shield':'shield:'+asset;
@@ -495,7 +511,6 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .mid3d-strike{right:22px;bottom:112px;width:52px;height:52px;border-radius:50%;border:1px solid rgba(255,225,174,.66);background:radial-gradient(circle at 38% 30%,rgba(255,155,75,.98),rgba(126,38,20,.96));color:#fff4df;font-size:22px;font-weight:900;text-shadow:0 1px 4px rgba(0,0,0,.85);box-shadow:0 5px 15px rgba(0,0,0,.42),0 0 12px rgba(255,99,43,.25);touch-action:none}
 .mid3d-strike:active{transform:scale(.88);box-shadow:0 2px 8px rgba(0,0,0,.45),0 0 18px rgba(255,114,54,.55)}
 .mid3d-block{right:22px;bottom:178px;width:52px;height:52px;border-radius:50%;border:1px solid rgba(178,230,255,.83);background:radial-gradient(circle at 38% 30%,#89c2da,#284966);color:#fff;font-size:23px;box-shadow:0 5px 15px rgba(0,0,0,.42);touch-action:none}.mid3d-block:active{transform:scale(.91);filter:brightness(1.25)}.mid3d-block:disabled{opacity:.46}
-.mid3d-bend{right:22px;bottom:244px;width:52px;height:52px;border-radius:50%;border:1px solid rgba(191,232,151,.78);background:radial-gradient(circle at 38% 30%,#61916b,#254b3b);color:#fff8db;font-size:23px;box-shadow:0 5px 15px rgba(0,0,0,.42);touch-action:none}.mid3d-bend:active{transform:scale(.91);filter:brightness(1.2)}
 .mid3d-hero-load{left:50%;top:58%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;color:#f4d36d;text-shadow:0 2px 8px rgba(0,0,0,.85)}
 .mid3d-hero-load b{font-size:34px;line-height:1;animation:heroRunePulse 1.05s ease-in-out infinite}.mid3d-hero-load span{font-size:9px;letter-spacing:.8px;padding:3px 7px;border-radius:8px;background:rgba(4,9,6,.55)}
 .mid3d-hint{left:50%;bottom:9px;transform:translateX(-50%);padding:6px 10px;border-radius:9px;background:rgba(5,10,7,.68);border:1px solid rgba(126,231,135,.18);color:#d0dfd3;font-size:10px;line-height:1.2;white-space:nowrap;pointer-events:none}
@@ -2930,33 +2945,46 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       if(Math.abs(x)<9 && Math.abs(z)<14) continue;
       bush(x,z,.65+midHash(i,503)*.75);
     }
-    // Small harvestable plants are separate from the landmark GLB forest.
-    // Their shapes share a few low-poly meshes; each spot has a persistent ID.
-    const gatherNodes:Array<{spot:typeof GATHER_SPOTS[number];root:THREE.Group;used:boolean;fallAt:number;collider:Collider|null}>=[];
-    const saplingTrunk=new THREE.CylinderGeometry(.085,.14,1.12,6);
-    const saplingCrown=new THREE.ConeGeometry(.62,1.15,7);
-    const shrubLeaf=new THREE.SphereGeometry(.33,7,5);
-    const herbLeaf=new THREE.ConeGeometry(.09,.45,5);
-    const gatherTrunkMat=mat(0x65452e,1),leafMat=mat(0x315944,1),shrubMat=mat(0x466c3d,1),herbMat=mat(0x79aa68,1),flowerMat=mat(0xe0c472,1);
-    for(const spot of GATHER_SPOTS){
-      const root=new THREE.Group();root.position.set(spot.x,groundY(spot.x,spot.z),spot.z);
-      if(spot.kind==='wood'){
-        const trunk=new THREE.Mesh(saplingTrunk,gatherTrunkMat);trunk.position.y=.56;root.add(trunk);
-        for(const height of [1.1,1.55]){const crown=new THREE.Mesh(saplingCrown,leafMat);crown.position.y=height;crown.scale.setScalar(height===1.1?1:.75);root.add(crown);}
-      }else if(spot.kind==='twigs'){
-        for(let j=0;j<4;j++){
-          const crown=new THREE.Mesh(shrubLeaf,shrubMat);crown.position.set(Math.cos(j*2.4)*.33,.42+midHash(j,spot.x)*.22,Math.sin(j*2.4)*.33);root.add(crown);
-        }
-      }else{
-        for(let j=0;j<5;j++){
-          const leaf=new THREE.Mesh(herbLeaf,herbMat);leaf.position.set(Math.cos(j*2.5)*.19,.24,Math.sin(j*2.5)*.19);leaf.rotation.z=(j-2)*.18;root.add(leaf);
-        }
-        const flower=new THREE.Mesh(shrubLeaf,flowerMat);flower.scale.setScalar(.23);flower.position.y=.52;root.add(flower);
+    // Each species uses a handful of instanced low-poly parts, regardless of
+    // how many plants are scattered across the map. The ID stays per spot.
+    type GatherNode={spot:typeof GATHER_SPOTS[number];root:THREE.Object3D;used:boolean;hidden:boolean;fallAt:number;collider:Collider|null;index:number};
+    const gatherNodes:GatherNode[]=[];
+    const saplingTrunk=new THREE.CylinderGeometry(.12,.19,1.65,6);
+    const saplingCrown=new THREE.ConeGeometry(.79,1.4,7);
+    const shrubLeaf=new THREE.SphereGeometry(.52,7,5);
+    const herbLeaf=new THREE.ConeGeometry(.14,.75,5);
+    const gatherTrunkMat=mat(0x65452e,1),leafMat=mat(0x315944,1),shrubMat=mat(0x3c654e,1),herbMat=mat(0x77a964,1),flowerMat=mat(0xf4cf84,1);
+    const gatherCounts={wood:GATHER_SPOTS.filter(p=>p.kind==='wood').length,twigs:GATHER_SPOTS.filter(p=>p.kind==='twigs').length,herbs:GATHER_SPOTS.filter(p=>p.kind==='herbs').length};
+    const gatherBatches:Record<GatherKind,{parts:Array<{mesh:THREE.InstancedMesh;local:THREE.Matrix4}>;next:number}>={wood:{parts:[],next:0},twigs:{parts:[],next:0},herbs:{parts:[],next:0}};
+    const addGatherPart=(kind:GatherKind,geometry:THREE.BufferGeometry,material:THREE.Material,x:number,y:number,z:number,sx=1,sy=1,sz=1,tilt=0)=>{
+      const part=new THREE.Object3D();part.position.set(x,y,z);part.scale.set(sx,sy,sz);part.rotation.z=tilt;part.updateMatrix();
+      const mesh=new THREE.InstancedMesh(geometry,material,gatherCounts[kind]);mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      mesh.frustumCulled=false;mesh.receiveShadow=true;scene.add(mesh);
+      gatherBatches[kind].parts.push({mesh,local:part.matrix.clone()});
+    };
+    addGatherPart('wood',saplingTrunk,gatherTrunkMat,0,.83,0);
+    addGatherPart('wood',saplingCrown,leafMat,0,1.56,0);
+    addGatherPart('wood',saplingCrown,leafMat,0,2.06,0,.74,.74,.74);
+    addGatherPart('twigs',saplingTrunk,gatherTrunkMat,0,.57,0,.65,.68,.65);
+    for(let j=0;j<4;j++)addGatherPart('twigs',shrubLeaf,shrubMat,Math.cos(j*2.4)*.49,.68+Math.sin(j*1.7)*.13,Math.sin(j*2.4)*.49);
+    for(let j=0;j<5;j++)addGatherPart('herbs',herbLeaf,herbMat,Math.cos(j*2.5)*.26,.39,Math.sin(j*2.5)*.26,1,1,1,(j-2)*.21);
+    addGatherPart('herbs',shrubLeaf,flowerMat,0,.76,0,.36,.36,.36);
+    const gatherMatrix=new THREE.Matrix4();
+    const updateGatherNode=(node:GatherNode)=>{
+      node.root.updateMatrix();
+      for(const part of gatherBatches[node.spot.kind].parts){
+        gatherMatrix.multiplyMatrices(node.root.matrix,part.local);
+        part.mesh.setMatrixAt(node.index,gatherMatrix);part.mesh.instanceMatrix.needsUpdate=true;
       }
-      const used=gathered.includes(spot.id);root.visible=!used;
-      const collider:Collider|null=spot.kind==='wood'&&!used?{kind:'circle',x:spot.x,z:spot.z,r:.20}:null;
+    };
+    for(const spot of GATHER_SPOTS){
+      const root=new THREE.Object3D();root.position.set(spot.x,groundY(spot.x,spot.z),spot.z);
+      const used=gathered.includes(spot.id);if(used)root.scale.setScalar(.00001);
+      const collider:Collider|null=spot.kind==='wood'&&!used?{kind:'circle',x:spot.x,z:spot.z,r:.24}:null;
       if(collider)colliders.push(collider);
-      scene.add(root);gatherNodes.push({spot,root,used,fallAt:0,collider});
+      const index=gatherBatches[spot.kind].next++;
+      const node:GatherNode={spot,root,used,hidden:used,fallAt:0,collider,index};
+      gatherNodes.push(node);updateGatherNode(node);
     }
     for(let i=0;i<34;i++){
       const x=-84+midHash(i,610)*168,z=-82+midHash(i,611)*164;
@@ -5545,12 +5573,13 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       }
       setNear(found?`${found}|${foundId}`:"");
       for(const node of gatherNodes){
-        if(!node.used)continue;
+        if(!node.used||node.hidden)continue;
         const progress=THREE.MathUtils.clamp((now-node.fallAt)/470,0,1);
         if(progress<=0)continue;
         if(node.spot.kind==='wood')node.root.rotation.z=-1.35*progress;
         else node.root.scale.setScalar(Math.max(.001,1-progress));
-        if(progress>=1)node.root.visible=false;
+        if(progress>=1){node.root.scale.setScalar(.00001);node.hidden=true;}
+        updateGatherNode(node);
       }
       // Slow, irregular wind keeps the vegetation subtly alive.
       windFoliage.forEach((w,i)=>{
@@ -5764,7 +5793,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     </div>}
     {near&&!ritualOpen&&!forestEventOpen&&whisperPhase==="closed"&&(()=>{
       const [label,id]=near.split("|");
-      if(id.startsWith('gather:'))return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{id.startsWith('gather:sapling')?'Вика возьмёт лёгкий рабочий топор. Древесина нужна плотнику.':id.startsWith('gather:herb')?'Вика нагнётся и соберёт травы для Сигрид.':'Срежь ветки для плотника Бьёрна.'}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>gatherActionRef.current?.(id.slice(7))}>{id.startsWith('gather:herb')?'Нагнуться и собрать':id.startsWith('gather:sapling')?'Срубить':'Срезать ветки'}</button></div>;
+      if(id.startsWith('gather:')){
+        const kind=GATHER_SPOTS.find(spot=>spot.id===id.slice(7))?.kind;
+        return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{kind==='wood'?'Вика возьмёт лёгкий рабочий топор. Древесина нужна плотнику.':kind==='herbs'?'Вика нагнётся и соберёт травы для Сигрид.':'Срежь ветки для плотника Бьёрна.'}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>gatherActionRef.current?.(id.slice(7))}>{kind==='herbs'?'Нагнуться и собрать':kind==='wood'?'Срубить':'Срезать ветки'}</button></div>;
+      }
       if(id==="forge")return <div className="mid3d-ui mid3d-door-prompt"><b>Дверь кузницы</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>forgeActionRef.current?.()}>Открыть ручку</button></div>;
       const villageDoor=["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman","oldfarm"].includes(id);
       if(villageDoor)return <div className="mid3d-ui mid3d-door-prompt"><b>{label}</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>Открыть ручку</button></div>;
@@ -5777,7 +5809,6 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     })()}
     {whisperPhase==="closed"&&<><div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-block" disabled={!gear.includes('shield')} aria-label="Блок щитом" title="Блок щитом" onPointerDown={e=>e.stopPropagation()} onClick={()=>{shieldActionRef.current?.();if('vibrate' in navigator)navigator.vibrate(15);}}>🛡</button>
-    {skin==='valkyrie'&&<button className="mid3d-ui mid3d-bend" aria-label="Нагнуться" title="Нагнуться" onPointerDown={e=>e.stopPropagation()} onClick={()=>{bendActionRef.current?.();if('vibrate' in navigator)navigator.vibrate(10);}}>↘</button>}
     <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" title="Удар оружием" onPointerDown={e=>e.stopPropagation()} onClick={()=>{attackActionRef.current?.();if("vibrate" in navigator)navigator.vibrate(12);}}>⚔</button>
     <button className="mid3d-ui mid3d-action" style={{top:125,background:"rgba(36,62,41,.94)",color:"#fff1d1"}} aria-label="Запас рун и эликсиров" title="Запас" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapOpen(false);setInventoryOpen(true);}}>🎒</button>
     <button className="mid3d-ui mid3d-action" aria-label="Карта Мидгарда" title="Карта Мидгарда" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapHero({x:state.current.x,z:state.current.z});setMapOpen(true);}}>ᚠ</button></>}
