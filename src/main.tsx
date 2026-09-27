@@ -11,7 +11,7 @@ const tg: any = (window as any).Telegram?.WebApp;
 const BASE: string = (import.meta as any).env?.BASE_URL || "/";
 const GLB_CACHE_NAME = "yggdrasil-glb-v1";
 const glbRequests = new Map<string, Promise<ArrayBuffer>>();
-const STEEL_WEAPONS = new Set(['Sword.glb','Sword_2.glb','Sword_Big.glb','Axe.glb','Axe_Small.glb','Axe_Double.glb','Spear.glb','Hammer_Small.glb','Hammer_Double.glb']);
+const STEEL_WEAPONS = new Set(['Sword.glb','Sword_2.glb','Sword_Big.glb','Axe.glb','Axe_Small.glb','Axe_Double.glb','Spear.glb','Hammer_Small.glb','Hammer_Double.glb','Dagger.glb','Dagger_2.glb','Claymore.glb','Scythe.glb']);
 let steelBladeTexture:THREE.Texture|null=null;
 
 function textureSteelOnWeapon(root:THREE.Object3D,asset:string){
@@ -163,7 +163,7 @@ type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" } | { t
 type HeroSkin = "viking" | "valkyrie";
 type HeroWeapon = "default"|"knife"|"axe"|"mace"|"spear";
 const WEAPON_POWER:Record<HeroWeapon,number>={default:0,knife:1,axe:3,mace:2,spear:2};
-const WEAPON_ASSET:Record<Exclude<HeroWeapon,"default">,string>={knife:'Sword_2.glb',axe:'Axe.glb',mace:'Hammer_Small.glb',spear:'Spear.glb'};
+const WEAPON_ASSET:Record<Exclude<HeroWeapon,"default">,string>={knife:'Dagger.glb',axe:'Axe.glb',mace:'Hammer_Small.glb',spear:'Spear.glb'};
 type GearId="armor"|"shield"|"helmet"|"boots";
 const GEAR_IDS:GearId[]=["armor","shield","helmet","boots"];
 const SHIELD_ASSETS=['Shield_Round.glb','Shield_Round_2.glb','Shield_Heater.glb','Shield_Heater_2.glb','Shield_Celtic_Golden.glb'];
@@ -1267,7 +1267,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     if(whisperAnswer!==null)return;
     setWhisperAnswer(answer);
     if(answer===WHISPER_QUEST.c){
-      onWhisperCorrect();setWhisperReward("8 Капель силы и Цепной шип");setWhisperLog("Камень признал твоё знание истории Мидгарда.");setWhisperPhaseSafe("reward");
+      onWhisperCorrect();setWhisperReward("8 Капель силы и малый молот");setWhisperLog("Камень признал твоё знание истории Мидгарда.");setWhisperPhaseSafe("reward");
     }else{
       whisperBattleStartedRef.current=true;
       setWhisperLog("Хродвитнир выходит из янтарного света. Теперь ответит сталь.");
@@ -5404,9 +5404,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
 function SparkDrop(){return <span className="spark-drop" aria-label="Капля силы"/>;}
 
 const FORGE_WEAPON_MODELS = [
-  ['Sword.glb','Меч','default'],['Sword_2.glb','Меч II','knife'],['Sword_Big.glb','Большой меч',''],['Sword_Golden.glb','Золотой меч',''],
+  ['Sword.glb','Меч','default'],['Sword_2.glb','Меч II',''],['Sword_Big.glb','Большой меч',''],['Sword_Golden.glb','Золотой меч',''],
   ['Axe.glb','Топор','axe'],['Axe_Small.glb','Малый топор',''],['Axe_Double.glb','Двойной топор',''],['Spear.glb','Копьё','spear'],
-  ['Hammer_Small.glb','Молот','mace'],['Hammer_Double.glb','Двойной молот',''],['Shield_Round.glb','Круглый щит','shield'],['Shield_Round_2.glb','Щит II',''],
+  ['Hammer_Small.glb','Малый молот','mace'],['Hammer_Double.glb','Двойной молот',''],['Dagger.glb','Боевой кинжал','knife'],['Dagger_2.glb','Кинжал II',''],
+  ['Claymore.glb','Клеймор',''],['Scythe.glb','Боевая коса',''],['Shield_Round.glb','Круглый щит','shield'],['Shield_Round_2.glb','Щит II',''],
   ['Shield_Heater.glb','Щит',''],['Shield_Heater_2.glb','Щит II',''],['Shield_Celtic_Golden.glb','Золотой щит','']
 ] as const;
 
@@ -5520,9 +5521,9 @@ const [roadT, setRoadT] = useState(0.06);
   const heroDef = save.hero ? HEROES.find(h => h.id === save.hero!.id)! : null;
   const forgeItems = [
     {id:"default",icon:save.heroSkin==="valkyrie"?"⚔️":"◢━",name:save.heroSkin==="valkyrie"?"Меч валькирии":"Секира викинга",kind:"weapon",owned:true},
-    {id:"knife",icon:"🗡️",name:"Боевой нож",kind:"weapon",owned:save.ownedWeapons.includes("knife")},
+    {id:"knife",icon:"🗡️",name:"Боевой кинжал",kind:"weapon",owned:save.ownedWeapons.includes("knife")},
     {id:"axe",icon:"🪓",name:"Северный топор",kind:"weapon",owned:save.ownedWeapons.includes("axe")},
-    {id:"mace",icon:"⛓✦",name:"Цепной шип",kind:"weapon",owned:save.ownedWeapons.includes("mace")},
+    {id:"mace",icon:"🔨",name:"Малый молот",kind:"weapon",owned:save.ownedWeapons.includes("mace")},
     {id:"spear",icon:"🔱",name:"Копьё",kind:"weapon",owned:save.ownedWeapons.includes("spear")},
     {id:"armor",icon:"♜",name:"Нагрудная броня",kind:"gear",owned:true},
     {id:"shield",icon:"🛡️",name:"Круглый щит",kind:"gear",owned:true},
@@ -5629,7 +5630,7 @@ const [roadT, setRoadT] = useState(0.06);
         potions:[...s.potions,'northernMoss'],
         runes:[...new Set([...s.runes,'kenazShard'])]};
     });
-    return 'Цепной шип, эликсир северного мха и осколок Кеназ';
+    return 'Малый молот, эликсир северного мха и осколок Кеназ';
   };
   const fightAct = (id: string, kind: "hit" | "rune" | "shield" | "restore") => {
     if (over) return;
@@ -5805,7 +5806,7 @@ const [roadT, setRoadT] = useState(0.06);
         setSave(s=>s.done.includes('chest:norns')?s:{...s,
           done:[...new Set([...s.done,'chest:norns'])],
           potions:[...s.potions,'lifeElixir'],runes:[...new Set([...s.runes,'uruzStrength'])],ownedWeapons:[...new Set([...s.ownedWeapons,'knife'])]});
-        haptic('success');say('В красном сундуке: боевой нож, Эликсир жизни и руна силы Уруз ᚢ. Норны оставили подсказку: доски лежат на Старом хуторе, крепления — у мастера Торвальда. Отнеси оба предмета плотнику Бьёрну: он откроет Северный мост и путь к золотому сундуку.');
+        haptic('success');say('В красном сундуке: боевой кинжал, Эликсир жизни и руна силы Уруз ᚢ. Норны оставили подсказку: доски лежат на Старом хуторе, крепления — у мастера Торвальда. Отнеси оба предмета плотнику Бьёрну: он откроет Северный мост и путь к золотому сундуку.');
         return;
       }
       if (id === "forge") {
