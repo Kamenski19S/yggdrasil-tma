@@ -2176,7 +2176,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     // Village roads connect the front and rear gates.
     road([[0,43.5],[0,35],[0,27],[1,18],[1,9],[1,2]],2.35);
     road([[1,2],[0,-6],[0,-17],[0,-27],[0,-36]],2.35);
-    road([[0,-36],[0,-43],[-8,-49],[-24,-48],[-35,-48]],1.8);
+    // Join the unfinished straight trail by the wolf to the southern stone
+    // bridge. Both endpoints are on the same z=-48 line; the missing 15 m
+    // between x=-35 and x=-50 was why the path stopped in the grass.
+    road([[0,-36],[0,-43],[-8,-49],[-24,-48],[-35,-48],[-42,-48],[-50,-48]],1.8);
     road([[0,1],[-5,1],[-10,-2.55]],1.6);
     // Side streets run in front of the relocated entrances.
     homeDestinations.forEach(p=>road([[0,p.z],[p.x*.5,p.z],[p.x,p.z]],1.5));
@@ -4909,6 +4912,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       if(gear.includes('shield'))shieldRaiseUntilRef.current=performance.now()+1250;
     };
     let shieldGuardMount:THREE.Group|null=null;
+    const shieldIdleOrientation=new THREE.Quaternion().setFromEuler(new THREE.Euler(0,Math.PI,0));
+    const shieldFacing=new THREE.Quaternion();
+    const guardHeroWorld=new THREE.Quaternion(),guardParentWorld=new THREE.Quaternion();
     const heroAsset=skin==="valkyrie"
       ? "Vika-3d-animated-optimized.glb"
       : "Yggdrasil_Viking_Jarl.glb";
@@ -5341,16 +5347,26 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
             const remaining=shieldRaiseUntilRef.current-now;
             const lift=remaining>0?Math.min(THREE.MathUtils.clamp((1250-remaining)/170,0,1),THREE.MathUtils.clamp(remaining/260,0,1)):0;
             const upper=heroAnim.shieldUpper,lower=heroAnim.shieldLower;
-            // Raise the entire forearm in front of the torso. Counter-rotate
-            // the shield around its own mount to keep its face upright while
-            // it stays attached to the forearm at the original position.
+            // Idle's left arm points down. Move the elbow inward and in front
+            // of the chest, and bring the forearm above the face.
             if(lift>0){
-              if(upper)upper.rotateX(-lift*2.0);
+              if(upper){upper.rotateX(-lift*1.9);upper.rotateY(-lift*.8);upper.rotateZ(lift*.8);}
               if(lower)lower.rotateX(-lift*.3);
             }
-            // The mount faces backwards (Y = PI), so the compensating local
-            // X angle has the same sign as the arm's world-space rotation.
-            if(shieldGuardMount)shieldGuardMount.rotation.x=-lift*2.3;
+            if(shieldGuardMount){
+              // Keep the painted side pointing in its idle direction while
+              // the mounting point follows the animated forearm. A single X
+              // counter-rotation flipped the straps outward on this rig.
+              hero.getWorldQuaternion(guardHeroWorld);
+              if(lift<=0){
+                shieldGuardMount.quaternion.copy(shieldIdleOrientation);
+                shieldGuardMount.getWorldQuaternion(shieldFacing);
+                shieldFacing.premultiply(guardHeroWorld.clone().invert());
+              }else{
+                shieldGuardMount.parent!.getWorldQuaternion(guardParentWorld);
+                shieldGuardMount.quaternion.copy(guardParentWorld.invert()).multiply(guardHeroWorld).multiply(shieldFacing);
+              }
+            }
           }
         }else if(heroAnim.mode==="projected" || heroAnim.mode==="multiview"){
           // Very small vertical step + body sway: enough to read as walking
