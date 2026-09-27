@@ -4693,6 +4693,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
 
     let heroAnim:any=null;
     let attackStartedAt=-10000;
+    let bowDrawAt=-10000;
+    let bowReleased=true;
+    let bowString:THREE.BufferAttribute|null=null;
     const attackGlowMats:THREE.MeshStandardMaterial[]=[];
     const strikeColor=skin==="valkyrie"?0x91ddff:0xff8538;
     const strikeMat=new THREE.MeshBasicMaterial({color:strikeColor,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide});
@@ -4758,9 +4761,12 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
     },'HERO ARROW');
     shootActionRef.current=()=>{
       if(weapon!=='bow'||arrowsRef.current<=0||!arrowTemplate||!heroAnim)return;
-      const now=performance.now();if(now-attackStartedAt<520)return;
-      attackActionRef.current?.();
+      const now=performance.now();if(now-bowDrawAt<850)return;
+      bowDrawAt=now;bowReleased=false;
       arrowsRef.current--;spendArrowRef.current();
+    };
+    const releaseBowArrow=(now:number)=>{
+      if(!arrowTemplate)return;
       const projectile=arrowTemplate.clone(true);
       projectile.updateMatrixWorld(true);
       const bounds=new THREE.Box3().setFromObject(projectile);
@@ -4858,7 +4864,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
           object.material=Array.isArray(object.material)?object.material.map(recolor):recolor(object.material);
         });
       }
-      if(gear.includes('shield')){
+      if(gear.includes('shield')&&weapon!=='bow'){
         const shieldHand=isVika?bone('LeftForeArm'):model.getObjectByName('WeaponSocket_L');
         if(shieldHand)loadGlbWithFolderFallback(shieldAsset,(shieldGlb:any)=>{
           if(!glbTreesAlive)return;
@@ -4886,10 +4892,35 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
       if(skin==="valkyrie"||weapon!=="default"){
         // GLTFLoader strips the colon from Mixamo bone names while binding animations.
         const hand=skin==="valkyrie"
-          ? model.getObjectByName("mixamorigRightHand") || model.getObjectByName("mixamorig:RightHand") || model.getObjectByName("RightHand")
+          ? model.getObjectByName(weapon==='bow'?"mixamorigLeftHand":"mixamorigRightHand") || model.getObjectByName(weapon==='bow'?"mixamorig:LeftHand":"mixamorig:RightHand") || model.getObjectByName(weapon==='bow'?"LeftHand":"RightHand")
           : model.getObjectByName("WeaponSocket_R") || model.getObjectByName("WeaponSocket_L");
         const asset=weapon==="default"?'Sword.glb':WEAPON_ASSET[weapon];
-        if(hand&&asset)loadGlbWithFolderFallback(asset,(swordGlb:any)=>{
+        if(hand&&weapon==='bow'){
+          const bowMount=new THREE.Group();
+          bowMount.position.set(0,-.03,.055);
+          // A visible bow is available immediately, even while the detailed GLB loads.
+          const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(0,-.26,0),new THREE.Vector3(-.10,-.15,0),new THREE.Vector3(-.13,0,0),new THREE.Vector3(-.10,.15,0),new THREE.Vector3(0,.26,0)]);
+          bowMount.add(new THREE.Mesh(new THREE.TubeGeometry(curve,18,.012,5,false),new THREE.MeshStandardMaterial({color:0x84502a,roughness:.65})));
+          const stringGeometry=new THREE.BufferGeometry();
+          bowString=new THREE.Float32BufferAttribute([0,-.26,0,0,0,.015,0,.26,0],3);
+          stringGeometry.setAttribute('position',bowString);
+          bowMount.add(new THREE.Line(stringGeometry,new THREE.LineBasicMaterial({color:0xf5dfb0})));
+          hand.add(bowMount);
+          loadGlbWithFolderFallback(asset,(bowGlb:any)=>{
+            if(!glbTreesAlive)return;
+            const bow=bowGlb.scene;
+            bow.updateMatrixWorld(true);
+            const bounds=new THREE.Box3().setFromObject(bow),size=bounds.getSize(new THREE.Vector3());
+            const span=Math.max(size.x,size.y,size.z);
+            if(span<.001)return;
+            const center=bounds.getCenter(new THREE.Vector3());
+            bow.position.sub(center);
+            const detailed=new THREE.Group();detailed.scale.setScalar(.54/span);detailed.add(bow);
+            bowMount.add(detailed);
+            (bowMount.children[0] as THREE.Object3D).visible=false;
+          },'HERO BOW');
+        }
+        if(hand&&asset&&weapon!=='bow')loadGlbWithFolderFallback(asset,(swordGlb:any)=>{
           if(!glbTreesAlive)return;
           const blade=swordGlb.scene;
           textureSteelOnWeapon(blade,asset);
@@ -4900,7 +4931,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
           const center=bounds.getCenter(new THREE.Vector3());
           blade.position.set(-center.x,-bounds.min.y,-center.z);
           const grip=new THREE.Group();
-          grip.scale.setScalar((skin==="valkyrie"?(weapon==="spear"?.82:weapon==="bow"?.9:.57):1.15)/size.y);
+          grip.scale.setScalar((skin==="valkyrie"?(weapon==="spear"?.82:.57):1.15)/size.y);
           grip.position.set(0,skin==="valkyrie"?-.065:0,.015);
           grip.rotation.x=-.20;
           grip.add(blade);
@@ -4954,7 +4985,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
         const attack=attackClip?mixer.clipAction(attackClip):null;
         const fall=fallClip?mixer.clipAction(fallClip):null;
         idle.play();
-        heroAnim={mode:"clips",model,mixer,actions:{idle,walk,attack,fall},current:idle,attackUntil:0,fallen:false,phase:1.2,shieldUpper:bone('LeftArm'),shieldLower:bone('LeftForeArm')};
+        heroAnim={mode:"clips",model,mixer,actions:{idle,walk,attack,fall},current:idle,attackUntil:0,fallen:false,phase:1.2,shieldUpper:bone('LeftArm'),shieldLower:bone('LeftForeArm'),bowLeft:bone('LeftArm'),bowRight:bone('RightArm'),bowElbow:bone('RightForeArm')};
       }else if(projectedFront || isV6MultiView){
         // V5/V6 experimental textured heroes keep the artwork/model intact.
         // For V6 we use a subtle full-body walking motion because its current
@@ -5137,6 +5168,19 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
             if(now>=heroAnim.attackUntil)transition(moving?heroAnim.actions.walk:heroAnim.actions.idle);
           }
           heroAnim.mixer.update(dt);
+          if(weapon==='bow'&&!heroAnim.fallen){
+            const elapsed=now-bowDrawAt;
+            const drawing=elapsed>=0&&elapsed<780;
+            const pull=drawing?Math.min(1,elapsed/350)*Math.min(1,(780-elapsed)/220):0;
+            // The left hand aims; the right hand draws back and releases.
+            heroAnim.bowLeft?.rotateX(-.65-.32*pull);
+            heroAnim.bowLeft?.rotateZ(-.28);
+            heroAnim.bowRight?.rotateX(-.65-.45*pull);
+            heroAnim.bowRight?.rotateZ(.35+.35*pull);
+            heroAnim.bowElbow?.rotateX(-.55*pull);
+            if(bowString){bowString.setZ(1,.015+.10*pull);bowString.needsUpdate=true;}
+            if(!bowReleased&&elapsed>=520){bowReleased=true;releaseBowArrow(now);}
+          }
           if(skin==='valkyrie'&&gear.includes('shield')&&!heroAnim.fallen){
             const remaining=shieldRaiseUntilRef.current-now;
             if(remaining>0){
