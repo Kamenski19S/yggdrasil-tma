@@ -1893,7 +1893,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       if(banditCollision){
         const distance=Math.hypot(x-banditCollision.x,z-banditCollision.z);
         const previous=Math.hypot(state.current.x-banditCollision.x,state.current.z-banditCollision.z);
-        if(distance<banditCollision.r+HERO_RADIUS && distance<previous-.001)return true;
+        const safeDistance=banditCollision.r+HERO_RADIUS;
+        if(distance<safeDistance && (previous>=safeDistance || distance<previous-.001))return true;
       }
       // The northern crossing stays blocked from either bank until its repair quest is complete.
       if(!northBridgeRepaired&&hits(x,z,{kind:"rect",x:NORTH_BRIDGE_X,z:NORTH_BRIDGE_Z,w:BRIDGE_SPAN+.6,d:BRIDGE_WIDTH+.5,rot:0}))return true;
@@ -4695,7 +4696,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       if(preview.current!=='Scene')preview.actions[preview.current]?.stop();
       const action=preview.actions[name];
       if(name!=='Scene'&&action){
-        action.reset().setEffectiveWeight(name==='Run'?.48:.7);
+        action.reset().setEffectiveWeight(1);
         action.setLoop(name==='Run'?THREE.LoopRepeat:THREE.LoopOnce,name==='Run'?Infinity:1);
         action.clampWhenFinished=name==='Death';action.play();
       }
@@ -4718,7 +4719,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         root.position.set(banditHide.x,groundY(banditHide.x,banditHide.z)+footOffset,banditHide.z);
         root.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
         scene.add(root);
-        banditCollision={x:banditHide.x,z:banditHide.z,r:.92};
+        banditCollision={x:banditHide.x,z:banditHide.z,r:1.42};
         const health=new THREE.Group();
         const healthParts:THREE.Mesh[]=[];
         for(let i=0;i<3;i++){
@@ -4731,23 +4732,19 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         for(const clip of gltf.animations||[])actions[clip.name]=mixer.clipAction(clip);
         // Keep the full original rig pose active while procedural partial clips
         // animate limbs. Switching it off caused the hood to stretch on mobile.
-        actions.Scene?.play();
+        if(actions.Scene){actions.Scene.play();actions.Scene.paused=true;}
         banditPreview={root,mixer,actions,current:'Scene',next:0,alerted:false,hp:3,footOffset,health,healthParts};
-        const hand=root.getObjectByName('DEF-hand.R_0440')||root.getObjectByName('DEF-hand_R_0440')||root.getObjectByName('ORG-hand.R_0443');
-        if(hand)loadGlbWithFolderFallback('Sword_2.glb',(weaponGlb:any)=>{
-          if(!glbTreesAlive||!banditPreview)return;
-          const blade=weaponGlb.scene as THREE.Object3D;
-          textureSteelOnWeapon(blade,'Sword_2.glb');
-          blade.updateMatrixWorld(true);
-          const box=new THREE.Box3().setFromObject(blade),size=box.getSize(new THREE.Vector3());
-          if(size.y<.001)return;
-          blade.position.set(-box.getCenter(new THREE.Vector3()).x,-box.min.y,-box.getCenter(new THREE.Vector3()).z);
-          const sword=new THREE.Group();sword.add(blade);hand.add(sword);
-          sword.updateMatrixWorld(true);
-          const span=new THREE.Box3().setFromObject(sword).getSize(new THREE.Vector3()).length();
-          if(span>.001)sword.scale.setScalar(.9/span);
-          sword.rotation.x=-.25;
-        },'BANDIT SWORD');
+        const hand=root.getObjectByName('DEF-hand.R_0440');
+        if(hand){
+          const iron=new THREE.MeshStandardMaterial({color:0x9aa5a9,metalness:.68,roughness:.34,side:THREE.DoubleSide});
+          const grip=new THREE.MeshStandardMaterial({color:0x38231a,roughness:.9});
+          const sword=new THREE.Group();
+          const blade=new THREE.Mesh(new THREE.BoxGeometry(.12,.69,.035),iron);blade.position.y=.47;sword.add(blade);
+          const tip=new THREE.Mesh(new THREE.ConeGeometry(.07,.18,4),iron);tip.rotation.y=Math.PI/4;tip.position.y=.9;sword.add(tip);
+          const handle=new THREE.Mesh(new THREE.CylinderGeometry(.035,.04,.26,8),grip);handle.position.y=.01;sword.add(handle);
+          const guard=new THREE.Mesh(new THREE.BoxGeometry(.31,.045,.075),iron);guard.position.y=.15;sword.add(guard);
+          sword.rotation.z=-.18;hand.add(sword);
+        }
       },'BANDIT PREVIEW');
     };
 
@@ -5156,6 +5153,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           preview.root.rotation.y=Math.atan2(dx,dz);
         }
         preview.mixer.update(dt);
+        if(preview.current==='Attack'&&now<preview.next){
+          const arm=preview.root.getObjectByName('DEF-upper_arm.R_0457');
+          if(arm)arm.rotateX(-.9*Math.sin(Math.PI*THREE.MathUtils.clamp((1150-(preview.next-now))/850,0,1)));
+        }
       }
       // Keep the latest map position independently from the forge. This also
       // covers exits through Hero, Gift, Hall and the world tree navigation.
