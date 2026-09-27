@@ -5483,6 +5483,7 @@ function ForgeWeaponWall({owned,ownedShields,selected,selectedShield,onChoose}:{
 function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
   const [save, setSave] = useState<Save>(loadSave);
+  const [bowTrial,setBowTrial]=useState(false);
   const [pick, setPick] = useState("");
   const [pickName, setPickName] = useState("");
   const [toast, setToast] = useState("");
@@ -5548,7 +5549,7 @@ const [roadT, setRoadT] = useState(0.06);
     {id:"axe",icon:"🪓",name:"Северный топор",kind:"weapon",owned:save.ownedWeapons.includes("axe")},
     {id:"mace",icon:"⛓✦",name:"Цепной шип",kind:"weapon",owned:save.ownedWeapons.includes("mace")},
     {id:"spear",icon:"🔱",name:"Копьё",kind:"weapon",owned:save.ownedWeapons.includes("spear")},
-    {id:"bow",icon:"🏹",name:"Деревянный лук",kind:"weapon",owned:save.ownedWeapons.includes("bow")},
+    {id:"bow",icon:"🏹",name:"Деревянный лук",kind:"weapon",owned:save.ownedWeapons.includes("bow")||bowTrial},
     {id:"armor",icon:"♜",name:"Нагрудная броня",kind:"gear",owned:true},
     {id:"shield",icon:"🛡️",name:"Круглый щит",kind:"gear",owned:true},
     {id:"helmet",icon:"⛑️",name:"Боевой шлем",kind:"gear",owned:true},
@@ -5584,7 +5585,7 @@ const [roadT, setRoadT] = useState(0.06);
       setSave(s=>({...s,shieldAsset:asset,equippedGear:already?s.equippedGear.filter(gear=>gear!=='shield'):[...new Set([...s.equippedGear,'shield' as GearId])]}));
       haptic('success');say(already?'Щит снят.':name+' надет на левую руку. Закалка выбрана ниже.');return;
     }
-    if(!id||!save.ownedWeapons.includes(id)){
+    if(!id||(!save.ownedWeapons.includes(id)&&!(id==='bow'&&bowTrial))){
       say(name+' пока хранится у защитника. Победи его, чтобы забрать оружие.');return;
     }
     const selected=id as HeroWeapon;
@@ -6284,7 +6285,8 @@ const [roadT, setRoadT] = useState(0.06);
             ? "Следующая закалка оплачивается Каплями силы. Цена растёт вместе с уровнем предмета."
             : "Дар кузнеца: первое улучшение любого доступного предмета бесплатно."}</div>
           <div className="forge-group-title">Стена оружия Вёлунда</div>
-          <ForgeWeaponWall owned={save.ownedWeapons} ownedShields={save.ownedShields} selected={save.heroWeapon} selectedShield={equipped('shield')?save.shieldAsset:null} onChoose={chooseForgeWeapon}/>
+          <ForgeWeaponWall owned={bowTrial?[...save.ownedWeapons,'bow']:save.ownedWeapons} ownedShields={save.ownedShields} selected={save.heroWeapon} selectedShield={equipped('shield')?save.shieldAsset:null} onChoose={chooseForgeWeapon}/>
+          {!save.ownedWeapons.includes('bow')&&<button className="forge-exit" onClick={()=>{setBowTrial(true);setSave(s=>({...s,heroWeapon:'bow',arrows:Math.max(s.arrows,10)}));haptic('success');say('Тренировочный лук взят. Можно сразу проверить выстрелы в Мидгарде.');}}>🏹 {bowTrial?'Пополнить стрелы до 10':'Испытать лук · 10 стрел бесплатно'}</button>}
           <div className="forge-equipped"><span>В руке: {save.heroWeapon==='default'?(save.heroSkin==='valkyrie'?'Меч валькирии':'Секира викинга'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} · сила +{WEAPON_POWER[save.heroWeapon]} · закалка +{forgeLevel(save.heroWeapon)}</span>
             <button disabled={forgeLevel(save.heroWeapon)>=10} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=10?'Максимум +10':<>Закалить {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/></>:'бесплатно'}</>}</button></div>
           <div className="forge-group-title">Экипировка</div>
