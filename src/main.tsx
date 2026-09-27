@@ -1186,7 +1186,7 @@ function midHero3d(h: HeroDef) {
 type WhisperCombatStats={maxHp:number;attack:number;runeAttack:number;defense:number};
 type WhisperPhase="closed"|"question"|"fight"|"reward"|"defeat";
 
-function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string }) {
+function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin, banditDefeated, onBanditReward, onBanditKnockout }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; banditDefeated:boolean; onBanditReward:()=>void; onBanditKnockout:()=>void }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -1199,6 +1199,11 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   const [mapHero, setMapHero] = useState({x:0,z:28});
   const [heroReady, setHeroReady] = useState(false);
   const [heroLoadFailed, setHeroLoadFailed] = useState(false);
+  const [banditHeroHp,setBanditHeroHp]=useState(whisperStats.maxHp);
+  const [banditSeen,setBanditSeen]=useState(false);
+  const [banditHit,setBanditHit]=useState(0);
+  const banditHpRef=useRef(whisperStats.maxHp);
+  const banditDamageRef=useRef<(amount:number)=>void>(()=>{});
   const [insideHome, setInsideHome] = useState(false);
   const [whisperPhase,setWhisperPhase]=useState<WhisperPhase>("closed");
   const whisperPhaseRef=useRef<WhisperPhase>("closed");
@@ -1226,6 +1231,12 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   const attackActionRef = useRef<(()=>void)|null>(null);
   const onRef=useRef(on);
   onRef.current=on;
+  banditDamageRef.current=(amount:number)=>{
+    const next=banditHpRef.current-amount;
+    setBanditHit(Date.now());
+    if(next<=0){banditHpRef.current=whisperStats.maxHp;setBanditHeroHp(whisperStats.maxHp);state.current.x=0;state.current.z=28;onBanditKnockout();return;}
+    banditHpRef.current=next;setBanditHeroHp(next);
+  };
   const shieldActionRef = useRef<(()=>void)|null>(null);
   const shieldRaiseUntilRef=useRef(0);
   const [villageGateOpen, setVillageGateOpen] = useState(false);
@@ -4689,7 +4700,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     const banditSpot={x:-44,z:47};
     let banditRequested=false;
     const banditHide={x:banditSpot.x-2,z:banditSpot.z+2};
-    let banditPreview:{root:THREE.Object3D;actor:THREE.Group;sword:THREE.Group;mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>;current:string;next:number;alerted:boolean;hp:number;deathAt:number;restY:number;health:THREE.Group;healthParts:THREE.Mesh[]}|null=null;
+    let banditPreview:{root:THREE.Object3D;actor:THREE.Group;sword:THREE.Group;mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>;current:string;next:number;alerted:boolean;hp:number;deathAt:number;restY:number;enemyNextAttack:number;enemyHitAt:number;health:THREE.Group;healthParts:THREE.Mesh[]}|null=null;
     const playBandit=(preview:NonNullable<typeof banditPreview>,name:string,now:number)=>{
       if(preview.current===name&&name==='Run')return;
       if(preview.current===name&&now<preview.next)return;
@@ -4741,8 +4752,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const tip=new THREE.Mesh(new THREE.ConeGeometry(.09,.2,4),iron);tip.rotation.y=Math.PI/4;tip.position.y=1.09;sword.add(tip);
         const handle=new THREE.Mesh(new THREE.CylinderGeometry(.043,.05,.29,8),grip);handle.position.y=.03;sword.add(handle);
         const guard=new THREE.Mesh(new THREE.BoxGeometry(.37,.055,.09),iron);guard.position.y=.18;sword.add(guard);
-        sword.position.set(.68,1.25,.28);sword.rotation.set(.72,0,1.96);actor.add(sword);
-        banditPreview={root,actor,sword,mixer,actions,current:'Scene',next:0,alerted:false,hp:3,deathAt:0,restY:root.position.y,health,healthParts};
+        sword.position.set(.68,1.25,.28);sword.rotation.set(.25,0,-.95);actor.add(sword);
+        banditPreview={root,actor,sword,mixer,actions,current:'Scene',next:0,alerted:false,hp:banditDefeated?0:3,deathAt:banditDefeated?performance.now():0,restY:root.position.y,enemyNextAttack:0,enemyHitAt:0,health,healthParts};
+        if(banditDefeated){banditCollision=null;sword.visible=false;playBandit(banditPreview,'Death',performance.now());}
       },'BANDIT PREVIEW');
     };
 
@@ -4815,7 +4827,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       if(target?.alerted&&target.hp>0&&Math.hypot(hero.position.x-target.actor.position.x,hero.position.z-target.actor.position.z)<3.6){
         target.hp--;
         target.healthParts.forEach((part,i)=>{part.visible=i<target.hp;});
-        if(target.hp===0){banditCollision=null;target.deathAt=now;target.sword.visible=false;}
+        if(target.hp===0){banditCollision=null;target.deathAt=now;target.sword.visible=false;onBanditReward();}
         playBandit(target,target.hp?'Hit':'Death',now);
       }
       if(heroAnim?.mode==="clips"&&heroAnim.actions.attack){
@@ -5134,7 +5146,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const preview=banditPreview;
         const dx=q.x-preview.actor.position.x,dz=q.z-preview.actor.position.z;
         const distance=Math.hypot(dx,dz);
-        if(!preview.alerted&&Math.hypot(q.x-banditHide.x,q.z-banditHide.z)<9)preview.alerted=true;
+        if(!preview.alerted&&Math.hypot(q.x-banditHide.x,q.z-banditHide.z)<9){preview.alerted=true;setBanditSeen(true);}
         preview.health.visible=preview.alerted&&preview.hp>0;
         preview.health.position.set(preview.actor.position.x,preview.actor.position.y+3.35,preview.actor.position.z);
         preview.health.quaternion.copy(camera.quaternion);
@@ -5147,17 +5159,29 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
             preview.actor.position.z+=dz/distance*step;
             preview.actor.position.y=groundY(preview.actor.position.x,preview.actor.position.z);
             if(banditCollision){banditCollision.x=preview.actor.position.x;banditCollision.z=preview.actor.position.z;}
-          }else if(now>=preview.next)playBandit(preview,'Attack',now);
+          }else if(now>=preview.enemyNextAttack){
+            preview.enemyNextAttack=now+1850;
+            preview.enemyHitAt=now+560;
+            playBandit(preview,'Attack',now);
+          }
           preview.actor.rotation.y=Math.atan2(dx,dz);
         }
         preview.mixer.update(dt);
+        if(preview.enemyHitAt&&now>=preview.enemyHitAt&&preview.hp>0){
+          preview.enemyHitAt=0;
+          if(Math.hypot(q.x-preview.actor.position.x,q.z-preview.actor.position.z)<3.15){
+            const guarding=shieldRaiseUntilRef.current>now&&gear.includes('shield');
+            banditDamageRef.current(guarding?2:9);
+          }
+        }
         if(preview.current==='Attack'&&now<preview.next){
           const arm=preview.root.getObjectByName('DEF-upper_arm.R_0457');
           const swing=Math.sin(Math.PI*THREE.MathUtils.clamp((1150-(preview.next-now))/850,0,1));
           if(arm)arm.rotateX(-1.55*swing);
-          preview.sword.rotation.z=1.96-1.7*swing;
-          preview.sword.rotation.x=.72-.7*swing;
-        }else{preview.sword.rotation.z=1.96;preview.sword.rotation.x=.72;}
+          if(arm)arm.rotateZ(-1.1*swing);
+          preview.sword.rotation.z=-.95+2.45*swing;
+          preview.sword.rotation.x=.25-.9*swing;
+        }else{preview.sword.rotation.z=-.95;preview.sword.rotation.x=.25;}
         if(preview.deathAt){
           const fall=THREE.MathUtils.smoothstep((now-preview.deathAt)/900,0,1);
           preview.root.rotation.x=-1.38*fall;
@@ -5406,6 +5430,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
 
   return <div className="content mid3d-scene" ref={mount} style={{touchAction:"none",userSelect:"none",WebkitUserSelect:"none"}} onPointerDown={startJoyFromZone} onPointerMove={moveJoyFromZone} onPointerUp={endJoyFromZone} onPointerCancel={endJoyFromZone} onContextMenu={e=>e.preventDefault()}>
     {whisperPhase==="closed"&&<div className="mid3d-ui mid3d-top"><div className="mid3d-pill"><b>МИДГАРД</b><span>Деревня • река • лес • святилища</span></div><div className="mid3d-pill"><b>ᛟ</b><span>Мир живёт вокруг тебя</span></div></div>}
+    {banditSeen&&!banditDefeated&&whisperPhase==="closed"&&<div className="mid3d-ui" style={{top:"21%",left:"50%",transform:"translateX(-50%)",width:"min(88vw,300px)",padding:"9px 13px",borderRadius:12,background:"rgba(16,12,11,.86)",border:"1px solid rgba(227,67,50,.65)",color:"#fff",pointerEvents:"none",zIndex:12}}><div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:800,marginBottom:5}}><span>РАЗБОЙНИК</span><span>❤ {banditHeroHp}/{whisperStats.maxHp}</span></div><div style={{height:7,background:"#382b29",borderRadius:8,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.max(0,banditHeroHp/whisperStats.maxHp*100)}%`,background:banditHit?"#ef4c40":"#72c46e",transition:"width .25s"}}/></div></div>}
+    {banditHit>0&&whisperPhase==="closed"&&<i key={banditHit} className="mid3d-ui whisper-battle-fx guard"/>}
     {near.endsWith("|whisperStone")&&whisperResolved&&whisperPhase==="closed"&&<button className="mid3d-ui mid3d-rematch" onPointerDown={e=>e.stopPropagation()} onClick={beginWhisperRematch}>⚔ Пройти испытание ещё раз<small>Повторный бой без награды</small></button>}
     {!heroReady&&<div className="mid3d-ui mid3d-hero-load"><b>{heroLoadFailed?"ᚾ":"ᛉ"}</b><span>{heroLoadFailed?"Герой не загрузился":"ПРОБУЖДЕНИЕ ГЕРОЯ"}</span></div>}
     {mapOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}>
@@ -5751,6 +5777,17 @@ const [roadT, setRoadT] = useState(0.06);
         runes:[...new Set([...s.runes,'kenazShard'])]};
     });
     return 'Малый молот, эликсир северного мха и осколок Кеназ';
+  };
+  const rewardBandit=()=>{
+    setSave(s=>{
+      if(s.done.includes('bandit:forest:reward'))return s;
+      return {...s,sparks:s.sparks+12,done:[...new Set([...s.done,'bandit:forest:reward'])],ownedWeapons:[...new Set([...s.ownedWeapons,'knife'])]};
+    });
+    haptic('success');say('Разбойник побеждён: +12 Капель силы и разбойничий кинжал.');
+  };
+  const banditKnockout=()=>{
+    setSave(s=>({...s,sparks:Math.max(0,s.sparks-5)}));
+    haptic();say('Разбойник сбил Вику с ног. Древо вернуло её к началу пути (−5 Капель силы).');
   };
   const fightAct = (id: string, kind: "hit" | "rune" | "shield" | "restore") => {
     if (over) return;
@@ -6153,6 +6190,9 @@ const [roadT, setRoadT] = useState(0.06);
       }}
       onWhisperCorrect={finishWhisperCorrect}
       onWhisperWin={finishWhisperBattle}
+      banditDefeated={save.done.includes('bandit:forest:reward')}
+      onBanditReward={rewardBandit}
+      onBanditKnockout={banditKnockout}
     />;
   }
 
