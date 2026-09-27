@@ -3845,7 +3845,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     // Golden chest behind the repaired North Bridge.
     // Model: "Fortnite Chest" by Onur, CC BY 4.0.
     // The interaction id/location and quest logic stay unchanged.
-    const forgottenCacheAsset='fortnite_chest.glb';
+    const forgottenCacheAsset='Golden_Chest_Light.glb?v=3';
     const forgottenCacheRoot=new THREE.Group();
     forgottenCacheRoot.userData={id:'forestCache',label:'Золотой сундук'};
     forgottenCacheRoot.position.set(-72,groundY(-72,48),48);
@@ -3861,13 +3861,21 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         o.castShadow=true;
         o.receiveShadow=true;
       });
-      // Keep roughly the same in-world scale as the previous reward chest.
-      chest.scale.setScalar(1.48);
+      // The Onur model is physically much smaller than the previous chest,
+      // so normalize it to a clear in-game size instead of using the old scale value.
+      chest.scale.setScalar(1);
       chest.rotation.y=0;
       chest.position.set(0,0,0);
       chest.updateMatrixWorld(true);
+      const rawBox=new THREE.Box3().setFromObject(chest);
+      const rawSize=new THREE.Vector3();
+      rawBox.getSize(rawSize);
+      const targetWidth=3.25;
+      const sourceWidth=Math.max(rawSize.x,rawSize.z,.001);
+      chest.scale.setScalar(targetWidth/sourceWidth);
+      chest.updateMatrixWorld(true);
       const bb=new THREE.Box3().setFromObject(chest);
-      chest.position.y-=bb.min.y+.32;
+      chest.position.y-=bb.min.y;
       chest.updateMatrixWorld(true);
       forgottenCacheRoot.add(chest);
 
@@ -3875,7 +3883,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       const cacheGlow=new THREE.PointLight(0xffc161,1.1,6.5,2);
       cacheGlow.position.set(0,1.15,.45);
       forgottenCacheRoot.add(cacheGlow);
-      console.log('[FORGOTTEN CACHE] Fortnite Chest loaded',forgottenCacheAsset);
+      console.log('[FORGOTTEN CACHE] Onur Fortnite Chest loaded',forgottenCacheAsset);
     },'FORGOTTEN CACHE');
     addCircleCollider(-72,48,2.15,.08);
 
