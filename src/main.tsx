@@ -4696,6 +4696,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
     let bowDrawAt=-10000;
     let bowReleased=true;
     let bowString:THREE.BufferAttribute|null=null;
+    let bowGrip:THREE.Object3D|null=null;
     const attackGlowMats:THREE.MeshStandardMaterial[]=[];
     const strikeColor=skin==="valkyrie"?0x91ddff:0xff8538;
     const strikeMat=new THREE.MeshBasicMaterial({color:strikeColor,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide});
@@ -4898,6 +4899,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
         if(hand&&weapon==='bow'){
           const bowMount=new THREE.Group();
           bowMount.position.set(0,-.03,.055);
+          bowGrip=bowMount;
           // A visible bow is available immediately, even while the detailed GLB loads.
           const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(0,-.26,0),new THREE.Vector3(-.10,-.15,0),new THREE.Vector3(-.13,0,0),new THREE.Vector3(-.10,.15,0),new THREE.Vector3(0,.26,0)]);
           bowMount.add(new THREE.Mesh(new THREE.TubeGeometry(curve,18,.012,5,false),new THREE.MeshStandardMaterial({color:0x84502a,roughness:.65})));
@@ -4985,7 +4987,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
         const attack=attackClip?mixer.clipAction(attackClip):null;
         const fall=fallClip?mixer.clipAction(fallClip):null;
         idle.play();
-        heroAnim={mode:"clips",model,mixer,actions:{idle,walk,attack,fall},current:idle,attackUntil:0,fallen:false,phase:1.2,shieldUpper:bone('LeftArm'),shieldLower:bone('LeftForeArm'),bowLeft:bone('LeftArm'),bowRight:bone('RightArm'),bowElbow:bone('RightForeArm')};
+        heroAnim={mode:"clips",model,mixer,actions:{idle,walk,attack,fall},current:idle,attackUntil:0,fallen:false,phase:1.2,shieldUpper:bone('LeftArm'),shieldLower:bone('LeftForeArm'),bowLeft:bone('LeftArm'),bowRight:bone('RightArm'),bowElbow:bone('RightForeArm'),bowRightHand:bone('RightHand')};
       }else if(projectedFront || isV6MultiView){
         // V5/V6 experimental textured heroes keep the artwork/model intact.
         // For V6 we use a subtle full-body walking motion because its current
@@ -5175,9 +5177,27 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, arrows, onS
             // The left hand aims; the right hand draws back and releases.
             heroAnim.bowLeft?.rotateX(-.65-.32*pull);
             heroAnim.bowLeft?.rotateZ(-.28);
-            heroAnim.bowRight?.rotateX(-.65-.45*pull);
-            heroAnim.bowRight?.rotateZ(.35+.35*pull);
-            heroAnim.bowElbow?.rotateX(-.55*pull);
+            if(drawing&&bowGrip&&heroAnim.bowRight&&heroAnim.bowRightHand){
+              // Steer the wrist toward the string in world space. This follows
+              // Vika's real skeleton regardless of her current idle/walk clip.
+              const target=bowGrip.getWorldPosition(new THREE.Vector3());
+              const forward=new THREE.Vector3(Math.sin(hero.rotation.y),0,Math.cos(hero.rotation.y));
+              target.addScaledVector(forward,-.10-.24*pull);
+              target.y+=.025;
+              const aim=(joint:THREE.Object3D,strength:number)=>{
+                heroAnim.model.updateMatrixWorld(true);
+                const origin=joint.getWorldPosition(new THREE.Vector3());
+                const wrist=heroAnim.bowRightHand.getWorldPosition(new THREE.Vector3());
+                const current=wrist.sub(origin),desired=target.clone().sub(origin);
+                if(current.lengthSq()<.00001||desired.lengthSq()<.00001)return;
+                const delta=new THREE.Quaternion().setFromUnitVectors(current.normalize(),desired.normalize());
+                const neutral=new THREE.Quaternion(),parent=joint.parent?.getWorldQuaternion(neutral)||neutral;
+                const local=parent.clone().invert().multiply(delta).multiply(parent);
+                joint.quaternion.premultiply(new THREE.Quaternion().identity().slerp(local,strength));
+              };
+              aim(heroAnim.bowRight,.86);
+              if(heroAnim.bowElbow)aim(heroAnim.bowElbow,.82);
+            }
             if(bowString){bowString.setZ(1,.015+.10*pull);bowString.needsUpdate=true;}
             if(!bowReleased&&elapsed>=520){bowReleased=true;releaseBowArrow(now);}
           }
