@@ -1229,6 +1229,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   const shieldActionRef = useRef<(()=>void)|null>(null);
   const shieldRaiseUntilRef=useRef(0);
   const [villageGateOpen, setVillageGateOpen] = useState(false);
+  const [creditsOpen,setCreditsOpen]=useState(false);
   const villageGateOpenRef = useRef(false);
   const [rearGateOpen,setRearGateOpen]=useState(false);
   const rearGateOpenRef=useRef(false);
@@ -4676,6 +4677,34 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     const npc=(x:number,z:number,id:string,label:string,color:number,phase:number)=>{const g=new THREE.Group();g.userData={id,label,phase,baseX:x,baseZ:z};const body=new THREE.Mesh(new THREE.CapsuleGeometry(.32,.78,4,8),mat(color,.9));body.position.y=.85;g.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.25,12,8),mat(0xc99470,.9));head.position.y=1.58;g.add(head);const cloak=box(.7,.9,.15,0x27251f,1);cloak.position.set(0,.82,-.27);g.add(cloak);g.position.set(x,groundY(x,z),z);addMesh(g,id,label);objects.push(g);npcs.push(g);};
     npc(9,-8,"elder","Старейшина",0x73563f,.4);npc(-6,-3,"blacksmith","Кузнец",0x5c3b2b,1.5);npc(21,1,"hunter","Охотник",0x40523f,2.4);npc(5,10,"villager","Житель Мидгарда",0x59634d,3.4);npc(-16,4,"villager2","Житель деревни",0x654b3a,4.2);
 
+    // One non-hostile preview. Load the rig only when the hero approaches the forest.
+    const banditSpot={x:-29,z:24};
+    let banditRequested=false;
+    let banditPreview:{root:THREE.Object3D;mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>;current:string;next:number}|null=null;
+    const loadBanditPreview=()=>{
+      if(banditRequested)return;
+      banditRequested=true;
+      loadGlbWithFolderFallback('Neutral_Bandit_Animated_Optimized.glb',(gltf:any)=>{
+        if(!glbTreesAlive)return;
+        const root=gltf.scene as THREE.Object3D;
+        root.updateMatrixWorld(true);
+        const bounds=new THREE.Box3().setFromObject(root),height=bounds.getSize(new THREE.Vector3()).y;
+        if(height<.001)return;
+        root.scale.multiplyScalar(1.9/height);
+        root.updateMatrixWorld(true);
+        const scaled=new THREE.Box3().setFromObject(root);
+        root.position.set(banditSpot.x,groundY(banditSpot.x,banditSpot.z)-scaled.min.y,banditSpot.z);
+        root.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+        scene.add(root);
+        const mixer=new THREE.AnimationMixer(root);
+        const actions:Record<string,THREE.AnimationAction>={};
+        for(const clip of gltf.animations||[])actions[clip.name]=mixer.clipAction(clip);
+        const idle=actions.Scene||actions.Run;
+        idle?.play();
+        banditPreview={root,mixer,actions,current:actions.Scene?'Scene':'Run',next:performance.now()+3500};
+      },'BANDIT PREVIEW');
+    };
+
     // Tiny pollen motes drift through the air. One shared Points object keeps draw calls low.
     const moteCount=72;
     const motePos=new Float32Array(moteCount*3);
@@ -5052,6 +5081,20 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       const hy=insideHomeRef.current?groundY(heroHomeX,heroHomeZ)+.58*HOME_SCALE*BUILDING_HEIGHT:onRiverBridge(q.x,q.z)?bridgeHeight(q.x,q.z)+.12:groundY(q.x,q.z);
       const moving=!encounterLocked&&l>.05;
       hero.position.set(q.x,hy+.04,q.z);
+      if(!banditRequested&&Math.hypot(q.x-banditSpot.x,q.z-banditSpot.z)<34)loadBanditPreview();
+      if(banditPreview){
+        const preview=banditPreview;
+        preview.mixer.update(dt);
+        if(now>=preview.next){
+          const order=['Scene','Run','Attack','Hit','Death'];
+          const next=order[(order.indexOf(preview.current)+1)%order.length];
+          preview.actions[preview.current]?.stop();
+          const action=preview.actions[next];
+          if(action){action.reset().setLoop(next==='Death'?THREE.LoopOnce:THREE.LoopRepeat, next==='Death'?1:Infinity).play();preview.current=next;}
+          preview.next=now+(next==='Scene'?3500:next==='Run'?3200:next==='Death'?2100:next==='Attack'?1300:950);
+        }
+        preview.root.rotation.y=Math.atan2(Math.sin(now*.00036),Math.cos(now*.00036))+.5;
+      }
       // Keep the latest map position independently from the forge. This also
       // covers exits through Hero, Gift, Hall and the world tree navigation.
       if(now-lastPositionSave>250){
@@ -5321,13 +5364,21 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           <span className="map-landmark" style={{left:"49%",top:"25%"}}>⌗<small>Ворота</small></span>
           <span className="map-landmark" style={{left:"93%",top:"32%"}}>⌂<small>Дом</small></span>
           <span className="map-landmark" style={{left:"47%",top:"8%"}}>♠<small>Роща</small></span>
+          <span className="map-landmark" style={{left:"34%",top:"36%"}}>⚔<small>Разбойник · проверка</small></span>
           <span className="map-landmark goal" style={{left:"49%",top:"53%"}}>ᚠ<small>Цель</small></span>
           <span className="map-landmark hero" style={{left:`${((mapHero.x+88)/176)*100}%`,top:`${100-((mapHero.z+89)/178)*100}%`}}>◆<small>Ты здесь</small></span>
         </div>
         <div className="mid3d-map-goal"><b>{northBridgeRepaired?'Северный мост открыт':'Путь к золотому сундуку'}</b><br/>{northBridgeRepaired?'Перейди мост и открой золотой сундук напротив него.':'Выбери нить у колодца Норн, открой красный сундук, собери доски и крепления и помоги Бьёрну починить мост.'}</div>
+        <button className="mid3d-map-close" onClick={()=>{setMapOpen(false);setCreditsOpen(true);}}>Авторы и лицензии</button>
         <button className="mid3d-map-close" onClick={()=>setMapOpen(false)}>Закрыть карту и продолжить путь</button>
       </div>
     </div>}
+    {creditsOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}><div className="mid3d-map-panel">
+      <div className="mid3d-map-title">Авторы и лицензии</div>
+      <p><b>Neutral Bandit</b> — <a href="https://sketchfab.com/strong.lazzy" target="_blank" rel="noopener noreferrer">ZakRenat</a>. <a href="https://sketchfab.com/3d-models/neutral-bandit-524cad2cfdc7422f93541cb00008b0d3" target="_blank" rel="noopener noreferrer">Оригинальная модель</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
+      <p>Изменения для Yggdrasil Runes: сжаты текстуры, добавлены пробные движения бега, удара, получения удара и падения; исходная анимация сохранена.</p>
+      <button className="mid3d-map-close" onClick={()=>setCreditsOpen(false)}>Вернуться в игру</button>
+    </div></div>}
     {forestEventOpen&&!eventDone&&<div className="mid3d-ui mid3d-interact" style={{bottom:"14%",left:"50%",transform:"translateX(-50%)",width:"min(92vw,390px)",zIndex:31}}>
       <b>ᛟ Колодец Трёх Норн</b>
       <span>В глубине колодца горит тёплое сияние. Серебряная, золотая и алая нити сходятся над водой, связывая прошлое, настоящее и будущее.</span>
