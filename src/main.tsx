@@ -4678,7 +4678,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     npc(9,-8,"elder","Старейшина",0x73563f,.4);npc(-6,-3,"blacksmith","Кузнец",0x5c3b2b,1.5);npc(21,1,"hunter","Охотник",0x40523f,2.4);npc(5,10,"villager","Житель Мидгарда",0x59634d,3.4);npc(-16,4,"villager2","Житель деревни",0x654b3a,4.2);
 
     // One non-hostile preview. Load the rig only when the hero approaches the forest.
-    const banditSpot={x:-29,z:24};
+    // Eastern approach to the closed northern bridge, beside the road and signpost.
+    const banditSpot={x:-44,z:47};
     let banditRequested=false;
     let banditPreview:{root:THREE.Object3D;mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>;current:string;next:number}|null=null;
     const loadBanditPreview=()=>{
@@ -4690,7 +4691,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         root.updateMatrixWorld(true);
         const bounds=new THREE.Box3().setFromObject(root),height=bounds.getSize(new THREE.Vector3()).y;
         if(height<.001)return;
-        root.scale.multiplyScalar(1.9/height);
+        root.scale.multiplyScalar(3.0/height);
         root.updateMatrixWorld(true);
         const scaled=new THREE.Box3().setFromObject(root);
         root.position.set(banditSpot.x,groundY(banditSpot.x,banditSpot.z)-scaled.min.y,banditSpot.z);
@@ -5364,7 +5365,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           <span className="map-landmark" style={{left:"49%",top:"25%"}}>⌗<small>Ворота</small></span>
           <span className="map-landmark" style={{left:"93%",top:"32%"}}>⌂<small>Дом</small></span>
           <span className="map-landmark" style={{left:"47%",top:"8%"}}>♠<small>Роща</small></span>
-          <span className="map-landmark" style={{left:"34%",top:"36%"}}>⚔<small>Разбойник · проверка</small></span>
+          <span className="map-landmark" style={{left:"25%",top:"24%"}}>⚔<small>Разбойник · проверка</small></span>
           <span className="map-landmark goal" style={{left:"49%",top:"53%"}}>ᚠ<small>Цель</small></span>
           <span className="map-landmark hero" style={{left:`${((mapHero.x+88)/176)*100}%`,top:`${100-((mapHero.z+89)/178)*100}%`}}>◆<small>Ты здесь</small></span>
         </div>
