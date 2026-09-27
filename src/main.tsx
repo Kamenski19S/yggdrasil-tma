@@ -2198,8 +2198,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     road([[35,-32],[32,-42],[25,-52],[15,-62],[5,-70]],1.68);
 
     // West side on the village bank: Norns and the deep ash grove.
-    // Reach the riverbank beside the Norns' wheel instead of ending in grass.
-    road([[-35,36],[-42,37],[-48,38],[riverCenterX(38)+RIVER_HALF+.05,38]],1.55);
+    // The trail by the river in front of the Norns' wheel bends north and
+    // joins the northern bridge approach. It must not end at z=38 in grass.
+    road([[-35,36],[-42,37],[-48,38],[-49,42],[-49,47],[NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.8,NORTH_BRIDGE_Z]],1.55);
     // The forest-side trail must rejoin the northern crossing, not stop at
     // the lone spruce above the riverbank.
     road([[-35,44],[-39,54],[-43,64],[-45,75]],1.48);
@@ -4905,6 +4906,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     shieldActionRef.current=()=>{
       if(gear.includes('shield'))shieldRaiseUntilRef.current=performance.now()+1250;
     };
+    let shieldGuardMount:THREE.Group|null=null;
     const heroAsset=skin==="valkyrie"
       ? "Vika-3d-animated-optimized.glb"
       : "Yggdrasil_Viking_Jarl.glb";
@@ -5008,6 +5010,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           // the arm so the painted face points out at the player.
           mount.rotation.y=Math.PI;
           mount.add(shieldModel);shieldHand.add(mount);
+          shieldGuardMount=mount;
         },'HERO SHIELD');
       }
 
@@ -5336,13 +5339,16 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
             const remaining=shieldRaiseUntilRef.current-now;
             const lift=remaining>0?Math.min(THREE.MathUtils.clamp((1250-remaining)/170,0,1),THREE.MathUtils.clamp(remaining/260,0,1)):0;
             const upper=heroAnim.shieldUpper,lower=heroAnim.shieldLower;
-            // Rotate the arm bones while the shield stays fastened to its
-            // original spot on the forearm. Never translate the shield itself:
-            // model units are enlarged by the hero's scale.
+            // Raise the entire forearm in front of the torso. Counter-rotate
+            // the shield around its own mount to keep its face upright while
+            // it stays attached to the forearm at the original position.
             if(lift>0){
-              if(upper){upper.rotateX(-lift*1.0);upper.rotateZ(-lift*.12);}
-              if(lower)lower.rotateX(-lift*.45);
+              if(upper)upper.rotateX(-lift*1.15);
+              if(lower)lower.rotateX(-lift*.25);
             }
+            // The mount faces backwards (Y = PI), so the compensating local
+            // X angle has the same sign as the arm's world-space rotation.
+            if(shieldGuardMount)shieldGuardMount.rotation.x=-lift*1.4;
           }
         }else if(heroAnim.mode==="projected" || heroAnim.mode==="multiview"){
           // Very small vertical step + body sway: enough to read as walking
