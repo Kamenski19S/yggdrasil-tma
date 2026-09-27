@@ -2213,9 +2213,13 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     // into the path toward the northern bridge instead of leaving a cut edge.
     road([[-35,14],[-32,15],[-31,15],[-29,21],[-31,28],[-35,36]],1.42);
 
-    // The river can be crossed only on the wooden bridge. Beyond it a narrow
+    // Meet the raised eastern bridge deck with an actual visible approach.
+    // The old ground-height path ran beneath the bridge and disappeared at
+    // its edge, leaving a sharp end in the grass on the eastern bank.
+    road([[-50,-48],[-51,-48],[-52.5,-48]],2.05,BRIDGE_Y);
+    // The river can be crossed only on the bridge. Beyond it a narrow
     // west-bank trail reaches the old farm, forest cache and Whispering Stone.
-    road([[-50,-48],[-57,-48],[-64,-48]],2.05);
+    road([[-64,-48],[-63,-48],[-61.5,-48]],2.05,BRIDGE_Y);
     road([[-64,-48],[-70,-48],[-72,-48]],1.58);
     road([[-64,-48],[-67,-40],[-68,-27],[-68,-11],[-65,8]],1.62);
     road([[-65,8],[-68,24],[-70,37],[-72,48]],1.50);
@@ -5350,7 +5354,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
             // Idle's left arm points down. Move the elbow inward and in front
             // of the chest, and bring the forearm above the face.
             if(lift>0){
-              if(upper){upper.rotateX(-lift*1.9);upper.rotateY(-lift*.8);upper.rotateZ(lift*.8);}
+              if(upper){upper.rotateX(-lift*1.9);upper.rotateY(-lift*1.0);upper.rotateZ(lift*1.1);}
               if(lower)lower.rotateX(-lift*.3);
             }
             if(shieldGuardMount){
