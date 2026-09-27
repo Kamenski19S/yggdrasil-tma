@@ -3842,10 +3842,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     const deerRing=new THREE.Mesh(new THREE.TorusGeometry(5.8,.045,7,48),new THREE.MeshStandardMaterial({color:0x7e8b72,emissive:0x303d2a,emissiveIntensity:.8,transparent:true,opacity:.48}));deerRing.rotation.x=Math.PI/2;deerRing.position.set(deerClearingX,groundY(deerClearingX,deerClearingZ)+.035,deerClearingZ);scene.add(deerRing);
     squirrel(ashGroveX+5,ashGroveZ+1);
 
-    // Forgotten Cache — ornate cyan/gold fantasy chest GLB.
-    // Keeps the original interaction id/location while replacing the old hollow-oak visual.
-    // This filename is intentionally stable: replace the GLB to iterate on the chest without touching code.
-    const forgottenCacheAsset='Golden_Chest_Light.glb?v=2';
+    // Golden chest behind the repaired North Bridge.
+    // Model: "Fortnite Chest" by Onur, CC BY 4.0.
+    // The interaction id/location and quest logic stay unchanged.
+    const forgottenCacheAsset='fortnite_chest.glb';
     const forgottenCacheRoot=new THREE.Group();
     forgottenCacheRoot.userData={id:'forestCache',label:'Золотой сундук'};
     forgottenCacheRoot.position.set(-72,groundY(-72,48),48);
@@ -3858,23 +3858,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       markMeshes(chest);
       chest.traverse((o:any)=>{
         if(!o.isMesh)return;
-        o.castShadow=false;
+        o.castShadow=true;
         o.receiveShadow=true;
-        const tune=(m:any)=>{
-          if(!m)return m;
-          const mm=m.clone?m.clone():m;
-          const mn=String(mm.name||'');
-          if('roughness' in mm && /gold|iron|cyan|crystal|metal/i.test(mn)) mm.roughness=Math.min(mm.roughness??.55,.48);
-          if('metalness' in mm && /gold|iron|metal/i.test(mn)) mm.metalness=Math.max(mm.metalness??0,.58);
-          if('emissive' in mm && /cyan|crystal|runic|gem|inner/i.test(mn)){
-            mm.emissive=new THREE.Color(0x39ccec);
-            mm.emissiveIntensity=5.12;
-          }
-          mm.needsUpdate=true;
-          return mm;
-        };
-        if(Array.isArray(o.material))o.material=o.material.map(tune);else o.material=tune(o.material);
       });
+      // Keep roughly the same in-world scale as the previous reward chest.
       chest.scale.setScalar(1.48);
       chest.rotation.y=0;
       chest.position.set(0,0,0);
@@ -3883,10 +3870,12 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       chest.position.y-=bb.min.y+.32;
       chest.updateMatrixWorld(true);
       forgottenCacheRoot.add(chest);
+
+      // A restrained warm glow keeps the reward chest readable in the forest.
       const cacheGlow=new THREE.PointLight(0xffc161,1.1,6.5,2);
       cacheGlow.position.set(0,1.15,.45);
       forgottenCacheRoot.add(cacheGlow);
-      console.log('[FORGOTTEN CACHE] GLB loaded',forgottenCacheAsset);
+      console.log('[FORGOTTEN CACHE] Fortnite Chest loaded',forgottenCacheAsset);
     },'FORGOTTEN CACHE');
     addCircleCollider(-72,48,2.15,.08);
 
@@ -5736,6 +5725,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       <div className="mid3d-map-title">Авторы и лицензии</div>
       <p><b>Neutral Bandit</b> — <a href="https://sketchfab.com/strong.lazzy" target="_blank" rel="noopener noreferrer">ZakRenat</a>. <a href="https://sketchfab.com/3d-models/neutral-bandit-524cad2cfdc7422f93541cb00008b0d3" target="_blank" rel="noopener noreferrer">Оригинальная модель</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
       <p>Изменения для Yggdrasil Runes: сжаты текстуры, добавлены пробные движения бега, удара, получения удара и падения; исходная анимация сохранена.</p>
+      <p><b>Fortnite Chest</b> — <a href="https://skfb.ly/onyMB" target="_blank" rel="noopener noreferrer">Onur</a>. <a href="https://skfb.ly/onyMB" target="_blank" rel="noopener noreferrer">Оригинальная модель</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
       <button className="mid3d-map-close" onClick={()=>setCreditsOpen(false)}>Вернуться в игру</button>
     </div></div>}
     {forestEventOpen&&!eventDone&&<div className="mid3d-ui mid3d-interact" style={{bottom:"14%",left:"50%",transform:"translateX(-50%)",width:"min(92vw,390px)",zIndex:31}}>
