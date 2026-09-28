@@ -4273,16 +4273,33 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     objects.push(threeThreads);
     addCircleCollider(threeThreadsX,threeThreadsZ,3.4,.1);
     const rubyChestX=65,rubyChestZ=-32;
-    loadGlbWithFolderFallback('Ruby_Chest_Light.glb?v=2',(gltf:any)=>{
+    // Treasure chest by UE4 CG model, CC BY 4.0.
+    // Keep the existing Ruby_Chest_Light.glb filename so this is a drop-in replacement.
+    loadGlbWithFolderFallback('Ruby_Chest_Light.glb?v=3',(gltf:any)=>{
       if(!glbTreesAlive)return;
       const chest=gltf.scene;
-      chest.scale.setScalar(1.42);
+      markMeshes(chest);
+      chest.scale.setScalar(1);
       chest.rotation.y=0;
+      chest.position.set(0,0,0);
       chest.updateMatrixWorld(true);
-      chest.position.set(rubyChestX,groundY(rubyChestX,rubyChestZ)-new THREE.Box3().setFromObject(chest).min.y,rubyChestZ);
+
+      // The source GLB is extremely small, so normalize it to a readable in-game size.
+      const rawBox=new THREE.Box3().setFromObject(chest);
+      const rawSize=new THREE.Vector3();
+      rawBox.getSize(rawSize);
+      const targetWidth=2.8;
+      const sourceWidth=Math.max(rawSize.x,rawSize.z,.001);
+      chest.scale.setScalar(targetWidth/sourceWidth);
+      chest.updateMatrixWorld(true);
+
+      const bb=new THREE.Box3().setFromObject(chest);
+      chest.position.set(rubyChestX,groundY(rubyChestX,rubyChestZ)-bb.min.y,rubyChestZ);
+      chest.updateMatrixWorld(true);
       addMesh(chest,'nornsChest','Красный сундук Норн');
-      chest.traverse((o:any)=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=true;}});
+      chest.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
       displayChests.push(chest);
+      console.log('[NORNS CHEST] UE4 CG model Treasure chest loaded');
     },'NORNS CHEST');
     addCircleCollider(rubyChestX,rubyChestZ,1.0,.08);
 
@@ -5735,6 +5752,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       <p>Изменения для Yggdrasil Runes: сжаты текстуры, добавлены пробные движения бега, удара, получения удара и падения; исходная анимация сохранена.</p>
       <p><b>Fortnite Chest</b> — <a href="https://skfb.ly/onyMB" target="_blank" rel="noopener noreferrer">Onur</a>. <a href="https://skfb.ly/onyMB" target="_blank" rel="noopener noreferrer">Оригинальная модель</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
       <p>Изменения для Yggdrasil Runes: изменён масштаб модели и выполнена адаптация для размещения в игровой сцене.</p>
+      <p><b>Treasure chest</b> — <a href="https://skfb.ly/oqoXL" target="_blank" rel="noopener noreferrer">UE4 CG model</a>. <a href="https://skfb.ly/oqoXL" target="_blank" rel="noopener noreferrer">Оригинальная модель</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
+      <p>Изменения для Yggdrasil Runes: изменён масштаб модели и выполнена адаптация для размещения у колодца Норн в игровой сцене.</p>
       <button className="mid3d-map-close" onClick={()=>setCreditsOpen(false)}>Вернуться в игру</button>
     </div></div>}
     {forestEventOpen&&!eventDone&&<div className="mid3d-ui mid3d-interact" style={{bottom:"14%",left:"50%",transform:"translateX(-50%)",width:"min(92vw,390px)",zIndex:31}}>
