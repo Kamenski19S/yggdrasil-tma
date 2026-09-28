@@ -4298,8 +4298,11 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       chest.updateMatrixWorld(true);
       addMesh(chest,'nornsChest','Красный сундук Норн');
       chest.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
-      displayChests.push(chest);
-      console.log('[NORNS CHEST] NEW Treasure_Chest_Norns.glb loaded');
+      // Keep the Norns chest completely static. Do NOT add it to displayChests:
+      // that collection rotates objects every frame toward the camera, and this
+      // model has an offset pivot, which made it appear to travel through the forest.
+      chest.rotation.y=0;
+      console.log('[NORNS CHEST] NEW Treasure_Chest_Norns.glb loaded STATIC');
     },'NORNS CHEST');
     addCircleCollider(rubyChestX,rubyChestZ,1.0,.08);
 
