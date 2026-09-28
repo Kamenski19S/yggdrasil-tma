@@ -4272,19 +4272,25 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     scene.add(threeThreads);
     objects.push(threeThreads);
     addCircleCollider(threeThreadsX,threeThreadsZ,3.4,.1);
-    const rubyChestX=65,rubyChestZ=-32;
-    // Treasure chest by UE4 CG model, CC BY 4.0.
-    // Use a unique filename so Telegram/CDN/CacheStorage cannot return the old chest.
-    loadGlbWithFolderFallback('Treasure_Chest_Norns.glb?v=1',(gltf:any)=>{
+    // Treasure chest beside the Well of the Three Norns.
+    // Keep it anchored to this exact world point; the source GLB has an offset pivot.
+    const rubyChestX=63,rubyChestZ=-31;
+    loadGlbWithFolderFallback('Treasure_Chest_Norns.glb?v=2',(gltf:any)=>{
       if(!glbTreesAlive)return;
+
+      const chestAnchor=new THREE.Group();
+      chestAnchor.position.set(rubyChestX,groundY(rubyChestX,rubyChestZ),rubyChestZ);
+      chestAnchor.rotation.y=0;
+      chestAnchor.userData={id:'nornsChest',label:'Красный сундук Норн'};
+
       const chest=gltf.scene;
       markMeshes(chest);
-      chest.scale.setScalar(1);
-      chest.rotation.y=0;
       chest.position.set(0,0,0);
+      chest.rotation.set(0,0,0);
+      chest.scale.setScalar(1);
       chest.updateMatrixWorld(true);
 
-      // The source GLB is extremely small, so normalize it to a readable in-game size.
+      // Normalize the imported model to a stable in-game size.
       const rawBox=new THREE.Box3().setFromObject(chest);
       const rawSize=new THREE.Vector3();
       rawBox.getSize(rawSize);
@@ -4293,18 +4299,48 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       chest.scale.setScalar(targetWidth/sourceWidth);
       chest.updateMatrixWorld(true);
 
+      // Repaint the body red while leaving metallic hardware warm/golden.
+      chest.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        o.castShadow=true;
+        o.receiveShadow=true;
+        const recolor=(source:any)=>{
+          if(!source)return source;
+          const m=source.clone?source.clone():source;
+          const name=String(m.name||'').toLowerCase();
+          const metallic=(Number(m.metalness)||0)>.32 || /metal|gold|iron|chain|lock|buckle|hinge|band|trim/.test(name);
+          if(m.color){
+            if(metallic){
+              m.color.setRGB(.72,.42,.12);
+              if('metalness' in m)m.metalness=Math.max(Number(m.metalness)||0,.55);
+              if('roughness' in m)m.roughness=Math.min(Number(m.roughness) || .6,.48);
+            }else{
+              m.color.setRGB(.62,.055,.045);
+              if('roughness' in m)m.roughness=Math.max(Number(m.roughness)||.65,.62);
+            }
+          }
+          m.needsUpdate=true;
+          return m;
+        };
+        if(Array.isArray(o.material))o.material=o.material.map(recolor);
+        else o.material=recolor(o.material);
+      });
+
+      // Centre the visible geometry on the anchor, then place its base on the ground.
+      // This fixes the model appearing several metres away from its interaction point.
       const bb=new THREE.Box3().setFromObject(chest);
-      chest.position.set(rubyChestX,groundY(rubyChestX,rubyChestZ)-bb.min.y,rubyChestZ);
+      const center=new THREE.Vector3();
+      bb.getCenter(center);
+      chest.position.set(-center.x,-bb.min.y,-center.z);
       chest.updateMatrixWorld(true);
-      addMesh(chest,'nornsChest','Красный сундук Норн');
-      chest.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
-      // Keep the Norns chest completely static. Do NOT add it to displayChests:
-      // that collection rotates objects every frame toward the camera, and this
-      // model has an offset pivot, which made it appear to travel through the forest.
-      chest.rotation.y=0;
-      console.log('[NORNS CHEST] NEW Treasure_Chest_Norns.glb loaded STATIC');
+
+      chestAnchor.add(chest);
+      scene.add(chestAnchor);
+      objects.push(chestAnchor);
+
+      console.log('[NORNS CHEST] Treasure chest fixed beside Three Norns Well, STATIC + RED');
     },'NORNS CHEST');
-    addCircleCollider(rubyChestX,rubyChestZ,1.0,.08);
+    addCircleCollider(rubyChestX,rubyChestZ,1.15,.08);
 
     // 2) CIRCLE OF POWER --------------------------------------------------------
     const powerCircle=new THREE.Group();
@@ -5291,7 +5327,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       {id:"forge",label:"Дверь кузницы Вёлунда",x:-10,z:-2.55,r:2.5},
       {id:"mimir",label:"Колодец Мимира",x:1,z:0,r:4.8},{id:"norns",label:"Прядильня норн",x:-52,z:38,r:5.4},
       {id:"rune",label:"Древний камень Феху",x:50,z:60,r:4.5},{id:"port",label:"Речной мост",x:-57,z:-48,r:6},
-      {id:"ashgrove",label:"Роща Ясеня",x:-5,z:75,r:7.5},{id:"threeThreads",label:"Колодец Трёх Норн",x:58,z:-28,r:6.8},{id:"nornsChest",label:"Красный сундук Норн",x:65,z:-32,r:3.0},{id:"forestCache",label:"Золотой сундук",x:-72,z:48,r:7.0},
+      {id:"ashgrove",label:"Роща Ясеня",x:-5,z:75,r:7.5},{id:"threeThreads",label:"Колодец Трёх Норн",x:58,z:-28,r:6.8},{id:"nornsChest",label:"Красный сундук Норн",x:rubyChestX,z:rubyChestZ,r:3.0},{id:"forestCache",label:"Золотой сундук",x:-72,z:48,r:7.0},
       {id:"runefield",label:"Поле Рун",x:18,z:55,r:8.0},{id:"oldfarm",label:"Дверь Старого хутора",x:-64.4,z:10.8,r:3.2},{id:"deer",label:"Поляна Четырёх Оленей",x:43,z:32,r:7.5},{id:"hoddmimir",label:"Лес Ходдмимира",x:62,z:78,r:6.5},{id:"hunterCamp",label:"Забытая стоянка",x:68,z:8,r:8.5},{id:"heroHome",label:"Дверь дома героя",x:heroHomeX,z:heroHomeZ+4.7*HOME_SCALE,r:3.2},{id:"deepGrove",label:"Глубокая роща",x:-45,z:75,r:9.5},{id:"fallenAsh",label:"Поверженный ясень",x:-30,z:15,r:7.5},{id:"powerCircle",label:"Круг Силы — Монолит",x:5,z:-70,r:6.5},{id:"whisperStone",label:"Камень Шёпота",x:-72,z:-48,r:6.5},
       {id:"elder",label:"Старейшина",x:9,z:-8,r:3.2},{id:"blacksmith",label:"Кузнец",x:-6,z:-3,r:3.2},
       {id:"northBridge",label:northBridgeRepaired?"Северный мост":"Северный мост — проход закрыт",x:NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.6,z:NORTH_BRIDGE_Z,r:3.8},
