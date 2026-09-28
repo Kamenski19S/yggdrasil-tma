@@ -4274,8 +4274,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     addCircleCollider(threeThreadsX,threeThreadsZ,3.4,.1);
     const rubyChestX=65,rubyChestZ=-32;
     // Treasure chest by UE4 CG model, CC BY 4.0.
-    // Keep the existing Ruby_Chest_Light.glb filename so this is a drop-in replacement.
-    loadGlbWithFolderFallback('Ruby_Chest_Light.glb?v=3',(gltf:any)=>{
+    // Use a unique filename so Telegram/CDN/CacheStorage cannot return the old chest.
+    loadGlbWithFolderFallback('Treasure_Chest_Norns.glb?v=1',(gltf:any)=>{
       if(!glbTreesAlive)return;
       const chest=gltf.scene;
       markMeshes(chest);
@@ -4299,7 +4299,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       addMesh(chest,'nornsChest','Красный сундук Норн');
       chest.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
       displayChests.push(chest);
-      console.log('[NORNS CHEST] UE4 CG model Treasure chest loaded');
+      console.log('[NORNS CHEST] NEW Treasure_Chest_Norns.glb loaded');
     },'NORNS CHEST');
     addCircleCollider(rubyChestX,rubyChestZ,1.0,.08);
 
