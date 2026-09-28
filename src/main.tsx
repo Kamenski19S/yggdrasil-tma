@@ -204,6 +204,25 @@ const loadSave = (): Save => {
   try {
     const previous:any=JSON.parse(localStorage.getItem("yggdrasil") || "{}");
     const s:any = { ...DEF, ...previous };
+
+    // Repair an old/incomplete Norns-chest save from development builds.
+    // A real opened chest permanently grants both the Uruz rune and the knife.
+    // If the "opened" flag exists but neither permanent reward exists, the flag is stale.
+    const staleNornsChest =
+      Array.isArray(previous.done) &&
+      previous.done.includes('chest:norns') &&
+      !(Array.isArray(previous.runes) && previous.runes.includes('uruzStrength')) &&
+      !(Array.isArray(previous.ownedWeapons) && previous.ownedWeapons.includes('knife'));
+
+    if(staleNornsChest){
+      const resetNornsFlags=new Set([
+        'forest:choice','forest:past','forest:present','forest:future',
+        'forest:past:reward','forest:present:reward','forest:future:reward',
+        'chest:norns','bridge:boards','bridge:fittings',
+        'bridge:north:repaired','chest:gold'
+      ]);
+      s.done=(Array.isArray(s.done)?s.done:[]).filter((id:string)=>!resetNornsFlags.has(id));
+    }
     if(!Array.isArray(s.gathered))s.gathered=[];
     s.stock={...EMPTY_GATHER_STOCK,...(s.stock&&typeof s.stock==='object'?s.stock:{})};
     for(const kind of ['wood','twigs','herbs'] as GatherKind[])s.stock[kind]=Math.max(0,Math.floor(Number(s.stock[kind])||0));
@@ -4275,7 +4294,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     // Treasure chest beside the Well of the Three Norns.
     // Keep it anchored to this exact world point; the source GLB has an offset pivot.
     const rubyChestX=63,rubyChestZ=-31;
-    loadGlbWithFolderFallback('Treasure_Chest_Norns.glb?v=2',(gltf:any)=>{
+    loadGlbWithFolderFallback('Treasure_Chest_Norns_RedWood.glb?v=1',(gltf:any)=>{
       if(!glbTreesAlive)return;
 
       const chestAnchor=new THREE.Group();
@@ -4299,31 +4318,12 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       chest.scale.setScalar(targetWidth/sourceWidth);
       chest.updateMatrixWorld(true);
 
-      // Repaint the body red while leaving metallic hardware warm/golden.
+      // The GLB texture already contains the red wood.
+      // Keep every non-wood material/texture colour exactly as authored.
       chest.traverse((o:any)=>{
         if(!o.isMesh)return;
         o.castShadow=true;
         o.receiveShadow=true;
-        const recolor=(source:any)=>{
-          if(!source)return source;
-          const m=source.clone?source.clone():source;
-          const name=String(m.name||'').toLowerCase();
-          const metallic=(Number(m.metalness)||0)>.32 || /metal|gold|iron|chain|lock|buckle|hinge|band|trim/.test(name);
-          if(m.color){
-            if(metallic){
-              m.color.setRGB(.72,.42,.12);
-              if('metalness' in m)m.metalness=Math.max(Number(m.metalness)||0,.55);
-              if('roughness' in m)m.roughness=Math.min(Number(m.roughness) || .6,.48);
-            }else{
-              m.color.setRGB(.62,.055,.045);
-              if('roughness' in m)m.roughness=Math.max(Number(m.roughness)||.65,.62);
-            }
-          }
-          m.needsUpdate=true;
-          return m;
-        };
-        if(Array.isArray(o.material))o.material=o.material.map(recolor);
-        else o.material=recolor(o.material);
       });
 
       // Centre the visible geometry on the anchor, then place its base on the ground.
@@ -4338,7 +4338,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       scene.add(chestAnchor);
       objects.push(chestAnchor);
 
-      console.log('[NORNS CHEST] Treasure chest fixed beside Three Norns Well, STATIC + RED');
+      console.log('[NORNS CHEST] Treasure chest fixed beside Three Norns Well, STATIC + RED WOOD');
     },'NORNS CHEST');
     addCircleCollider(rubyChestX,rubyChestZ,1.15,.08);
 
@@ -5792,7 +5792,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       <p><b>Fortnite Chest</b> — <a href="https://skfb.ly/onyMB" target="_blank" rel="noopener noreferrer">Onur</a>. <a href="https://skfb.ly/onyMB" target="_blank" rel="noopener noreferrer">Оригинальная модель</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
       <p>Изменения для Yggdrasil Runes: изменён масштаб модели и выполнена адаптация для размещения в игровой сцене.</p>
       <p><b>Treasure chest</b> — <a href="https://skfb.ly/oqoXL" target="_blank" rel="noopener noreferrer">UE4 CG model</a>. <a href="https://skfb.ly/oqoXL" target="_blank" rel="noopener noreferrer">Оригинальная модель</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
-      <p>Изменения для Yggdrasil Runes: изменён масштаб модели и выполнена адаптация для размещения у колодца Норн в игровой сцене.</p>
+      <p>Изменения для Yggdrasil Runes: изменён масштаб модели, цвет древесины изменён на красный; остальные цвета модели сохранены. Выполнена адаптация для размещения у колодца Норн в игровой сцене.</p>
       <button className="mid3d-map-close" onClick={()=>setCreditsOpen(false)}>Вернуться в игру</button>
     </div></div>}
     {forestEventOpen&&!eventDone&&<div className="mid3d-ui mid3d-interact" style={{bottom:"14%",left:"50%",transform:"translateX(-50%)",width:"min(92vw,390px)",zIndex:31}}>
