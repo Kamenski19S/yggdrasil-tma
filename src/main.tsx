@@ -1316,6 +1316,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   const cameraDir = useRef({ x: 0, z: 1 });
   const insideHomeRef = useRef(false);
   const homeActionRef = useRef<((inside:boolean)=>void)|null>(null);
+  const villageHostRef = useRef<((id:string)=>void)|null>(null);
   const attackActionRef = useRef<(()=>void)|null>(null);
   const onRef=useRef(on);
   onRef.current=on;
@@ -2232,6 +2233,52 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       const approach=p.d*HOME_SCALE/2+1.1;
       return {id:p.id,label:p.label,x:p.x+Math.sin(p.rot)*approach,z:p.z+Math.cos(p.rot)*approach,r:3.0};
     });
+
+    // Static hosts appear at their door on demand, without adding to startup downloads.
+    const hostAssets:Record<string,string>={
+      herbalist:'NPC_Herbalist_Static.glb',
+      carpenter:'NPC_Carpenter_Static.glb',
+      hunter:'NPC_Hunter_Static.glb',
+      hunter2:'NPC_Ranger_Female_Static.glb'
+    };
+    const villageHosts=new Map<string,{root:THREE.Group;lastSeen:number}>();
+    const hostLoads=new Set<string>();
+    const revealVillageHost=(id:string)=>{
+      const asset=hostAssets[id];
+      if(!asset)return;
+      const existing=villageHosts.get(id);
+      if(existing){existing.lastSeen=performance.now();existing.root.visible=true;return;}
+      if(hostLoads.has(id))return;
+      const house=villageHomes.find(h=>h.id===id);
+      const door=homeDestinations.find(h=>h.id===id);
+      if(!house||!door)return;
+      hostLoads.add(id);
+      const url=`${BASE}img/models/${asset}`;
+      cachedGlbBuffer(url).then(buffer=>new Promise<any>((resolve,reject)=>{
+        gltfLoader.parse(buffer,`${BASE}img/models/`,resolve,reject);
+      })).then(gltf=>{
+        if(!glbTreesAlive)return;
+        const model=gltf.scene as THREE.Object3D;
+        model.updateMatrixWorld(true);
+        const bounds=new THREE.Box3().setFromObject(model);
+        const height=bounds.max.y-bounds.min.y;
+        if(!Number.isFinite(height)||height<.01)throw new Error('Empty NPC model');
+        const scale=1.75/height;
+        model.scale.setScalar(scale);
+        model.position.y=-bounds.min.y*scale;
+        const root=new THREE.Group();
+        const x=door.x+Math.cos(house.rot)*1.15;
+        const z=door.z-Math.sin(house.rot)*1.15;
+        root.position.set(x,groundY(x,z),z);
+        root.rotation.y=house.rot;
+        root.add(model);
+        root.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+        scene.add(root);
+        villageHosts.set(id,{root,lastSeen:performance.now()});
+      }).catch(error=>console.warn('Village host unavailable',asset,error))
+        .finally(()=>hostLoads.delete(id));
+    };
+    villageHostRef.current=revealVillageHost;
 
     // Village roads connect the front and rear gates.
     road([[0,43.5],[0,35],[0,27],[1,18],[1,9],[1,2]],2.35);
@@ -5348,7 +5395,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     },"HERO GLB",()=>{if(glbTreesAlive)setHeroLoadFailed(true);});
 
     const ray=new THREE.Raycaster();const pointer=new THREE.Vector2();
-    const click=(e:PointerEvent)=>{if((e.target as HTMLElement)?.closest?.(".mid3d-ui"))return;const r=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-r.left)/r.width)*2-1;pointer.y=-((e.clientY-r.top)/r.height)*2+1;ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects(objects,true)[0];if(hit){let o:any=hit.object;while(o.parent&&!o.userData?.id)o=o.parent;if(o.userData?.id){if(o.userData.id==="gate"||o.userData.id==="gateRear")gateActionRef.current?.(o.userData.id);else if(o.userData.id==="forge")forgeActionRef.current?.();else onRef.current(o.userData.id,{x:state.current.x,z:state.current.z});}}};
+    const click=(e:PointerEvent)=>{if((e.target as HTMLElement)?.closest?.(".mid3d-ui"))return;const r=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-r.left)/r.width)*2-1;pointer.y=-((e.clientY-r.top)/r.height)*2+1;ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects(objects,true)[0];if(hit){let o:any=hit.object;while(o.parent&&!o.userData?.id)o=o.parent;if(o.userData?.id){if(o.userData.id==="gate"||o.userData.id==="gateRear")gateActionRef.current?.(o.userData.id);else if(o.userData.id==="forge")forgeActionRef.current?.();else{villageHostRef.current?.(o.userData.id);onRef.current(o.userData.id,{x:state.current.x,z:state.current.z});}}}};
     renderer.domElement.addEventListener("pointerup",click);
 
     const setHomeMode=(inside:boolean)=>{
@@ -5760,6 +5807,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         }
       });
       npcs.forEach((n,i)=>{const phase=n.userData.phase||0;const bx=n.userData.baseX,bz=n.userData.baseZ;const nx=bx+Math.sin(now*.00028+phase)*1.6,nz=bz+Math.cos(now*.00022+phase)*1.1;n.position.set(nx,groundY(nx,nz),nz);n.rotation.y=Math.sin(now*.0004+phase)*.5;});
+      villageHosts.forEach(({root,lastSeen})=>{root.visible=now-lastSeen<22000&&Math.hypot(q.x-root.position.x,q.z-root.position.z)<12;});
       lightPools.forEach((m,i)=>{
         const p=m.material as THREE.MeshBasicMaterial;
         p.opacity = 0.48 + Math.sin(now*0.00055 + i*1.7)*0.07;
@@ -5769,7 +5817,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{window.clearTimeout(banditVictoryTimer);rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();deerFurTexture?.dispose();nornsStoneTexture?.dispose();nornsColumnTexture?.dispose();furTextures.forEach(texture=>texture.dispose());lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;shieldActionRef.current=null;forgeActionRef.current=null;};
+    return()=>{window.clearTimeout(banditVictoryTimer);rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;villageHostRef.current=null;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();deerFurTexture?.dispose();nornsStoneTexture?.dispose();nornsColumnTexture?.dispose();furTextures.forEach(texture=>texture.dispose());lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;shieldActionRef.current=null;forgeActionRef.current=null;};
   },[h.id,skin,weapon,gear.join(','),gearLevels.armor,gearLevels.helmet,gearLevels.boots,shieldAsset,eventDone,rememberPosition,northBridgeRepaired]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
@@ -5913,7 +5961,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       }
       if(id==="forge")return <div className="mid3d-ui mid3d-door-prompt"><b>Дверь кузницы</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>forgeActionRef.current?.()}>Открыть ручку</button></div>;
       const villageDoor=["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman","oldfarm"].includes(id);
-      if(villageDoor)return <div className="mid3d-ui mid3d-door-prompt"><b>{label}</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>Открыть ручку</button></div>;
+      if(villageDoor)return <div className="mid3d-ui mid3d-door-prompt"><b>{label}</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{villageHostRef.current?.(id);on(id,{x:state.current.x,z:state.current.z});}}>Открыть ручку</button></div>;
       if(id==="heroHome")return <div className="mid3d-ui mid3d-door-prompt"><b>Дом героя</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>homeActionRef.current?.(true)}>Открыть ручку</button></div>;
       const home=id==="heroHome"||id==="heroHomeExit";
       const villageGate=id==="gate"||id==="gateRear";
