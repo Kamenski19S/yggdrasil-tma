@@ -1267,7 +1267,7 @@ const BANDIT_SPECS:BanditSpec[]=[
 ];
 type WhisperPhase="closed"|"question"|"fight"|"reward"|"defeat";
 
-function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin, defeatedBandits, onBanditReward, onBanditKnockout, potions, runes, equippedRune, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; defeatedBandits:string[]; onBanditReward:(id:string)=>void; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
+function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin, defeatedBandits, onBanditReward, onBanditKnockout, potions, runes, equippedRune, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather, angelicSealReady }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; defeatedBandits:string[]; onBanditReward:(id:string)=>void; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; angelicSealReady:boolean; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -5919,7 +5919,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       const villageGate=id==="gate"||id==="gateRear";
       const selectedGateOpen=id==="gateRear"?rearGateOpen:villageGateOpen;
       const whisper=id==="whisperStone";
-      return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{id==='forestCache'&&!northBridgeRepaired?'Защитное кольцо спадёт после ремонта Северного моста':id==='nornsChest'&&!eventDone?'Сначала выбери нить у колодца Норн':id==='angelicChest'?'Серебряный свет пробивается сквозь резьбу сундука':villageGate?(selectedGateOpen?"Створки открыты, тяжёлый засов снят":"Ворота заперты большим деревянным засовом"):home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода"):whisper?(whisperResolved?"Камень помнит завершённое испытание":"Из янтарного света доносится древний вопрос"):"Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else if(id==="gate"||id==="gateRear")gateActionRef.current?.(id);else if(id==="whisperStone"&&!whisperResolved)beginWhisperEncounter();else on(id,{x:state.current.x,z:state.current.z});}}>{id==='forestCache'&&!northBridgeRepaired?'Осмотреть печать':id==='nornsChest'&&!eventDone?'Осмотреть сундук':id==='forestCache'||id==='nornsChest'||id==='angelicChest'?'Открыть сундук':villageGate?(selectedGateOpen?"Закрыть ворота и поставить засов":"Снять засов и открыть ворота"):home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):whisper?(whisperResolved?"Прикоснуться к камню":"Слушать шёпот"):"Взаимодействовать"}</button></div>;
+      return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{id==='forestCache'&&!northBridgeRepaired?'Защитное кольцо спадёт после ремонта Северного моста':id==='nornsChest'&&!eventDone?'Сначала выбери нить у колодца Норн':id==='angelicChest'&&!angelicSealReady?'Печать Ходдмимира закрыта: помоги Сигрид, изучи стоянку охотника и вернись в рощу':id==='angelicChest'?'Печать рощи снята':villageGate?(selectedGateOpen?"Створки открыты, тяжёлый засов снят":"Ворота заперты большим деревянным засовом"):home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода"):whisper?(whisperResolved?"Камень помнит завершённое испытание":"Из янтарного света доносится древний вопрос"):"Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else if(id==="gate"||id==="gateRear")gateActionRef.current?.(id);else if(id==="whisperStone"&&!whisperResolved)beginWhisperEncounter();else on(id,{x:state.current.x,z:state.current.z});}}>{((id==='forestCache'&&!northBridgeRepaired)||(id==='nornsChest'&&!eventDone)||(id==='angelicChest'&&!angelicSealReady))?'Осмотреть печать':id==='forestCache'||id==='nornsChest'||id==='angelicChest'?'Открыть сундук':villageGate?(selectedGateOpen?"Закрыть ворота и поставить засов":"Снять засов и открыть ворота"):home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):whisper?(whisperResolved?"Прикоснуться к камню":"Слушать шёпот"):"Взаимодействовать"}</button></div>;
     })()}
     {whisperPhase==="closed"&&<><div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-block" disabled={!gear.includes('shield')} aria-label="Блок щитом" title="Блок щитом" onPointerDown={e=>e.stopPropagation()} onClick={()=>{shieldActionRef.current?.();if('vibrate' in navigator)navigator.vibrate(15);}}>🛡</button>
@@ -6552,6 +6552,9 @@ const [roadT, setRoadT] = useState(0.06);
         return;
       }
       if (id === "angelicChest") {
+        if(!save.done.includes('chest:angelic')&&!save.done.includes('hoddmimir:seal')){
+          say('Серебряный сундук закрыт печатью Ходдмимира. Помоги травнице Сигрид, осмотри Забытую стоянку охотника и вернись в Лес Ходдмимира.');return;
+        }
         if(!save.done.includes('chest:angelic')){
           setSave(s=>s.done.includes('chest:angelic')?s:{...s,
             done:[...new Set([...s.done,'chest:angelic'])],
@@ -6567,7 +6570,13 @@ const [roadT, setRoadT] = useState(0.06);
         return;
       }
       if (id === "hoddmimir") {
-        say("Тихий лес Ходдмимира. Здесь можно спрятаться от мира и услышать, что говорит ветер. В Эдде это место связано с теми, кто переживёт гибель мира.");
+        if(save.done.includes('hoddmimir:seal')){say('Лес Ходдмимира узнал тебя. Печать серебряного сундука снята.');return;}
+        const herbsReady=save.done.includes('gather:herbalist'),campReady=save.done.includes('forest:camp');
+        if(!herbsReady||!campReady){
+          say('Лес Ходдмимира просит помочь травнице Сигрид ('+(herbsReady?'готово':'нужны 4 пучка трав')+') и осмотреть Забытую стоянку охотника ('+(campReady?'готово':'не изучена')+'). Затем вернись к дереву.');return;
+        }
+        setSave(s=>s.done.includes('hoddmimir:seal')?s:{...s,done:[...s.done,'hoddmimir:seal']});
+        haptic('success');say('Ты помог Сигрид и разгадал следы на стоянке. Лес Ходдмимира снимает печать с серебряного сундука.');
         return;
       }
       if (id === "ratatosk") {
@@ -6648,6 +6657,7 @@ const [roadT, setRoadT] = useState(0.06);
       start={midgardReturn.current}
       rememberPosition={rememberMidgardPosition}
       northBridgeRepaired={save.done.includes("bridge:north:repaired")}
+      angelicSealReady={save.done.includes("hoddmimir:seal")||save.done.includes("chest:angelic")}
       whisperResolved={save.done.includes("whisper:battle")||save.done.includes("whisper:wisdom")}
       whisperStats={{
         maxHp:heroDef.hp+gearHp(),
