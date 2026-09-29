@@ -268,61 +268,61 @@ const WHISPER_QUEST: Quest = {
 type MidgardGuardianSpec = {
   id:string; location:string; name:string; title:string; sym:string;
   x:number; z:number; hp:number; atk:number; scale:number;
-  cloth:number; cloak?:number; accent:number; tempo:number;
+  cloth:number; cloak?:number; accent:number; tempo:number; power:number; requiredPower?:number;
   question:Quest; intro:string; correctReward:number; battleReward:number;
 };
 const MIDGARD_GUARDIANS:Record<string,MidgardGuardianSpec>={
   rune:{
     id:"rune",location:"Древний камень Феху",name:"Фейр",title:"Страж Феху",sym:"ᚠ",
-    x:50,z:60,hp:24,atk:5,scale:1.72,cloth:0x805635,accent:0xd7a14a,tempo:760,
+    x:50,z:60,hp:24,atk:5,scale:1.72,cloth:0x805635,accent:0xd7a14a,tempo:760,power:1,
     question:{q:"Что прежде всего означает руна Феху в древней традиции?",a:["Лёд и неподвижность","Скот, имущество и достаток","Путешествие по морю"],c:1},
     intro:"Золотая руна вспыхивает на камне. Страж проверяет, понимаешь ли ты смысл Феху.",correctReward:5,battleReward:10
   },
   ashgrove:{
     id:"ashgrove",location:"Роща Ясеня",name:"Аскольд",title:"Страж Ясеня",sym:"ᛇ",
-    x:-5,z:75,hp:30,atk:6,scale:1.78,cloth:0x4f6840,cloak:0x2f402a,accent:0x8fb66d,tempo:730,
+    x:-5,z:75,hp:30,atk:6,scale:1.78,cloth:0x4f6840,cloak:0x2f402a,accent:0x8fb66d,tempo:730,power:1,
     question:{q:"Как звали первого мужчину, которого боги создали из дерева?",a:["Аск","Бальдр","Хёд"],c:0},
     intro:"Листья стихли. Из тени ясеней слышится вопрос хранителя рощи.",correctReward:6,battleReward:12
   },
   norns:{
     id:"norns",location:"Прядильня Норн",name:"Вердаль",title:"Страж Нитей",sym:"ᛈ",
-    x:-52,z:38,hp:34,atk:7,scale:1.82,cloth:0x697187,cloak:0x51586f,accent:0xc5cbe7,tempo:700,
+    x:-52,z:38,hp:34,atk:7,scale:1.82,cloth:0x697187,cloak:0x51586f,accent:0xc5cbe7,tempo:700,power:2,
     question:{q:"Как зовут трёх Норн у источника судьбы?",a:["Урд, Верданди и Скульд","Фригг, Фрейя и Сиф","Хель, Ран и Нотт"],c:0},
     intro:"Серебряные нити натягиваются между камнями. Страж просит назвать хранительниц судьбы.",correctReward:7,battleReward:14
   },
   threeThreads:{
     id:"threeThreads",location:"Колодец Трёх Норн",name:"Скальд",title:"Страж Трёх Нитей",sym:"ᛉ",
-    x:58,z:-28,hp:38,atk:8,scale:1.88,cloth:0x70566f,cloak:0x403445,accent:0xd7b1d0,tempo:670,
+    x:58,z:-28,hp:38,atk:8,scale:1.88,cloth:0x70566f,cloak:0x403445,accent:0xd7b1d0,tempo:670,power:2,
     question:{q:"Какая из трёх Норн связана с тем, чему ещё предстоит случиться?",a:["Урд","Верданди","Скульд"],c:2},
     intro:"Три нити сходятся над водой. Прежде чем выбрать одну из них, нужно выдержать вопрос стража.",correctReward:8,battleReward:16
   },
   whisperStone:{
     id:"whisperStone",location:"Камень Шёпота",name:"Хродвитнир",title:"Страж Камня шёпота",sym:"ᚦ",
-    x:-72,z:-48,hp:40,atk:8,scale:1.92,cloth:0x403736,cloak:0x211f21,accent:0xff8a32,tempo:650,
+    x:-72,z:-48,hp:40,atk:8,scale:1.92,cloth:0x403736,cloak:0x211f21,accent:0xff8a32,tempo:650,power:3,
     question:WHISPER_QUEST,
     intro:"Янтарный свет хранит память о сотворении мира людей. Из глубины раздаётся голос стража.",correctReward:8,battleReward:18
   },
   runefield:{
     id:"runefield",location:"Поле Рун",name:"Райдмар",title:"Страж Рунного Поля",sym:"ᚱ",
-    x:18,z:55,hp:42,atk:9,scale:1.90,cloth:0x395d72,cloak:0x263d4a,accent:0x76d8ef,tempo:620,
+    x:18,z:55,hp:42,atk:9,scale:1.90,cloth:0x395d72,cloak:0x263d4a,accent:0x76d8ef,tempo:620,power:3,
     question:{q:"Какая руна Старшего Футарка связана с дорогой, движением и путешествием?",a:["Райдо","Иса","Хагалаз"],c:0},
     intro:"Руны загораются одна за другой. Хранитель поля требует узнать знак пути.",correctReward:9,battleReward:18
   },
   mimir:{
     id:"mimir",location:"Колодец Мимира",name:"Хеймвард",title:"Хранитель Мудрости",sym:"ᚨ",
-    x:1,z:0,hp:48,atk:10,scale:1.98,cloth:0x344760,cloak:0x192538,accent:0xe2bd61,tempo:590,
+    x:1,z:0,hp:48,atk:10,scale:1.98,cloth:0x344760,cloak:0x192538,accent:0xe2bd61,tempo:590,power:4,requiredPower:4,
     question:{q:"Что отдал Один за право испить из источника Мимира?",a:["Своё копьё","Один глаз","Кольцо Драупнир"],c:1},
     intro:"Вода становится неподвижной, словно зеркало. Страж Мимира требует цену знания — верный ответ.",correctReward:10,battleReward:21
   },
   powerCircle:{
     id:"powerCircle",location:"Круг Силы",name:"Тюрвальд",title:"Страж Обета",sym:"ᛏ",
-    x:5,z:-70,hp:52,atk:11,scale:2.03,cloth:0x663431,cloak:0x2b191a,accent:0xf08a49,tempo:560,
+    x:5,z:-70,hp:52,atk:11,scale:2.03,cloth:0x663431,cloak:0x2b191a,accent:0xf08a49,tempo:560,power:5,requiredPower:5,
     question:{q:"Какой бог лишился руки, когда асы связали волка Фенрира?",a:["Тюр","Тор","Хеймдалль"],c:0},
     intro:"Монолит отвечает тяжёлым гулом. Здесь силу получают только те, кто помнит цену клятвы.",correctReward:11,battleReward:24
   },
   hoddmimir:{
     id:"hoddmimir",location:"Лес Ходдмимира",name:"Ливгард",title:"Страж Последнего Убежища",sym:"ᛋ",
-    x:62,z:78,hp:58,atk:12,scale:2.08,cloth:0x4d5b38,cloak:0x26311f,accent:0xd1b765,tempo:530,
+    x:62,z:78,hp:58,atk:12,scale:2.08,cloth:0x4d5b38,cloak:0x26311f,accent:0xd1b765,tempo:530,power:5,requiredPower:5,
     question:{q:"Кто, согласно эддической традиции, укроется в лесу Ходдмимира и переживёт гибель мира?",a:["Лив и Ливтрасир","Скёлль и Хати","Моди и Магни"],c:0},
     intro:"Глубокий лес словно отсекает шум мира. Последний страж Мидгарда задаёт вопрос о тех, кто переживёт Рагнарёк.",correctReward:12,battleReward:28
   }
@@ -1292,7 +1292,7 @@ function midHero3d(h: HeroDef) {
   return markMeshes(g);
 }
 
-type WhisperCombatStats={maxHp:number;attack:number;runeAttack:number;defense:number};
+type WhisperCombatStats={maxHp:number;attack:number;runeAttack:number;defense:number;power:number};
 const POTION_CATALOG=[
   {id:'lifeElixir',name:'Эликсир жизни',effect:'Полностью восстанавливает здоровье Вики',symbol:'❤️'},
   {id:'northernMoss',name:'Эликсир северного мха',effect:'Восстанавливает 30 здоровья',symbol:'🌿'},
@@ -1356,8 +1356,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   const [whisperAnswer,setWhisperAnswer]=useState<number|null>(null);
   const [whisperHeroHp,setWhisperHeroHp]=useState(whisperStats.maxHp);
   const [whisperGuardHp,setWhisperGuardHp]=useState(WHISPER_GUARD.hp);
-  const [whisperHeroEnergy,setWhisperHeroEnergy]=useState(COMBAT_ENERGY);
-  const [whisperGuardEnergy,setWhisperGuardEnergy]=useState(COMBAT_ENERGY);
+  const [whisperHeroEnergy,setWhisperHeroEnergy]=useState(whisperStats.power);
+  const [whisperGuardEnergy,setWhisperGuardEnergy]=useState(3);
   const [whisperShield,setWhisperShield]=useState(false);
   const [whisperBusy,setWhisperBusy]=useState(false);
   const [whisperLog,setWhisperLog]=useState(WHISPER_GUARD.greet);
@@ -1428,7 +1428,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     state.current.dx=0;state.current.dz=0;
     setWhisperAnswer(null);setWhisperReward("");setWhisperFx(null);
     setWhisperHeroHp(whisperStats.maxHp);setWhisperGuardHp(spec.hp);
-    setWhisperHeroEnergy(COMBAT_ENERGY);setWhisperGuardEnergy(COMBAT_ENERGY);
+    setWhisperHeroEnergy(whisperStats.power);setWhisperGuardEnergy(spec.power);
     setWhisperShield(false);setWhisperBusy(false);setWhisperLog(spec.intro);
     guardDefeatedRef.current=false;whisperBattleStartedRef.current=false;whisperReplayRef.current=false;setWhisperReplay(false);
     setWhisperPhaseSafe("question");
@@ -1440,7 +1440,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     state.current.dx=0;state.current.dz=0;
     setWhisperAnswer(null);setWhisperReward("");setWhisperFx(null);
     setWhisperHeroHp(whisperStats.maxHp);setWhisperGuardHp(spec.hp);
-    setWhisperHeroEnergy(COMBAT_ENERGY);setWhisperGuardEnergy(COMBAT_ENERGY);
+    setWhisperHeroEnergy(whisperStats.power);setWhisperGuardEnergy(spec.power);
     setWhisperShield(false);setWhisperBusy(false);
     setWhisperLog(spec.name+" снова принимает вызов. Это тренировочный бой без повторной награды.");
     guardDefeatedRef.current=false;whisperBattleStartedRef.current=true;whisperReplayRef.current=true;setWhisperReplay(true);
@@ -1466,15 +1466,17 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       setWhisperPhaseSafe("reward");
     }else{
       whisperBattleStartedRef.current=true;
-      setWhisperLog(spec.name+" выходит навстречу. Неверный ответ теперь придётся защищать оружием.");
+      const gate=spec.requiredPower&&whisperStats.power<spec.requiredPower
+        ?" Сила героя "+whisperStats.power+"/5. Для победы над этим стражем нужна сила "+spec.requiredPower+"/5 — сначала усили оружие и экипировку."
+        :"";
+      setWhisperLog(spec.name+" выходит навстречу. Неверный ответ теперь придётся защищать оружием."+gate);
       whisperTimers.current.push(window.setTimeout(()=>{guardIdleActionRef.current?.();setWhisperPhaseSafe("fight");},520));
     }
   };
   const whisperGuardTurn=(shielded:boolean)=>{
     const spec=currentGuardian();
     whisperTimers.current.push(window.setTimeout(()=>{
-      if(whisperGuardEnergy<=0){setWhisperGuardEnergy(2);setWhisperLog(spec.name+" переводит дыхание и восстанавливает две точки энергии.");setWhisperBusy(false);setWhisperShield(false);return;}
-      setWhisperGuardEnergy(v=>Math.max(0,v-1));guardAttackAtRef.current=performance.now();guardAttackActionRef.current?.();setWhisperFx({kind:"guard",key:Date.now()});
+      guardAttackAtRef.current=performance.now();guardAttackActionRef.current?.();setWhisperFx({kind:"guard",key:Date.now()});
       whisperTimers.current.push(window.setTimeout(()=>{
         const raw=spec.atk+Math.floor(Math.random()*3);
         let damage=Math.max(1,Math.ceil((raw-whisperStats.defense)*(shielded?(gear.includes('shield')?.3:.6):1)));
@@ -1489,28 +1491,29 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   const whisperFightAction=(kind:"hit"|"rune"|"shield"|"restore")=>{
     const spec=currentGuardian();
     if(whisperBusy||whisperPhaseRef.current!=="fight")return;
-    if(kind==="rune"&&whisperHeroEnergy<2){setWhisperLog("Для рунического удара нужны две точки энергии.");return;}
-    if(kind==="shield"&&whisperHeroEnergy<1){setWhisperLog("Не осталось энергии, чтобы поднять щит.");return;}
     setWhisperBusy(true);
     let damage=0;
     if(kind==="hit"){
       attackActionRef.current?.();setWhisperFx({kind:"hit",key:Date.now()});
       damage=whisperStats.attack+Math.floor(Math.random()*4);
-      if(whisperHeroEnergy>0)setWhisperHeroEnergy(v=>Math.max(0,v-1));else damage=Math.ceil(damage*.55);
       setWhisperLog("Герой замахивается и наносит удар сверху.");
     }else if(kind==="rune"){
-      attackActionRef.current?.();setWhisperFx({kind:"rune",key:Date.now()});setWhisperHeroEnergy(v=>v-2);
+      attackActionRef.current?.();setWhisperFx({kind:"rune",key:Date.now()});
       damage=whisperStats.runeAttack+Math.floor(Math.random()*5);setWhisperLog("Руна вспыхивает между героем и стражем.");
     }else if(kind==="shield"){
       shieldActionRef.current?.();
-      setWhisperHeroEnergy(v=>Math.max(0,v-1));setWhisperShield(true);setWhisperLog("Герой поднимает щит и готовится принять удар.");
+      setWhisperShield(true);setWhisperLog("Герой поднимает щит и готовится принять удар.");
       whisperGuardTurn(true);return;
     }else{
-      const restored=Math.min(COMBAT_ENERGY,whisperHeroEnergy+2);
-      setWhisperHeroEnergy(restored);setWhisperLog("Герой переводит дыхание и восстанавливает энергию.");
+      const healed=Math.min(whisperStats.maxHp,whisperHeroHp+14);
+      setWhisperHeroHp(healed);setWhisperLog("Герой переводит дыхание и восстанавливает "+(healed-whisperHeroHp)+" здоровья.");
       whisperGuardTurn(false);return;
     }
     whisperTimers.current.push(window.setTimeout(()=>{
+      if(spec.requiredPower&&whisperStats.power<spec.requiredPower){
+        damage=0;
+        setWhisperLog("Удар не пробивает защиту "+spec.name+". Сила героя "+whisperStats.power+"/5, требуется "+spec.requiredPower+"/5. Нужна закалка оружия и экипировки.");
+      }
       const next=Math.max(0,whisperGuardHp-damage);
       setWhisperGuardHp(next);guardHitAtRef.current=performance.now();
       if(next<=0){
@@ -6179,14 +6182,14 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     {whisperPhase==="fight"&&<div className="mid3d-ui whisper-combat-hud" onPointerDown={e=>e.stopPropagation()}>
       <div className="whisper-combat-log" role="status" aria-live="polite">{whisperLog}</div>
       <div className="whisper-combat-energy">
-        <span className="whisper-pips" aria-label={`Энергия героя: ${whisperHeroEnergy} из ${COMBAT_ENERGY}`}>{whisperPips(whisperHeroEnergy)}</span>
-        <span className="whisper-pips" aria-label={`Энергия ${activeGuardian.name}: ${whisperGuardEnergy} из ${COMBAT_ENERGY}`}>{whisperPips(whisperGuardEnergy)}</span>
+        <span className="whisper-pips" aria-label={`Сила героя: ${whisperStats.power} из 5`} title={`Сила героя ${whisperStats.power}/5`}>{whisperPips(whisperStats.power)}</span>
+        <span className="whisper-pips" aria-label={`Сила ${activeGuardian.name}: ${activeGuardian.power} из 5`} title={`Сила ${activeGuardian.name} ${activeGuardian.power}/5`}>{whisperPips(activeGuardian.power)}</span>
       </div>
       <div className="whisper-combat-actions">
-        <button className="whisper-combat-action" disabled={whisperBusy} onClick={()=>whisperFightAction("hit")}><span className="whisper-combat-icon" aria-hidden="true">🪓</span><b>Удар оружием</b><small>−1 энергия</small></button>
-        <button className="whisper-combat-action shield" disabled={whisperBusy} onClick={()=>whisperFightAction("shield")}><span className="whisper-combat-icon" aria-hidden="true">🛡️</span><b>Поднять щит</b><small>−1 энергия</small></button>
-        <button className="whisper-combat-action rune" disabled={whisperBusy} onClick={()=>whisperFightAction("rune")}><span className="whisper-combat-icon" aria-hidden="true">ᚲ</span><b>Руна Кеназ</b><small>−2 энергии</small></button>
-        <button className="whisper-combat-action rest" disabled={whisperBusy} onClick={()=>whisperFightAction("restore")}><span className="whisper-combat-icon" aria-hidden="true">🌿</span><b>Перевести дух</b><small>+2 энергии</small></button>
+        <button className="whisper-combat-action" disabled={whisperBusy} onClick={()=>whisperFightAction("hit")}><span className="whisper-combat-icon" aria-hidden="true">🪓</span><b>Удар оружием</b><small>сила оружия</small></button>
+        <button className="whisper-combat-action shield" disabled={whisperBusy} onClick={()=>whisperFightAction("shield")}><span className="whisper-combat-icon" aria-hidden="true">🛡️</span><b>Поднять щит</b><small>защита</small></button>
+        <button className="whisper-combat-action rune" disabled={whisperBusy} onClick={()=>whisperFightAction("rune")}><span className="whisper-combat-icon" aria-hidden="true">ᚲ</span><b>Руна Кеназ</b><small>рунический удар</small></button>
+        <button className="whisper-combat-action rest" disabled={whisperBusy} onClick={()=>whisperFightAction("restore")}><span className="whisper-combat-icon" aria-hidden="true">🌿</span><b>Перевести дух</b><small>+14 здоровья</small></button>
       </div>
     </div>}
     {whisperPhase==="reward"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
@@ -6389,6 +6392,13 @@ const [roadT, setRoadT] = useState(0.06);
   const gearLevel=(id:GearId)=>equipped(id)?forgeLevel(id==='shield'?shieldForgeKey(save.shieldAsset):id):0;
   const gearHp=()=>gearLevel('armor')*3+gearLevel('helmet')*2+(equipped('armor')?4:0)+(equipped('helmet')?2:0);
   const gearDefense=()=>Math.floor((gearLevel('armor')+gearLevel('helmet'))/2)+(equipped('armor')?1:0);
+  const heroPowerPips=()=>{
+    if(!heroDef)return 1;
+    const gearForge=gearLevel('armor')+gearLevel('helmet')+gearLevel('shield')+gearLevel('boots');
+    const runeBonus=save.equippedRune?2:0;
+    const score=heroDef.str+WEAPON_POWER[save.heroWeapon]+forgeLevel(save.heroWeapon)+Math.floor(gearForge/2)+runeBonus;
+    return score>=24?5:score>=19?4:score>=15?3:score>=11?2:1;
+  };
   const toggleGear=(id:GearId)=>{
     const isOn=equipped(id);
     setSave(s=>({...s,equippedGear:isOn?s.equippedGear.filter(gear=>gear!==id):[...s.equippedGear,id]}));
@@ -6975,7 +6985,8 @@ const [roadT, setRoadT] = useState(0.06);
         maxHp:heroDef.hp+gearHp(),
         attack:heroDef.str+WEAPON_POWER[save.heroWeapon]+forgeLevel(save.heroWeapon)+(save.equippedRune==='uruzStrength'?2:0)+(save.equippedRune==='sowiloLight'?2:0),
         runeAttack:heroDef.en+2+(save.equippedRune==='kenazShard'?2:0)+(save.equippedRune==='sowiloLight'?2:0),
-        defense:gearDefense()+(save.equippedRune==='algizGuard'?2:0)
+        defense:gearDefense()+(save.equippedRune==='algizGuard'?2:0),
+        power:heroPowerPips()
       }}
       onWhisperCorrect={finishWhisperCorrect}
       onWhisperWin={finishWhisperBattle}
