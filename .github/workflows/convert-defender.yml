@@ -22,7 +22,7 @@ jobs:
           curl -L --fail -o /tmp/FBX2glTF.zip \
             https://github.com/godotengine/FBX2glTF/releases/download/v0.13.1/FBX2glTF-linux-x86_64.zip
           unzip -q /tmp/FBX2glTF.zip -d /tmp/fbx2gltf
-          BIN="$(find /tmp/fbx2gltf -type f -name 'FBX2glTF' | head -n 1)"
+          BIN="$(find /tmp/fbx2gltf -type f -name 'FBX2glTF*' ! -name '*.txt' | head -n 1)"
           if [ -z "$BIN" ]; then
             echo "FBX2glTF binary not found after unzip"
             find /tmp/fbx2gltf -maxdepth 3 -type f -print
