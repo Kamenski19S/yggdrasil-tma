@@ -1,0 +1,48 @@
+name: Convert defender FBX to GLB
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "public/img/models/Adventurer_Defender_Rigged.fbx"
+      - ".github/workflows/convert-defender.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download FBX2glTF
+        run: |
+          curl -L --fail -o /tmp/FBX2glTF.zip \
+            https://github.com/godotengine/FBX2glTF/releases/download/v0.13.1/FBX2glTF-linux-x86_64.zip
+          unzip -q /tmp/FBX2glTF.zip -d /tmp/fbx2gltf
+          chmod +x /tmp/fbx2gltf/FBX2glTF
+
+      - name: Convert defender
+        run: |
+          /tmp/fbx2gltf/FBX2glTF \
+            --binary \
+            --skinning-weights 4 \
+            --anim-framerate bake30 \
+            --input public/img/models/Adventurer_Defender_Rigged.fbx \
+            --output public/img/models/Adventurer_Defender_Rigged.glb
+          test -s public/img/models/Adventurer_Defender_Rigged.glb
+          ls -lh public/img/models/Adventurer_Defender_Rigged.glb
+
+      - name: Commit GLB
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/img/models/Adventurer_Defender_Rigged.glb
+          if git diff --cached --quiet; then
+            echo "GLB unchanged"
+          else
+            git commit -m "Convert defender FBX to GLB"
+            git push
+          fi
