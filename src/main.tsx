@@ -5735,76 +5735,6 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       if(banditAsset)BANDIT_SPECS.forEach(spec=>{
         if(Math.hypot(q.x-spec.x,q.z-spec.z)<33)spawnBandit(spec);
       });
-      if(defender){
-        const d=defender;
-        if(d.hp>0&&!encounterLocked){
-          const foe=bandits.filter(b=>b.alerted&&b.hp>0&&
-            Math.hypot(b.actor.position.x-d.actor.position.x,b.actor.position.z-d.actor.position.z)<8)
-            .sort((a,b)=>Math.hypot(a.actor.position.x-d.actor.position.x,a.actor.position.z-d.actor.position.z)-
-              Math.hypot(b.actor.position.x-d.actor.position.x,b.actor.position.z-d.actor.position.z))[0];
-          if(foe){
-            const dx=foe.actor.position.x-d.actor.position.x,dz=foe.actor.position.z-d.actor.position.z;
-            const distance=Math.hypot(dx,dz);
-            d.actor.rotation.y=Math.atan2(dx,dz);
-            if(distance>2.35&&now>=d.lockUntil){
-              const step=Math.min(distance-2.35,dt*1.8);
-              const nx=d.actor.position.x+dx/distance*step,nz=d.actor.position.z+dz/distance*step;
-              // Defend the entrance but do not run through the gate or disappear
-              // behind the side walls while chasing an attacker.
-              if(nx>-4.6&&nx<4.6&&nz>35.5&&nz<42.25){
-                d.actor.position.set(nx,groundY(nx,nz),nz);
-                playDefender('Run',now);
-              }else playDefender('Idle_Sword',now);
-            }else if(distance<=2.8&&now>=d.nextAttack&&now>=d.lockUntil&&!banditVictoryRef.current){
-              d.nextAttack=now+1500;playDefender('Sword_Slash',now);
-              foe.hp=Math.max(0,foe.hp-1);foe.enemyHitAt=0;
-              if(foe.hp===0){
-                if(foe.collider){const index=banditCollisions.indexOf(foe.collider);if(index>=0)banditCollisions.splice(index,1);}
-                foe.collider=null;foe.deathAt=now;foe.sword.visible=false;
-                banditVictoryRef.current=foe.spec.id;
-                onBanditReward(foe.spec.id);
-                window.clearTimeout(banditVictoryTimer);
-                banditVictoryTimer=window.setTimeout(()=>setBanditVictory(foe.spec),950);
-              }
-              playBandit(foe,foe.hp?'Hit':'Death',now);
-            }
-          }else if(now>=d.lockUntil){
-            const homeX=DEFENDER_GATE_X,homeZ=d.patrolEnd;
-            const dx=homeX-d.actor.position.x,dz=homeZ-d.actor.position.z;
-            const distance=Math.hypot(dx,dz);
-            if(distance<.15){
-              if(d.patrolEnd===DEFENDER_PATROL_Z_NEAR)d.patrolEnd=DEFENDER_PATROL_Z_INNER;
-              else {d.patrolEnd=DEFENDER_PATROL_Z_NEAR;d.nextAttack=Math.max(d.nextAttack,now+900);}
-              playDefender('Idle_Sword',now);
-            }else if(now>=d.nextAttack){
-              const step=Math.min(distance,dt*.72);
-              const nx=d.actor.position.x+dx/distance*step,nz=d.actor.position.z+dz/distance*step;
-              d.actor.position.set(nx,groundY(nx,nz),nz);
-              d.actor.rotation.y=Math.atan2(dx,dz);
-              playDefender('Walk',now);
-            }else playDefender('Idle_Sword',now);
-          }
-        }
-        d.mixer.update(dt);
-
-        // Sync visible equipment after the animation has moved the bones.
-        d.actor.updateMatrixWorld(true);
-        d.model.updateMatrixWorld(true);
-        const syncShield=(mount:THREE.Group,bone:THREE.Object3D|null)=>{
-          if(!bone||!mount.visible)return;
-          const worldPos=new THREE.Vector3(),boneQuat=new THREE.Quaternion(),actorQuat=new THREE.Quaternion();
-          bone.getWorldPosition(worldPos);
-          bone.getWorldQuaternion(boneQuat);
-          // Offset from the middle of the left forearm toward its outside face.
-          worldPos.add(new THREE.Vector3(0,.02,-.18).applyQuaternion(boneQuat));
-          mount.position.copy(worldPos);
-          d.actor.worldToLocal(mount.position);
-          d.actor.getWorldQuaternion(actorQuat);
-          mount.quaternion.copy(actorQuat.invert()).multiply(boneQuat)
-            .multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0,Math.PI,0)));
-        };
-        syncShield(d.shieldMount,d.shieldBone);
-      }
       for(const preview of bandits){
         const dx=q.x-preview.actor.position.x,dz=q.z-preview.actor.position.z;
         const distance=Math.hypot(dx,dz);
@@ -5843,16 +5773,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         if(preview.enemyHitAt&&now>=preview.enemyHitAt&&preview.hp>0){
           preview.enemyHitAt=0;
           if(!banditVictoryRef.current&&!encounterLocked&&!inventoryPauseRef.current&&Math.hypot(q.x-preview.actor.position.x,q.z-preview.actor.position.z)<3.15){
-            const protecting=defender&&defender.hp>0&&
-              Math.hypot(defender.actor.position.x-preview.actor.position.x,defender.actor.position.z-preview.actor.position.z)<2.8;
-            if(protecting&&defender){
-              defender.hp=Math.max(0,defender.hp-1);
-              playDefender(defender.hp?'HitRecieve':'Death',now);
-            }else{
-              const guarding=shieldRaiseUntilRef.current>now&&gear.includes('shield');
-              const damage=Math.max(1,preview.spec.damage-banditDefenseRef.current);
-              banditDamageRef.current(guarding?Math.max(1,Math.ceil(damage*.25)):damage,guarding);
-            }
+            const guarding=shieldRaiseUntilRef.current>now&&gear.includes('shield');
+            const damage=Math.max(1,preview.spec.damage-banditDefenseRef.current);
+            banditDamageRef.current(guarding?Math.max(1,Math.ceil(damage*.25)):damage,guarding);
           }
         }
         if(preview.current==='Attack'&&now<preview.next){
