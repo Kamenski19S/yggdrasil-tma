@@ -5095,12 +5095,13 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       },'BANDITS');
     };
 
-    // The village defender uses the isolated Adventurer FBX and its original
-    // skinned animation clips. He patrols inside the front gate and responds
-    // only to bandits that are already pursuing the player.
-    const DEFENDER_GATE_X=-2.15;
-    const DEFENDER_PATROL_Z_NEAR=41.6;
-    const DEFENDER_PATROL_Z_INNER=39.2;
+    // The village defender is loaded directly with FBXLoader.  Keep this path
+    // separate from the shared GLB cache/fallback loader: a missing or oddly
+    // named animation must never make the whole guard disappear.
+    const DEFENDER_GATE_X=-1.45;
+    const DEFENDER_START_Z=40.7;
+    const DEFENDER_PATROL_Z_NEAR=41.15;
+    const DEFENDER_PATROL_Z_INNER=38.75;
     type DefenderActor={actor:THREE.Group;model:THREE.Object3D;mixer:THREE.AnimationMixer;
       actions:Record<string,THREE.AnimationAction>;current:string;lockUntil:number;
       nextAttack:number;hp:number;patrolEnd:number};
@@ -5108,8 +5109,11 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     const playDefender=(name:string,now:number)=>{
       const d=defender;if(!d||d.hp<=0&&name!=='Death')return;
       if(d.current===name&&name!=='Sword_Slash'&&name!=='HitRecieve')return;
-      const action=d.actions[name];if(!action)return;
-      d.actions[d.current]?.fadeOut(.12);
+      // A few exporters preserve slightly different names.  The action table
+      // below stores canonical aliases, so combat can still use the same names.
+      const action=d.actions[name]||d.actions.Idle_Sword||d.actions.Idle||d.actions.Idle_Neutral;
+      if(!action)return;
+      if(d.current&&d.actions[d.current]&&d.actions[d.current]!==action)d.actions[d.current].fadeOut(.12);
       action.reset().enabled=true;
       action.setEffectiveWeight(1).fadeIn(.12);
       const once=name==='Sword_Slash'||name==='HitRecieve'||name==='Death';
@@ -5117,44 +5121,84 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       action.clampWhenFinished=name==='Death';action.play();d.current=name;
       d.lockUntil=once?now+Math.max(450,action.getClip().duration*1000):0;
     };
-    loadGlbWithFolderFallback('Adventurer_Defender_Rigged.fbx',(asset:any)=>{
-      if(!glbTreesAlive)return;
-      const model=asset.scene as THREE.Object3D;
+    const canonicalDefenderClip=(raw:string)=>{
+      const tail=String(raw||'').split('|').pop()||String(raw||'');
+      const clean=tail.replace(/\.take.*$/i,'').replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'').toLowerCase();
+      if(clean==='walk'||clean.startsWith('walk_'))return 'Walk';
+      if(clean==='run'||clean.startsWith('run_'))return 'Run';
+      if(clean==='idle_sword'||clean.includes('idle_sword'))return 'Idle_Sword';
+      if(clean==='idle_neutral'||clean.includes('idle_neutral'))return 'Idle_Neutral';
+      if(clean==='idle'||clean.startsWith('idle_'))return 'Idle';
+      if(clean.includes('sword')&&clean.includes('slash'))return 'Sword_Slash';
+      if(clean.includes('hit')&&clean.includes('rec'))return 'HitRecieve';
+      if(clean.includes('death')||clean==='die')return 'Death';
+      return tail;
+    };
+    const installDefender=(model:THREE.Object3D)=>{
+      if(!glbTreesAlive||defender)return;
+      model.visible=true;
       model.updateMatrixWorld(true);
       const bodyBounds=new THREE.Box3();
       model.traverse((part:any)=>{
-        if(part.isMesh&&/^Adventurer_/.test(part.name))bodyBounds.expandByObject(part);
+        part.visible=true;
+        if(part.isMesh&&/^Adventurer_/i.test(part.name))bodyBounds.expandByObject(part);
       });
       if(bodyBounds.isEmpty())bodyBounds.setFromObject(model);
       const height=bodyBounds.getSize(new THREE.Vector3()).y;
-      if(!Number.isFinite(height)||height<.01){console.error('[VILLAGE DEFENDER] Invalid model height');return;}
-      model.scale.multiplyScalar(2.65/height);
+      if(!Number.isFinite(height)||height<.01){console.error('[VILLAGE DEFENDER] Invalid model height',height);return;}
+      model.scale.multiplyScalar(2.75/height);
       model.updateMatrixWorld(true);
       const scaledBounds=new THREE.Box3();
-      model.traverse((part:any)=>{
-        if(part.isMesh&&/^Adventurer_/.test(part.name))scaledBounds.expandByObject(part);
-      });
+      model.traverse((part:any)=>{if(part.isMesh&&/^Adventurer_/i.test(part.name))scaledBounds.expandByObject(part);});
       if(scaledBounds.isEmpty())scaledBounds.setFromObject(model);
       const center=scaledBounds.getCenter(new THREE.Vector3());
       model.position.set(model.position.x-center.x,model.position.y-scaledBounds.min.y,model.position.z-center.z);
-      model.traverse((part:any)=>{if(part.isMesh){part.castShadow=true;part.receiveShadow=true;part.frustumCulled=false;}});
-      // Keep him clearly visible just inside the front gate instead of hiding
-      // behind the left stone pier/wall segment. He starts facing outward.
+      model.traverse((part:any)=>{if(part.isMesh){part.visible=true;part.castShadow=true;part.receiveShadow=true;part.frustumCulled=false;}});
+
       const actor=new THREE.Group();
-      actor.position.set(DEFENDER_GATE_X,groundY(DEFENDER_GATE_X,40.4),40.4);
-      actor.rotation.y=0;actor.add(model);
-      const mixer=new THREE.AnimationMixer(model),actions:Record<string,THREE.AnimationAction>={};
-      for(const clip of asset.animations||[]){
-        const name=String(clip.name).split('|').pop()||'';
-        actions[name]=mixer.clipAction(clip);
-      }
-      if(!actions.Walk||!actions.Idle_Sword||!actions.Sword_Slash){
-        console.error('[VILLAGE DEFENDER] Required FBX animation missing',Object.keys(actions));return;
-      }
+      actor.name='VillageDefender';
+      actor.position.set(DEFENDER_GATE_X,groundY(DEFENDER_GATE_X,DEFENDER_START_Z)+.03,DEFENDER_START_Z);
+      actor.rotation.y=0;
+      actor.add(model);
+      // Add the body to the scene before validating clips.  This guarantees
+      // that an animation naming mismatch cannot make the defender invisible.
       scene.add(actor);
+
+      const mixer=new THREE.AnimationMixer(model),actions:Record<string,THREE.AnimationAction>={};
+      for(const clip of (model as any).animations||[]){
+        const action=mixer.clipAction(clip);
+        const canonical=canonicalDefenderClip(clip.name);
+        if(!actions[canonical])actions[canonical]=action;
+        if(!actions[clip.name])actions[clip.name]=action;
+      }
+      // FBXLoader also exposes animations on the parsed root in current Three.js.
+      if(!Object.keys(actions).length){
+        console.warn('[VILLAGE DEFENDER] Model loaded without animation clips; showing static guard');
+      }
       defender={actor,model,mixer,actions,current:'',lockUntil:0,nextAttack:0,hp:6,patrolEnd:DEFENDER_PATROL_Z_NEAR};
-      playDefender('Idle_Sword',performance.now());
-    },'VILLAGE DEFENDER');
+      console.log('[VILLAGE DEFENDER] LOADED',actor.position,Object.keys(actions));
+      playDefender(actions.Idle_Sword?'Idle_Sword':actions.Idle?'Idle':'Idle_Neutral',performance.now());
+    };
+    const defenderFiles=[
+      'Adventurer_Defender_Rigged(1).fbx',
+      'Adventurer_Defender_Rigged.fbx',
+      'Adventurer_Defender_Rigged(2).fbx',
+      'Adventurer_Defender_Rigged(3).fbx'
+    ];
+    const defenderUrls=defenderFiles.flatMap(name=>[`${BASE}img/models/${name}`,`${BASE}img/model/${name}`]);
+    const tryDefenderUrl=(index:number)=>{
+      if(index>=defenderUrls.length){console.error('[VILLAGE DEFENDER] FBX not found in models/model folders',defenderUrls);return;}
+      const url=defenderUrls[index];
+      fbxLoader.load(url,(model:any)=>{
+        if(!glbTreesAlive)return;
+        console.log('[VILLAGE DEFENDER] source',url,'clips',(model.animations||[]).map((clip:any)=>clip.name));
+        installDefender(model);
+      },undefined,(error:any)=>{
+        console.warn('[VILLAGE DEFENDER] load failed',url,error);
+        tryDefenderUrl(index+1);
+      });
+    };
+    tryDefenderUrl(0);
 
     // Tiny pollen motes drift through the air. One shared Points object keeps draw calls low.
     const moteCount=72;
