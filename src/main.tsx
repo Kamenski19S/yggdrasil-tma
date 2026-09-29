@@ -5156,8 +5156,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       // Parenting equipment directly to those bones can shrink it almost to zero.
       // Keep the real Midgard weapon models under the defender root instead and
       // copy the animated hand/forearm world transform onto them every frame.
-      const rightWrist=model.getObjectByName('Wrist.R');
-      const leftForearm=model.getObjectByName('LowerArm.L')||model.getObjectByName('Wrist.L');
+      const rightWrist=model.getObjectByName('Wrist.R')??null;
+      const leftForearm=model.getObjectByName('LowerArm.L')??model.getObjectByName('Wrist.L')??null;
 
       const sourceSword=model.getObjectByName('Sword');
       if(sourceSword)sourceSword.visible=false;
