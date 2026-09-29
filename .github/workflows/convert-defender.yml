@@ -22,11 +22,19 @@ jobs:
           curl -L --fail -o /tmp/FBX2glTF.zip \
             https://github.com/godotengine/FBX2glTF/releases/download/v0.13.1/FBX2glTF-linux-x86_64.zip
           unzip -q /tmp/FBX2glTF.zip -d /tmp/fbx2gltf
-          chmod +x /tmp/fbx2gltf/FBX2glTF
+          BIN="$(find /tmp/fbx2gltf -type f -name 'FBX2glTF' | head -n 1)"
+          if [ -z "$BIN" ]; then
+            echo "FBX2glTF binary not found after unzip"
+            find /tmp/fbx2gltf -maxdepth 3 -type f -print
+            exit 1
+          fi
+          chmod +x "$BIN"
+          echo "FBX_BIN=$BIN" >> "$GITHUB_ENV"
+          "$BIN" --help >/dev/null
 
       - name: Convert defender
         run: |
-          /tmp/fbx2gltf/FBX2glTF \
+          "$FBX_BIN" \
             --binary \
             --skinning-weights 4 \
             --anim-framerate bake30 \
