@@ -1,12 +1,10 @@
 import bpy
 import os
-import sys
 
 SRC = os.path.abspath("public/img/models/Adventurer_Defender_Rigged.fbx")
 DST = os.path.abspath("public/img/models/Adventurer_Defender_Rigged.glb")
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
-
 print("BLENDER_VERSION", bpy.app.version_string)
 
 try:
@@ -35,27 +33,51 @@ print("IMPORTED", "armatures", len(armatures), "meshes", len(meshes))
 print("ARMATURES", [o.name for o in armatures])
 print("MESHES", [o.name for o in meshes])
 
+if len(armatures) != 1:
+    raise RuntimeError(f"Expected exactly one armature, found {len(armatures)}")
+if len(meshes) != 5:
+    raise RuntimeError(f"Expected five skinned meshes, found {len(meshes)}")
+
 actions = list(bpy.data.actions)
 for action in actions:
     action.use_fake_user = True
+    try:
+        action.id_root = "OBJECT"
+    except Exception:
+        pass
     fcurves = getattr(action, "fcurves", [])
     print("ACTION", action.name, "fcurves", len(fcurves), "range", tuple(action.frame_range))
 
-if not actions:
-    raise RuntimeError("No Blender actions imported from FBX")
-if not any(len(getattr(a, "fcurves", [])) > 0 for a in actions):
-    raise RuntimeError("All imported Blender actions are empty")
+expected = ["Death", "HitRecieve", "HitRecieve_2", "Idle", "Idle_Neutral", "Idle_Sword",
+            "Interact", "Run", "Sword_Slash", "Walk", "Wave"]
+for name in expected:
+    if not any(a.name.endswith("|" + name) for a in actions):
+        raise RuntimeError(f"Missing imported action: {name}")
+if not all(len(getattr(a, "fcurves", [])) > 0 for a in actions):
+    raise RuntimeError("One or more imported Blender actions are empty")
 
-# Clear any importer-created NLA setup. We'll export all Actions directly where
-# supported; older exporters will still have the active action available.
+# The FBX contains 11 independent takes. Blender imports them as Actions.
+# Put each Action on its own NLA track so the glTF exporter serializes every take,
+# rather than only the active Action.
 for arm in armatures:
     if arm.animation_data is None:
         arm.animation_data_create()
-
-# Put a sensible idle action on the armature for exporters that require one.
-idle = next((a for a in actions if "Idle_Sword" in a.name), None) or next((a for a in actions if "Idle" in a.name), None) or actions[0]
-for arm in armatures:
-    arm.animation_data.action = idle
+    arm.animation_data.action = None
+    for old_track in list(arm.animation_data.nla_tracks):
+        arm.animation_data.nla_tracks.remove(old_track)
+    for action in actions:
+        track = arm.animation_data.nla_tracks.new()
+        # Strip the doubled armature prefix for clean GLB clip names.
+        clean_name = action.name.split("|")[-1]
+        track.name = clean_name
+        start = float(action.frame_range[0])
+        strip = track.strips.new(clean_name, start, action)
+        strip.action_frame_start = action.frame_range[0]
+        strip.action_frame_end = action.frame_range[1]
+        strip.blend_type = "REPLACE"
+        strip.extrapolation = "NOTHING"
+        track.mute = False
+        print("NLA_TRACK", track.name, tuple(action.frame_range))
 
 op = bpy.ops.export_scene.gltf
 props = op.get_rna_type().properties
@@ -77,6 +99,7 @@ optional = {
     "export_nla_strips": True,
     "export_def_bones": False,
     "export_optimize_animation_size": False,
+    "export_anim_single_armature": True,
 }
 for key, value in optional.items():
     if key in prop_names:
@@ -85,22 +108,9 @@ for key, value in optional.items():
 if "export_animation_mode" in prop_names:
     enum_ids = {item.identifier for item in props["export_animation_mode"].enum_items}
     print("ANIMATION_MODE_OPTIONS", sorted(enum_ids))
-    if "ACTIONS" in enum_ids:
-        kwargs["export_animation_mode"] = "ACTIONS"
-    elif "NLA_TRACKS" in enum_ids:
-        # Build one NLA track per imported action if ACTIONS isn't available.
-        for arm in armatures:
-            arm.animation_data.action = None
-            for old_track in list(arm.animation_data.nla_tracks):
-                arm.animation_data.nla_tracks.remove(old_track)
-            for action in actions:
-                track = arm.animation_data.nla_tracks.new()
-                track.name = action.name
-                start = float(action.frame_range[0])
-                strip = track.strips.new(action.name, start, action)
-                strip.action_frame_start = action.frame_range[0]
-                strip.action_frame_end = action.frame_range[1]
-        kwargs["export_animation_mode"] = "NLA_TRACKS"
+    if "NLA_TRACKS" not in enum_ids:
+        raise RuntimeError("Blender glTF exporter does not support NLA_TRACKS")
+    kwargs["export_animation_mode"] = "NLA_TRACKS"
 
 print("EXPORT_KWARGS", kwargs)
 result = op(**kwargs)
