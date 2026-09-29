@@ -5150,68 +5150,63 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       });
       model.updateMatrixWorld(true);
 
-      const nodeByName=(patterns:(string|RegExp)[]):THREE.Object3D|null=>{
-        let found:THREE.Object3D|null=null;
-        model.traverse((obj:any)=>{
-          if(found||!obj?.name)return;
-          const name=String(obj.name);
-          if(patterns.some((pattern)=>typeof pattern==='string'?name.toLowerCase().includes(pattern.toLowerCase()):pattern.test(name)))found=obj;
-        });
-        return found;
-      };
-      const rightHand=nodeByName([/RightHand/i,/Hand_R/i,/R_Hand/i,/mixamorigRightHand/i,/weapon/i]);
-      const leftForearm=nodeByName([/LeftForeArm/i,/ForeArm_L/i,/mixamorigLeftForeArm/i,/LeftHand/i,/Hand_L/i]);
+      // The Blender conversion gives this character explicit wrist/arm bone names.
+      // Attach real weapon assets to those bones so the Sword_Slash animation
+      // carries the sword with the hand instead of leaving it floating in world space.
+      const rightWrist=model.getObjectByName('Wrist.R');
+      const leftForearm=model.getObjectByName('LowerArm.L')||model.getObjectByName('Wrist.L');
 
-      // Give the defender visible equipment even if the source GLB has empty hands.
-      const steel=new THREE.MeshStandardMaterial({color:0xcbd1d8,roughness:.34,metalness:.88});
-      const leather=new THREE.MeshStandardMaterial({color:0x5b3620,roughness:.92,metalness:.08});
-      const wood=new THREE.MeshStandardMaterial({color:0x7a4b26,roughness:.93,metalness:.03});
-      const iron=new THREE.MeshStandardMaterial({color:0x5f666f,roughness:.65,metalness:.72});
+      // Hide the source FBX sword mesh. We use the already-tested Midgard weapon
+      // asset below so its scale/materials match the rest of the game.
+      const sourceSword=model.getObjectByName('Sword');
+      if(sourceSword)sourceSword.visible=false;
 
-      const makeDefenderSword=()=>{
-        const g=new THREE.Group();
-        const blade=new THREE.Mesh(new THREE.BoxGeometry(.10,.88,.035),steel);blade.position.y=.60;g.add(blade);
-        const fuller=new THREE.Mesh(new THREE.BoxGeometry(.02,.56,.008),new THREE.MeshStandardMaterial({color:0xe7ebf0,roughness:.2,metalness:.96}));fuller.position.set(0,.61,.0205);g.add(fuller);
-        const tip=new THREE.Mesh(new THREE.ConeGeometry(.055,.17,6),steel);tip.position.y=1.125;tip.rotation.x=Math.PI;g.add(tip);
-        const guard=new THREE.Mesh(new THREE.BoxGeometry(.30,.05,.07),iron);guard.position.y=.18;g.add(guard);
-        const grip=new THREE.Mesh(new THREE.CylinderGeometry(.028,.034,.24,10),leather);grip.position.y=.01;g.add(grip);
-        const pommel=new THREE.Mesh(new THREE.SphereGeometry(.045,10,10),iron);pommel.position.y=-.16;g.add(pommel);
-        g.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
-        return g;
-      };
-      const makeDefenderShield=()=>{
-        const g=new THREE.Group();
-        const base=new THREE.Mesh(new THREE.CylinderGeometry(.34,.34,.06,24),wood);base.rotation.x=Math.PI/2;g.add(base);
-        const face=new THREE.Mesh(new THREE.CylinderGeometry(.315,.315,.028,24),new THREE.MeshStandardMaterial({color:0x6b3c23,roughness:.93,metalness:.03}));face.rotation.x=Math.PI/2;face.position.z=.018;g.add(face);
-        const rim=new THREE.Mesh(new THREE.TorusGeometry(.34,.03,10,28),iron);rim.rotation.x=Math.PI/2;g.add(rim);
-        const boss=new THREE.Mesh(new THREE.SphereGeometry(.09,14,12),steel);boss.scale.z=.65;boss.position.z=.055;g.add(boss);
-        const strap1=new THREE.Mesh(new THREE.BoxGeometry(.07,.42,.02),leather);strap1.position.set(-.09,0,-.008);g.add(strap1);
-        const strap2=new THREE.Mesh(new THREE.BoxGeometry(.07,.42,.02),leather);strap2.position.set(.09,0,-.008);g.add(strap2);
-        g.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
-        return g;
-      };
+      if(rightWrist)loadGlbWithFolderFallback('Sword.glb',(weaponGlb:any)=>{
+        if(!glbTreesAlive)return;
+        const blade=weaponGlb.scene;
+        textureSteelOnWeapon(blade,'Sword.glb');
+        blade.updateMatrixWorld(true);
+        const bounds=new THREE.Box3().setFromObject(blade);
+        const size=bounds.getSize(new THREE.Vector3());
+        if(size.y<.001)return;
+        const center=bounds.getCenter(new THREE.Vector3());
+        blade.position.set(-center.x,-bounds.min.y,-center.z);
 
-      const defenderSword=makeDefenderSword();
-      if(rightHand){
-        defenderSword.position.set(.02,.02,.01);
-        defenderSword.rotation.set(0,0,Math.PI);
-        rightHand.add(defenderSword);
-      }else{
-        defenderSword.position.set(.34,.92,.10);
-        defenderSword.rotation.set(.25,0,-1.3);
-        model.add(defenderSword);
-      }
+        const grip=new THREE.Group();
+        grip.name='DefenderSwordMount';
+        // Defender is larger than Vika; keep the sword proportionate but not oversized.
+        grip.scale.setScalar(.66/size.y);
+        grip.position.set(0,-.055,.015);
+        grip.rotation.set(-.20,0,0);
+        grip.add(blade);
+        blade.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+        rightWrist.add(grip);
+      },'DEFENDER SWORD');
 
-      const defenderShield=makeDefenderShield();
-      if(leftForearm){
-        defenderShield.position.set(-.02,.06,-.01);
-        defenderShield.rotation.set(0,Math.PI/2,0);
-        leftForearm.add(defenderShield);
-      }else{
-        defenderShield.position.set(-.32,1.02,.12);
-        defenderShield.rotation.set(0,0,Math.PI/2);
-        model.add(defenderShield);
-      }
+      if(leftForearm)loadGlbWithFolderFallback('Shield_Round.glb',(shieldGlb:any)=>{
+        if(!glbTreesAlive)return;
+        const shield=shieldGlb.scene;
+        // The round shield asset is deeper than a real hand-held shield.
+        shield.scale.z=.22;
+        shield.updateMatrixWorld(true);
+        const bounds=new THREE.Box3().setFromObject(shield);
+        const size=bounds.getSize(new THREE.Vector3());
+        const span=Math.max(size.x,size.y,size.z);
+        if(span<.001)return;
+        const center=bounds.getCenter(new THREE.Vector3());
+        shield.position.set(-center.x,-center.y,-center.z);
+
+        const mount=new THREE.Group();
+        mount.name='DefenderShieldMount';
+        mount.scale.setScalar(.54/span);
+        // Strap it to the outside of the left forearm. It will follow the arm
+        // through idle, walk, run, hit and sword-attack animations.
+        mount.position.set(0,.03,-.025);
+        mount.rotation.set(0,Math.PI,0);
+        mount.add(shield);
+        shield.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+        leftForearm.add(mount);
+      },'DEFENDER SHIELD');
       model.updateMatrixWorld(true);
 
       const actor=new THREE.Group();
