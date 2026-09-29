@@ -5150,7 +5150,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       });
       model.updateMatrixWorld(true);
 
-      const nodeByName=(patterns:(string|RegExp)[])=>{
+      const nodeByName=(patterns:(string|RegExp)[]):THREE.Object3D|null=>{
         let found:THREE.Object3D|null=null;
         model.traverse((obj:any)=>{
           if(found||!obj?.name)return;
