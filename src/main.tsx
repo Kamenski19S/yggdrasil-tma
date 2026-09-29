@@ -5095,6 +5095,61 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       },'BANDITS');
     };
 
+    // The village defender uses the isolated Adventurer FBX and its original
+    // skinned animation clips. He patrols inside the front gate and responds
+    // only to bandits that are already pursuing the player.
+    type DefenderActor={actor:THREE.Group;model:THREE.Object3D;mixer:THREE.AnimationMixer;
+      actions:Record<string,THREE.AnimationAction>;current:string;lockUntil:number;
+      nextAttack:number;hp:number;patrolEnd:number};
+    let defender:DefenderActor|null=null;
+    const playDefender=(name:string,now:number)=>{
+      const d=defender;if(!d||d.hp<=0&&name!=='Death')return;
+      if(d.current===name&&name!=='Sword_Slash'&&name!=='HitRecieve')return;
+      const action=d.actions[name];if(!action)return;
+      d.actions[d.current]?.fadeOut(.12);
+      action.reset().enabled=true;
+      action.setEffectiveWeight(1).fadeIn(.12);
+      const once=name==='Sword_Slash'||name==='HitRecieve'||name==='Death';
+      action.setLoop(once?THREE.LoopOnce:THREE.LoopRepeat,once?1:Infinity);
+      action.clampWhenFinished=name==='Death';action.play();d.current=name;
+      d.lockUntil=once?now+Math.max(450,action.getClip().duration*1000):0;
+    };
+    loadGlbWithFolderFallback('Adventurer_Defender_Rigged.fbx',(asset:any)=>{
+      if(!glbTreesAlive)return;
+      const model=asset.scene as THREE.Object3D;
+      model.updateMatrixWorld(true);
+      const bodyBounds=new THREE.Box3();
+      model.traverse((part:any)=>{
+        if(part.isMesh&&/^Adventurer_/.test(part.name))bodyBounds.expandByObject(part);
+      });
+      if(bodyBounds.isEmpty())bodyBounds.setFromObject(model);
+      const height=bodyBounds.getSize(new THREE.Vector3()).y;
+      if(!Number.isFinite(height)||height<.01){console.error('[VILLAGE DEFENDER] Invalid model height');return;}
+      model.scale.multiplyScalar(2.65/height);
+      model.updateMatrixWorld(true);
+      const scaledBounds=new THREE.Box3();
+      model.traverse((part:any)=>{
+        if(part.isMesh&&/^Adventurer_/.test(part.name))scaledBounds.expandByObject(part);
+      });
+      if(scaledBounds.isEmpty())scaledBounds.setFromObject(model);
+      const center=scaledBounds.getCenter(new THREE.Vector3());
+      model.position.set(model.position.x-center.x,model.position.y-scaledBounds.min.y,model.position.z-center.z);
+      model.traverse((part:any)=>{if(part.isMesh){part.castShadow=true;part.receiveShadow=true;part.frustumCulled=false;}});
+      const actor=new THREE.Group();actor.position.set(-6.2,groundY(-6.2,39),39);
+      actor.rotation.y=0;actor.add(model);
+      const mixer=new THREE.AnimationMixer(model),actions:Record<string,THREE.AnimationAction>={};
+      for(const clip of asset.animations||[]){
+        const name=String(clip.name).split('|').pop()||'';
+        actions[name]=mixer.clipAction(clip);
+      }
+      if(!actions.Walk||!actions.Idle_Sword||!actions.Sword_Slash){
+        console.error('[VILLAGE DEFENDER] Required FBX animation missing',Object.keys(actions));return;
+      }
+      scene.add(actor);
+      defender={actor,model,mixer,actions,current:'',lockUntil:0,nextAttack:0,hp:6,patrolEnd:41.3};
+      playDefender('Idle_Sword',performance.now());
+    },'VILLAGE DEFENDER');
+
     // Tiny pollen motes drift through the air. One shared Points object keeps draw calls low.
     const moteCount=72;
     const motePos=new Float32Array(moteCount*3);
@@ -5586,6 +5641,57 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       if(banditAsset)BANDIT_SPECS.forEach(spec=>{
         if(Math.hypot(q.x-spec.x,q.z-spec.z)<33)spawnBandit(spec);
       });
+      if(defender){
+        const d=defender;
+        if(d.hp>0&&!encounterLocked){
+          const foe=bandits.filter(b=>b.alerted&&b.hp>0&&
+            Math.hypot(b.actor.position.x-d.actor.position.x,b.actor.position.z-d.actor.position.z)<8)
+            .sort((a,b)=>Math.hypot(a.actor.position.x-d.actor.position.x,a.actor.position.z-d.actor.position.z)-
+              Math.hypot(b.actor.position.x-d.actor.position.x,b.actor.position.z-d.actor.position.z))[0];
+          if(foe){
+            const dx=foe.actor.position.x-d.actor.position.x,dz=foe.actor.position.z-d.actor.position.z;
+            const distance=Math.hypot(dx,dz);
+            d.actor.rotation.y=Math.atan2(dx,dz);
+            if(distance>2.35&&now>=d.lockUntil){
+              const step=Math.min(distance-2.35,dt*1.8);
+              const nx=d.actor.position.x+dx/distance*step,nz=d.actor.position.z+dz/distance*step;
+              // Remain inside the gateway instead of walking through closed doors.
+              if(Math.hypot(nx+6.2,nz-40)<6.5&&nz<42.3){
+                d.actor.position.set(nx,groundY(nx,nz),nz);
+                playDefender('Run',now);
+              }else playDefender('Idle_Sword',now);
+            }else if(distance<=2.8&&now>=d.nextAttack&&now>=d.lockUntil&&!banditVictoryRef.current){
+              d.nextAttack=now+1500;playDefender('Sword_Slash',now);
+              foe.hp=Math.max(0,foe.hp-1);foe.enemyHitAt=0;
+              if(foe.hp===0){
+                if(foe.collider){const index=banditCollisions.indexOf(foe.collider);if(index>=0)banditCollisions.splice(index,1);}
+                foe.collider=null;foe.deathAt=now;foe.sword.visible=false;
+                banditVictoryRef.current=foe.spec.id;
+                onBanditReward(foe.spec.id);
+                window.clearTimeout(banditVictoryTimer);
+                banditVictoryTimer=window.setTimeout(()=>setBanditVictory(foe.spec),950);
+              }
+              playBandit(foe,foe.hp?'Hit':'Death',now);
+            }
+          }else if(now>=d.lockUntil){
+            const homeX=-6.2,homeZ=d.patrolEnd;
+            const dx=homeX-d.actor.position.x,dz=homeZ-d.actor.position.z;
+            const distance=Math.hypot(dx,dz);
+            if(distance<.15){
+              if(d.patrolEnd===41.3)d.patrolEnd=38.8;
+              else {d.patrolEnd=41.3;d.nextAttack=Math.max(d.nextAttack,now+900);}
+              playDefender('Idle_Sword',now);
+            }else if(now>=d.nextAttack){
+              const step=Math.min(distance,dt*.72);
+              const nx=d.actor.position.x+dx/distance*step,nz=d.actor.position.z+dz/distance*step;
+              d.actor.position.set(nx,groundY(nx,nz),nz);
+              d.actor.rotation.y=Math.atan2(dx,dz);
+              playDefender('Walk',now);
+            }else playDefender('Idle_Sword',now);
+          }
+        }
+        d.mixer.update(dt);
+      }
       for(const preview of bandits){
         const dx=q.x-preview.actor.position.x,dz=q.z-preview.actor.position.z;
         const distance=Math.hypot(dx,dz);
@@ -5624,9 +5730,16 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         if(preview.enemyHitAt&&now>=preview.enemyHitAt&&preview.hp>0){
           preview.enemyHitAt=0;
           if(!banditVictoryRef.current&&!encounterLocked&&!inventoryPauseRef.current&&Math.hypot(q.x-preview.actor.position.x,q.z-preview.actor.position.z)<3.15){
-            const guarding=shieldRaiseUntilRef.current>now&&gear.includes('shield');
-            const damage=Math.max(1,preview.spec.damage-banditDefenseRef.current);
-            banditDamageRef.current(guarding?Math.max(1,Math.ceil(damage*.25)):damage,guarding);
+            const protecting=defender&&defender.hp>0&&
+              Math.hypot(defender.actor.position.x-preview.actor.position.x,defender.actor.position.z-preview.actor.position.z)<2.8;
+            if(protecting&&defender){
+              defender.hp=Math.max(0,defender.hp-1);
+              playDefender(defender.hp?'HitRecieve':'Death',now);
+            }else{
+              const guarding=shieldRaiseUntilRef.current>now&&gear.includes('shield');
+              const damage=Math.max(1,preview.spec.damage-banditDefenseRef.current);
+              banditDamageRef.current(guarding?Math.max(1,Math.ceil(damage*.25)):damage,guarding);
+            }
           }
         }
         if(preview.current==='Attack'&&now<preview.next){
