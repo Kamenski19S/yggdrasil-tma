@@ -5095,13 +5095,14 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       },'BANDITS');
     };
 
-    // The village defender is loaded directly with FBXLoader.  Keep this path
-    // separate from the shared GLB cache/fallback loader: a missing or oddly
-    // named animation must never make the whole guard disappear.
+    // Village defender: use the Blender-converted GLB.  The original FBX loads
+    // in Three.js, but its multi-mesh skinning is unstable in the Telegram/WebGL
+    // runtime.  The GLB contains one clean armature, five skinned meshes and all
+    // eleven animation clips.
     const DEFENDER_GATE_X=0;
-    const DEFENDER_START_Z=43.2;
-    const DEFENDER_PATROL_Z_NEAR=43.2;
-    const DEFENDER_PATROL_Z_INNER=41.8;
+    const DEFENDER_START_Z=39.25;
+    const DEFENDER_PATROL_Z_NEAR=39.25;
+    const DEFENDER_PATROL_Z_INNER=40.55;
     type DefenderActor={actor:THREE.Group;model:THREE.Object3D;mixer:THREE.AnimationMixer;
       actions:Record<string,THREE.AnimationAction>;current:string;lockUntil:number;
       nextAttack:number;hp:number;patrolEnd:number};
@@ -5109,8 +5110,6 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     const playDefender=(name:string,now:number)=>{
       const d=defender;if(!d||d.hp<=0&&name!=='Death')return;
       if(d.current===name&&name!=='Sword_Slash'&&name!=='HitRecieve')return;
-      // A few exporters preserve slightly different names.  The action table
-      // below stores canonical aliases, so combat can still use the same names.
       const action=d.actions[name]||d.actions.Idle_Sword||d.actions.Idle||d.actions.Idle_Neutral;
       if(!action)return;
       if(d.current&&d.actions[d.current]&&d.actions[d.current]!==action)d.actions[d.current].fadeOut(.12);
@@ -5134,113 +5133,45 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       if(clean.includes('death')||clean==='die')return 'Death';
       return tail;
     };
-    const installDefender=(model:THREE.Object3D)=>{
+    const installDefender=(model:THREE.Object3D,clips:THREE.AnimationClip[])=>{
       if(!glbTreesAlive||defender)return;
       model.visible=true;
-      // This FBX was exported with 100x transforms on its mesh/armature nodes.
-      // Do NOT fit it with Box3: bounds on a skinned FBX include bone transforms
-      // and can shrink the whole character to almost zero. 0.01 restores metres.
-      model.scale.setScalar(0.01);
+      // Blender/glTF reports a rest-pose height of ~1.856 m.  Scale to the
+      // established Midgard character height without touching the armature.
+      model.scale.setScalar(1.48);
       model.position.set(0,0,0);
-      model.updateMatrixWorld(true);
-      // The FBX stores TransparentColor = 1 on its materials. Three.js FBXLoader
-      // interprets that as opacity 0 when no explicit Opacity/TransparencyFactor
-      // is present, so the meshes exist but render fully invisible. Force these
-      // defender-only materials back to opaque.
-      const defenderSkinnedMeshes:THREE.SkinnedMesh[]=[];
+      model.rotation.y=0;
       model.traverse((part:any)=>{
         if(!part.isMesh)return;
-        part.visible=true;part.castShadow=true;part.receiveShadow=true;part.frustumCulled=false;
-        if(part.isSkinnedMesh)defenderSkinnedMeshes.push(part as THREE.SkinnedMesh);
-        const materials=Array.isArray(part.material)?part.material:[part.material];
-        for(const material of materials){
-          if(!material)continue;
-          material.transparent=false;
-          material.opacity=1;
-          material.depthWrite=true;
-          material.depthTest=true;
-          material.colorWrite=true;
-          material.alphaTest=0;
-          material.alphaMap=null;
-          material.blending=THREE.NormalBlending;
-          material.side=THREE.DoubleSide;
-          material.visible=true;
-          material.needsUpdate=true;
-        }
+        part.visible=true;
+        part.castShadow=true;
+        part.receiveShadow=true;
+        part.frustumCulled=false;
       });
-
-      // This FBX contains five skinned meshes that all reference the same 62
-      // logical bones. FBXLoader duplicates those shared bones for every Skin
-      // deformer. The duplicates end up nested inside each other, so animation
-      // drives the outer copy while some meshes are bound to inner copies; that
-      // is what caused huge triangles to flash across the screen. Rebind every
-      // skinned part to the single outer/canonical copy of each logical bone.
-      const canonicalBones=new Map<string,THREE.Bone>();
-      model.traverse((part:any)=>{
-        if(!part.isBone||!part.name)return;
-        let ancestor=part.parent as THREE.Object3D|null;
-        let hasSameNamedAncestor=false;
-        while(ancestor&&ancestor!==model){
-          if((ancestor as any).isBone&&ancestor.name===part.name){hasSameNamedAncestor=true;break;}
-          ancestor=ancestor.parent;
-        }
-        if(!hasSameNamedAncestor&&!canonicalBones.has(part.name))canonicalBones.set(part.name,part as THREE.Bone);
-      });
-      for(const mesh of defenderSkinnedMeshes){
-        const sourceSkeleton=mesh.skeleton;
-        if(!sourceSkeleton)continue;
-        const sharedBones=sourceSkeleton.bones.map(bone=>canonicalBones.get(bone.name)||bone);
-        const sharedInverses=sourceSkeleton.boneInverses.map(matrix=>matrix.clone());
-        const sharedSkeleton=new THREE.Skeleton(sharedBones,sharedInverses);
-        mesh.bind(sharedSkeleton,mesh.bindMatrix.clone());
-        mesh.normalizeSkinWeights();
-        sharedSkeleton.update();
-      }
-      console.log('[VILLAGE DEFENDER] unified skeleton',defenderSkinnedMeshes.length,'meshes,',canonicalBones.size,'canonical bones');
+      model.updateMatrixWorld(true);
 
       const actor=new THREE.Group();
       actor.name='VillageDefender';
       actor.position.set(DEFENDER_GATE_X,groundY(DEFENDER_GATE_X,DEFENDER_START_Z)+.03,DEFENDER_START_Z);
-      actor.rotation.y=0;
+      actor.rotation.y=Math.PI;
       actor.add(model);
-      // Add the body to the scene before validating clips.  This guarantees
-      // that an animation naming mismatch cannot make the defender invisible.
       scene.add(actor);
 
       const mixer=new THREE.AnimationMixer(model),actions:Record<string,THREE.AnimationAction>={};
-      for(const clip of (model as any).animations||[]){
+      for(const clip of clips||[]){
         const action=mixer.clipAction(clip);
         const canonical=canonicalDefenderClip(clip.name);
         if(!actions[canonical])actions[canonical]=action;
         if(!actions[clip.name])actions[clip.name]=action;
       }
-      // FBXLoader also exposes animations on the parsed root in current Three.js.
-      if(!Object.keys(actions).length){
-        console.warn('[VILLAGE DEFENDER] Model loaded without animation clips; showing static guard');
-      }
       defender={actor,model,mixer,actions,current:'',lockUntil:0,nextAttack:0,hp:6,patrolEnd:DEFENDER_PATROL_Z_NEAR};
-      console.log('[VILLAGE DEFENDER] LOADED',actor.position,Object.keys(actions));
+      console.log('[VILLAGE DEFENDER GLB] LOADED',actor.position,(clips||[]).map(c=>c.name));
       playDefender(actions.Idle_Sword?'Idle_Sword':actions.Idle?'Idle':'Idle_Neutral',performance.now());
     };
-    // Exact repository asset: public/img/models/Adventurer_Defender_Rigged.fbx
-    // Fetch it explicitly without browser/Telegram cache, then parse the bytes.
-    const DEFENDER_ASSET='Adventurer_Defender_Rigged.fbx';
-    const defenderBase=`${BASE}img/models/`;
-    const defenderUrl=`${defenderBase}${DEFENDER_ASSET}?v=20260929-2249`;
-    void (async()=>{
-      try{
-        const response=await fetch(defenderUrl,{cache:'no-store'});
-        if(!response.ok)throw new Error(`HTTP ${response.status} ${response.statusText}`);
-        const buffer=await response.arrayBuffer();
-        if(buffer.byteLength<100000)throw new Error(`FBX response is too small: ${buffer.byteLength} bytes`);
-        const model=fbxLoader.parse(buffer,defenderBase) as any;
-        if(!glbTreesAlive)return;
-        console.log('[VILLAGE DEFENDER] parsed',buffer.byteLength,'bytes; clips',(model.animations||[]).map((clip:any)=>clip.name));
-        installDefender(model);
-      }catch(error:any){
-        console.error('[VILLAGE DEFENDER] fetch/parse failed',defenderUrl,error);
-      }
-    })();
+    loadGlbWithFolderFallback('Adventurer_Defender_Rigged.glb',(gltf:any)=>{
+      if(!glbTreesAlive)return;
+      installDefender(gltf.scene,gltf.animations||[]);
+    },'VILLAGE DEFENDER GLB');
 
     // Tiny pollen motes drift through the air. One shared Points object keeps draw calls low.
     const moteCount=72;
