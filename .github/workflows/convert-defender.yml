@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - "public/img/models/Adventurer_Defender_Rigged.fbx"
+      - "scripts/convert_defender_blender.py"
       - ".github/workflows/convert-defender.yml"
 
 permissions:
@@ -17,29 +18,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download FBX2glTF
+      - name: Install Blender
         run: |
-          curl -L --fail -o /tmp/FBX2glTF.zip \
-            https://github.com/godotengine/FBX2glTF/releases/download/v0.13.1/FBX2glTF-linux-x86_64.zip
-          unzip -q /tmp/FBX2glTF.zip -d /tmp/fbx2gltf
-          BIN="$(find /tmp/fbx2gltf -type f -name 'FBX2glTF*' ! -name '*.txt' | head -n 1)"
-          if [ -z "$BIN" ]; then
-            echo "FBX2glTF binary not found after unzip"
-            find /tmp/fbx2gltf -maxdepth 3 -type f -print
-            exit 1
-          fi
-          chmod +x "$BIN"
-          echo "FBX_BIN=$BIN" >> "$GITHUB_ENV"
-          "$BIN" --help >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y blender
+          blender --version | head -n 2
 
-      - name: Convert defender
+      - name: Convert defender with Blender
         run: |
-          "$FBX_BIN" \
-            --binary \
-            --skinning-weights 4 \
-            --anim-framerate bake30 \
-            --input public/img/models/Adventurer_Defender_Rigged.fbx \
-            --output public/img/models/Adventurer_Defender_Rigged.glb
+          blender -b --python scripts/convert_defender_blender.py
           test -s public/img/models/Adventurer_Defender_Rigged.glb
           ls -lh public/img/models/Adventurer_Defender_Rigged.glb
 
@@ -55,6 +42,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "GLB unchanged"
           else
-            git commit -m "Convert defender FBX to GLB"
+            git commit -m "Convert defender FBX to GLB with Blender"
             git push
           fi
