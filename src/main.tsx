@@ -502,6 +502,9 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .btn.gold{background:linear-gradient(135deg,#ffd76a,#e0a53f);color:#231a05}.btn.ok{background:#17301d;color:#7ee787;border:1px solid rgba(126,231,135,.33)}
 .btn.ghost{background:transparent;border:1px solid #2a3a2e;color:#9ab0a2;margin-top:8px}.btn:disabled{opacity:.55}
 .toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:30;background:rgba(0,0,0,.85);border:1px solid rgba(255,215,106,.4);color:#ffd76a;padding:8px 14px;border-radius:12px;font-size:13px;animation:fade .3s}
+.house-dialog-backdrop{position:fixed;inset:0;z-index:80;background:rgba(4,9,7,.64);display:flex;align-items:center;justify-content:center;padding:20px}
+.house-dialog-panel{width:min(420px,100%);border:1px solid #af8248;border-radius:18px;background:linear-gradient(145deg,#243126,#111a16);color:#fff3d8;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.house-dialog-panel h3{margin:0 0 12px;color:#f3ca77;font-size:19px}.house-dialog-panel p{font-size:16px;line-height:1.5;margin:0 0 20px}.house-dialog-panel button{width:100%;padding:12px;border:1px solid #cfaa64;border-radius:11px;background:#765331;color:#fff7e5;font-weight:700}
 .days{display:flex;gap:6px;justify-content:center;margin:10px 0}
 .day{flex:1;padding:8px 2px;border-radius:10px;background:#0d130f;border:1px solid #223028;font-size:10px;color:#8fa39a;display:flex;flex-direction:column;gap:4px;align-items:center}
 .day b{font-size:12px;color:#e8f0e8}
@@ -1274,6 +1277,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   const state = useRef({ x: start.x, z: start.z, dx: 0, dz: 0 });
   const [near, setNear] = useState("");
   const [doorNotice,setDoorNotice]=useState("");
+  const [outsideHouse,setOutsideHouse]=useState("");
   const [moving, setMoving] = useState(false);
   const [ritualOpen, setRitualOpen] = useState(false);
   const [forestEventOpen, setForestEventOpen] = useState(false);
@@ -2249,12 +2253,15 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       actor?:THREE.Object3D;mixer?:THREE.AnimationMixer;actions?:Record<string,THREE.AnimationAction>;current?:string};
     const hosts=new Map<string,HomeHost>(villageHomes.map(home=>[home.id,{home}]));
     const npcAssets=new Map<string,any>();
-    let doorVisit:{host:HomeHost;elapsed:number;start:THREE.Vector3;target:THREE.Vector3;spoken:boolean}|null=null;
+    let doorVisit:{host:HomeHost;elapsed:number;start:THREE.Vector3;reach:THREE.Vector3;target:THREE.Vector3;spoken:boolean}|null=null;
+    let outsideHost:HomeHost|null=null;
+    let outsideSince=0;
     const playHost=(host:HomeHost,name:string)=>{
       if(host.current===name)return;
       const next=host.actions?.[name]||host.actions?.Idle;
       if(!next)return;
-      if(host.current)host.actions?.[host.current]?.fadeOut(.16);
+      if(host.current==="Walk"&&name!=="Walk")host.actions?.Walk?.stop();
+      else if(host.current)host.actions?.[host.current]?.fadeOut(.16);
       next.reset().fadeIn(.16).play();host.current=name;
     };
     const prepareHost=(host:HomeHost)=>{
@@ -2262,15 +2269,11 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       if(!host.doorPoint||!asset||host.actor||!glbTreesAlive)return;
       const actor=cloneSkinned(asset.scene) as THREE.Object3D;
       actor.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;}});
-      actor.scale.setScalar(1);
-      actor.updateMatrixWorld(true);
-      const bounds=new THREE.Box3().setFromObject(actor);
-      const height=Math.max(.1,bounds.max.y-bounds.min.y);
-      actor.scale.setScalar(2.15/height);
-      actor.updateMatrixWorld(true);
-      const scaled=new THREE.Box3().setFromObject(actor);
+      // The source characters are 1.78–1.87 units high. SkinnedMesh world
+      // bounds include displaced bind-pose vertices and shrink them badly.
+      actor.scale.setScalar(1.55);
       const {rot}=host.home,point=host.doorPoint;
-      host.groundOffset=-scaled.min.y;
+      host.groundOffset=0;
       actor.position.set(point.x-Math.sin(rot)*1.12,groundY(point.x,point.z)+host.groundOffset,
         point.z-Math.cos(rot)*1.12);
       actor.rotation.y=rot;
@@ -5447,13 +5450,21 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
 
     villageDoorActionRef.current=(id:string)=>{
       if(doorVisit)return;
+      if(outsideHost?.home.id===id){onRef.current(id,{x:state.current.x,z:state.current.z});return;}
+      if(outsideHost){
+        outsideHost.actor!.visible=false;outsideHost.pivot!.rotation.y=0;
+        outsideHost=null;setOutsideHouse("");
+      }
       const host=hosts.get(id),point=host?.doorPoint;
       if(!host||!point||!host.pivot||!host.actor){setDoorNotice("Хозяин и дверь ещё загружаются. Попробуй снова через несколько секунд.");return;}
       if(Math.hypot(state.current.x-point.x,state.current.z-point.z)>5){setDoorNotice("Подойди ближе к ручке двери.");return;}
       setDoorNotice("");state.current.dx=0;state.current.dz=0;
-      const {rot}=host.home;
+      const {rot}=host.home,nx=Math.sin(rot),nz=Math.cos(rot);
+      const front=(point.x-host.home.x)*nx+(point.z-host.home.z)*nz;
+      const clearDistance=Math.max(1.2,host.home.d*HOME_SCALE*.5+1.25-front);
       doorVisit={host,elapsed:0,start:new THREE.Vector3(state.current.x,0,state.current.z),
-        target:new THREE.Vector3(point.x+Math.sin(rot)*1.18,0,point.z+Math.cos(rot)*1.18),spoken:false};
+        reach:new THREE.Vector3(point.x+nx*.95,0,point.z+nz*.95),
+        target:new THREE.Vector3(point.x+nx*clearDistance,0,point.z+nz*clearDistance),spoken:false};
       host.actor.visible=false;host.pivot.rotation.y=0;playHost(host,"Idle");setNear("");
     };
     const ray=new THREE.Raycaster();const pointer=new THREE.Vector2();
@@ -5514,8 +5525,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         if(t<2.75){
           q.dx=0;q.dz=0;
           const approach=THREE.MathUtils.smoothstep(t,0,.62);
-          q.x=THREE.MathUtils.lerp(visit.start.x,visit.target.x,approach);
-          q.z=THREE.MathUtils.lerp(visit.start.z,visit.target.z,approach);
+          const retreat=THREE.MathUtils.smoothstep(t,1.50,2.68);
+          q.x=THREE.MathUtils.lerp(THREE.MathUtils.lerp(visit.start.x,visit.reach.x,approach),visit.target.x,retreat);
+          q.z=THREE.MathUtils.lerp(THREE.MathUtils.lerp(visit.start.z,visit.reach.z,approach),visit.target.z,retreat);
           hero.rotation.y=Math.atan2(point.x-q.x,point.z-q.z);
           cameraDir.current.x=Math.sin(hero.rotation.y);cameraDir.current.z=Math.cos(hero.rotation.y);
         }
@@ -5525,20 +5537,27 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         if(t>=1.30){
           actor.visible=true;
           const exit=THREE.MathUtils.smoothstep(t,1.38,2.68);
-          const x=point.x+Math.sin(rot)*(-1.12+2.72*exit);
-          const z=point.z+Math.cos(rot)*(-1.12+2.72*exit);
+          const x=point.x+Math.sin(rot)*(-1.12+3.52*exit)+Math.cos(rot)*.95*exit;
+          const z=point.z+Math.cos(rot)*(-1.12+3.52*exit)-Math.sin(rot)*.95*exit;
           actor.position.set(x,groundY(x,z)+(host.groundOffset||0),z);
-          actor.rotation.y=rot;
-          playHost(host,t<2.65?"Walk":t<4.5?"Talk":"Idle");
+          actor.rotation.y=t<2.65?rot:Math.atan2(q.x-x,q.z-z);
+          playHost(host,t<2.65?"Walk":"Talk");
         }
         if(t>=2.78&&!visit.spoken){
           visit.spoken=true;
+          playHost(host,"Talk");
+          outsideHost=host;outsideSince=now;setOutsideHouse(host.home.id);
+          doorVisit=null;
           onRef.current(host.home.id,{x:q.x,z:q.z});
         }
-        if(t>5&&Math.hypot(q.x-point.x,q.z-point.z)>6){
-          actor.visible=false;host.pivot!.rotation.y=0;
+      }
+      if(outsideHost){
+        const host=outsideHost,point=host.doorPoint!;
+        if(now-outsideSince>1600)playHost(host,"Idle");
+        if(Math.hypot(q.x-point.x,q.z-point.z)>7){
+          host.actor!.visible=false;host.pivot!.rotation.y=0;
           if(host.handle)host.handle.rotation.z=host.handleBase||0;
-          doorVisit=null;
+          outsideHost=null;setOutsideHouse("");
         }
       }
 
@@ -6065,7 +6084,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       }
       if(id==="forge")return <div className="mid3d-ui mid3d-door-prompt"><b>Дверь кузницы</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>forgeActionRef.current?.()}>Открыть ручку</button></div>;
       const villageDoor=["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman","oldfarm"].includes(id);
-      if(villageDoor)return <div className="mid3d-ui mid3d-door-prompt"><b>{label}</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>id==="oldfarm"?on(id,{x:state.current.x,z:state.current.z}):villageDoorActionRef.current?.(id)}>Открыть ручку</button></div>;
+      if(villageDoor)return <div className="mid3d-ui mid3d-door-prompt"><b>{label}</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>id==="oldfarm"?on(id,{x:state.current.x,z:state.current.z}):villageDoorActionRef.current?.(id)}>{outsideHouse===id?"Поговорить":"Открыть ручку"}</button></div>;
       if(id==="heroHome")return <div className="mid3d-ui mid3d-door-prompt"><b>Дом героя</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>homeActionRef.current?.(true)}>Открыть ручку</button></div>;
       const home=id==="heroHome"||id==="heroHomeExit";
       const villageGate=id==="gate"||id==="gateRear";
@@ -6161,6 +6180,8 @@ function App() {
   const [pick, setPick] = useState("");
   const [pickName, setPickName] = useState("");
   const [toast, setToast] = useState("");
+  const [houseDialog,setHouseDialog]=useState("");
+  const houseDialogPending=useRef(false);
   const toastTimer = useRef<number>(0);
   const [res, setRes] = useState<number | null>(null);
   const [removed, setRemoved] = useState<number | null>(null);
@@ -6198,10 +6219,13 @@ const [roadT, setRoadT] = useState(0.06);
     if (screen.t !== "tree" && screen.t !== "choose" && save.hero) { tg.BackButton.show(); tg.BackButton.onClick(back); } else tg.BackButton.hide();
     return () => { tg.BackButton?.offClick?.(back); };
   }, [screen, save.hero]);
-  useEffect(() => { setRes(null); setRemoved(null); setWhisper(false); setOver(""); setShield(false); setCombatFx(null); }, [screen]);
+  useEffect(() => { setRes(null); setRemoved(null); setWhisper(false); setOver(""); setShield(false); setCombatFx(null); setHouseDialog(""); }, [screen]);
   useEffect(()=>()=>window.clearTimeout(forgeTimer.current),[]);
 
-  const say = (m: string) => { setToast(m); window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(""), 1800); };
+  const say = (m: string) => {
+    if(houseDialogPending.current){houseDialogPending.current=false;setToast("");setHouseDialog(m);return;}
+    setToast(m); window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(""), 1800);
+  };
   const haptic = (k: "light" | "success" = "light") => { try { if (k === "success") tg?.HapticFeedback?.notificationOccurred?.("success"); else tg?.HapticFeedback?.impactOccurred?.("light"); } catch {} };
   const gatherResource=(id:string,kind:GatherKind)=>{
     if(!GATHER_SPOTS.some(spot=>spot.id===id&&spot.kind===kind)||save.gathered.includes(id))return;
@@ -6525,6 +6549,7 @@ const [roadT, setRoadT] = useState(0.06);
 
     const interact = (id: string, position?:{x:number;z:number}) => {
       haptic();
+      if(["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman"].includes(id))houseDialogPending.current=true;
       if (id === "mimir") {
         if (save.done.includes("forest:present")) {
           if (!save.done.includes("forest:present:reward")) {
@@ -7100,6 +7125,12 @@ const [roadT, setRoadT] = useState(0.06);
       )}
 
       {toast && <div className="toast">{toast}</div>}
+      {houseDialog&&screen.t==="realm"&&screen.id==="midgard"&&<div className="house-dialog-backdrop" onPointerDown={e=>e.stopPropagation()}>
+        <div className="house-dialog-panel" role="dialog" aria-modal="true" aria-label="Разговор у дома">
+          <h3>Разговор у дома</h3><p>{houseDialog}</p>
+          <button type="button" onClick={()=>setHouseDialog("")}>Продолжить путь</button>
+        </div>
+      </div>}
     </div>
   );
 }
