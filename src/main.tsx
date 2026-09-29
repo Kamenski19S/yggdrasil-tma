@@ -6317,7 +6317,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   </div>;
 }
 
-function SparkDrop(){return <img className="spark-drop" src={`${BASE}img/spark_drop_gold_v2.png`} alt="" aria-label="Капля силы"/>;}
+function SparkDrop(){return <img className="spark-drop" src={`${BASE}img/BackgroundEraser_20260930_010245371.png`} alt="" aria-label="Капля силы"/>;}
 function InventorySection({kind,potions,runes,equippedRune,hp,maxHp,frostGuard,onUsePotion,onEquipRune}:{kind:'potions'|'runes';potions:string[];runes:string[];equippedRune:string;hp:number;maxHp:number;frostGuard:number;onUsePotion:(id:string)=>void;onEquipRune:(id:string)=>void}){
   return <section className="inventory-section"><h3>{kind==='potions'?'🧪 Эликсиры':'ᛉ Руны'}</h3><div className="inventory-list">
     {kind==='potions'?POTION_CATALOG.map(item=>{
