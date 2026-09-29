@@ -2614,9 +2614,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           pivot.add(lever);host.handle=lever;host.handleBase=0;
         }
         host.pivot=pivot;
-        host.doorPoint=model.localToWorld(new THREE.Vector3(centre.x,0,centre.z+.14));
+        const doorPoint=model.localToWorld(new THREE.Vector3(centre.x,0,centre.z+.14));
+        host.doorPoint=doorPoint;
         const marker=homeDestinations.find(d=>d.id===p.id);
-        if(marker){marker.x=host.doorPoint.x+Math.sin(p.rot)*1.65;marker.z=host.doorPoint.z+Math.cos(p.rot)*1.65;}
+        if(marker){marker.x=doorPoint.x+Math.sin(p.rot)*1.65;marker.z=doorPoint.z+Math.cos(p.rot)*1.65;}
         prepareHost(host);
       },p.label);
     });
