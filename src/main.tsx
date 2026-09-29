@@ -5102,22 +5102,6 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     const DEFENDER_START_Z=43.2;
     const DEFENDER_PATROL_Z_NEAR=43.2;
     const DEFENDER_PATROL_Z_INNER=41.8;
-    // Temporary one-run diagnostics: this marker and label tell us exactly
-    // whether the FBX request, parser, or scene installation is failing.
-    const defenderDebug=document.createElement('div');
-    defenderDebug.className='mid3d-ui';
-    defenderDebug.style.cssText='position:fixed;left:8px;top:96px;z-index:9999;max-width:78vw;padding:7px 9px;border-radius:8px;background:rgba(0,0,0,.86);border:1px solid #ff4fd8;color:#fff;font:700 11px/1.3 system-ui;pointer-events:none';
-    defenderDebug.textContent='Защитник: начинаю проверку FBX…';
-    document.body.appendChild(defenderDebug);
-    const setDefenderDebug=(message:string)=>{defenderDebug.textContent=`Защитник: ${message}`;};
-    const defenderProbe=new THREE.Mesh(
-      new THREE.BoxGeometry(.22,2.4,.22),
-      new THREE.MeshBasicMaterial({color:0xff31d2,depthTest:false})
-    );
-    defenderProbe.name='VillageDefenderProbe';
-    defenderProbe.renderOrder=999;
-    defenderProbe.position.set(DEFENDER_GATE_X-.7,groundY(DEFENDER_GATE_X-.7,DEFENDER_START_Z)+1.2,DEFENDER_START_Z);
-    scene.add(defenderProbe);
     type DefenderActor={actor:THREE.Group;model:THREE.Object3D;mixer:THREE.AnimationMixer;
       actions:Record<string,THREE.AnimationAction>;current:string;lockUntil:number;
       nextAttack:number;hp:number;patrolEnd:number};
@@ -5159,7 +5143,29 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       model.scale.setScalar(0.01);
       model.position.set(0,0,0);
       model.updateMatrixWorld(true);
-      model.traverse((part:any)=>{if(part.isMesh){part.visible=true;part.castShadow=true;part.receiveShadow=true;part.frustumCulled=false;}});
+      // The FBX stores TransparentColor = 1 on its materials. Three.js FBXLoader
+      // interprets that as opacity 0 when no explicit Opacity/TransparencyFactor
+      // is present, so the meshes exist but render fully invisible. Force these
+      // defender-only materials back to opaque.
+      model.traverse((part:any)=>{
+        if(!part.isMesh)return;
+        part.visible=true;part.castShadow=true;part.receiveShadow=true;part.frustumCulled=false;
+        const materials=Array.isArray(part.material)?part.material:[part.material];
+        for(const material of materials){
+          if(!material)continue;
+          material.transparent=false;
+          material.opacity=1;
+          material.depthWrite=true;
+          material.depthTest=true;
+          material.colorWrite=true;
+          material.alphaTest=0;
+          material.alphaMap=null;
+          material.blending=THREE.NormalBlending;
+          material.side=THREE.DoubleSide;
+          material.visible=true;
+          material.needsUpdate=true;
+        }
+      });
 
       const actor=new THREE.Group();
       actor.name='VillageDefender';
@@ -5182,10 +5188,6 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         console.warn('[VILLAGE DEFENDER] Model loaded without animation clips; showing static guard');
       }
       defender={actor,model,mixer,actions,current:'',lockUntil:0,nextAttack:0,hp:6,patrolEnd:DEFENDER_PATROL_Z_NEAR};
-      const installedMeshes:number[]=[];
-      model.traverse((part:any)=>{if(part.isMesh)installedMeshes.push(1);});
-      setDefenderDebug(`УСТАНОВЛЕН: мешей ${installedMeshes.length}, анимаций ${Object.keys(actions).length}, x=${actor.position.x.toFixed(1)} z=${actor.position.z.toFixed(1)}`);
-      (defenderProbe.material as THREE.MeshBasicMaterial).color.setHex(0x2dff63);
       console.log('[VILLAGE DEFENDER] LOADED',actor.position,Object.keys(actions));
       playDefender(actions.Idle_Sword?'Idle_Sword':actions.Idle?'Idle':'Idle_Neutral',performance.now());
     };
@@ -5193,26 +5195,18 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     // Fetch it explicitly without browser/Telegram cache, then parse the bytes.
     const DEFENDER_ASSET='Adventurer_Defender_Rigged.fbx';
     const defenderBase=`${BASE}img/models/`;
-    const defenderUrl=`${defenderBase}${DEFENDER_ASSET}?v=20260929-2218`;
+    const defenderUrl=`${defenderBase}${DEFENDER_ASSET}?v=20260929-2236`;
     void (async()=>{
       try{
-        setDefenderDebug('запрашиваю img/models/Adventurer_Defender_Rigged.fbx…');
         const response=await fetch(defenderUrl,{cache:'no-store'});
-        setDefenderDebug(`HTTP ${response.status}; получаю байты…`);
         if(!response.ok)throw new Error(`HTTP ${response.status} ${response.statusText}`);
         const buffer=await response.arrayBuffer();
-        setDefenderDebug(`получено ${buffer.byteLength.toLocaleString()} байт; разбираю FBX…`);
         if(buffer.byteLength<100000)throw new Error(`FBX response is too small: ${buffer.byteLength} bytes`);
         const model=fbxLoader.parse(buffer,defenderBase) as any;
         if(!glbTreesAlive)return;
-        let meshCount=0;model.traverse((part:any)=>{if(part.isMesh)meshCount++;});
-        setDefenderDebug(`FBX разобран: мешей ${meshCount}, клипов ${(model.animations||[]).length}; ставлю в сцену…`);
         console.log('[VILLAGE DEFENDER] parsed',buffer.byteLength,'bytes; clips',(model.animations||[]).map((clip:any)=>clip.name));
         installDefender(model);
       }catch(error:any){
-        const message=error?.message||String(error);
-        setDefenderDebug(`ОШИБКА: ${message}`);
-        (defenderProbe.material as THREE.MeshBasicMaterial).color.setHex(0xff3131);
         console.error('[VILLAGE DEFENDER] fetch/parse failed',defenderUrl,error);
       }
     })();
@@ -6107,7 +6101,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{window.clearTimeout(banditVictoryTimer);rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();deerFurTexture?.dispose();nornsStoneTexture?.dispose();nornsColumnTexture?.dispose();furTextures.forEach(texture=>texture.dispose());lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});defenderDebug.remove();scene.remove(defenderProbe);defenderProbe.geometry.dispose();(defenderProbe.material as THREE.Material).dispose();renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;shieldActionRef.current=null;forgeActionRef.current=null;villageDoorActionRef.current=null;};
+    return()=>{window.clearTimeout(banditVictoryTimer);rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();deerFurTexture?.dispose();nornsStoneTexture?.dispose();nornsColumnTexture?.dispose();furTextures.forEach(texture=>texture.dispose());lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;shieldActionRef.current=null;forgeActionRef.current=null;villageDoorActionRef.current=null;};
   },[h.id,skin,weapon,gear.join(','),gearLevels.armor,gearLevels.helmet,gearLevels.boots,shieldAsset,eventDone,rememberPosition,northBridgeRepaired]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
