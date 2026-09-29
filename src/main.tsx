@@ -1257,7 +1257,7 @@ const BANDIT_SPECS:BanditSpec[]=[
 ];
 type WhisperPhase="closed"|"question"|"fight"|"reward"|"defeat";
 
-function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin, defeatedBandits, onBanditReward, onBanditKnockout, potions, runes, equippedRune, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; defeatedBandits:string[]; onBanditReward:(id:string)=>void; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
+function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, northBridgeReady, goldChestOpened, whisperResolved, whisperStats, onWhisperCorrect, onWhisperWin, defeatedBandits, onBanditReward, onBanditKnockout, potions, runes, equippedRune, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; defeatedBandits:string[]; onBanditReward:(id:string)=>void; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -2256,9 +2256,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       if(!host.doorPoint||!asset||host.actor||!glbTreesAlive)return;
       const actor=cloneSkinned(asset.scene) as THREE.Object3D;
       actor.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;}});
-      // The four source characters are 1.78–1.87 units high. Vika's authored
-      // unit scale is larger in this scene; 2.5 matches her visible height.
-      actor.scale.setScalar(2.5);
+      // Adjusted against Vika at the carpenter's door in the in-game capture.
+      actor.scale.setScalar(1.85);
       const {rot}=host.home,point=host.doorPoint;
       host.groundOffset=0;
       actor.position.set(point.x-Math.sin(rot)*1.12,groundY(point.x,point.z)+host.groundOffset,
@@ -5985,7 +5984,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           <span className="map-landmark goal" style={{left:"49%",top:"53%"}}>ᚠ<small>Цель</small></span>
           <span className="map-landmark hero" style={{left:`${((mapHero.x+88)/176)*100}%`,top:`${100-((mapHero.z+89)/178)*100}%`}}>◆<small>Ты здесь</small></span>
         </div>
-        <div className="mid3d-map-goal"><b>{northBridgeRepaired?'Северный мост открыт':'Путь к золотому сундуку'}</b><br/>{northBridgeRepaired?'Перейди мост и открой золотой сундук напротив него.':'Выбери нить у колодца Норн, открой красный сундук, собери доски и крепления и помоги Бьёрну починить мост.'}</div>
+        <div className="mid3d-map-goal"><b>{goldChestOpened?'Золотой сундук открыт':northBridgeRepaired?'Северный мост открыт':northBridgeReady?'Мост готов к ремонту':'Путь к золотому сундуку'}</b><br/>{goldChestOpened?'Награды получены. Следующий известный сундук ждёт в Лесу Ходдмимира.':northBridgeRepaired?'Перейди мост и открой золотой сундук напротив него.':northBridgeReady?'Подойди к Северному мосту и нажми «Отремонтировать мост».':'Собери 3 древесины и 3 ветки, отдай их плотнику Бьёрну. После этого почини Северный мост.'}</div>
         <button className="mid3d-map-close" onClick={()=>{setMapOpen(false);setCreditsOpen(true);}}>Авторы и лицензии</button>
         <button className="mid3d-map-close" onClick={()=>setMapOpen(false)}>Закрыть карту и продолжить путь</button>
       </div>
@@ -6070,6 +6069,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{kind==='wood'?'Вика возьмёт лёгкий рабочий топор. Древесина нужна плотнику.':kind==='herbs'?'Вика нагнётся и соберёт травы для Сигрид.':'Срежь ветки для плотника Бьёрна.'}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>gatherActionRef.current?.(id.slice(7))}>{kind==='herbs'?'Нагнуться и собрать':kind==='wood'?'Срубить':'Срезать ветки'}</button></div>;
       }
       if(id==="forge")return <div className="mid3d-ui mid3d-door-prompt"><b>Дверь кузницы</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>forgeActionRef.current?.()}>Открыть ручку</button></div>;
+      if(id==="northBridge")return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{northBridgeRepaired?'Проход открыт. Золотой сундук находится на другом берегу.':northBridgeReady?'Материалы подготовлены. Мост можно починить здесь.':'Сначала собери древесину и ветки для Бьёрна.'}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>{northBridgeRepaired?'Осмотреть мост':northBridgeReady?'Отремонтировать мост':'Осмотреть мост'}</button></div>;
       const villageDoor=["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman","oldfarm"].includes(id);
       if(villageDoor)return <div className="mid3d-ui mid3d-door-prompt"><b>{label}</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>id==="oldfarm"?on(id,{x:state.current.x,z:state.current.z}):villageDoorActionRef.current?.(id)}>{outsideHouse===id?"Поговорить":"Открыть ручку"}</button></div>;
       if(id==="heroHome")return <div className="mid3d-ui mid3d-door-prompt"><b>Дом героя</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>homeActionRef.current?.(true)}>Открыть ручку</button></div>;
@@ -6565,12 +6565,12 @@ const [roadT, setRoadT] = useState(0.06);
           say('Красный сундук ждёт, пока ты выберешь нить у колодца Трёх Норн.');return;
         }
         if(save.done.includes('chest:norns')){
-          say('Красный сундук уже открыт. Подсказка Норн: возьми доски на Старом хуторе, крепления у Торвальда и отнеси их плотнику Бьёрну для ремонта Северного моста.');return;
+          say('Красный сундук уже открыт. Северный мост можно подготовить заданием Бьёрна; доски на Старом хуторе и крепления у Торвальда — ещё один путь. Ремонт выполняется у самого моста.');return;
         }
         setSave(s=>s.done.includes('chest:norns')?s:{...s,
           done:[...new Set([...s.done,'chest:norns'])],
           potions:[...s.potions,'lifeElixir'],runes:[...new Set([...s.runes,'uruzStrength'])],ownedWeapons:[...new Set([...s.ownedWeapons,'knife'])]});
-        haptic('success');say('В красном сундуке: боевой кинжал, Эликсир жизни и руна силы Уруз ᚢ. Норны оставили подсказку: доски лежат на Старом хуторе, крепления — у мастера Торвальда. Отнеси оба предмета плотнику Бьёрну: он откроет Северный мост и путь к золотому сундуку.');
+        haptic('success');say('В красном сундуке: боевой кинжал, Эликсир жизни и руна силы Уруз ᚢ. Подсказка Норн: мост можно подготовить у Бьёрна или найти доски на Старом хуторе и крепления у Торвальда. Чинить мост нужно на месте.');
         return;
       }
       if (id === "forge") {
@@ -6584,7 +6584,7 @@ const [roadT, setRoadT] = useState(0.06);
       }
       if(id==='craftsman'&&save.done.includes('chest:norns')&&!save.done.includes('bridge:fittings')){
         setSave(s=>({...s,done:[...new Set([...s.done,'bridge:fittings'])]}));
-        haptic('success');say('Торвальд вручает железные крепления для Северного моста. Теперь найди доски на Старом хуторе и возвращайся к Бьёрну.');return;
+        haptic('success');say('✅ Торвальд вручил железные крепления. Вместе с досками со Старого хутора они позволяют отремонтировать Северный мост прямо у переправы.');return;
       }
       if(id==='herbalist'){
         if(save.done.includes('gather:herbalist')){say('Сигрид: «Благодарю за травы. Эликсир северного мха уже у тебя в запасе».');return;}
@@ -6595,16 +6595,13 @@ const [roadT, setRoadT] = useState(0.06);
       if(id==='carpenter'){
         if(!save.done.includes('gather:carpenter')&&save.stock.wood>=3&&save.stock.twigs>=3){
           setSave(s=>s.done.includes('gather:carpenter')?s:{...s,stock:{...s.stock,wood:s.stock.wood-3,twigs:s.stock.twigs-3},sparks:s.sparks+8,done:[...s.done,'gather:carpenter']});
-          haptic('success');say('Бьёрн получил древесину и ветки. Награда: 8 Капель силы. Задание ремонта Северного моста остаётся отдельным.');return;
+          haptic('success');say('✅ Задание Бьёрна выполнено! Древесина и ветки сданы, награда +8 Капель силы получена. Теперь подойди к Северному мосту и нажми «Отремонтировать мост».');return;
         }
-        const supplyNote=save.done.includes('gather:carpenter')?'':' Собери ещё древесину ('+save.stock.wood+'/3) и ветки ('+save.stock.twigs+'/3) у северной дороги.';
-        if(save.done.includes('bridge:north:repaired')){say('Бьёрн: «Мост крепок. Путь к золотому сундуку открыт».'+supplyNote);return;}
-        if(!save.done.includes('chest:norns')){say('Бьёрн: «Для ремонта моста спроси совета у Норн и открой красный сундук».'+supplyNote);return;}
-        if(!save.done.includes('bridge:boards')||!save.done.includes('bridge:fittings')){
-          say('Бьёрн: «Для ремонта ещё нужны '+(!save.done.includes('bridge:boards')?'доски со Старого хутора':'')+(!save.done.includes('bridge:boards')&&!save.done.includes('bridge:fittings')?' и ':'')+(!save.done.includes('bridge:fittings')?'крепления от Торвальда':'')+'».'+supplyNote);return;
+        if(save.done.includes('bridge:north:repaired')){say('✅ Северный мост уже восстановлен. Перейди на другой берег к золотому сундуку.');return;}
+        if(save.done.includes('gather:carpenter')||(save.done.includes('chest:norns')&&save.done.includes('bridge:boards')&&save.done.includes('bridge:fittings'))){
+          say('✅ Материалы для ремонта готовы. Подойди к Северному мосту: там появится кнопка «Отремонтировать мост».');return;
         }
-        setSave(s=>s.done.includes('bridge:north:repaired')?s:{...s,done:[...new Set([...s.done,'bridge:north:repaired'])]});
-        haptic('success');say('Бьёрн укрепил Северный мост. Заграждения сняты, защитное кольцо золотого сундука погасло. Теперь можно открыть сундук напротив моста.');return;
+        say(`Бьёрн: «Принеси 3 древесины и 3 ветки для ремонта. Сейчас древесина ${save.stock.wood}/3, ветки ${save.stock.twigs}/3».`);return;
       }
       if (id === "house" || id === "elder") {
         say("Старейшина: «За северной дорогой начинается лес. Но ночью там слышны голоса, которых не знает ни один охотник.»");
@@ -6613,7 +6610,7 @@ const [roadT, setRoadT] = useState(0.06);
       const homeMessages:Record<string,string>={
         warriorHouse:"Дружинник: «Добро пожаловать. Перед вечерним дозором я проверяю клинок и щит».",
         fisher2:"Халли: «Утром я вернулся с северной реки. На крыльце сохнут сети».",
-        carpenter:"Плотник Бьёрн осматривает инструменты: «Северный мост у дороги от врат повреждён. Я закрыл проход с обеих сторон. Для ремонта понадобятся крепкие доски и новые крепления».",
+        carpenter:"Плотник Бьёрн: «Принеси древесину и ветки, затем почини Северный мост у переправы».",
         hunter2:"Рандви: «Я знаю лесные тропы. Если соберёшься к дальней роще, возьми с собой запас воды».",
         family:"Хозяйка дома: «Торстейн скоро вернётся. Проходи, у очага тепло».",
         fisher:"Эйнар: «Река сегодня спокойна. Рыбу можно обменять в деревне на припасы».",
@@ -6623,7 +6620,13 @@ const [roadT, setRoadT] = useState(0.06);
       };
       if(homeMessages[id]){say(homeMessages[id]);return;}
       if (id === "northBridge") {
-        say(save.done.includes("bridge:north:repaired")?"Северный мост восстановлен. Проход свободен.":"Северный мост повреждён. Проход закрыт с обеих сторон. Плотник Бьёрн пока осматривает повреждения.");
+        if(save.done.includes('bridge:north:repaired')){say('Северный мост восстановлен. Проход к золотому сундуку свободен.');return;}
+        const ready=save.done.includes('gather:carpenter')||(save.done.includes('chest:norns')&&save.done.includes('bridge:boards')&&save.done.includes('bridge:fittings'));
+        if(ready){
+          setSave(s=>s.done.includes('bridge:north:repaired')?s:{...s,done:[...new Set([...s.done,'bridge:north:repaired'])]});
+          haptic('success');setHouseDialogId('northBridge');setHouseDialog('✅ Северный мост отремонтирован! Заграждения сняты, проход открыт. Перейди мост и открой золотой сундук на другом берегу.');return;
+        }
+        say('Северный мост повреждён. Сначала собери 3 древесины и 3 ветки, затем сдай их плотнику Бьёрну. После этого мост можно починить здесь.');
         return;
       }
       if (id === "port") {say("Речной мост открыт. Отсюда начинается дорога к поселению.");return;}
@@ -6650,7 +6653,7 @@ const [roadT, setRoadT] = useState(0.06);
       if (id === "oldfarm") {
         if(save.done.includes('chest:norns')&&!save.done.includes('bridge:boards')){
           setSave(s=>({...s,done:[...new Set([...s.done,'bridge:boards'])]}));
-          haptic('success');say('В амбаре Старого хутора найдены крепкие доски для Северного моста. Возьми крепления у Торвальда и отнеси всё плотнику Бьёрну.');return;
+          haptic('success');say('✅ В амбаре Старого хутора найдены доски. Вместе с креплениями Торвальда они позволяют чинить Северный мост у переправы.');return;
         }
         if (save.done.includes("forest:past")) {
           if (!save.done.includes("forest:past:reward")) {
@@ -6666,14 +6669,14 @@ const [roadT, setRoadT] = useState(0.06);
         return;
       }
       if (id === "forestCache") {
-        if(!save.done.includes('bridge:north:repaired')){say('Золотой сундук защищён кольцом Норн. Выполни подсказку из красного сундука и помоги Бьёрну починить Северный мост.');return;}
+        if(!save.done.includes('bridge:north:repaired')){say('Золотой сундук защищён кольцом. Выполни задание Бьёрна, отремонтируй Северный мост и перейди на другой берег.');return;}
         if(!save.done.includes('chest:gold')){
           setSave(s=>s.done.includes('chest:gold')?s:{...s,
             done:[...new Set([...s.done,'chest:gold'])],sparks:s.sparks+18,
             runes:[...new Set([...s.runes,'raidoPath','algizGuard'])],
             potions:[...s.potions,'northernMoss','frostDraught'],
             ownedWeapons:[...new Set([...s.ownedWeapons,'axe','spear'])]});
-          haptic('success');say('Золотой сундук открыт! Ты получил руны Райдо ᚱ и Альгиз ᛉ, два эликсира — северного мха и ледяной, Северный топор, Копьё и 18 ✨. Всё хранится в Чертоге.');
+          haptic('success');setHouseDialogId('goldChest');setHouseDialog('✅ Золотой сундук открыт! Получены руны Райдо ᚱ и Альгиз ᛉ, два эликсира, Северный топор, Копьё и 18 Капель силы. Следующая известная цель — серебряный сундук в Лесу Ходдмимира.');
         } else say('Золотой сундук уже открыт. Найденные руны, эликсиры и оружие хранятся в Чертоге.');
         return;
       }
@@ -6814,6 +6817,8 @@ const [roadT, setRoadT] = useState(0.06);
       start={midgardReturn.current}
       rememberPosition={rememberMidgardPosition}
       northBridgeRepaired={save.done.includes("bridge:north:repaired")}
+      northBridgeReady={save.done.includes('gather:carpenter')||(save.done.includes('chest:norns')&&save.done.includes('bridge:boards')&&save.done.includes('bridge:fittings'))}
+      goldChestOpened={save.done.includes('chest:gold')}
       whisperResolved={save.done.includes("whisper:battle")||save.done.includes("whisper:wisdom")}
       whisperStats={{
         maxHp:heroDef.hp+gearHp(),
@@ -7115,12 +7120,10 @@ const [roadT, setRoadT] = useState(0.06);
       {toast && <div className="toast">{toast}</div>}
       {houseDialog&&screen.t==="realm"&&screen.id==="midgard"&&<div className="house-dialog-backdrop" onPointerDown={e=>e.stopPropagation()}>
         <div className="house-dialog-panel" role="dialog" aria-modal="true" aria-label="Разговор у дома">
-          <h3>{houseDialogId==="oldfarm"?"Старый хутор":houseDialogId==="carpenter"?"Плотник Бьёрн":houseDialogId==="herbalist"?"Травница Сигрид":houseDialogId==="craftsman"?"Ремесленник Торвальд":"Разговор у дома"}</h3><p>{houseDialog}</p>
+          <h3>{houseDialogId==="goldChest"?"Золотой сундук":houseDialogId==="northBridge"?"Северный мост":houseDialogId==="oldfarm"?"Старый хутор":houseDialogId==="carpenter"?"Плотник Бьёрн":houseDialogId==="herbalist"?"Травница Сигрид":houseDialogId==="craftsman"?"Ремесленник Торвальд":"Разговор у дома"}</h3><p>{houseDialog}</p>
           {houseDialogId==="carpenter"&&<div className="house-quest-status"><b>Задания Бьёрна</b>
             <span>{save.done.includes('gather:carpenter')?'✅ Древесина и ветки сданы. Награда: 8 Капель силы получена.':`Собрать древесину ${save.stock.wood}/3 и ветки ${save.stock.twigs}/3 — награда 8 Капель силы.`}</span>
-            <span>{save.done.includes('bridge:boards')?'✅ Доски со Старого хутора найдены.':'○ Доски со Старого хутора ещё нужны.'}</span>
-            <span>{save.done.includes('bridge:fittings')?'✅ Крепления от Торвальда получены.':'○ Крепления от Торвальда ещё нужны.'}</span>
-            <span>{save.done.includes('bridge:north:repaired')?'✅ Северный мост восстановлен. Путь к золотому сундуку открыт.':'○ Ремонт Северного моста ещё не завершён.'}</span>
+            <span>{save.done.includes('bridge:north:repaired')?'✅ Северный мост восстановлен. Путь к золотому сундуку открыт.':save.done.includes('gather:carpenter')?'✅ Ремонт доступен у Северного моста.':'○ Северный мост ждёт выполнения задания Бьёрна.'}</span>
           </div>}
           {houseDialogId==="herbalist"&&<div className="house-quest-status"><b>Задание Сигрид</b>
             <span>{save.done.includes('gather:herbalist')?'✅ Травы сданы. Награда: Эликсир северного мха и 6 Капель силы получены.':`Собрать лечебные травы ${save.stock.herbs}/4 — награда эликсир и 6 Капель силы.`}</span>
