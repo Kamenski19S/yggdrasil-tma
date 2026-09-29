@@ -5179,26 +5179,16 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       console.log('[VILLAGE DEFENDER] LOADED',actor.position,Object.keys(actions));
       playDefender(actions.Idle_Sword?'Idle_Sword':actions.Idle?'Idle':'Idle_Neutral',performance.now());
     };
-    const defenderFiles=[
-      'Adventurer_Defender_Rigged(1).fbx',
-      'Adventurer_Defender_Rigged.fbx',
-      'Adventurer_Defender_Rigged(2).fbx',
-      'Adventurer_Defender_Rigged(3).fbx'
-    ];
-    const defenderUrls=defenderFiles.flatMap(name=>[`${BASE}img/models/${name}`,`${BASE}img/model/${name}`]);
-    const tryDefenderUrl=(index:number)=>{
-      if(index>=defenderUrls.length){console.error('[VILLAGE DEFENDER] FBX not found in models/model folders',defenderUrls);return;}
-      const url=defenderUrls[index];
-      fbxLoader.load(url,(model:any)=>{
-        if(!glbTreesAlive)return;
-        console.log('[VILLAGE DEFENDER] source',url,'clips',(model.animations||[]).map((clip:any)=>clip.name));
-        installDefender(model);
-      },undefined,(error:any)=>{
-        console.warn('[VILLAGE DEFENDER] load failed',url,error);
-        tryDefenderUrl(index+1);
-      });
-    };
-    tryDefenderUrl(0);
+    // Exact repository asset: public/img/models/Adventurer_Defender_Rigged.fbx
+    const DEFENDER_ASSET='Adventurer_Defender_Rigged.fbx';
+    const defenderUrl=`${BASE}img/models/${DEFENDER_ASSET}`;
+    fbxLoader.load(defenderUrl,(model:any)=>{
+      if(!glbTreesAlive)return;
+      console.log('[VILLAGE DEFENDER] source',defenderUrl,'clips',(model.animations||[]).map((clip:any)=>clip.name));
+      installDefender(model);
+    },undefined,(error:any)=>{
+      console.error('[VILLAGE DEFENDER] exact FBX load failed',defenderUrl,error);
+    });
 
     // Tiny pollen motes drift through the air. One shared Points object keeps draw calls low.
     const moteCount=72;
