@@ -5147,9 +5147,11 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       // interprets that as opacity 0 when no explicit Opacity/TransparencyFactor
       // is present, so the meshes exist but render fully invisible. Force these
       // defender-only materials back to opaque.
+      const defenderSkinnedMeshes:THREE.SkinnedMesh[]=[];
       model.traverse((part:any)=>{
         if(!part.isMesh)return;
         part.visible=true;part.castShadow=true;part.receiveShadow=true;part.frustumCulled=false;
+        if(part.isSkinnedMesh)defenderSkinnedMeshes.push(part as THREE.SkinnedMesh);
         const materials=Array.isArray(part.material)?part.material:[part.material];
         for(const material of materials){
           if(!material)continue;
@@ -5166,6 +5168,35 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           material.needsUpdate=true;
         }
       });
+
+      // This FBX contains five skinned meshes that all reference the same 62
+      // logical bones. FBXLoader duplicates those shared bones for every Skin
+      // deformer. The duplicates end up nested inside each other, so animation
+      // drives the outer copy while some meshes are bound to inner copies; that
+      // is what caused huge triangles to flash across the screen. Rebind every
+      // skinned part to the single outer/canonical copy of each logical bone.
+      const canonicalBones=new Map<string,THREE.Bone>();
+      model.traverse((part:any)=>{
+        if(!part.isBone||!part.name)return;
+        let ancestor=part.parent as THREE.Object3D|null;
+        let hasSameNamedAncestor=false;
+        while(ancestor&&ancestor!==model){
+          if((ancestor as any).isBone&&ancestor.name===part.name){hasSameNamedAncestor=true;break;}
+          ancestor=ancestor.parent;
+        }
+        if(!hasSameNamedAncestor&&!canonicalBones.has(part.name))canonicalBones.set(part.name,part as THREE.Bone);
+      });
+      for(const mesh of defenderSkinnedMeshes){
+        const sourceSkeleton=mesh.skeleton;
+        if(!sourceSkeleton)continue;
+        const sharedBones=sourceSkeleton.bones.map(bone=>canonicalBones.get(bone.name)||bone);
+        const sharedInverses=sourceSkeleton.boneInverses.map(matrix=>matrix.clone());
+        const sharedSkeleton=new THREE.Skeleton(sharedBones,sharedInverses);
+        mesh.bind(sharedSkeleton,mesh.bindMatrix.clone());
+        mesh.normalizeSkinWeights();
+        sharedSkeleton.update();
+      }
+      console.log('[VILLAGE DEFENDER] unified skeleton',defenderSkinnedMeshes.length,'meshes,',canonicalBones.size,'canonical bones');
 
       const actor=new THREE.Group();
       actor.name='VillageDefender';
@@ -5195,7 +5226,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     // Fetch it explicitly without browser/Telegram cache, then parse the bytes.
     const DEFENDER_ASSET='Adventurer_Defender_Rigged.fbx';
     const defenderBase=`${BASE}img/models/`;
-    const defenderUrl=`${defenderBase}${DEFENDER_ASSET}?v=20260929-2236`;
+    const defenderUrl=`${defenderBase}${DEFENDER_ASSET}?v=20260929-2249`;
     void (async()=>{
       try{
         const response=await fetch(defenderUrl,{cache:'no-store'});
