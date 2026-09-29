@@ -5098,6 +5098,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     // The village defender uses the isolated Adventurer FBX and its original
     // skinned animation clips. He patrols inside the front gate and responds
     // only to bandits that are already pursuing the player.
+    const DEFENDER_GATE_X=-2.15;
+    const DEFENDER_PATROL_Z_NEAR=41.6;
+    const DEFENDER_PATROL_Z_INNER=39.2;
     type DefenderActor={actor:THREE.Group;model:THREE.Object3D;mixer:THREE.AnimationMixer;
       actions:Record<string,THREE.AnimationAction>;current:string;lockUntil:number;
       nextAttack:number;hp:number;patrolEnd:number};
@@ -5135,7 +5138,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       const center=scaledBounds.getCenter(new THREE.Vector3());
       model.position.set(model.position.x-center.x,model.position.y-scaledBounds.min.y,model.position.z-center.z);
       model.traverse((part:any)=>{if(part.isMesh){part.castShadow=true;part.receiveShadow=true;part.frustumCulled=false;}});
-      const actor=new THREE.Group();actor.position.set(-6.2,groundY(-6.2,39),39);
+      // Keep him clearly visible just inside the front gate instead of hiding
+      // behind the left stone pier/wall segment. He starts facing outward.
+      const actor=new THREE.Group();
+      actor.position.set(DEFENDER_GATE_X,groundY(DEFENDER_GATE_X,40.4),40.4);
       actor.rotation.y=0;actor.add(model);
       const mixer=new THREE.AnimationMixer(model),actions:Record<string,THREE.AnimationAction>={};
       for(const clip of asset.animations||[]){
@@ -5146,7 +5152,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         console.error('[VILLAGE DEFENDER] Required FBX animation missing',Object.keys(actions));return;
       }
       scene.add(actor);
-      defender={actor,model,mixer,actions,current:'',lockUntil:0,nextAttack:0,hp:6,patrolEnd:41.3};
+      defender={actor,model,mixer,actions,current:'',lockUntil:0,nextAttack:0,hp:6,patrolEnd:DEFENDER_PATROL_Z_NEAR};
       playDefender('Idle_Sword',performance.now());
     },'VILLAGE DEFENDER');
 
@@ -5655,8 +5661,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
             if(distance>2.35&&now>=d.lockUntil){
               const step=Math.min(distance-2.35,dt*1.8);
               const nx=d.actor.position.x+dx/distance*step,nz=d.actor.position.z+dz/distance*step;
-              // Remain inside the gateway instead of walking through closed doors.
-              if(Math.hypot(nx+6.2,nz-40)<6.5&&nz<42.3){
+              // Defend the entrance but do not run through the gate or disappear
+              // behind the side walls while chasing an attacker.
+              if(nx>-4.6&&nx<4.6&&nz>35.5&&nz<42.25){
                 d.actor.position.set(nx,groundY(nx,nz),nz);
                 playDefender('Run',now);
               }else playDefender('Idle_Sword',now);
@@ -5674,12 +5681,12 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
               playBandit(foe,foe.hp?'Hit':'Death',now);
             }
           }else if(now>=d.lockUntil){
-            const homeX=-6.2,homeZ=d.patrolEnd;
+            const homeX=DEFENDER_GATE_X,homeZ=d.patrolEnd;
             const dx=homeX-d.actor.position.x,dz=homeZ-d.actor.position.z;
             const distance=Math.hypot(dx,dz);
             if(distance<.15){
-              if(d.patrolEnd===41.3)d.patrolEnd=38.8;
-              else {d.patrolEnd=41.3;d.nextAttack=Math.max(d.nextAttack,now+900);}
+              if(d.patrolEnd===DEFENDER_PATROL_Z_NEAR)d.patrolEnd=DEFENDER_PATROL_Z_INNER;
+              else {d.patrolEnd=DEFENDER_PATROL_Z_NEAR;d.nextAttack=Math.max(d.nextAttack,now+900);}
               playDefender('Idle_Sword',now);
             }else if(now>=d.nextAttack){
               const step=Math.min(distance,dt*.72);
