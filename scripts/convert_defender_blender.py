@@ -31,6 +31,8 @@ armatures = [o for o in bpy.context.scene.objects if o.type == "ARMATURE"]
 meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"]
 print("IMPORTED", "armatures", len(armatures), "meshes", len(meshes))
 print("ARMATURES", [o.name for o in armatures])
+for arm in armatures:
+    print("BONES", [b.name for b in arm.data.bones])
 print("MESHES", [o.name for o in meshes])
 
 if len(armatures) != 1:
