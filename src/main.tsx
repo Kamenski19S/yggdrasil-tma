@@ -205,24 +205,8 @@ const loadSave = (): Save => {
     const previous:any=JSON.parse(localStorage.getItem("yggdrasil") || "{}");
     const s:any = { ...DEF, ...previous };
 
-    // Repair an old/incomplete Norns-chest save from development builds.
-    // A real opened chest permanently grants both the Uruz rune and the knife.
-    // If the "opened" flag exists but neither permanent reward exists, the flag is stale.
-    const staleNornsChest =
-      Array.isArray(previous.done) &&
-      previous.done.includes('chest:norns') &&
-      !(Array.isArray(previous.runes) && previous.runes.includes('uruzStrength')) &&
-      !(Array.isArray(previous.ownedWeapons) && previous.ownedWeapons.includes('knife'));
-
-    if(staleNornsChest){
-      const resetNornsFlags=new Set([
-        'forest:choice','forest:past','forest:present','forest:future',
-        'forest:past:reward','forest:present:reward','forest:future:reward',
-        'chest:norns','bridge:boards','bridge:fittings',
-        'bridge:north:repaired','chest:gold'
-      ]);
-      s.done=(Array.isArray(s.done)?s.done:[]).filter((id:string)=>!resetNornsFlags.has(id));
-    }
+    // Old saves may lack a permanent chest reward. Repair the reward rather
+    // than deleting completed quests and the bridge from the player's history.
     if(!Array.isArray(s.gathered))s.gathered=[];
     s.stock={...EMPTY_GATHER_STOCK,...(s.stock&&typeof s.stock==='object'?s.stock:{})};
     for(const kind of ['wood','twigs','herbs'] as GatherKind[])s.stock[kind]=Math.max(0,Math.floor(Number(s.stock[kind])||0));
@@ -237,6 +221,7 @@ const loadSave = (): Save => {
     delete s.forgeLevels?.bow;
     if (!Array.isArray(s.potions)) s.potions = [];
     if (!Array.isArray(s.runes)) s.runes = [];
+    if(s.done?.includes('chest:norns'))s.runes=[...new Set([...s.runes,'uruzStrength'])];
     if(typeof s.equippedRune!=="string"||!s.runes.includes(s.equippedRune))s.equippedRune=s.runes.includes('uruzStrength')?'uruzStrength':'';
     if(s.fieldHp!==null&&(!Number.isFinite(s.fieldHp)||s.fieldHp<0))s.fieldHp=null;
     if(!Number.isFinite(s.frostGuard)||s.frostGuard<0)s.frostGuard=0;
@@ -505,6 +490,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .house-dialog-backdrop{position:fixed;inset:0;z-index:80;background:rgba(4,9,7,.64);display:flex;align-items:center;justify-content:center;padding:20px}
 .house-dialog-panel{width:min(420px,100%);border:1px solid #af8248;border-radius:18px;background:linear-gradient(145deg,#243126,#111a16);color:#fff3d8;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
 .house-dialog-panel h3{margin:0 0 12px;color:#f3ca77;font-size:19px}.house-dialog-panel p{font-size:16px;line-height:1.5;margin:0 0 20px}.house-dialog-panel button{width:100%;padding:12px;border:1px solid #cfaa64;border-radius:11px;background:#765331;color:#fff7e5;font-weight:700}
+.house-quest-status{margin:0 0 18px;padding:12px;border-radius:11px;background:rgba(190,151,82,.13);border:1px solid rgba(211,177,105,.36)}
+.house-quest-status b{display:block;color:#f3d99b;margin-bottom:6px}.house-quest-status span{display:block;font-size:13px;line-height:1.45;margin:4px 0}
 .days{display:flex;gap:6px;justify-content:center;margin:10px 0}
 .day{flex:1;padding:8px 2px;border-radius:10px;background:#0d130f;border:1px solid #223028;font-size:10px;color:#8fa39a;display:flex;flex-direction:column;gap:4px;align-items:center}
 .day b{font-size:12px;color:#e8f0e8}
@@ -2269,9 +2256,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       if(!host.doorPoint||!asset||host.actor||!glbTreesAlive)return;
       const actor=cloneSkinned(asset.scene) as THREE.Object3D;
       actor.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;}});
-      // The source characters are 1.78–1.87 units high. SkinnedMesh world
-      // bounds include displaced bind-pose vertices and shrink them badly.
-      actor.scale.setScalar(1.55);
+      // The four source characters are 1.78–1.87 units high. Vika's authored
+      // unit scale is larger in this scene; 2.5 matches her visible height.
+      actor.scale.setScalar(2.5);
       const {rot}=host.home,point=host.doorPoint;
       host.groundOffset=0;
       actor.position.set(point.x-Math.sin(rot)*1.12,groundY(point.x,point.z)+host.groundOffset,
@@ -6181,7 +6168,8 @@ function App() {
   const [pickName, setPickName] = useState("");
   const [toast, setToast] = useState("");
   const [houseDialog,setHouseDialog]=useState("");
-  const houseDialogPending=useRef(false);
+  const [houseDialogId,setHouseDialogId]=useState("");
+  const houseDialogPending=useRef<string|null>(null);
   const toastTimer = useRef<number>(0);
   const [res, setRes] = useState<number | null>(null);
   const [removed, setRemoved] = useState<number | null>(null);
@@ -6219,11 +6207,11 @@ const [roadT, setRoadT] = useState(0.06);
     if (screen.t !== "tree" && screen.t !== "choose" && save.hero) { tg.BackButton.show(); tg.BackButton.onClick(back); } else tg.BackButton.hide();
     return () => { tg.BackButton?.offClick?.(back); };
   }, [screen, save.hero]);
-  useEffect(() => { setRes(null); setRemoved(null); setWhisper(false); setOver(""); setShield(false); setCombatFx(null); setHouseDialog(""); }, [screen]);
+  useEffect(() => { setRes(null); setRemoved(null); setWhisper(false); setOver(""); setShield(false); setCombatFx(null); setHouseDialog(""); houseDialogPending.current=null; }, [screen]);
   useEffect(()=>()=>window.clearTimeout(forgeTimer.current),[]);
 
   const say = (m: string) => {
-    if(houseDialogPending.current){houseDialogPending.current=false;setToast("");setHouseDialog(m);return;}
+    if(houseDialogPending.current){setHouseDialogId(houseDialogPending.current);houseDialogPending.current=null;setToast("");setHouseDialog(m);return;}
     setToast(m); window.clearTimeout(toastTimer.current); toastTimer.current = window.setTimeout(() => setToast(""), 1800);
   };
   const haptic = (k: "light" | "success" = "light") => { try { if (k === "success") tg?.HapticFeedback?.notificationOccurred?.("success"); else tg?.HapticFeedback?.impactOccurred?.("light"); } catch {} };
@@ -6549,7 +6537,7 @@ const [roadT, setRoadT] = useState(0.06);
 
     const interact = (id: string, position?:{x:number;z:number}) => {
       haptic();
-      if(["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman"].includes(id))houseDialogPending.current=true;
+      if(["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman","oldfarm"].includes(id))houseDialogPending.current=id;
       if (id === "mimir") {
         if (save.done.includes("forest:present")) {
           if (!save.done.includes("forest:present:reward")) {
@@ -7127,7 +7115,22 @@ const [roadT, setRoadT] = useState(0.06);
       {toast && <div className="toast">{toast}</div>}
       {houseDialog&&screen.t==="realm"&&screen.id==="midgard"&&<div className="house-dialog-backdrop" onPointerDown={e=>e.stopPropagation()}>
         <div className="house-dialog-panel" role="dialog" aria-modal="true" aria-label="Разговор у дома">
-          <h3>Разговор у дома</h3><p>{houseDialog}</p>
+          <h3>{houseDialogId==="oldfarm"?"Старый хутор":houseDialogId==="carpenter"?"Плотник Бьёрн":houseDialogId==="herbalist"?"Травница Сигрид":houseDialogId==="craftsman"?"Ремесленник Торвальд":"Разговор у дома"}</h3><p>{houseDialog}</p>
+          {houseDialogId==="carpenter"&&<div className="house-quest-status"><b>Задания Бьёрна</b>
+            <span>{save.done.includes('gather:carpenter')?'✅ Древесина и ветки сданы. Награда: 8 Капель силы получена.':`Собрать древесину ${save.stock.wood}/3 и ветки ${save.stock.twigs}/3 — награда 8 Капель силы.`}</span>
+            <span>{save.done.includes('bridge:boards')?'✅ Доски со Старого хутора найдены.':'○ Доски со Старого хутора ещё нужны.'}</span>
+            <span>{save.done.includes('bridge:fittings')?'✅ Крепления от Торвальда получены.':'○ Крепления от Торвальда ещё нужны.'}</span>
+            <span>{save.done.includes('bridge:north:repaired')?'✅ Северный мост восстановлен. Путь к золотому сундуку открыт.':'○ Ремонт Северного моста ещё не завершён.'}</span>
+          </div>}
+          {houseDialogId==="herbalist"&&<div className="house-quest-status"><b>Задание Сигрид</b>
+            <span>{save.done.includes('gather:herbalist')?'✅ Травы сданы. Награда: Эликсир северного мха и 6 Капель силы получены.':`Собрать лечебные травы ${save.stock.herbs}/4 — награда эликсир и 6 Капель силы.`}</span>
+          </div>}
+          {houseDialogId==="craftsman"&&<div className="house-quest-status"><b>Помощь Торвальда</b>
+            <span>{save.done.includes('bridge:fittings')?'✅ Железные крепления для моста получены.':'○ Крепления можно получить после открытия красного сундука Норн.'}</span>
+          </div>}
+          {houseDialogId==="oldfarm"&&<div className="house-quest-status"><b>Старый хутор</b>
+            <span>{save.done.includes('bridge:boards')?'✅ Крепкие доски для моста найдены.':'○ Доски для моста ещё не найдены.'}</span>
+          </div>}
           <button type="button" onClick={()=>setHouseDialog("")}>Продолжить путь</button>
         </div>
       </div>}
