@@ -70,7 +70,7 @@ for arm in armatures:
         # Strip the doubled armature prefix for clean GLB clip names.
         clean_name = action.name.split("|")[-1]
         track.name = clean_name
-        start = float(action.frame_range[0])
+        start = int(round(action.frame_range[0]))
         strip = track.strips.new(clean_name, start, action)
         strip.action_frame_start = action.frame_range[0]
         strip.action_frame_end = action.frame_range[1]
