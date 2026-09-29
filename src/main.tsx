@@ -161,9 +161,17 @@ const REALMS: Realm[] = [
 const NAV = [{ id: "tree", ic: "ᚱ", t: "Путь" }, { id: "hero", ic: "ᛗ", t: "Герой" }, { id: "gift", ic: "ᚷ", t: "Дар" }, { id: "hall", ic: "ᛟ", t: "Чертог" }];
 type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" } | { t: "hero" } | { t: "gift" } | { t: "hall" } | { t: "craft" } | { t: "forge" } | { t: "trial"; id: string } | { t: "fight"; id: string };
 type HeroSkin = "viking" | "valkyrie";
-type HeroWeapon = "default"|"knife"|"axe"|"mace"|"spear";
-const WEAPON_POWER:Record<HeroWeapon,number>={default:0,knife:1,axe:3,mace:2,spear:2};
-const WEAPON_ASSET:Record<Exclude<HeroWeapon,"default">,string>={knife:'Dagger.glb',axe:'Axe.glb',mace:'Hammer_Small.glb',spear:'Spear.glb'};
+type HeroWeapon = "default"|"sword2"|"swordBig"|"swordGolden"|"knife"|"dagger2"|"axe"|"axeSmall"|"axeDouble"|"mace"|"hammerDouble"|"spear"|"claymore"|"scythe";
+const WEAPON_POWER:Record<HeroWeapon,number>={
+  default:0,sword2:2,swordBig:4,swordGolden:6,
+  knife:1,dagger2:2,axe:3,axeSmall:2,axeDouble:5,
+  mace:2,hammerDouble:5,spear:3,claymore:5,scythe:4
+};
+const WEAPON_ASSET:Record<Exclude<HeroWeapon,"default">,string>={
+  sword2:'Sword_2.glb',swordBig:'Sword_Big.glb',swordGolden:'Sword_Golden.glb',
+  knife:'Dagger.glb',dagger2:'Dagger_2.glb',axe:'Axe.glb',axeSmall:'Axe_Small.glb',axeDouble:'Axe_Double.glb',
+  mace:'Hammer_Small.glb',hammerDouble:'Hammer_Double.glb',spear:'Spear.glb',claymore:'Claymore.glb',scythe:'Scythe.glb'
+};
 type GearId="armor"|"shield"|"helmet"|"boots";
 type GatherKind="wood"|"twigs"|"herbs";
 type GatherStock=Record<GatherKind,number>;
@@ -198,8 +206,8 @@ for(const [kind,amount,salt] of [['wood',25,1],['twigs',30,2],['herbs',30,3]] as
 const GEAR_IDS:GearId[]=["armor","shield","helmet","boots"];
 const SHIELD_ASSETS=['Shield_Round.glb','Shield_Round_2.glb','Shield_Heater.glb','Shield_Heater_2.glb','Shield_Celtic_Golden.glb'];
 const shieldForgeKey=(asset:string)=>asset===SHIELD_ASSETS[0]?'shield':'shield:'+asset;
-type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; forgeLevels: Record<string,number>; forgeFreeUsed: boolean; gathered:string[]; stock:GatherStock };
-const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false,gathered:[],stock:{...EMPTY_GATHER_STOCK} };
+type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; lootCounts:Record<string,number>; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; forgeLevels: Record<string,number>; forgeFreeUsed: boolean; gathered:string[]; stock:GatherStock };
+const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], lootCounts:{default:1,[SHIELD_ASSETS[0]]:1}, equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false,gathered:[],stock:{...EMPTY_GATHER_STOCK} };
 const loadSave = (): Save => {
   try {
     const previous:any=JSON.parse(localStorage.getItem("yggdrasil") || "{}");
@@ -212,6 +220,8 @@ const loadSave = (): Save => {
     for(const kind of ['wood','twigs','herbs'] as GatherKind[])s.stock[kind]=Math.max(0,Math.floor(Number(s.stock[kind])||0));
     if (!Array.isArray(s.powers)) s.powers = [];
     if (!Array.isArray(s.ownedWeapons)) s.ownedWeapons = ["default"];
+    if(!s.lootCounts||typeof s.lootCounts!=="object"||Array.isArray(s.lootCounts))s.lootCounts={};
+    s.lootCounts.default=Math.max(1,Number(s.lootCounts.default)||1);
     delete s.arrows;
     s.ownedWeapons=[...new Set(['default',...s.ownedWeapons.filter((id:string)=>id!=='bow'&&Object.prototype.hasOwnProperty.call(WEAPON_POWER,id))])];
     // Restore rewards earned before the weapon progression was rearranged.
@@ -274,43 +284,43 @@ type MidgardGuardianSpec = {
 const MIDGARD_GUARDIANS:Record<string,MidgardGuardianSpec>={
   rune:{
     id:"rune",location:"Древний камень Феху",name:"Фейр",title:"Страж Феху",sym:"ᚠ",
-    x:50,z:60,hp:24,atk:5,scale:1.72,cloth:0x805635,accent:0xd7a14a,tempo:760,power:1,
+    x:50,z:60,hp:24,atk:5,scale:2.40,cloth:0x805635,cloak:0x9b5b2e,accent:0xd7a14a,tempo:760,power:1,
     question:{q:"Что прежде всего означает руна Феху в древней традиции?",a:["Лёд и неподвижность","Скот, имущество и достаток","Путешествие по морю"],c:1},
     intro:"Золотая руна вспыхивает на камне. Страж проверяет, понимаешь ли ты смысл Феху.",correctReward:5,battleReward:10
   },
   ashgrove:{
     id:"ashgrove",location:"Роща Ясеня",name:"Аскольд",title:"Страж Ясеня",sym:"ᛇ",
-    x:-5,z:75,hp:30,atk:6,scale:1.78,cloth:0x4f6840,cloak:0x2f402a,accent:0x8fb66d,tempo:730,power:1,
+    x:-5,z:75,hp:30,atk:6,scale:2.10,cloth:0x4f6840,cloak:0x2f402a,accent:0x8fb66d,tempo:730,power:1,
     question:{q:"Как звали первого мужчину, которого боги создали из дерева?",a:["Аск","Бальдр","Хёд"],c:0},
     intro:"Листья стихли. Из тени ясеней слышится вопрос хранителя рощи.",correctReward:6,battleReward:12
   },
   norns:{
     id:"norns",location:"Прядильня Норн",name:"Вердаль",title:"Страж Нитей",sym:"ᛈ",
-    x:-52,z:38,hp:34,atk:7,scale:1.82,cloth:0x697187,cloak:0x51586f,accent:0xc5cbe7,tempo:700,power:2,
+    x:-52,z:38,hp:34,atk:7,scale:2.15,cloth:0x697187,cloak:0x51586f,accent:0xc5cbe7,tempo:700,power:2,
     question:{q:"Как зовут трёх Норн у источника судьбы?",a:["Урд, Верданди и Скульд","Фригг, Фрейя и Сиф","Хель, Ран и Нотт"],c:0},
     intro:"Серебряные нити натягиваются между камнями. Страж просит назвать хранительниц судьбы.",correctReward:7,battleReward:14
   },
   threeThreads:{
     id:"threeThreads",location:"Колодец Трёх Норн",name:"Скальд",title:"Страж Трёх Нитей",sym:"ᛉ",
-    x:58,z:-28,hp:38,atk:8,scale:1.88,cloth:0x70566f,cloak:0x403445,accent:0xd7b1d0,tempo:670,power:2,
+    x:58,z:-28,hp:38,atk:8,scale:2.22,cloth:0x70566f,cloak:0x403445,accent:0xd7b1d0,tempo:670,power:2,
     question:{q:"Какая из трёх Норн связана с тем, чему ещё предстоит случиться?",a:["Урд","Верданди","Скульд"],c:2},
     intro:"Три нити сходятся над водой. Прежде чем выбрать одну из них, нужно выдержать вопрос стража.",correctReward:8,battleReward:16
   },
   whisperStone:{
     id:"whisperStone",location:"Камень Шёпота",name:"Хродвитнир",title:"Страж Камня шёпота",sym:"ᚦ",
-    x:-72,z:-48,hp:40,atk:8,scale:1.92,cloth:0x403736,cloak:0x211f21,accent:0xff8a32,tempo:650,power:3,
+    x:-72,z:-48,hp:40,atk:8,scale:2.27,cloth:0x403736,cloak:0x211f21,accent:0xff8a32,tempo:650,power:3,
     question:WHISPER_QUEST,
     intro:"Янтарный свет хранит память о сотворении мира людей. Из глубины раздаётся голос стража.",correctReward:8,battleReward:18
   },
   runefield:{
     id:"runefield",location:"Поле Рун",name:"Райдмар",title:"Страж Рунного Поля",sym:"ᚱ",
-    x:18,z:55,hp:42,atk:9,scale:1.90,cloth:0x395d72,cloak:0x263d4a,accent:0x76d8ef,tempo:620,power:3,
+    x:18,z:55,hp:42,atk:9,scale:2.24,cloth:0x395d72,cloak:0x263d4a,accent:0x76d8ef,tempo:620,power:3,
     question:{q:"Какая руна Старшего Футарка связана с дорогой, движением и путешествием?",a:["Райдо","Иса","Хагалаз"],c:0},
     intro:"Руны загораются одна за другой. Хранитель поля требует узнать знак пути.",correctReward:9,battleReward:18
   },
   mimir:{
     id:"mimir",location:"Колодец Мимира",name:"Хеймвард",title:"Хранитель Мудрости",sym:"ᚨ",
-    x:1,z:0,hp:48,atk:10,scale:1.98,cloth:0x344760,cloak:0x192538,accent:0xe2bd61,tempo:590,power:4,requiredPower:4,
+    x:1,z:0,hp:48,atk:10,scale:2.34,cloth:0x344760,cloak:0x192538,accent:0xe2bd61,tempo:590,power:4,requiredPower:4,
     question:{q:"Что отдал Один за право испить из источника Мимира?",a:["Своё копьё","Один глаз","Кольцо Драупнир"],c:1},
     intro:"Вода становится неподвижной, словно зеркало. Страж Мимира требует цену знания — верный ответ.",correctReward:10,battleReward:21
   },
@@ -322,7 +332,7 @@ const MIDGARD_GUARDIANS:Record<string,MidgardGuardianSpec>={
   },
   hoddmimir:{
     id:"hoddmimir",location:"Лес Ходдмимира",name:"Ливгард",title:"Страж Последнего Убежища",sym:"ᛋ",
-    x:62,z:78,hp:58,atk:12,scale:2.08,cloth:0x4d5b38,cloak:0x26311f,accent:0xd1b765,tempo:530,power:5,requiredPower:5,
+    x:62,z:78,hp:58,atk:12,scale:2.46,cloth:0x4d5b38,cloak:0x26311f,accent:0xd1b765,tempo:530,power:5,requiredPower:5,
     question:{q:"Кто, согласно эддической традиции, укроется в лесу Ходдмимира и переживёт гибель мира?",a:["Лив и Ливтрасир","Скёлль и Хати","Моди и Магни"],c:0},
     intro:"Глубокий лес словно отсекает шум мира. Последний страж Мидгарда задаёт вопрос о тех, кто переживёт Рагнарёк.",correctReward:12,battleReward:28
   }
@@ -644,8 +654,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .forge-wall-label{display:flex;align-items:flex-end;justify-content:center;padding:0 1px 2px;border:1px solid #b9873c66;background:linear-gradient(180deg,transparent 58%,#21170eca);color:#ffe6ad;font-size:6px;font-weight:800;text-align:center;text-shadow:0 1px 3px #000,0 0 6px #000;line-height:1.1}
 .forge-wall-label.owned{color:#b8f0b4}
 .forge-wall-label.equipped{border:2px solid #93e697;box-shadow:inset 0 0 11px #59d97790}.forge-wall-label:active{background:#bb783955}
-.spark-drop{display:inline-block;vertical-align:-1px;width:11px;height:15px;margin:0 2px 0 1px;border-radius:70% 70% 65% 8%;transform:rotate(-45deg);background:linear-gradient(135deg,#ffed9a 12%,#ffae35 48%,#ed5323 83%);box-shadow:0 0 5px #ff9a35a8}.spark-drop:after{content:"";position:absolute;top:3px;left:2px;width:3px;height:4px;border-radius:100%;background:#fff3b1a8}
-.sparks .spark-drop,.forge-wallet .spark-drop{width:15px;height:20px;vertical-align:-3px}
+.spark-drop{display:inline-block;vertical-align:-3px;width:14px;height:20px;margin:0 2px 0 1px;object-fit:contain;filter:drop-shadow(0 0 4px #ffac34aa)}
+.sparks .spark-drop,.forge-wallet .spark-drop{width:18px;height:27px;vertical-align:-6px}
 .forge-equipped{display:flex;align-items:center;justify-content:space-between;gap:7px;padding:8px 9px;border:1px solid #d9a749;border-radius:10px;background:#352314;color:#ffe6a7;font-size:9px;font-weight:800}.forge-equipped button{padding:6px 7px;background:#b97e32;border:1px solid #ffe5a2;border-radius:7px;color:#1b1208;font-size:8px;font-weight:900}
 .forge-gear-actions{display:flex;gap:5px;width:100%}.forge-gear-actions button{flex:1;min-height:25px;padding:3px 1px;border-radius:6px;border:1px solid #bf914f;background:#44301a;color:#ffe6a7;font-size:7px;font-weight:800}.forge-gear-actions button.on{background:#31704a;border-color:#a6e0a5}.forge-gear-actions button:disabled{opacity:.58}
 .forge-wall-note{font-size:10px;line-height:1.4;color:#e5cdaa;margin:5px 2px 9px}
@@ -1292,6 +1302,31 @@ function midHero3d(h: HeroDef) {
   return markMeshes(g);
 }
 
+
+type GuardianLoot={weapons?:HeroWeapon[];shields?:string[];runes?:string[];potions?:string[]};
+const MIDGARD_GUARDIAN_LOOT:Record<string,{correct:GuardianLoot;battle:GuardianLoot}>={
+  rune:{correct:{runes:['fehuWealth']},battle:{weapons:['knife'],runes:['fehuWealth'],potions:['northernMoss']}},
+  ashgrove:{correct:{runes:['berkanoHeal']},battle:{weapons:['axeSmall'],runes:['berkanoHeal'],potions:['northernMoss']}},
+  norns:{correct:{runes:['perthroFate']},battle:{weapons:['sword2'],runes:['perthroFate'],potions:['lifeElixir']}},
+  threeThreads:{correct:{runes:['algizGuard']},battle:{weapons:['dagger2'],shields:['Shield_Heater.glb'],runes:['algizGuard'],potions:['frostDraught']}},
+  whisperStone:{correct:{runes:['ansuzWisdom']},battle:{weapons:['mace'],runes:['kenazShard'],potions:['northernMoss']}},
+  runefield:{correct:{runes:['raidoPath']},battle:{weapons:['spear'],shields:['Shield_Heater_2.glb'],runes:['raidoPath','hagalazBreak'],potions:['frostDraught']}},
+  mimir:{correct:{runes:['ansuzWisdom']},battle:{weapons:['swordBig'],runes:['ansuzWisdom','mannazMind'],potions:['hoddmimirElixir']}},
+  powerCircle:{correct:{runes:['tiwazValor']},battle:{weapons:['axeDouble'],shields:['Shield_Celtic_Golden.glb'],runes:['tiwazValor','uruzStrength'],potions:['lifeElixir']}},
+  hoddmimir:{correct:{runes:['othalaLegacy']},battle:{weapons:['claymore'],shields:['Shield_Round_2.glb'],runes:['sowiloLight','othalaLegacy'],potions:['hoddmimirElixir','lifeElixir']}}
+};
+const lootCountAdd=(counts:Record<string,number>,ids:string[])=>{
+  const next={...counts};for(const id of ids)next[id]=(next[id]||0)+1;return next;
+};
+const guardianLootText=(id:string,battle:boolean)=>{
+  const loot=MIDGARD_GUARDIAN_LOOT[id]?.[battle?'battle':'correct'];if(!loot)return '';
+  const names:string[]=[];
+  for(const w of loot.weapons||[])names.push(({knife:'Боевой кинжал',dagger2:'Кинжал II',axe:'Северный топор',axeSmall:'Малый топор',axeDouble:'Двойной топор',mace:'Малый молот',hammerDouble:'Двойной молот',spear:'Копьё',sword2:'Меч II',swordBig:'Большой меч',swordGolden:'Золотой меч',claymore:'Клеймор',scythe:'Боевая коса',default:'Оружие'} as Record<string,string>)[w]||w);
+  for(const s of loot.shields||[])names.push(({ 'Shield_Round.glb':'Круглый щит','Shield_Round_2.glb':'Серебряный щит','Shield_Heater.glb':'Щит','Shield_Heater_2.glb':'Щит II','Shield_Celtic_Golden.glb':'Золотой щит'} as Record<string,string>)[s]||s);
+  for(const r of loot.runes||[])names.push('руна '+(RUNE_CATALOG.find(x=>x.id===r)?.name||r));
+  for(const p of loot.potions||[])names.push(POTION_CATALOG.find(x=>x.id===p)?.name||p);
+  return names.join(', ');
+};
 type WhisperCombatStats={maxHp:number;attack:number;runeAttack:number;defense:number;power:number};
 const POTION_CATALOG=[
   {id:'lifeElixir',name:'Эликсир жизни',effect:'Полностью восстанавливает здоровье Вики',symbol:'❤️'},
@@ -1299,13 +1334,33 @@ const POTION_CATALOG=[
   {id:'frostDraught',name:'Морозный настой',effect:'Два следующих удара без щита слабее вдвое',symbol:'❄️'},
   {id:'hoddmimirElixir',name:'Эликсир Ходдмимира',effect:'Полностью восстанавливает здоровье и даёт защиту от двух следующих ударов',symbol:'✨'}
 ] as const;
-const RUNE_CATALOG=[
-  {id:'uruzStrength',name:'Уруз',effect:'Усиленный удар оружием',symbol:'ᚢ'},
-  {id:'algizGuard',name:'Альгиз',effect:'Снижает урон разбойников на 2',symbol:'ᛉ'},
-  {id:'raidoPath',name:'Райдо',effect:'Ускоряет передвижение на 10%',symbol:'ᚱ'},
-  {id:'kenazShard',name:'Кеназ',effect:'Усиливает руническую атаку',symbol:'ᚲ'},
-  {id:'sowiloLight',name:'Соулу',effect:'Свет Ходдмимира: +2 к оружейному и руническому урону',symbol:'ᛋ'}
-] as const;
+type RuneDef={id:string;name:string;effect:string;symbol:string;attack?:number;rune?:number;defense?:number;power?:number};
+const RUNE_CATALOG:RuneDef[]=[
+  {id:'fehuWealth',name:'Феху',effect:'Укрепляет общую силу и будущие награды',symbol:'ᚠ',power:1},
+  {id:'uruzStrength',name:'Уруз',effect:'Усиленный удар оружием',symbol:'ᚢ',attack:2,power:1},
+  {id:'thurisazStrike',name:'Турисаз',effect:'Тяжёлый пробивной удар',symbol:'ᚦ',attack:2},
+  {id:'ansuzWisdom',name:'Ансуз',effect:'Усиливает рунический урон',symbol:'ᚨ',rune:2,power:1},
+  {id:'raidoPath',name:'Райдо',effect:'Ускоряет передвижение на 10%',symbol:'ᚱ',power:1},
+  {id:'kenazShard',name:'Кеназ',effect:'Усиливает руническую атаку',symbol:'ᚲ',rune:2},
+  {id:'geboGift',name:'Гебо',effect:'Руна дара; повышает ценность трофея',symbol:'ᚷ',power:1},
+  {id:'wunjoLuck',name:'Вуньо',effect:'Укрепляет удачу и боевой дух',symbol:'ᚹ',power:1},
+  {id:'hagalazBreak',name:'Хагалаз',effect:'Добавляет разрушительную силу',symbol:'ᚺ',attack:1,rune:1},
+  {id:'nauthizEndurance',name:'Наутиз',effect:'Даёт стойкость под давлением',symbol:'ᚾ',defense:1},
+  {id:'isaGuard',name:'Иса',effect:'Холодная защита снижает урон',symbol:'ᛁ',defense:2},
+  {id:'jeraHarvest',name:'Йера',effect:'Усиливает результат долгого пути',symbol:'ᛃ',power:1},
+  {id:'eihwazResilience',name:'Эйваз',effect:'Укрепляет выносливость и защиту',symbol:'ᛇ',defense:1,power:1},
+  {id:'perthroFate',name:'Перт',effect:'Руна судьбы усиливает магию',symbol:'ᛈ',rune:1,power:1},
+  {id:'algizGuard',name:'Альгиз',effect:'Снижает входящий урон',symbol:'ᛉ',defense:2},
+  {id:'sowiloLight',name:'Соулу',effect:'Солнечная сила усиливает оружие и руны',symbol:'ᛋ',attack:2,rune:2,power:1},
+  {id:'tiwazValor',name:'Тейваз',effect:'Воинская руна усиливает удар',symbol:'ᛏ',attack:2,power:1},
+  {id:'berkanoHeal',name:'Беркана',effect:'Сила роста укрепляет жизненную стойкость',symbol:'ᛒ',defense:1},
+  {id:'ehwazMotion',name:'Эваз',effect:'Движение и согласованность повышают силу',symbol:'ᛖ',power:1},
+  {id:'mannazMind',name:'Манназ',effect:'Ясность разума усиливает руническую атаку',symbol:'ᛗ',rune:2},
+  {id:'laguzFlow',name:'Лагуз',effect:'Поток усиливает руническую энергию',symbol:'ᛚ',rune:2},
+  {id:'ingwazReserve',name:'Ингваз',effect:'Запас внутренней силы повышает стойкость',symbol:'ᛜ',defense:1,power:1},
+  {id:'dagazDawn',name:'Дагаз',effect:'Прорыв усиливает оба вида атаки',symbol:'ᛞ',attack:1,rune:1,power:1},
+  {id:'othalaLegacy',name:'Отала',effect:'Наследие укрепляет защиту и общую силу',symbol:'ᛟ',defense:1,power:1}
+]
 type BanditSpec={id:string;name:string;x:number;z:number;hp:number;damage:number;sparks:number;reward:string;item?:string;kind?:'weapon'|'potion'|'rune';quantity?:number};
 const BANDIT_SPECS:BanditSpec[]=[
   {id:'forest',name:'Разбойник у моста',x:-46,z:49,hp:3,damage:9,sparks:12,reward:'Разбойничий кинжал',kind:'weapon',item:'knife'},
@@ -1460,7 +1515,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         setWhisperReward("8 Капель силы и малый молот");
       }else{
         onRef.current("guardian:correct:"+spec.id);
-        setWhisperReward(spec.correctReward+" Капель силы");
+        setWhisperReward(spec.correctReward+" Капель силы"+(guardianLootText(spec.id,false)?" + "+guardianLootText(spec.id,false):""));
       }
       setWhisperLog(spec.location+" признала верный ответ. Сталь остаётся в ножнах.");
       setWhisperPhaseSafe("reward");
@@ -1524,7 +1579,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           const reward=onWhisperWin();setWhisperReward("18 Капель силы и «"+reward+"»");setWhisperLog("Хродвитнир повержен. Камень открывает награду.");
         }else{
           onRef.current("guardian:battle:"+spec.id);
-          setWhisperReward(spec.battleReward+" Капель силы");setWhisperLog(spec.name+" повержен. "+spec.location+" признаёт твою победу.");
+          setWhisperReward(spec.battleReward+" Капель силы"+(guardianLootText(spec.id,true)?" + "+guardianLootText(spec.id,true):""));setWhisperLog(spec.name+" повержен. "+spec.location+" признаёт твою победу.");
         }
         whisperTimers.current.push(window.setTimeout(()=>{setWhisperBusy(false);setWhisperPhaseSafe("reward");},650));
       }else{
@@ -5189,7 +5244,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       return tail;
     };
     const playLocationGuardian=(g:LocationGuardianActor,name:string)=>{
-      const action=g.actions[name]||g.actions.Idle_Sword||g.actions.Idle||g.actions.Idle_Neutral;
+      const action=g.actions[name]||g.actions.Idle_Neutral||g.actions.Idle_Sword||g.actions.Idle;
       if(!action)return;
       if(g.current===name&&name!=='Sword_Slash'&&name!=='HitRecieve'&&name!=='Death')return;
       if(g.current&&g.actions[g.current]&&g.actions[g.current]!==action)g.actions[g.current].fadeOut(.10);
@@ -5199,7 +5254,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       action.clampWhenFinished=name==='Death';action.play();g.current=name;
     };
     const activeLocationGuardian=()=>locationGuardians.get(activeGuardianIdRef.current);
-    guardIdleActionRef.current=()=>{const g=activeLocationGuardian();if(g)playLocationGuardian(g,'Idle_Sword');};
+    guardIdleActionRef.current=()=>{const g=activeLocationGuardian();if(g)playLocationGuardian(g,'Idle_Neutral');};
     guardAttackActionRef.current=()=>{const g=activeLocationGuardian();if(g)playLocationGuardian(g,'Sword_Slash');};
     guardHitActionRef.current=()=>{const g=activeLocationGuardian();if(g)playLocationGuardian(g,'HitRecieve');};
     guardDeathActionRef.current=()=>{const g=activeLocationGuardian();if(g)playLocationGuardian(g,'Death');};
@@ -5229,8 +5284,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const actor=new THREE.Group();actor.name='Guardian_'+spec.id;actor.visible=false;actor.add(model);
         if(spec.cloak!==undefined){
           const f=spec.scale/1.92;
-          const cape=new THREE.Mesh(new THREE.PlaneGeometry(1.05*f,1.55*f),new THREE.MeshStandardMaterial({color:spec.cloak,roughness:.96,metalness:0,side:THREE.DoubleSide}));
-          cape.position.set(0,1.62*f,-.38*f);cape.rotation.x=-.12;cape.castShadow=true;actor.add(cape);
+          const cape=new THREE.Mesh(new THREE.PlaneGeometry(1.28*f,.92*f),new THREE.MeshStandardMaterial({color:spec.cloak,roughness:.96,metalness:0,side:THREE.DoubleSide}));
+          cape.position.set(0,1.86*f,-.36*f);cape.rotation.x=-.10;cape.castShadow=true;actor.add(cape);
           const clasp=new THREE.Mesh(new THREE.TorusGeometry(.12*f,.025*f,8,18),new THREE.MeshStandardMaterial({color:spec.accent,roughness:.45,metalness:.72}));
           clasp.position.set(0,2.28*f,-.30*f);clasp.rotation.x=Math.PI/2;actor.add(clasp);
         }
@@ -5241,7 +5296,14 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           if(!actions[canonical])actions[canonical]=action;
           if(!actions[clip.name])actions[clip.name]=action;
         }
-        locationGuardians.set(spec.id,{actor,model,mixer,actions,current:''});
+        const guardianActor={actor,model,mixer,actions,current:''} as LocationGuardianActor;
+        locationGuardians.set(spec.id,guardianActor);
+        mixer.addEventListener('finished',(event:any)=>{
+          if(event.action===actions.Death)return;
+          if(guardianActor.current==='Sword_Slash'||guardianActor.current==='HitRecieve'){
+            playLocationGuardian(guardianActor,'Idle_Neutral');
+          }
+        });
       }
       console.log('[MIDGARD GUARDIANS] ready',Array.from(locationGuardians.keys()));
     },'MIDGARD LOCATION GUARDIANS');
@@ -5944,7 +6006,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const gz=spec.z+2.7;
         g.actor.position.set(spec.x,groundY(spec.x,gz),gz);
         g.actor.rotation.y=Math.atan2(q.x-spec.x,q.z-gz);
-        if(!guardDefeatedRef.current&&g.current==='')playLocationGuardian(g,'Idle_Sword');
+        if(!guardDefeatedRef.current&&g.current==='')playLocationGuardian(g,'Idle_Neutral');
         g.mixer.update(dt);
       }
       // Keep the camera direction stable when the thumb is released. The old camera
@@ -6231,7 +6293,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   </div>;
 }
 
-function SparkDrop(){return <span className="spark-drop" aria-label="Капля силы"/>;}
+function SparkDrop(){return <img className="spark-drop" src={`${BASE}img/spark_drop_gold.png`} alt="" aria-label="Капля силы"/>;}
 function InventorySection({kind,potions,runes,equippedRune,hp,maxHp,frostGuard,onUsePotion,onEquipRune}:{kind:'potions'|'runes';potions:string[];runes:string[];equippedRune:string;hp:number;maxHp:number;frostGuard:number;onUsePotion:(id:string)=>void;onEquipRune:(id:string)=>void}){
   return <section className="inventory-section"><h3>{kind==='potions'?'🧪 Эликсиры':'ᛉ Руны'}</h3><div className="inventory-list">
     {kind==='potions'?POTION_CATALOG.map(item=>{
@@ -6250,10 +6312,10 @@ function InventorySection({kind,potions,runes,equippedRune,hp,maxHp,frostGuard,o
 }
 
 const FORGE_WEAPON_MODELS = [
-  ['Sword.glb','Меч','default'],['Sword_2.glb','Меч II',''],['Sword_Big.glb','Большой меч',''],['Sword_Golden.glb','Золотой меч',''],
-  ['Axe.glb','Топор','axe'],['Axe_Small.glb','Малый топор',''],['Axe_Double.glb','Двойной топор',''],['Spear.glb','Копьё','spear'],
-  ['Hammer_Small.glb','Малый молот','mace'],['Hammer_Double.glb','Двойной молот',''],['Dagger.glb','Боевой кинжал','knife'],['Dagger_2.glb','Кинжал II',''],
-  ['Claymore.glb','Клеймор',''],['Scythe.glb','Боевая коса',''],['Shield_Round.glb','Круглый щит','shield'],['Shield_Round_2.glb','Серебряный щит',''],
+  ['Sword.glb','Меч','default'],['Sword_2.glb','Меч II','sword2'],['Sword_Big.glb','Большой меч','swordBig'],['Sword_Golden.glb','Золотой меч','swordGolden'],
+  ['Axe.glb','Топор','axe'],['Axe_Small.glb','Малый топор','axeSmall'],['Axe_Double.glb','Двойной топор','axeDouble'],['Spear.glb','Копьё','spear'],
+  ['Hammer_Small.glb','Малый молот','mace'],['Hammer_Double.glb','Двойной молот','hammerDouble'],['Dagger.glb','Боевой кинжал','knife'],['Dagger_2.glb','Кинжал II','dagger2'],
+  ['Claymore.glb','Клеймор','claymore'],['Scythe.glb','Боевая коса','scythe'],['Shield_Round.glb','Круглый щит','shield'],['Shield_Round_2.glb','Серебряный щит',''],
   ['Shield_Heater.glb','Щит',''],['Shield_Heater_2.glb','Щит II',''],['Shield_Celtic_Golden.glb','Золотой щит','']
 ] as const;
 
@@ -6378,10 +6440,19 @@ const [roadT, setRoadT] = useState(0.06);
   const heroDef = save.hero ? HEROES.find(h => h.id === save.hero!.id)! : null;
   const forgeItems = [
     {id:"default",icon:save.heroSkin==="valkyrie"?"⚔️":"◢━",name:save.heroSkin==="valkyrie"?"Меч валькирии":"Секира викинга",kind:"weapon",owned:true},
+    {id:"sword2",icon:"⚔️",name:"Меч II",kind:"weapon",owned:save.ownedWeapons.includes("sword2")},
+    {id:"swordBig",icon:"⚔️",name:"Большой меч",kind:"weapon",owned:save.ownedWeapons.includes("swordBig")},
+    {id:"swordGolden",icon:"⚔️",name:"Золотой меч",kind:"weapon",owned:save.ownedWeapons.includes("swordGolden")},
     {id:"knife",icon:"🗡️",name:"Боевой кинжал",kind:"weapon",owned:save.ownedWeapons.includes("knife")},
+    {id:"dagger2",icon:"🗡️",name:"Кинжал II",kind:"weapon",owned:save.ownedWeapons.includes("dagger2")},
     {id:"axe",icon:"🪓",name:"Северный топор",kind:"weapon",owned:save.ownedWeapons.includes("axe")},
+    {id:"axeSmall",icon:"🪓",name:"Малый топор",kind:"weapon",owned:save.ownedWeapons.includes("axeSmall")},
+    {id:"axeDouble",icon:"🪓",name:"Двойной топор",kind:"weapon",owned:save.ownedWeapons.includes("axeDouble")},
     {id:"mace",icon:"🔨",name:"Малый молот",kind:"weapon",owned:save.ownedWeapons.includes("mace")},
+    {id:"hammerDouble",icon:"🔨",name:"Двойной молот",kind:"weapon",owned:save.ownedWeapons.includes("hammerDouble")},
     {id:"spear",icon:"🔱",name:"Копьё",kind:"weapon",owned:save.ownedWeapons.includes("spear")},
+    {id:"claymore",icon:"⚔️",name:"Клеймор",kind:"weapon",owned:save.ownedWeapons.includes("claymore")},
+    {id:"scythe",icon:"⚔️",name:"Боевая коса",kind:"weapon",owned:save.ownedWeapons.includes("scythe")},
     {id:"armor",icon:"♜",name:"Нагрудная броня",kind:"gear",owned:true},
     {id:"shield",icon:"🛡️",name:"Круглый щит",kind:"gear",owned:true},
     {id:"helmet",icon:"⛑️",name:"Боевой шлем",kind:"gear",owned:true},
@@ -6392,11 +6463,12 @@ const [roadT, setRoadT] = useState(0.06);
   const gearLevel=(id:GearId)=>equipped(id)?forgeLevel(id==='shield'?shieldForgeKey(save.shieldAsset):id):0;
   const gearHp=()=>gearLevel('armor')*3+gearLevel('helmet')*2+(equipped('armor')?4:0)+(equipped('helmet')?2:0);
   const gearDefense=()=>Math.floor((gearLevel('armor')+gearLevel('helmet'))/2)+(equipped('armor')?1:0);
+  const activeRuneDef=()=>RUNE_CATALOG.find(r=>r.id===save.equippedRune);
   const heroPowerPips=()=>{
     if(!heroDef)return 1;
     const gearForge=gearLevel('armor')+gearLevel('helmet')+gearLevel('shield')+gearLevel('boots');
-    const runeBonus=save.equippedRune?2:0;
-    const score=heroDef.str+WEAPON_POWER[save.heroWeapon]+forgeLevel(save.heroWeapon)+Math.floor(gearForge/2)+runeBonus;
+    const runePower=activeRuneDef()?.power||0;
+    const score=heroDef.str+WEAPON_POWER[save.heroWeapon]+forgeLevel(save.heroWeapon)+Math.floor(gearForge/2)+runePower*2;
     return score>=24?5:score>=19?4:score>=15?3:score>=11?2:1;
   };
   const toggleGear=(id:GearId)=>{
@@ -6440,7 +6512,9 @@ const [roadT, setRoadT] = useState(0.06);
     if (art) { haptic("success"); say("Мир пройден! Артефакт: " + ARTIFACTS[id]+(id==='midgard'?'. Все оружие Мидгарда теперь доступно в Чертоге.':'')); }
   };
   const finishWhisperCorrect = () => {
-    setSave(s=>s.done.includes("whisper:wisdom")?s:{...s,sparks:s.sparks+8,done:[...new Set([...s.done,"whisper:wisdom"])],ownedWeapons:[...new Set([...s.ownedWeapons,'mace'])]});
+    setSave(s=>s.done.includes("whisper:wisdom")?s:{...s,sparks:s.sparks+8,done:[...new Set([...s.done,"whisper:wisdom"])],
+      runes:[...new Set([...s.runes,'ansuzWisdom'])],potions:[...s.potions,'northernMoss'],
+      lootCounts:lootCountAdd(s.lootCounts,['ansuzWisdom','northernMoss'])});
     haptic("success");
   };
   const answer = (id: string, ai: number) => {
@@ -6492,7 +6566,8 @@ const [roadT, setRoadT] = useState(0.06);
       return {...s,sparks:s.sparks+18,done:[...new Set([...s.done,"whisper:battle"])],
         ownedWeapons:[...new Set([...s.ownedWeapons,'mace'])],
         potions:[...s.potions,'northernMoss'],
-        runes:[...new Set([...s.runes,'kenazShard'])]};
+        runes:[...new Set([...s.runes,'kenazShard'])],
+        lootCounts:lootCountAdd(s.lootCounts,['mace','northernMoss','kenazShard'])};
     });
     return 'Малый молот, эликсир северного мха и осколок Кеназ';
   };
@@ -6693,7 +6768,16 @@ const [roadT, setRoadT] = useState(0.06);
         const key="guardian:"+locationId;
         if(!spec||save.done.includes(key))return;
         const reward=battle?spec.battleReward:spec.correctReward;
-        setSave(s=>s.done.includes(key)?s:{...s,sparks:s.sparks+reward,done:[...new Set([...s.done,key])]});
+        const loot=MIDGARD_GUARDIAN_LOOT[locationId]?.[battle?'battle':'correct']||{};
+        const lootIds=[...(loot.weapons||[]),...(loot.shields||[]),...(loot.runes||[]),...(loot.potions||[])];
+        setSave(s=>s.done.includes(key)?s:{...s,
+          sparks:s.sparks+reward,done:[...new Set([...s.done,key])],
+          ownedWeapons:[...new Set([...s.ownedWeapons,...(loot.weapons||[])])],
+          ownedShields:[...new Set([...s.ownedShields,...(loot.shields||[])])],
+          runes:[...new Set([...s.runes,...(loot.runes||[])])],
+          potions:[...s.potions,...(loot.potions||[])],
+          lootCounts:lootCountAdd(s.lootCounts,lootIds)
+        });
         haptic("success");
         return;
       }
@@ -6728,9 +6812,14 @@ const [roadT, setRoadT] = useState(0.06);
           say('Красный сундук уже открыт. Северный мост можно подготовить заданием Бьёрна; доски на Старом хуторе и крепления у Торвальда — ещё один путь. Ремонт выполняется у самого моста.');return;
         }
         setSave(s=>s.done.includes('chest:norns')?s:{...s,
-          done:[...new Set([...s.done,'chest:norns'])],
-          potions:[...s.potions,'lifeElixir'],runes:[...new Set([...s.runes,'uruzStrength'])],ownedWeapons:[...new Set([...s.ownedWeapons,'knife'])]});
-        haptic('success');say('В красном сундуке: боевой кинжал, Эликсир жизни и руна силы Уруз ᚢ. Подсказка Норн: мост можно подготовить у Бьёрна или найти доски на Старом хуторе и крепления у Торвальда. Чинить мост нужно на месте.');
+          done:[...new Set([...s.done,'chest:norns'])],sparks:s.sparks+30,
+          potions:[...s.potions,'lifeElixir','northernMoss'],
+          runes:[...new Set([...s.runes,'uruzStrength','perthroFate'])],
+          ownedWeapons:[...new Set([...s.ownedWeapons,'knife'])],
+          ownedShields:[...new Set([...s.ownedShields,'Shield_Heater.glb'])],
+          lootCounts:lootCountAdd(s.lootCounts,['knife','Shield_Heater.glb','uruzStrength','perthroFate','lifeElixir','northernMoss'])
+        });
+        haptic('success');say('Красный сундук Норн открыт! +30 Капель силы, Боевой кинжал, Щит, руны Уруз ᚢ и Перт ᛈ, Эликсир жизни и Эликсир северного мха. Подсказка Норн ведёт к ремонту Северного моста.');
         return;
       }
       if (id === "forge") {
@@ -6832,11 +6921,14 @@ const [roadT, setRoadT] = useState(0.06);
         if(!save.done.includes('bridge:north:repaired')){say('Золотой сундук защищён кольцом. Выполни задание Бьёрна, отремонтируй Северный мост и перейди на другой берег.');return;}
         if(!save.done.includes('chest:gold')){
           setSave(s=>s.done.includes('chest:gold')?s:{...s,
-            done:[...new Set([...s.done,'chest:gold'])],sparks:s.sparks+18,
-            runes:[...new Set([...s.runes,'raidoPath','algizGuard'])],
-            potions:[...s.potions,'northernMoss','frostDraught'],
-            ownedWeapons:[...new Set([...s.ownedWeapons,'axe','spear'])]});
-          haptic('success');setHouseDialogId('goldChest');setHouseDialog('✅ Золотой сундук открыт! Получены руны Райдо ᚱ и Альгиз ᛉ, два эликсира, Северный топор, Копьё и 18 Капель силы. Следующая известная цель — серебряный сундук в Лесу Ходдмимира.');
+            done:[...new Set([...s.done,'chest:gold'])],sparks:s.sparks+55,
+            runes:[...new Set([...s.runes,'raidoPath','algizGuard','fehuWealth'])],
+            potions:[...s.potions,'northernMoss','frostDraught','lifeElixir'],
+            ownedWeapons:[...new Set([...s.ownedWeapons,'axe','spear','sword2'])],
+            ownedShields:[...new Set([...s.ownedShields,'Shield_Heater_2.glb'])],
+            lootCounts:lootCountAdd(s.lootCounts,['axe','spear','sword2','Shield_Heater_2.glb','raidoPath','algizGuard','fehuWealth','northernMoss','frostDraught','lifeElixir'])
+          });
+          haptic('success');setHouseDialogId('goldChest');setHouseDialog('✅ Золотой сундук открыт! +55 Капель силы, Северный топор, Копьё, Меч II, Щит II, руны Райдо ᚱ, Альгиз ᛉ и Феху ᚠ, а также три эликсира. Следующая богатая цель — серебряный сундук в Лесу Ходдмимира.');
         } else say('Золотой сундук уже открыт. Найденные руны, эликсиры и оружие хранятся в Чертоге.');
         return;
       }
@@ -6884,12 +6976,15 @@ const [roadT, setRoadT] = useState(0.06);
         if(!save.done.includes('chest:angelic')){
           setSave(s=>s.done.includes('chest:angelic')?s:{...s,
             done:[...new Set([...s.done,'chest:angelic'])],
-            sparks:s.sparks+25,
-            runes:[...new Set([...s.runes,'sowiloLight'])],
-            potions:[...s.potions,'hoddmimirElixir'],
-            ownedShields:[...new Set([...s.ownedShields,'Shield_Round_2.glb'])]});
+            sparks:s.sparks+80,
+            runes:[...new Set([...s.runes,'sowiloLight','othalaLegacy','dagazDawn'])],
+            potions:[...s.potions,'hoddmimirElixir','lifeElixir','frostDraught'],
+            ownedWeapons:[...new Set([...s.ownedWeapons,'claymore','hammerDouble'])],
+            ownedShields:[...new Set([...s.ownedShields,'Shield_Round_2.glb','Shield_Celtic_Golden.glb'])],
+            lootCounts:lootCountAdd(s.lootCounts,['claymore','hammerDouble','Shield_Round_2.glb','Shield_Celtic_Golden.glb','sowiloLight','othalaLegacy','dagazDawn','hoddmimirElixir','lifeElixir','frostDraught'])
+          });
           haptic('success');
-          say('Серебряный ангельский сундук открыт! Ты получил редкую руну Соулу ᛋ, Серебряный щит, Эликсир Ходдмимира и 25 ✨. Награды сохранены в Чертоге.');
+          say('Серебряный ангельский сундук открыт! +80 Капель силы, Клеймор, Двойной молот, Серебряный и Золотой щиты, редкие руны Соулу ᛋ, Отала ᛟ и Дагаз ᛞ, Эликсир Ходдмимира, Эликсир жизни и Морозный настой.');
         } else {
           say('Серебряный ангельский сундук уже открыт. Руна Соулу, Серебряный щит и Эликсир Ходдмимира хранятся в Чертоге.');
         }
@@ -6983,9 +7078,9 @@ const [roadT, setRoadT] = useState(0.06);
       guardianResolved={Object.keys(MIDGARD_GUARDIANS).filter(id=>id==="whisperStone"?(save.done.includes("whisper:battle")||save.done.includes("whisper:wisdom")):save.done.includes("guardian:"+id))}
       whisperStats={{
         maxHp:heroDef.hp+gearHp(),
-        attack:heroDef.str+WEAPON_POWER[save.heroWeapon]+forgeLevel(save.heroWeapon)+(save.equippedRune==='uruzStrength'?2:0)+(save.equippedRune==='sowiloLight'?2:0),
-        runeAttack:heroDef.en+2+(save.equippedRune==='kenazShard'?2:0)+(save.equippedRune==='sowiloLight'?2:0),
-        defense:gearDefense()+(save.equippedRune==='algizGuard'?2:0),
+        attack:heroDef.str+WEAPON_POWER[save.heroWeapon]+forgeLevel(save.heroWeapon)+(activeRuneDef()?.attack||0),
+        runeAttack:heroDef.en+2+(activeRuneDef()?.rune||0),
+        defense:gearDefense()+(activeRuneDef()?.defense||0),
         power:heroPowerPips()
       }}
       onWhisperCorrect={finishWhisperCorrect}
@@ -7266,8 +7361,11 @@ const [roadT, setRoadT] = useState(0.06);
               <span className="craft-op">＝</span>
               <span className="craft-slot"><b>?</b>результат</span>
             </div>
-            <div className="hrow"><SparkDrop/> Капли силы: <b>0</b></div>
-            <button className="btn gold" disabled>Создать предмет</button>
+            <div className="hrow"><SparkDrop/> Капли силы: <b>{save.sparks}</b></div>
+            <div className="dim" style={{margin:"8px 0"}}>
+              Дубликаты трофеев сохраняются для крафта: {Object.values(save.lootCounts).filter(n=>n>1).reduce((sum,n)=>sum+(n-1),0)} шт.
+            </div>
+            <button className="btn gold" disabled>Рецепты крафта откроем следующим этапом</button>
             <button className="btn ghost" onClick={()=>go({t:"hall"})}>Вернуться в Чертог</button>
           </div>
         </div>
