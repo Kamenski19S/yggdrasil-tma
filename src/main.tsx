@@ -447,7 +447,7 @@ body{background:#0b0f0c;color:#e8f0e8;font-family:system-ui,sans-serif;overflow:
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .app{height:100vh;display:flex;flex-direction:column}
 .hdr{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;background:rgba(8,10,9,.92);border-bottom:1px solid #1e2a20;z-index:6}
-.title{font-size:14px;font-weight:600}.back{color:#6db3ff;font-size:13px}.sparks{color:#ffb35c;font-weight:700;font-size:13px}
+.title{font-size:14px;font-weight:600}.back{color:#6db3ff;font-size:13px}.sparks{color:#ffb35c;font-weight:700;font-size:13px;display:flex;align-items:center;gap:4px;min-height:34px;overflow:visible;white-space:nowrap}
 .maparea{flex:1;position:relative;overflow:hidden;background:#0b0f0c}
 .mapwrap{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
 .mapwrap::-webkit-scrollbar{display:none}
@@ -655,8 +655,9 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .forge-wall-label{display:flex;align-items:flex-end;justify-content:center;padding:0 1px 2px;border:1px solid #b9873c66;background:linear-gradient(180deg,transparent 58%,#21170eca);color:#ffe6ad;font-size:6px;font-weight:800;text-align:center;text-shadow:0 1px 3px #000,0 0 6px #000;line-height:1.1}
 .forge-wall-label.owned{color:#b8f0b4}
 .forge-wall-label.equipped{border:2px solid #93e697;box-shadow:inset 0 0 11px #59d97790}.forge-wall-label:active{background:#bb783955}
-.spark-drop{display:inline-block;position:relative;vertical-align:-4px;width:16px;height:22px;margin:0 4px 0 1px;filter:drop-shadow(0 0 5px #ffac34aa);background:radial-gradient(circle at 62% 55%,#fff4b0 0 10%,#ffd45f 24%,#e88a18 62%,#8e3d08 100%);clip-path:polygon(50% 0,68% 27%,86% 55%,91% 72%,86% 87%,72% 97%,50% 100%,28% 97%,14% 87%,9% 72%,14% 55%,32% 27%)}.spark-drop:after{content:"";position:absolute;left:31%;top:18%;width:28%;height:35%;border-radius:50%;background:linear-gradient(135deg,#fffbd5cc,#ffffff00)}
-.sparks .spark-drop,.forge-wallet .spark-drop{width:19px;height:27px;vertical-align:-6px}
+.spark-drop{display:inline-block;width:18px;height:28px;margin:0 2px;object-fit:contain;object-position:center;filter:drop-shadow(0 0 5px #ffac34aa);flex:0 0 auto}
+.sparks .spark-drop{width:20px;height:31px;margin:-1px 1px 0 0}
+.forge-wallet .spark-drop{width:17px;height:26px}
 .forge-equipped{display:flex;align-items:center;justify-content:space-between;gap:7px;padding:8px 9px;border:1px solid #d9a749;border-radius:10px;background:#352314;color:#ffe6a7;font-size:9px;font-weight:800}.forge-equipped button{padding:6px 7px;background:#b97e32;border:1px solid #ffe5a2;border-radius:7px;color:#1b1208;font-size:8px;font-weight:900}
 .forge-gear-actions{display:flex;gap:5px;width:100%}.forge-gear-actions button{flex:1;min-height:25px;padding:3px 1px;border-radius:6px;border:1px solid #bf914f;background:#44301a;color:#ffe6a7;font-size:7px;font-weight:800}.forge-gear-actions button.on{background:#31704a;border-color:#a6e0a5}.forge-gear-actions button:disabled{opacity:.58}
 .forge-wall-note{font-size:10px;line-height:1.4;color:#e5cdaa;margin:5px 2px 9px}
@@ -1477,7 +1478,18 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   useEffect(()=>()=>clearWhisperTimers(),[]);
 
   const currentGuardian=()=>MIDGARD_GUARDIANS[activeGuardianIdRef.current]||MIDGARD_GUARDIANS.whisperStone;
+  const guardianPrerequisitesDone=(id:string)=>{
+    const idx=MIDGARD_GUARDIAN_ORDER.indexOf(id as any);
+    return idx<=0||MIDGARD_GUARDIAN_ORDER.slice(0,idx).every(prev=>guardianResolved.includes(prev));
+  };
   const beginLocationEncounter=(id:string)=>{
+    if(!guardianPrerequisitesDone(id)){
+      const idx=MIDGARD_GUARDIAN_ORDER.indexOf(id as any);
+      const missing=MIDGARD_GUARDIAN_ORDER.slice(0,Math.max(0,idx)).find(prev=>!guardianResolved.includes(prev));
+      const prev=missing?MIDGARD_GUARDIANS[missing]:null;
+      setDoorNotice(prev?`Сначала пройди испытание: ${prev.location}.`:"Сначала заверши предыдущие испытания.");
+      return;
+    }
     const spec=MIDGARD_GUARDIANS[id]||MIDGARD_GUARDIANS.whisperStone;
     activeGuardianIdRef.current=spec.id;setActiveGuardianId(spec.id);
     clearWhisperTimers();
@@ -1498,7 +1510,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     setWhisperHeroHp(whisperStats.maxHp);setWhisperGuardHp(spec.hp);
     setWhisperHeroEnergy(whisperStats.power);setWhisperGuardEnergy(spec.power);
     setWhisperShield(false);setWhisperBusy(false);
-    setWhisperLog(spec.name+" снова принимает вызов. Это тренировочный бой без повторной награды.");
+    setWhisperLog(spec.name+" снова принимает вызов. Редкий трофей повторно не выпадает, но победа снова приносит Капли силы.");
     guardDefeatedRef.current=false;whisperBattleStartedRef.current=true;whisperReplayRef.current=true;setWhisperReplay(true);
     guardIdleActionRef.current?.();
     setWhisperPhaseSafe("fight");
@@ -6282,13 +6294,12 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       const guardianDone=guardianResolved.includes(id);
       if(guardianSpec&&!guardianDone){
         const idx=MIDGARD_GUARDIAN_ORDER.indexOf(id as any);
-        const prevId=idx>0?MIDGARD_GUARDIAN_ORDER[idx-1]:null;
-        const prevDone=!prevId||guardianResolved.includes(prevId);
-        if(!prevDone){
-          const prev=MIDGARD_GUARDIANS[prevId!];
+        const missing=MIDGARD_GUARDIAN_ORDER.slice(0,Math.max(0,idx)).find(prev=>!guardianResolved.includes(prev));
+        if(missing){
+          const prev=MIDGARD_GUARDIANS[missing];
           return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Испытание пока закрыто. Сначала пройди: {prev.location}.</span><button disabled>Путь ещё не открыт</button></div>;
         }
-        return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{guardianSpec.intro}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginLocationEncounter(id)}>Ответить стражу</button></div>;
+        return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Этап {idx+1} из {MIDGARD_GUARDIAN_ORDER.length}. {guardianSpec.intro}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginLocationEncounter(id)}>Ответить стражу</button></div>;
       }
       const home=id==="heroHome"||id==="heroHomeExit";
       const villageGate=id==="gate"||id==="gateRear";
@@ -6306,7 +6317,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   </div>;
 }
 
-function SparkDrop(){return <span className="spark-drop" aria-label="Капля силы"/>;}
+function SparkDrop(){return <img className="spark-drop" src={`${BASE}img/spark_drop_gold_v2.png`} alt="" aria-label="Капля силы"/>;}
 function InventorySection({kind,potions,runes,equippedRune,hp,maxHp,frostGuard,onUsePotion,onEquipRune}:{kind:'potions'|'runes';potions:string[];runes:string[];equippedRune:string;hp:number;maxHp:number;frostGuard:number;onUsePotion:(id:string)=>void;onEquipRune:(id:string)=>void}){
   return <section className="inventory-section"><h3>{kind==='potions'?'🧪 Эликсиры':'ᛉ Руны'}</h3><div className="inventory-list">
     {kind==='potions'?POTION_CATALOG.map(item=>{
@@ -6781,6 +6792,7 @@ const [roadT, setRoadT] = useState(0.06);
         const repeatDrops=2+spec.power;
         setSave(s=>({...s,sparks:s.sparks+repeatDrops}));
         haptic("success");
+        say(`Повторная победа над ${spec.name}: +${repeatDrops} Капель силы.`);
         return;
       }
       if(id.startsWith("guardian:correct:")||id.startsWith("guardian:battle:")){
@@ -6792,14 +6804,22 @@ const [roadT, setRoadT] = useState(0.06);
         const reward=battle?spec.battleReward:spec.correctReward;
         const loot=MIDGARD_GUARDIAN_LOOT[locationId]?.[battle?'battle':'correct']||{};
         const lootIds=[...(loot.weapons||[]),...(loot.shields||[]),...(loot.runes||[]),...(loot.potions||[])];
-        setSave(s=>s.done.includes(key)?s:{...s,
+        setSave(s=>{
+          if(s.done.includes(key))return s;
+          const idx=MIDGARD_GUARDIAN_ORDER.indexOf(locationId as any);
+          const missing=idx>0&&MIDGARD_GUARDIAN_ORDER.slice(0,idx).some(prev=>{
+            if(prev==="whisperStone")return !(s.done.includes("whisper:battle")||s.done.includes("whisper:wisdom")||s.done.includes("guardian:whisperStone"));
+            return !s.done.includes("guardian:"+prev);
+          });
+          if(missing)return s;
+          return {...s,
           sparks:s.sparks+reward,done:[...new Set([...s.done,key,"guardian:stage:"+locationId])],
           ownedWeapons:[...new Set([...s.ownedWeapons,...(loot.weapons||[])])],
           ownedShields:[...new Set([...s.ownedShields,...(loot.shields||[])])],
           runes:[...new Set([...s.runes,...(loot.runes||[])])],
           potions:[...s.potions,...(loot.potions||[])],
           lootCounts:lootCountAdd(s.lootCounts,lootIds)
-        });
+        }});
         haptic("success");
         return;
       }
