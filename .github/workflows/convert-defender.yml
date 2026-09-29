@@ -43,6 +43,10 @@ jobs:
           test -s public/img/models/Adventurer_Defender_Rigged.glb
           ls -lh public/img/models/Adventurer_Defender_Rigged.glb
 
+      - name: Inspect GLB
+        run: |
+          npx --yes @gltf-transform/cli inspect public/img/models/Adventurer_Defender_Rigged.glb
+
       - name: Commit GLB
         run: |
           git config user.name "github-actions[bot]"
