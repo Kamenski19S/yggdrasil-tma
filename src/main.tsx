@@ -243,6 +243,15 @@ const loadSave = (): Save => {
     // where all shields were temporarily available.
     if(!Array.isArray(previous.ownedShields))s.ownedShields=[SHIELD_ASSETS[0],s.shieldAsset];
     s.ownedShields=[...new Set([SHIELD_ASSETS[0],...s.ownedShields.filter((asset:string)=>SHIELD_ASSETS.includes(asset))])];
+    // Rebuild a safe minimum trophy count for saves created before duplicate
+    // tracking existed. Existing larger counters are preserved.
+    const ensureLootCount=(id:string,count=1)=>{s.lootCounts[id]=Math.max(Number(s.lootCounts[id])||0,count);};
+    for(const id of s.ownedWeapons)ensureLootCount(id);
+    for(const id of s.ownedShields)ensureLootCount(id);
+    for(const id of s.runes)ensureLootCount(id);
+    const potionCounts:Record<string,number>={};
+    for(const id of s.potions)potionCounts[id]=(potionCounts[id]||0)+1;
+    for(const [id,count] of Object.entries(potionCounts))ensureLootCount(id,count);
     if (typeof s.forgeFreeUsed !== "boolean") s.forgeFreeUsed = false;
     if (s.heroSkin !== "viking" && s.heroSkin !== "valkyrie") {
       const hd = s.hero ? HEROES.find((x:any)=>x.id===s.hero.id) : null;
@@ -1363,6 +1372,11 @@ const RUNE_CATALOG:RuneDef[]=[
   {id:'dagazDawn',name:'Дагаз',effect:'Прорыв усиливает оба вида атаки',symbol:'ᛞ',attack:1,rune:1,power:1},
   {id:'othalaLegacy',name:'Отала',effect:'Наследие укрепляет защиту и общую силу',symbol:'ᛟ',defense:1,power:1}
 ]
+const lootDisplayName=(id:string)=>{
+  const weaponNames:Record<string,string>={default:'Основное оружие',sword2:'Меч II',swordBig:'Большой меч',swordGolden:'Золотой меч',knife:'Боевой кинжал',dagger2:'Кинжал II',axe:'Северный топор',axeSmall:'Малый топор',axeDouble:'Двойной топор',mace:'Малый молот',hammerDouble:'Двойной молот',spear:'Копьё',claymore:'Клеймор',scythe:'Боевая коса'};
+  const shieldNames:Record<string,string>={'Shield_Round.glb':'Круглый щит','Shield_Round_2.glb':'Серебряный щит','Shield_Heater.glb':'Щит','Shield_Heater_2.glb':'Щит II','Shield_Celtic_Golden.glb':'Золотой щит'};
+  return weaponNames[id]||shieldNames[id]||RUNE_CATALOG.find(r=>r.id===id)?.name||POTION_CATALOG.find(p=>p.id===id)?.name||id;
+};
 type BanditSpec={id:string;name:string;x:number;z:number;hp:number;damage:number;sparks:number;reward:string;item?:string;kind?:'weapon'|'potion'|'rune';quantity?:number};
 const BANDIT_SPECS:BanditSpec[]=[
   {id:'forest',name:'Разбойник у моста',x:-46,z:49,hp:3,damage:9,sparks:12,reward:'Разбойничий кинжал',kind:'weapon',item:'knife'},
@@ -1502,8 +1516,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     setWhisperPhaseSafe("question");
   };
   const beginWhisperEncounter=()=>beginLocationEncounter("whisperStone");
-  const beginWhisperRematch=()=>{
-    const spec=currentGuardian();
+  const beginGuardianRematch=(id:string)=>{
+    const spec=MIDGARD_GUARDIANS[id]||MIDGARD_GUARDIANS.whisperStone;
+    activeGuardianIdRef.current=spec.id;setActiveGuardianId(spec.id);
     clearWhisperTimers();
     state.current.dx=0;state.current.dz=0;
     setWhisperAnswer(null);setWhisperReward("");setWhisperFx(null);
@@ -1537,7 +1552,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       const gate=spec.requiredPower&&whisperStats.power<spec.requiredPower
         ?" Сила героя "+whisperStats.power+"/5. Для победы над этим стражем нужна сила "+spec.requiredPower+"/5 — сначала усили оружие и экипировку."
         :"";
-      setWhisperLog(spec.name+" выходит навстречу. Неверный ответ теперь придётся защищать оружием."+gate);
+      const goldenGate=spec.id==="hoddmimir"&&weapon!=="swordGolden"
+        ?" Последнего стража после неверного ответа может победить только Золотой меч Вёлунда. Вернись в кузницу."
+        :"";
+      setWhisperLog(spec.name+" выходит навстречу. Неверный ответ теперь придётся защищать оружием."+gate+goldenGate);
       whisperTimers.current.push(window.setTimeout(()=>{guardIdleActionRef.current?.();setWhisperPhaseSafe("fight");},520));
     }
   };
@@ -1578,7 +1596,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       whisperGuardTurn(false);return;
     }
     whisperTimers.current.push(window.setTimeout(()=>{
-      if(spec.requiredPower&&whisperStats.power<spec.requiredPower){
+      if(spec.id==="hoddmimir"&&weapon!=="swordGolden"){
+        damage=0;
+        setWhisperLog("Защита "+spec.name+" не поддаётся. После неверного ответа победить последнего стража можно только Золотым мечом Вёлунда. Вернись в кузницу.");
+      }else if(spec.requiredPower&&whisperStats.power<spec.requiredPower){
         damage=0;
         setWhisperLog("Удар не пробивает защиту "+spec.name+". Сила героя "+whisperStats.power+"/5, требуется "+spec.requiredPower+"/5. Нужна закалка оружия и экипировки.");
       }
@@ -5317,7 +5338,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         mixer.addEventListener('finished',(event:any)=>{
           if(event.action===actions.Death)return;
           if(guardianActor.current==='Sword_Slash'||guardianActor.current==='HitRecieve'){
-            playLocationGuardian(guardianActor,'Idle_Neutral');
+            playLocationGuardian(guardianActor,'Idle_Sword');
           }
         });
       }
@@ -6170,7 +6191,6 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       <button className="whisper-close" onClick={()=>{banditVictoryRef.current=null;setBanditVictory(null);setBanditOpponent(null);}}>Продолжить путь</button>
     </div>}
     {banditHit>0&&whisperPhase==="closed"&&<i key={banditHit} className="mid3d-ui whisper-battle-fx guard"/>}
-    {near.endsWith("|whisperStone")&&whisperResolved&&whisperPhase==="closed"&&<button className="mid3d-ui mid3d-rematch" onPointerDown={e=>e.stopPropagation()} onClick={beginWhisperRematch}>⚔ Пройти испытание ещё раз<small>Повторный бой без награды</small></button>}
     {!heroReady&&<div className="mid3d-ui mid3d-hero-load"><b>{heroLoadFailed?"ᚾ":"ᛉ"}</b><span>{heroLoadFailed?"Герой не загрузился":"ПРОБУЖДЕНИЕ ГЕРОЯ"}</span></div>}
     {mapOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}>
       <div className="mid3d-map-panel">
@@ -6266,7 +6286,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       <div className="whisper-combat-actions">
         <button className="whisper-combat-action" disabled={whisperBusy} onClick={()=>whisperFightAction("hit")}><span className="whisper-combat-icon" aria-hidden="true">🪓</span><b>Удар оружием</b><small>сила оружия</small></button>
         <button className="whisper-combat-action shield" disabled={whisperBusy} onClick={()=>whisperFightAction("shield")}><span className="whisper-combat-icon" aria-hidden="true">🛡️</span><b>Поднять щит</b><small>защита</small></button>
-        <button className="whisper-combat-action rune" disabled={whisperBusy} onClick={()=>whisperFightAction("rune")}><span className="whisper-combat-icon" aria-hidden="true">ᚲ</span><b>Руна Кеназ</b><small>рунический удар</small></button>
+        <button className="whisper-combat-action rune" disabled={whisperBusy} onClick={()=>whisperFightAction("rune")}><span className="whisper-combat-icon" aria-hidden="true">{RUNE_CATALOG.find(r=>r.id===equippedRune)?.symbol||"ᚲ"}</span><b>Руна {RUNE_CATALOG.find(r=>r.id===equippedRune)?.name||"Кеназ"}</b><small>рунический удар</small></button>
         <button className="whisper-combat-action rest" disabled={whisperBusy} onClick={()=>whisperFightAction("restore")}><span className="whisper-combat-icon" aria-hidden="true">🌿</span><b>Перевести дух</b><small>+14 здоровья</small></button>
       </div>
     </div>}
@@ -6277,7 +6297,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     </div>}
     {whisperPhase==="defeat"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
       <div className="whisper-reward-icon">ᚾ</div><div className="whisper-reward-name">Испытание не пройдено</div><p>{whisperLog}</p>
-      <button className="whisper-close" onClick={whisperReplay?beginWhisperRematch:()=>beginLocationEncounter(activeGuardian.id)}>Попробовать ещё раз</button>
+      <button className="whisper-close" onClick={whisperReplay?()=>beginGuardianRematch(activeGuardian.id):()=>beginLocationEncounter(activeGuardian.id)}>Попробовать ещё раз</button>
     </div>}
     {near&&!ritualOpen&&!forestEventOpen&&whisperPhase==="closed"&&(()=>{
       const [label,id]=near.split("|");
@@ -6292,20 +6312,25 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       if(id==="heroHome")return <div className="mid3d-ui mid3d-door-prompt"><b>Дом героя</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>homeActionRef.current?.(true)}>Открыть ручку</button></div>;
       const guardianSpec=MIDGARD_GUARDIANS[id];
       const guardianDone=guardianResolved.includes(id);
-      if(guardianSpec&&!guardianDone){
+      if(guardianSpec){
         const idx=MIDGARD_GUARDIAN_ORDER.indexOf(id as any);
-        const missing=MIDGARD_GUARDIAN_ORDER.slice(0,Math.max(0,idx)).find(prev=>!guardianResolved.includes(prev));
-        if(missing){
-          const prev=MIDGARD_GUARDIANS[missing];
-          return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Испытание пока закрыто. Сначала пройди: {prev.location}.</span><button disabled>Путь ещё не открыт</button></div>;
+        if(!guardianDone){
+          const missing=MIDGARD_GUARDIAN_ORDER.slice(0,Math.max(0,idx)).find(prev=>!guardianResolved.includes(prev));
+          if(missing){
+            const prev=MIDGARD_GUARDIANS[missing];
+            return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Испытание пока закрыто. Сначала пройди: {prev.location}.</span><button disabled>Путь ещё не открыт</button></div>;
+          }
+          return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Этап {idx+1} из {MIDGARD_GUARDIAN_ORDER.length}. {guardianSpec.intro}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginLocationEncounter(id)}>Ответить стражу</button></div>;
         }
-        return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Этап {idx+1} из {MIDGARD_GUARDIAN_ORDER.length}. {guardianSpec.intro}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginLocationEncounter(id)}>Ответить стражу</button></div>;
+        const repeatDrops=2+guardianSpec.power;
+        return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Испытание пройдено. Повторный бой даёт {repeatDrops} Капель силы; редкий трофей повторно не выпадает.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginGuardianRematch(id)}>⚔ Сразиться ещё раз</button></div>;
       }
       const home=id==="heroHome"||id==="heroHomeExit";
       const villageGate=id==="gate"||id==="gateRear";
       const selectedGateOpen=id==="gateRear"?rearGateOpen:villageGateOpen;
       const whisper=id==="whisperStone";
-      return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{id==='forestCache'&&!northBridgeRepaired?'Защитное кольцо спадёт после ремонта Северного моста':id==='nornsChest'&&!eventDone?'Сначала выбери нить у колодца Норн':id==='angelicChest'?'Серебряный свет пробивается сквозь резьбу сундука':villageGate?(selectedGateOpen?"Створки открыты, тяжёлый засов снят":"Ворота заперты большим деревянным засовом"):home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода"):whisper?(whisperResolved?"Камень помнит завершённое испытание":"Из янтарного света доносится древний вопрос"):"Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else if(id==="gate"||id==="gateRear")gateActionRef.current?.(id);else if(id==="whisperStone"&&!whisperResolved)beginWhisperEncounter();else on(id,{x:state.current.x,z:state.current.z});}}>{id==='forestCache'&&!northBridgeRepaired?'Осмотреть печать':id==='nornsChest'&&!eventDone?'Осмотреть сундук':id==='forestCache'||id==='nornsChest'||id==='angelicChest'?'Открыть сундук':villageGate?(selectedGateOpen?"Закрыть ворота и поставить засов":"Снять засов и открыть ворота"):home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):whisper?(whisperResolved?"Прикоснуться к камню":"Слушать шёпот"):"Взаимодействовать"}</button></div>;
+      const angelicLocked=id==='angelicChest'&&!guardianResolved.includes('hoddmimir');
+      return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{id==='forestCache'&&!northBridgeRepaired?'Защитное кольцо спадёт после ремонта Северного моста':id==='nornsChest'&&!eventDone?'Сначала выбери нить у колодца Норн':angelicLocked?'Серебряная печать откроется после последнего испытания Мидгарда.':id==='angelicChest'?'Серебряный свет пробивается сквозь резьбу сундука':villageGate?(selectedGateOpen?"Створки открыты, тяжёлый засов снят":"Ворота заперты большим деревянным засовом"):home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода"):whisper?(whisperResolved?"Камень помнит завершённое испытание":"Из янтарного света доносится древний вопрос"):"Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else if(id==="gate"||id==="gateRear")gateActionRef.current?.(id);else if(id==="whisperStone"&&!whisperResolved)beginWhisperEncounter();else on(id,{x:state.current.x,z:state.current.z});}}>{id==='forestCache'&&!northBridgeRepaired?'Осмотреть печать':id==='nornsChest'&&!eventDone?'Осмотреть сундук':angelicLocked?'Осмотреть печать':id==='forestCache'||id==='nornsChest'||id==='angelicChest'?'Открыть сундук':villageGate?(selectedGateOpen?"Закрыть ворота и поставить засов":"Снять засов и открыть ворота"):home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):whisper?(whisperResolved?"Прикоснуться к камню":"Слушать шёпот"):"Взаимодействовать"}</button></div>;
     })()}
     {whisperPhase==="closed"&&<><div className="mid3d-ui mid3d-joy" ref={joy}><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-block" disabled={!gear.includes('shield')} aria-label="Блок щитом" title="Блок щитом" onPointerDown={e=>e.stopPropagation()} onClick={()=>{shieldActionRef.current?.();if('vibrate' in navigator)navigator.vibrate(15);}}>🛡</button>
@@ -6452,6 +6477,15 @@ const [roadT, setRoadT] = useState(0.06);
   const enterForge=(position?:{x:number;z:number})=>{
     if(forgeTransition)return;
     if(position)midgardReturn.current={x:position.x,z:position.z};
+    const goldenSwordReady=MIDGARD_GUARDIAN_ORDER.slice(0,-1).every(id=>save.done.includes("guardian:stage:"+id));
+    if(goldenSwordReady&&!save.ownedWeapons.includes("swordGolden")){
+      setSave(state=>state.ownedWeapons.includes("swordGolden")?state:{...state,
+        ownedWeapons:[...new Set([...state.ownedWeapons,"swordGolden"])],
+        lootCounts:lootCountAdd(state.lootCounts,["swordGolden"]),
+        done:[...new Set([...state.done,"forge:golden-sword"])]
+      });
+      say("Вёлунд завершил особый клинок: Золотой меч получен. Он нужен, если последнее испытание Мидгарда перейдёт в бой.");
+    }
     setForgeTransition(true);
     window.clearTimeout(forgeTimer.current);
     forgeTimer.current=window.setTimeout(()=>{setForgeTransition(false);setScreen({t:"forge"});},720);
@@ -6630,11 +6664,13 @@ const [roadT, setRoadT] = useState(0.06);
     const key=`bandit:${id}:reward`;
     setSave(s=>{
       if(s.done.includes(key))return s;
+      const lootIds=spec.item?Array(spec.quantity||1).fill(spec.item):[];
       return {...s,sparks:s.sparks+spec.sparks,done:[...new Set([...s.done,key])],
         ownedWeapons:spec.kind==='weapon'&&spec.item?[...new Set([...s.ownedWeapons,spec.item])]:s.ownedWeapons,
         potions:spec.kind==='potion'&&spec.item?[...s.potions,...Array(spec.quantity||1).fill(spec.item)]:s.potions,
         runes:spec.kind==='rune'&&spec.item?[...new Set([...s.runes,spec.item])]:s.runes,
-        equippedRune:spec.kind==='rune'&&spec.item&&!s.equippedRune?spec.item:s.equippedRune};
+        equippedRune:spec.kind==='rune'&&spec.item&&!s.equippedRune?spec.item:s.equippedRune,
+        lootCounts:lootCountAdd(s.lootCounts,lootIds)};
     });
     haptic('success');say(`Победа: +${spec.sparks} Капель силы и ${spec.reward}.`);
   };
@@ -7015,6 +7051,9 @@ const [roadT, setRoadT] = useState(0.06);
         return;
       }
       if (id === "angelicChest") {
+        if(!save.done.includes('guardian:stage:hoddmimir')){
+          say('Серебряная печать не открывается. Сначала заверши последнее испытание Мидгарда в Лесу Ходдмимира.');return;
+        }
         if(!save.done.includes('chest:angelic')){
           setSave(s=>s.done.includes('chest:angelic')?s:{...s,
             done:[...new Set([...s.done,'chest:angelic'])],
@@ -7406,6 +7445,9 @@ const [roadT, setRoadT] = useState(0.06);
             <div className="hrow"><SparkDrop/> Капли силы: <b>{save.sparks}</b></div>
             <div className="dim" style={{margin:"8px 0"}}>
               Дубликаты трофеев сохраняются для крафта: {Object.values(save.lootCounts).filter(n=>n>1).reduce((sum,n)=>sum+(n-1),0)} шт.
+              {Object.entries(save.lootCounts).some(([,count])=>count>1)&&<div style={{marginTop:5,lineHeight:1.45}}>
+                {Object.entries(save.lootCounts).filter(([,count])=>count>1).map(([id,count])=>lootDisplayName(id)+" ×"+(count-1)).join(" • ")}
+              </div>}
             </div>
             <button className="btn gold" disabled>Рецепты крафта откроем следующим этапом</button>
             <button className="btn ghost" onClick={()=>go({t:"hall"})}>Вернуться в Чертог</button>
