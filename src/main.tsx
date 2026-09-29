@@ -281,6 +281,7 @@ type MidgardGuardianSpec = {
   cloth:number; cloak?:number; accent:number; tempo:number; power:number; requiredPower?:number;
   question:Quest; intro:string; correctReward:number; battleReward:number;
 };
+const MIDGARD_GUARDIAN_ORDER=['rune','ashgrove','norns','threeThreads','whisperStone','runefield','mimir','powerCircle','hoddmimir'] as const;
 const MIDGARD_GUARDIANS:Record<string,MidgardGuardianSpec>={
   rune:{
     id:"rune",location:"Древний камень Феху",name:"Фейр",title:"Страж Феху",sym:"ᚠ",
@@ -654,8 +655,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .forge-wall-label{display:flex;align-items:flex-end;justify-content:center;padding:0 1px 2px;border:1px solid #b9873c66;background:linear-gradient(180deg,transparent 58%,#21170eca);color:#ffe6ad;font-size:6px;font-weight:800;text-align:center;text-shadow:0 1px 3px #000,0 0 6px #000;line-height:1.1}
 .forge-wall-label.owned{color:#b8f0b4}
 .forge-wall-label.equipped{border:2px solid #93e697;box-shadow:inset 0 0 11px #59d97790}.forge-wall-label:active{background:#bb783955}
-.spark-drop{display:inline-block;vertical-align:-3px;width:14px;height:20px;margin:0 2px 0 1px;object-fit:contain;filter:drop-shadow(0 0 4px #ffac34aa)}
-.sparks .spark-drop,.forge-wallet .spark-drop{width:18px;height:27px;vertical-align:-6px}
+.spark-drop{display:inline-block;position:relative;vertical-align:-4px;width:16px;height:22px;margin:0 4px 0 1px;filter:drop-shadow(0 0 5px #ffac34aa);background:radial-gradient(circle at 62% 55%,#fff4b0 0 10%,#ffd45f 24%,#e88a18 62%,#8e3d08 100%);clip-path:polygon(50% 0,68% 27%,86% 55%,91% 72%,86% 87%,72% 97%,50% 100%,28% 97%,14% 87%,9% 72%,14% 55%,32% 27%)}.spark-drop:after{content:"";position:absolute;left:31%;top:18%;width:28%;height:35%;border-radius:50%;background:linear-gradient(135deg,#fffbd5cc,#ffffff00)}
+.sparks .spark-drop,.forge-wallet .spark-drop{width:19px;height:27px;vertical-align:-6px}
 .forge-equipped{display:flex;align-items:center;justify-content:space-between;gap:7px;padding:8px 9px;border:1px solid #d9a749;border-radius:10px;background:#352314;color:#ffe6a7;font-size:9px;font-weight:800}.forge-equipped button{padding:6px 7px;background:#b97e32;border:1px solid #ffe5a2;border-radius:7px;color:#1b1208;font-size:8px;font-weight:900}
 .forge-gear-actions{display:flex;gap:5px;width:100%}.forge-gear-actions button{flex:1;min-height:25px;padding:3px 1px;border-radius:6px;border:1px solid #bf914f;background:#44301a;color:#ffe6a7;font-size:7px;font-weight:800}.forge-gear-actions button.on{background:#31704a;border-color:#a6e0a5}.forge-gear-actions button:disabled{opacity:.58}
 .forge-wall-note{font-size:10px;line-height:1.4;color:#e5cdaa;margin:5px 2px 9px}
@@ -1574,7 +1575,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       if(next<=0){
         guardDefeatedRef.current=true;guardDeathActionRef.current?.();
         if(whisperReplayRef.current){
-          setWhisperReward("Испытание пройдено повторно");setWhisperLog(spec.name+" снова повержен. Первая награда уже получена, поэтому этот бой остаётся тренировочным.");
+          const repeatDrops=2+spec.power;
+          onRef.current("guardian:repeat:"+spec.id);
+          setWhisperReward(repeatDrops+" Капель силы");
+          setWhisperLog(spec.name+" снова повержен. Редкий трофей выдаётся один раз, но за тренировочную победу получено "+repeatDrops+" Капель силы.");
         }else if(spec.id==="whisperStone"){
           const reward=onWhisperWin();setWhisperReward("18 Капель силы и «"+reward+"»");setWhisperLog("Хродвитнир повержен. Камень открывает награду.");
         }else{
@@ -6276,7 +6280,16 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       if(id==="heroHome")return <div className="mid3d-ui mid3d-door-prompt"><b>Дом героя</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>homeActionRef.current?.(true)}>Открыть ручку</button></div>;
       const guardianSpec=MIDGARD_GUARDIANS[id];
       const guardianDone=guardianResolved.includes(id);
-      if(guardianSpec&&!guardianDone)return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{guardianSpec.intro}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginLocationEncounter(id)}>Ответить стражу</button></div>;
+      if(guardianSpec&&!guardianDone){
+        const idx=MIDGARD_GUARDIAN_ORDER.indexOf(id as any);
+        const prevId=idx>0?MIDGARD_GUARDIAN_ORDER[idx-1]:null;
+        const prevDone=!prevId||guardianResolved.includes(prevId);
+        if(!prevDone){
+          const prev=MIDGARD_GUARDIANS[prevId!];
+          return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Испытание пока закрыто. Сначала пройди: {prev.location}.</span><button disabled>Путь ещё не открыт</button></div>;
+        }
+        return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{guardianSpec.intro}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginLocationEncounter(id)}>Ответить стражу</button></div>;
+      }
       const home=id==="heroHome"||id==="heroHomeExit";
       const villageGate=id==="gate"||id==="gateRear";
       const selectedGateOpen=id==="gateRear"?rearGateOpen:villageGateOpen;
@@ -6293,7 +6306,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   </div>;
 }
 
-function SparkDrop(){return <img className="spark-drop" src={`${BASE}img/spark_drop_gold.png`} alt="" aria-label="Капля силы"/>;}
+function SparkDrop(){return <span className="spark-drop" aria-label="Капля силы"/>;}
 function InventorySection({kind,potions,runes,equippedRune,hp,maxHp,frostGuard,onUsePotion,onEquipRune}:{kind:'potions'|'runes';potions:string[];runes:string[];equippedRune:string;hp:number;maxHp:number;frostGuard:number;onUsePotion:(id:string)=>void;onEquipRune:(id:string)=>void}){
   return <section className="inventory-section"><h3>{kind==='potions'?'🧪 Эликсиры':'ᛉ Руны'}</h3><div className="inventory-list">
     {kind==='potions'?POTION_CATALOG.map(item=>{
@@ -6512,7 +6525,7 @@ const [roadT, setRoadT] = useState(0.06);
     if (art) { haptic("success"); say("Мир пройден! Артефакт: " + ARTIFACTS[id]+(id==='midgard'?'. Все оружие Мидгарда теперь доступно в Чертоге.':'')); }
   };
   const finishWhisperCorrect = () => {
-    setSave(s=>s.done.includes("whisper:wisdom")?s:{...s,sparks:s.sparks+8,done:[...new Set([...s.done,"whisper:wisdom"])],
+    setSave(s=>s.done.includes("whisper:wisdom")?s:{...s,sparks:s.sparks+8,done:[...new Set([...s.done,"whisper:wisdom","guardian:stage:whisperStone"])],
       runes:[...new Set([...s.runes,'ansuzWisdom'])],potions:[...s.potions,'northernMoss'],
       lootCounts:lootCountAdd(s.lootCounts,['ansuzWisdom','northernMoss'])});
     haptic("success");
@@ -6563,7 +6576,7 @@ const [roadT, setRoadT] = useState(0.06);
   const finishWhisperBattle=()=>{
     setSave(s=>{
       if(s.done.includes("whisper:battle"))return s;
-      return {...s,sparks:s.sparks+18,done:[...new Set([...s.done,"whisper:battle"])],
+      return {...s,sparks:s.sparks+18,done:[...new Set([...s.done,"whisper:battle","guardian:stage:whisperStone"])],
         ownedWeapons:[...new Set([...s.ownedWeapons,'mace'])],
         potions:[...s.potions,'northernMoss'],
         runes:[...new Set([...s.runes,'kenazShard'])],
@@ -6761,6 +6774,15 @@ const [roadT, setRoadT] = useState(0.06);
 
     const interact = (id: string, position?:{x:number;z:number}) => {
       haptic();
+      if(id.startsWith("guardian:repeat:")){
+        const locationId=id.slice("guardian:repeat:".length);
+        const spec=MIDGARD_GUARDIANS[locationId];
+        if(!spec)return;
+        const repeatDrops=2+spec.power;
+        setSave(s=>({...s,sparks:s.sparks+repeatDrops}));
+        haptic("success");
+        return;
+      }
       if(id.startsWith("guardian:correct:")||id.startsWith("guardian:battle:")){
         const battle=id.startsWith("guardian:battle:");
         const locationId=id.slice(battle?"guardian:battle:".length:"guardian:correct:".length);
@@ -6771,7 +6793,7 @@ const [roadT, setRoadT] = useState(0.06);
         const loot=MIDGARD_GUARDIAN_LOOT[locationId]?.[battle?'battle':'correct']||{};
         const lootIds=[...(loot.weapons||[]),...(loot.shields||[]),...(loot.runes||[]),...(loot.potions||[])];
         setSave(s=>s.done.includes(key)?s:{...s,
-          sparks:s.sparks+reward,done:[...new Set([...s.done,key])],
+          sparks:s.sparks+reward,done:[...new Set([...s.done,key,"guardian:stage:"+locationId])],
           ownedWeapons:[...new Set([...s.ownedWeapons,...(loot.weapons||[])])],
           ownedShields:[...new Set([...s.ownedShields,...(loot.shields||[])])],
           runes:[...new Set([...s.runes,...(loot.runes||[])])],
@@ -7075,7 +7097,7 @@ const [roadT, setRoadT] = useState(0.06);
       northBridgeReady={save.done.includes('gather:carpenter')||(save.done.includes('chest:norns')&&save.done.includes('bridge:boards')&&save.done.includes('bridge:fittings'))}
       goldChestOpened={save.done.includes('chest:gold')}
       whisperResolved={save.done.includes("whisper:battle")||save.done.includes("whisper:wisdom")}
-      guardianResolved={Object.keys(MIDGARD_GUARDIANS).filter(id=>id==="whisperStone"?(save.done.includes("whisper:battle")||save.done.includes("whisper:wisdom")):save.done.includes("guardian:"+id))}
+      guardianResolved={MIDGARD_GUARDIAN_ORDER.filter(id=>save.done.includes("guardian:stage:"+id)) as unknown as string[]}
       whisperStats={{
         maxHp:heroDef.hp+gearHp(),
         attack:heroDef.str+WEAPON_POWER[save.heroWeapon]+forgeLevel(save.heroWeapon)+(activeRuneDef()?.attack||0),
