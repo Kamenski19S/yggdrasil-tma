@@ -21,11 +21,12 @@ jobs:
       - name: Install Blender
         run: |
           sudo apt-get update
-          sudo apt-get install -y blender
+          sudo apt-get install -y blender python3-numpy
           blender --version | head -n 2
 
       - name: Convert defender with Blender
         run: |
+          rm -f public/img/models/Adventurer_Defender_Rigged.glb
           blender -b --python scripts/convert_defender_blender.py
           test -s public/img/models/Adventurer_Defender_Rigged.glb
           ls -lh public/img/models/Adventurer_Defender_Rigged.glb
