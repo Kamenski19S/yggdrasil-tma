@@ -5106,8 +5106,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     type DefenderActor={actor:THREE.Group;model:THREE.Object3D;mixer:THREE.AnimationMixer;
       actions:Record<string,THREE.AnimationAction>;current:string;lockUntil:number;
       nextAttack:number;hp:number;patrolEnd:number;
-      swordBone:THREE.Object3D|null;shieldBone:THREE.Object3D|null;
-      swordMount:THREE.Group;shieldMount:THREE.Group};
+      shieldBone:THREE.Object3D|null;shieldMount:THREE.Group};
     let defender:DefenderActor|null=null;
     const playDefender=(name:string,now:number)=>{
       const d=defender;if(!d||d.hp<=0&&name!=='Death')return;
@@ -5152,15 +5151,21 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       });
       model.updateMatrixWorld(true);
 
-      // The converted FBX armature contains non-uniform bone transforms.
-      // Parenting equipment directly to those bones can shrink it almost to zero.
-      // Keep the real Midgard weapon models under the defender root instead and
-      // copy the animated hand/forearm world transform onto them every frame.
-      const rightWrist=model.getObjectByName('Wrist.R')??null;
-      const leftForearm=model.getObjectByName('LowerArm.L')??model.getObjectByName('Wrist.L')??null;
-
+      // GLTFLoader sanitizes Blender bone names: dots become underscores.
+      // The native Sword mesh is already skinned to this armature, so keep it:
+      // Sword_Slash will move the weapon with the animated right arm automatically.
       const sourceSword=model.getObjectByName('Sword');
-      if(sourceSword)sourceSword.visible=false;
+      if(sourceSword){
+        sourceSword.visible=true;
+        sourceSword.traverse((o:any)=>{if(o.isMesh){o.visible=true;o.castShadow=true;o.receiveShadow=true;}});
+      }
+
+      const leftForearm=
+        model.getObjectByName('LowerArm_L')||
+        model.getObjectByName('Wrist_L')||
+        model.getObjectByName('LowerArm.L')||
+        model.getObjectByName('Wrist.L')||
+        null;
 
       const actor=new THREE.Group();
       actor.name='VillageDefender';
@@ -5168,35 +5173,13 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       actor.rotation.y=Math.PI;
       actor.add(model);
 
-      const swordMount=new THREE.Group();
-      swordMount.name='DefenderSwordWorldMount';
-      swordMount.visible=false;
-      actor.add(swordMount);
-
+      // Shield stays outside the armature to avoid inheriting FBX bone scale,
+      // but follows the animated left forearm every frame.
       const shieldMount=new THREE.Group();
       shieldMount.name='DefenderShieldWorldMount';
       shieldMount.visible=false;
       actor.add(shieldMount);
-
       scene.add(actor);
-
-      if(rightWrist)loadGlbWithFolderFallback('Sword.glb',(weaponGlb:any)=>{
-        if(!glbTreesAlive)return;
-        const blade=weaponGlb.scene;
-        textureSteelOnWeapon(blade,'Sword.glb');
-        blade.updateMatrixWorld(true);
-        const bounds=new THREE.Box3().setFromObject(blade);
-        const size=bounds.getSize(new THREE.Vector3());
-        if(size.y<.001)return;
-        const center=bounds.getCenter(new THREE.Vector3());
-        blade.position.set(-center.x,-bounds.min.y,-center.z);
-        // Same orientation used by Vika, but world-sized because this mount
-        // no longer inherits the defender bone scale.
-        swordMount.scale.setScalar(1.05/size.y);
-        swordMount.add(blade);
-        blade.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
-        swordMount.visible=true;
-      },'DEFENDER SWORD');
 
       if(leftForearm)loadGlbWithFolderFallback('Shield_Round.glb',(shieldGlb:any)=>{
         if(!glbTreesAlive)return;
@@ -5209,10 +5192,11 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         if(span<.001)return;
         const center=bounds.getCenter(new THREE.Vector3());
         shield.position.set(-center.x,-center.y,-center.z);
-        shieldMount.scale.setScalar(1.0/span);
+        shieldMount.scale.setScalar(1.02/span);
         shieldMount.add(shield);
-        shield.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+        shield.traverse((o:any)=>{if(o.isMesh){o.visible=true;o.castShadow=true;o.receiveShadow=true;}});
         shieldMount.visible=true;
+        console.log('[DEFENDER SHIELD] attached to',leftForearm.name);
       },'DEFENDER SHIELD');
 
       const mixer=new THREE.AnimationMixer(model),actions:Record<string,THREE.AnimationAction>={};
@@ -5223,7 +5207,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         if(!actions[clip.name])actions[clip.name]=action;
       }
       defender={actor,model,mixer,actions,current:'',lockUntil:0,nextAttack:0,hp:6,patrolEnd:DEFENDER_PATROL_Z_NEAR,
-        swordBone:rightWrist,shieldBone:leftForearm,swordMount,shieldMount};
+        shieldBone:leftForearm,shieldMount};
       console.log('[VILLAGE DEFENDER GLB] LOADED',actor.position,(clips||[]).map(c=>c.name));
       playDefender(actions.Idle_Sword?'Idle_Sword':actions.Idle?'Idle':'Idle_Neutral',performance.now());
     };
@@ -5778,19 +5762,20 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         // Sync visible equipment after the animation has moved the bones.
         d.actor.updateMatrixWorld(true);
         d.model.updateMatrixWorld(true);
-        const syncEquipment=(mount:THREE.Group,bone:THREE.Object3D|null,offset:THREE.Vector3,rotation:THREE.Euler)=>{
+        const syncShield=(mount:THREE.Group,bone:THREE.Object3D|null)=>{
           if(!bone||!mount.visible)return;
           const worldPos=new THREE.Vector3(),boneQuat=new THREE.Quaternion(),actorQuat=new THREE.Quaternion();
           bone.getWorldPosition(worldPos);
           bone.getWorldQuaternion(boneQuat);
-          worldPos.add(offset.clone().applyQuaternion(boneQuat));
+          // Offset from the middle of the left forearm toward its outside face.
+          worldPos.add(new THREE.Vector3(0,.02,-.18).applyQuaternion(boneQuat));
           mount.position.copy(worldPos);
           d.actor.worldToLocal(mount.position);
           d.actor.getWorldQuaternion(actorQuat);
-          mount.quaternion.copy(actorQuat.invert()).multiply(boneQuat).multiply(new THREE.Quaternion().setFromEuler(rotation));
+          mount.quaternion.copy(actorQuat.invert()).multiply(boneQuat)
+            .multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0,Math.PI,0)));
         };
-        syncEquipment(d.swordMount,d.swordBone,new THREE.Vector3(0,-.055,.015),new THREE.Euler(-.20,0,0));
-        syncEquipment(d.shieldMount,d.shieldBone,new THREE.Vector3(0,.03,-.12),new THREE.Euler(0,Math.PI,0));
+        syncShield(d.shieldMount,d.shieldBone);
       }
       for(const preview of bandits){
         const dx=q.x-preview.actor.position.x,dz=q.z-preview.actor.position.z;
