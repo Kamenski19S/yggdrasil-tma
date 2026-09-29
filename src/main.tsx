@@ -5137,22 +5137,12 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     const installDefender=(model:THREE.Object3D)=>{
       if(!glbTreesAlive||defender)return;
       model.visible=true;
+      // This FBX was exported with 100x transforms on its mesh/armature nodes.
+      // Do NOT fit it with Box3: bounds on a skinned FBX include bone transforms
+      // and can shrink the whole character to almost zero. 0.01 restores metres.
+      model.scale.setScalar(0.01);
+      model.position.set(0,0,0);
       model.updateMatrixWorld(true);
-      const bodyBounds=new THREE.Box3();
-      model.traverse((part:any)=>{
-        part.visible=true;
-        if(part.isMesh&&/^Adventurer_/i.test(part.name))bodyBounds.expandByObject(part);
-      });
-      if(bodyBounds.isEmpty())bodyBounds.setFromObject(model);
-      const height=bodyBounds.getSize(new THREE.Vector3()).y;
-      if(!Number.isFinite(height)||height<.01){console.error('[VILLAGE DEFENDER] Invalid model height',height);return;}
-      model.scale.multiplyScalar(2.75/height);
-      model.updateMatrixWorld(true);
-      const scaledBounds=new THREE.Box3();
-      model.traverse((part:any)=>{if(part.isMesh&&/^Adventurer_/i.test(part.name))scaledBounds.expandByObject(part);});
-      if(scaledBounds.isEmpty())scaledBounds.setFromObject(model);
-      const center=scaledBounds.getCenter(new THREE.Vector3());
-      model.position.set(model.position.x-center.x,model.position.y-scaledBounds.min.y,model.position.z-center.z);
       model.traverse((part:any)=>{if(part.isMesh){part.visible=true;part.castShadow=true;part.receiveShadow=true;part.frustumCulled=false;}});
 
       const actor=new THREE.Group();
@@ -5180,15 +5170,24 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       playDefender(actions.Idle_Sword?'Idle_Sword':actions.Idle?'Idle':'Idle_Neutral',performance.now());
     };
     // Exact repository asset: public/img/models/Adventurer_Defender_Rigged.fbx
+    // Fetch it explicitly without browser/Telegram cache, then parse the bytes.
     const DEFENDER_ASSET='Adventurer_Defender_Rigged.fbx';
-    const defenderUrl=`${BASE}img/models/${DEFENDER_ASSET}`;
-    fbxLoader.load(defenderUrl,(model:any)=>{
-      if(!glbTreesAlive)return;
-      console.log('[VILLAGE DEFENDER] source',defenderUrl,'clips',(model.animations||[]).map((clip:any)=>clip.name));
-      installDefender(model);
-    },undefined,(error:any)=>{
-      console.error('[VILLAGE DEFENDER] exact FBX load failed',defenderUrl,error);
-    });
+    const defenderBase=`${BASE}img/models/`;
+    const defenderUrl=`${defenderBase}${DEFENDER_ASSET}?v=20260929-2205`;
+    void (async()=>{
+      try{
+        const response=await fetch(defenderUrl,{cache:'no-store'});
+        if(!response.ok)throw new Error(`HTTP ${response.status} ${response.statusText}`);
+        const buffer=await response.arrayBuffer();
+        if(buffer.byteLength<100000)throw new Error(`FBX response is too small: ${buffer.byteLength} bytes`);
+        const model=fbxLoader.parse(buffer,defenderBase) as any;
+        if(!glbTreesAlive)return;
+        console.log('[VILLAGE DEFENDER] parsed',buffer.byteLength,'bytes; clips',(model.animations||[]).map((clip:any)=>clip.name));
+        installDefender(model);
+      }catch(error){
+        console.error('[VILLAGE DEFENDER] fetch/parse failed',defenderUrl,error);
+      }
+    })();
 
     // Tiny pollen motes drift through the air. One shared Points object keeps draw calls low.
     const moteCount=72;
