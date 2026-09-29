@@ -5136,9 +5136,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     const installDefender=(model:THREE.Object3D,clips:THREE.AnimationClip[])=>{
       if(!glbTreesAlive||defender)return;
       model.visible=true;
-      // Blender/glTF reports a rest-pose height of ~1.856 m.  Scale to the
-      // established Midgard character height without touching the armature.
-      model.scale.setScalar(1.48);
+      // Make the village defender stand out more clearly than before.
+      // The converted GLB is stable, so we can safely scale him up further.
+      model.scale.setScalar(1.85);
       model.position.set(0,0,0);
       model.rotation.y=0;
       model.traverse((part:any)=>{
@@ -5148,6 +5148,70 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         part.receiveShadow=true;
         part.frustumCulled=false;
       });
+      model.updateMatrixWorld(true);
+
+      const nodeByName=(patterns:(string|RegExp)[])=>{
+        let found:THREE.Object3D|null=null;
+        model.traverse((obj:any)=>{
+          if(found||!obj?.name)return;
+          const name=String(obj.name);
+          if(patterns.some((pattern)=>typeof pattern==='string'?name.toLowerCase().includes(pattern.toLowerCase()):pattern.test(name)))found=obj;
+        });
+        return found;
+      };
+      const rightHand=nodeByName([/RightHand/i,/Hand_R/i,/R_Hand/i,/mixamorigRightHand/i,/weapon/i]);
+      const leftForearm=nodeByName([/LeftForeArm/i,/ForeArm_L/i,/mixamorigLeftForeArm/i,/LeftHand/i,/Hand_L/i]);
+
+      // Give the defender visible equipment even if the source GLB has empty hands.
+      const steel=new THREE.MeshStandardMaterial({color:0xcbd1d8,roughness:.34,metalness:.88});
+      const leather=new THREE.MeshStandardMaterial({color:0x5b3620,roughness:.92,metalness:.08});
+      const wood=new THREE.MeshStandardMaterial({color:0x7a4b26,roughness:.93,metalness:.03});
+      const iron=new THREE.MeshStandardMaterial({color:0x5f666f,roughness:.65,metalness:.72});
+
+      const makeDefenderSword=()=>{
+        const g=new THREE.Group();
+        const blade=new THREE.Mesh(new THREE.BoxGeometry(.10,.88,.035),steel);blade.position.y=.60;g.add(blade);
+        const fuller=new THREE.Mesh(new THREE.BoxGeometry(.02,.56,.008),new THREE.MeshStandardMaterial({color:0xe7ebf0,roughness:.2,metalness:.96}));fuller.position.set(0,.61,.0205);g.add(fuller);
+        const tip=new THREE.Mesh(new THREE.ConeGeometry(.055,.17,6),steel);tip.position.y=1.125;tip.rotation.x=Math.PI;g.add(tip);
+        const guard=new THREE.Mesh(new THREE.BoxGeometry(.30,.05,.07),iron);guard.position.y=.18;g.add(guard);
+        const grip=new THREE.Mesh(new THREE.CylinderGeometry(.028,.034,.24,10),leather);grip.position.y=.01;g.add(grip);
+        const pommel=new THREE.Mesh(new THREE.SphereGeometry(.045,10,10),iron);pommel.position.y=-.16;g.add(pommel);
+        g.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+        return g;
+      };
+      const makeDefenderShield=()=>{
+        const g=new THREE.Group();
+        const base=new THREE.Mesh(new THREE.CylinderGeometry(.34,.34,.06,24),wood);base.rotation.x=Math.PI/2;g.add(base);
+        const face=new THREE.Mesh(new THREE.CylinderGeometry(.315,.315,.028,24),new THREE.MeshStandardMaterial({color:0x6b3c23,roughness:.93,metalness:.03}));face.rotation.x=Math.PI/2;face.position.z=.018;g.add(face);
+        const rim=new THREE.Mesh(new THREE.TorusGeometry(.34,.03,10,28),iron);rim.rotation.x=Math.PI/2;g.add(rim);
+        const boss=new THREE.Mesh(new THREE.SphereGeometry(.09,14,12),steel);boss.scale.z=.65;boss.position.z=.055;g.add(boss);
+        const strap1=new THREE.Mesh(new THREE.BoxGeometry(.07,.42,.02),leather);strap1.position.set(-.09,0,-.008);g.add(strap1);
+        const strap2=new THREE.Mesh(new THREE.BoxGeometry(.07,.42,.02),leather);strap2.position.set(.09,0,-.008);g.add(strap2);
+        g.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+        return g;
+      };
+
+      const defenderSword=makeDefenderSword();
+      if(rightHand){
+        defenderSword.position.set(.02,.02,.01);
+        defenderSword.rotation.set(0,0,Math.PI);
+        rightHand.add(defenderSword);
+      }else{
+        defenderSword.position.set(.34,.92,.10);
+        defenderSword.rotation.set(.25,0,-1.3);
+        model.add(defenderSword);
+      }
+
+      const defenderShield=makeDefenderShield();
+      if(leftForearm){
+        defenderShield.position.set(-.02,.06,-.01);
+        defenderShield.rotation.set(0,Math.PI/2,0);
+        leftForearm.add(defenderShield);
+      }else{
+        defenderShield.position.set(-.32,1.02,.12);
+        defenderShield.rotation.set(0,0,Math.PI/2);
+        model.add(defenderShield);
+      }
       model.updateMatrixWorld(true);
 
       const actor=new THREE.Group();
