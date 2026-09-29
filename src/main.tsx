@@ -5098,10 +5098,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     // The village defender is loaded directly with FBXLoader.  Keep this path
     // separate from the shared GLB cache/fallback loader: a missing or oddly
     // named animation must never make the whole guard disappear.
-    const DEFENDER_GATE_X=-1.45;
-    const DEFENDER_START_Z=40.7;
-    const DEFENDER_PATROL_Z_NEAR=41.15;
-    const DEFENDER_PATROL_Z_INNER=38.75;
+    const DEFENDER_GATE_X=0;
+    const DEFENDER_START_Z=39.25;
+    const DEFENDER_PATROL_Z_NEAR=39.25;
+    const DEFENDER_PATROL_Z_INNER=40.55;
     type DefenderActor={actor:THREE.Group;model:THREE.Object3D;mixer:THREE.AnimationMixer;
       actions:Record<string,THREE.AnimationAction>;current:string;lockUntil:number;
       nextAttack:number;hp:number;patrolEnd:number};
