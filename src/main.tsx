@@ -1935,6 +1935,44 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     const mimirWellAsset = 'Midgard_Mimir_Well_V1_YUP.glb';
     const hoddmimirAsset = 'Midgard_Hoddmimir_Holt_V2_YUP.glb';
 
+
+    // Native texture set for the lightweight FBX vegetation pack.
+    // FBX files do not contain usable external texture paths, so bind maps explicitly.
+    const naturalTextureLoader = new THREE.TextureLoader();
+    const naturalTextureCache = new Map<string,THREE.Texture>();
+    const naturalTexture = (file:string, srgb=true) => {
+      const cached=naturalTextureCache.get(file);
+      if(cached)return cached;
+      const texture=naturalTextureLoader.load(
+        `${BASE}img/models/${file}`,
+        t=>{t.needsUpdate=true;},
+        undefined,
+        error=>console.warn(`[NATURAL TEXTURE] ${file} unavailable`,error)
+      );
+      if(srgb)texture.colorSpace=THREE.SRGBColorSpace;
+      texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
+      texture.anisotropy=4;
+      naturalTextureCache.set(file,texture);
+      return texture;
+    };
+
+    const naturalMaps={
+      birchBark:naturalTexture('BirchTree_Bark.png'),
+      birchBarkNormal:naturalTexture('BirchTree_Bark_Normal.png',false),
+      birchLeaves:naturalTexture('BirchTree_Leaves.png'),
+      birchLeavesMask:naturalTexture('BirchTree_Leaves_Mask.png',false),
+      mapleBark:naturalTexture('MapleTree_Bark.png'),
+      mapleBarkNormal:naturalTexture('MapleTree_Bark_Normal.png',false),
+      mapleLeaves:naturalTexture('MapleTree_Leaves.png'),
+      mapleLeavesMask:naturalTexture('MapleTree_Leaves_Mask.png',false),
+      normalBark:naturalTexture('NormalTree_Bark.png'),
+      normalBarkNormal:naturalTexture('NormalTree_Bark_Normal.png',false),
+      normalLeaves:naturalTexture('NormalTree_Leaves.png'),
+      pineAtlas:naturalTexture('PineTree_Leaves_Branches.png'),
+      bushAtlas:naturalTexture('Bush_Flowers.png'),
+      rockDiffuse:naturalTexture('Rock_5_Diffuse.png')
+    };
+
     // Keep the proven forest footprint, but every slot can now become a different tree.
     // These coordinates already leave the village and major landmarks readable.
     const mainForestPositions: Array<[number, number]> = [
@@ -1989,18 +2027,97 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       tryPath(0);
     };
 
-    const prepareNaturalSource = (source:THREE.Object3D) => {
+    const naturalColorHex = (asset:string, materialName:string, meshName:string) => {
+      const tag=`${asset} ${materialName} ${meshName}`.toLowerCase();
+      const isBark=/bark|trunk|stem|branch/.test(tag);
+      const isLeaves=/leaves|leaf/.test(tag);
+      const isFlowers=/flower|petal/.test(tag) || (/bush/i.test(asset)&&!isBark&&!isLeaves);
+      const isRock=/rock|stone/.test(tag);
+      if(isRock)return 0x8a847b;
+      if(isFlowers){
+        if(/petals_2/i.test(asset))return 0xf4d7ea;
+        if(/petals_3/i.test(asset))return 0xffefb0;
+        if(/small/i.test(asset))return 0xd8b6ff;
+        return 0xffd2dc;
+      }
+      if(isBark){
+        if(/birch/i.test(asset))return 0xdedbd2;
+        if(/pine/i.test(asset))return 0x6a5a46;
+        if(/maple/i.test(asset))return 0x74563d;
+        return 0x70543e;
+      }
+      if(isLeaves){
+        if(/pine/i.test(asset))return 0x4f7144;
+        if(/birch/i.test(asset))return 0x86b562;
+        if(/maple/i.test(asset))return 0x74a34e;
+        if(/normaltree/i.test(asset))return 0x5f8d49;
+        if(/bush/i.test(asset))return 0x557f43;
+      }
+      if(/birch/i.test(asset))return 0xb8c7b0;
+      if(/pine/i.test(asset))return 0x6d835c;
+      if(/maple/i.test(asset))return 0x7ca35c;
+      if(/normaltree/i.test(asset))return 0x6a914f;
+      if(/bush/i.test(asset))return 0x5d844b;
+      return null;
+    };
+
+    const bindNaturalMaps = (mm:any, asset:string, materialName:string, meshName:string) => {
+      const tag=`${asset} ${materialName} ${meshName}`.toLowerCase();
+      const bark=/bark|trunk|stem/.test(tag);
+      const leaves=/leaves|leaf/.test(tag);
+      const flowers=/flowers|flower|petal/.test(tag);
+      const setColorMap=(map:THREE.Texture, normal?:THREE.Texture) => {
+        mm.map=map;
+        if(normal&&'normalMap' in mm){
+          mm.normalMap=normal;
+          if(mm.normalScale?.set)mm.normalScale.set(.62,.62);
+        }
+        if(mm.color?.setHex)mm.color.setHex(0xffffff);
+      };
+      const setCutout=(map:THREE.Texture,alpha?:THREE.Texture) => {
+        setColorMap(map);
+        if(alpha&&'alphaMap' in mm)mm.alphaMap=alpha;
+        if('alphaTest' in mm)mm.alphaTest=.28;
+        if('transparent' in mm)mm.transparent=false;
+        if('depthWrite' in mm)mm.depthWrite=true;
+        if('side' in mm)mm.side=THREE.DoubleSide;
+      };
+
+      if(/birchtree/i.test(asset)){
+        if(bark)setColorMap(naturalMaps.birchBark,naturalMaps.birchBarkNormal);
+        else if(leaves)setCutout(naturalMaps.birchLeaves,naturalMaps.birchLeavesMask);
+      }else if(/mapletree/i.test(asset)){
+        if(bark)setColorMap(naturalMaps.mapleBark,naturalMaps.mapleBarkNormal);
+        else if(leaves)setCutout(naturalMaps.mapleLeaves,naturalMaps.mapleLeavesMask);
+      }else if(/normaltree/i.test(asset)){
+        if(bark)setColorMap(naturalMaps.normalBark,naturalMaps.normalBarkNormal);
+        else if(leaves)setCutout(naturalMaps.normalLeaves);
+      }else if(/pinetree/i.test(asset)){
+        // The pine atlas contains both needles and bare branches; the FBX UVs select the right region.
+        if(bark||leaves)setCutout(naturalMaps.pineAtlas);
+      }else if(/bush_|petals_/i.test(asset)){
+        if(leaves||flowers||/bush|petal/.test(tag))setCutout(naturalMaps.bushAtlas);
+      }else if(/rock_5/i.test(asset)){
+        setColorMap(naturalMaps.rockDiffuse);
+      }
+    };
+
+    const prepareNaturalSource = (source:THREE.Object3D, asset:string) => {
       source.traverse((o:any)=>{
         if(!o.isMesh)return;
         o.visible=true;
         o.frustumCulled=true;
+        const meshName=String(o.name||'');
         const adapt=(m:any)=>{
           if(!m)return m;
           const mm=m.clone?m.clone():m;
-          if('roughness' in mm)mm.roughness=Math.max(Number(mm.roughness)||0,.88);
+          const materialName=String(mm.name||'');
+          const fallbackHex=naturalColorHex(asset,materialName,meshName);
+          if(mm.color?.setHex && fallbackHex!==null)mm.color.setHex(fallbackHex);
+          if('roughness' in mm)mm.roughness=Math.max(Number(mm.roughness)||0,.9);
           if('metalness' in mm)mm.metalness=0;
-          // Many lightweight foliage FBX files use single planes for leaves.
           if('side' in mm)mm.side=THREE.DoubleSide;
+          bindNaturalMaps(mm,asset,materialName,meshName);
           mm.needsUpdate=true;
           return mm;
         };
@@ -2018,7 +2135,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       const promise=new Promise<THREE.Object3D>((resolve,reject)=>{
         loadGlbWithFolderFallback(asset,(loaded:any)=>{
           if(!glbTreesAlive)return;
-          resolve(prepareNaturalSource(loaded.scene));
+          resolve(prepareNaturalSource(loaded.scene,asset));
         },`NATURAL FBX ${asset}`,()=>reject(new Error(`Failed to load ${asset}`)));
       });
       naturalAssetPromises.set(asset,promise);
