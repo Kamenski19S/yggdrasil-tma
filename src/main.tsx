@@ -7565,13 +7565,16 @@ const [roadT, setRoadT] = useState(0.06);
             </div>
             <div className="hrow">🗡 Оружие в руке</div>
             <div className="chips">
-              {(['default','knife','axe','mace','spear'] as HeroWeapon[]).filter(id=>id==='default'||save.ownedWeapons.includes(id)).map(id=><button key={id}
-                className={"chip"+(save.heroWeapon===id?" on":"")}
-                onClick={()=>{setSave(s=>({...s,heroWeapon:id}));haptic();}}
-              >{id==='default'?(save.heroSkin==='valkyrie'?'Меч валькирии':'Секира викинга'):FORGE_WEAPON_MODELS.find(item=>item[2]===id)?.[1]} · +{WEAPON_POWER[id]}</button>)}
+              {(['default','knife','axe','mace','spear'] as HeroWeapon[]).filter(id=>id==='default'||save.ownedWeapons.includes(id)).map(id=>{
+                const total=id==='default'?1:Math.max(1,Number(save.lootCounts[id])||1);
+                return <button key={id}
+                  className={"chip"+(save.heroWeapon===id?" on":"")}
+                  onClick={()=>{setSave(s=>({...s,heroWeapon:id}));haptic();}}
+                >{id==='default'?(save.heroSkin==='valkyrie'?'Меч валькирии':'Секира викинга'):FORGE_WEAPON_MODELS.find(item=>item[2]===id)?.[1]} · сила +{WEAPON_POWER[id]}{id!=='default'?" · "+total+" шт.":""}</button>;
+              })}
             </div>
             <div className="dim" style={{marginTop:8}}>
-              Найденное оружие можно менять здесь и на стене кузницы.
+              «Сила +N» — это бонус оружия, не количество. Количество экземпляров указано отдельно как «N шт.». Для обычного крафта нужно минимум 2 одинаковых экземпляра.
             </div>
             <div className="hrow">🛡 Экипировка</div>
             <div className="chips">{GEAR_IDS.map(id=><button key={id} className={'chip'+(equipped(id)?' on':'')} onClick={()=>toggleGear(id)}>{id==='armor'?'Броня':id==='helmet'?'Шлем':id==='shield'?'Щит':'Сапоги'} · {equipped(id)?'надето':'надеть'}</button>)}</div>
@@ -7701,7 +7704,7 @@ const [roadT, setRoadT] = useState(0.06);
                 {FORGE_WEAPON_MODELS.filter(([, ,id])=>id&&directCraftWeaponIds.has(id as HeroWeapon)&&save.ownedWeapons.includes(id as HeroWeapon)).map(([,name,id])=>{
                   const weaponId=id as HeroWeapon,count=Math.max(0,Number(save.lootCounts[weaponId])||0),usable=count>=2;
                   return <button key={id} disabled={!usable} className={"craft-choice"+(craftWeapon===weaponId?" on":"")} onClick={()=>chooseCraftWeapon(weaponId)}>
-                    <span style={{fontSize:20}}>{weaponDisplayIcon(weaponId)}</span><span><b>{name}</b><small>{usable?"лишних копий: "+(count-1):"нужен дубликат"}</small></span>
+                    <span style={{fontSize:20}}>{weaponDisplayIcon(weaponId)}</span><span><b>{name}</b><small>{usable?"всего: "+count+" · лишних: "+(count-1):"всего: "+count+" · нужен ещё 1 экземпляр"}</small></span>
                   </button>;
                 })}
                 {FORGE_WEAPON_MODELS.filter(([, ,id])=>id&&directCraftWeaponIds.has(id as HeroWeapon)&&save.ownedWeapons.includes(id as HeroWeapon)).length===0&&<div className="dim">Нет оружия с прямым рецептом. Остальные дубликаты разбираются ниже на Руническую сталь.</div>}
