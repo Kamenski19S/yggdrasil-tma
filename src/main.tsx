@@ -676,7 +676,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .hall-slots{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}.hall-slot{position:relative;width:42px;height:42px;flex:0 0 42px;border-radius:10px;border:1px solid #4b5d4e;background:#090d0a;display:flex;align-items:center;justify-content:center;font-size:20px}.hall-slot small{position:absolute;right:-3px;top:-5px;min-width:17px;padding:1px 3px;border-radius:8px;background:#6b3b18;border:1px solid #ffd76a;color:#fff4cf;font-size:8px;font-weight:900}.hall-slot.on{border-color:#ffd76a;box-shadow:0 0 9px rgba(255,215,106,.42)}.hall-slot:active{transform:scale(.91);background:#1b271e}
 .vial{position:relative;width:13px;height:21px;border:1px solid rgba(235,249,255,.72);border-radius:3px 3px 7px 7px;background:linear-gradient(180deg,rgba(255,255,255,.35) 0 35%,var(--vial) 38% 100%);box-shadow:0 0 8px var(--vial)}
 .craft-entry{width:100%;padding:13px;border-radius:15px;background:linear-gradient(135deg,#5f321b,#1c1712);border:1px solid #d68b38;text-align:left;box-shadow:inset 0 0 18px rgba(255,119,37,.12)}.craft-entry b{display:block;color:#ffc45e;font-size:14px}.craft-entry span{font-size:10px;color:#d7b891}
-.craft-screen{background:radial-gradient(circle at 50% 28%,#62331d,#18120e 58%,#090b09);padding-top:18px}.craft-fire{font-size:48px;filter:drop-shadow(0 0 15px #ff6a21)}.craft-recipe{display:grid;grid-template-columns:1fr 34px 1fr 34px 1fr;align-items:center;gap:5px;margin:16px 0}.craft-slot{aspect-ratio:1;border-radius:12px;border:1px solid #725336;background:rgba(8,10,8,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#8e806c;font-size:9px}.craft-slot b{font-size:24px;color:#d7b06a}.craft-op{text-align:center;color:#ffbe55;font-size:20px;font-weight:900}
+.craft-screen{background:radial-gradient(circle at 50% 28%,#62331d,#18120e 58%,#090b09);padding-top:18px}.craft-fire{font-size:48px;filter:drop-shadow(0 0 15px #ff6a21)}.craft-recipe{display:grid;grid-template-columns:1fr 34px 1fr 34px 1fr;align-items:center;gap:5px;margin:16px 0}.craft-slot{aspect-ratio:1;border-radius:12px;border:1px solid #725336;background:rgba(8,10,8,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#8e806c;font-size:9px;padding:4px}.craft-slot b{font-size:24px;color:#d7b06a}.craft-slot.selected{border-color:#ffc45e;color:#ffe2a6;box-shadow:0 0 10px rgba(255,166,48,.28)}.craft-slot.result{border-color:#7fa56b;color:#d8f2c7}.craft-slot small{display:block;margin-top:3px;font-size:7px;line-height:1.2;color:#c8b79d}.craft-op{text-align:center;color:#ffbe55;font-size:20px;font-weight:900}.craft-picker{margin:8px 0 12px;padding:9px;border:1px solid #7c5732;border-radius:12px;background:rgba(12,10,8,.82);display:grid;gap:6px}.craft-picker-title{font-size:10px;color:#f2c777;font-weight:800;text-align:left}.craft-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.craft-choice{display:flex;align-items:center;gap:7px;min-height:42px;padding:7px;border:1px solid #59442d;border-radius:9px;background:#17130f;color:#f1dfbf;text-align:left}.craft-choice b{font-size:10px}.craft-choice small{display:block;color:#aa9a83;font-size:8px}.craft-choice:disabled{opacity:.43}.craft-choice.on{border-color:#f2bd58;background:#2b1d10}.craft-cost{margin:9px 0;padding:8px;border-radius:9px;background:#18130e;border:1px solid #5c452d;color:#d7c4a8;font-size:9px;line-height:1.4}.craft-recipes{margin-top:9px;text-align:left;font-size:8px;line-height:1.45;color:#9f907b}.craft-recipes b{color:#e9bd6b}
 .forge-screen{background:radial-gradient(circle at 50% 8%,rgba(239,100,27,.32),transparent 34%),linear-gradient(180deg,#21140d,#0b0d0b 72%);padding-top:14px}
 .forge-head{position:relative;flex:0 0 auto;min-height:166px;overflow:hidden;padding:14px 16px;border-radius:18px;border:1px solid #9a5a27;background:linear-gradient(145deg,rgba(82,42,19,.95),rgba(17,15,12,.96));box-shadow:inset 0 0 28px rgba(255,107,31,.13),0 8px 20px rgba(0,0,0,.35);text-align:center}.forge-head:before{content:"ᚲ";position:absolute;right:-3px;top:-22px;font-size:105px;color:rgba(255,146,53,.07);transform:rotate(10deg)}
 .forge-title{color:#ffc66c;font-size:18px;font-weight:900;letter-spacing:.7px;margin-top:1px}.forge-master{color:#d9c5a6;font-size:10px;line-height:1.35;margin:4px auto 8px;max-width:310px}.forge-advice{position:relative;margin:0 auto 9px;padding:7px 10px;max-width:310px;border-radius:10px;background:rgba(255,232,176,.09);border:1px solid rgba(255,199,92,.30);color:#ffe3a6;font-size:9px;line-height:1.35}.forge-wallet{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:11px;background:rgba(4,7,5,.72);border:1px solid rgba(255,196,94,.34);font-size:11px;color:#ffe0a0}.forge-wallet b{color:#ffb34d;font-size:13px}
@@ -6459,6 +6459,19 @@ const FORGE_WEAPON_MODELS = [
   ['Shield_Heater.glb','Щит',''],['Shield_Heater_2.glb','Щит II',''],['Shield_Celtic_Golden.glb','Золотой щит','']
 ] as const;
 
+type CraftMaterial=GatherKind;
+type CraftRecipe={weapon:Exclude<HeroWeapon,"default"|"swordGolden">;material:CraftMaterial;amount:number;cost:number;result:Exclude<HeroWeapon,"default"|"swordGolden">};
+const CRAFT_RECIPES:CraftRecipe[]=[
+  {weapon:"knife",material:"twigs",amount:2,cost:12,result:"dagger2"},
+  {weapon:"axe",material:"wood",amount:3,cost:18,result:"axeDouble"},
+  {weapon:"axeSmall",material:"wood",amount:2,cost:14,result:"axeDouble"},
+  {weapon:"mace",material:"wood",amount:3,cost:18,result:"hammerDouble"},
+  {weapon:"sword2",material:"wood",amount:3,cost:22,result:"swordBig"},
+  {weapon:"spear",material:"twigs",amount:3,cost:20,result:"scythe"}
+];
+const craftMaterialName=(id:CraftMaterial)=>id==="wood"?"Древесина":id==="twigs"?"Ветки":"Лечебные травы";
+const craftMaterialIcon=(id:CraftMaterial)=>id==="wood"?"🪵":id==="twigs"?"🌿":"🌱";
+
 function ForgeWeaponWall({owned,ownedShields,selected,selectedShield,onChoose}:{owned:string[];ownedShields:string[];selected:HeroWeapon;selectedShield:string|null;onChoose:(asset:string,name:string,id:string)=>void}) {
   const canvas=useRef<HTMLCanvasElement>(null);
   useEffect(()=>{
@@ -6529,6 +6542,9 @@ function App() {
   const [over, setOver] = useState("");
   const [combatFx, setCombatFx] = useState<{kind:"hit"|"rune"|"guard";key:number}|null>(null);
   const [forgeTransition, setForgeTransition] = useState(false);
+  const [craftWeapon,setCraftWeapon]=useState<HeroWeapon|''>('');
+  const [craftMaterial,setCraftMaterial]=useState<CraftMaterial|''>('');
+  const [craftPicker,setCraftPicker]=useState<'weapon'|'material'|null>(null);
   const forgeTimer = useRef<number>(0);
   const midgardReturn = useRef({x:0,z:28});
   const [banditRespawnAt,setBanditRespawnAt]=useState<Record<string,number>>({});
@@ -6654,6 +6670,32 @@ const [roadT, setRoadT] = useState(0.06);
     const selected=id as HeroWeapon;
     if(save.heroWeapon===selected){say(name+' уже в руке.');return;}
     setSave(s=>({...s,heroWeapon:selected}));haptic('success');say(name+' в руке. Сила оружия: +'+WEAPON_POWER[selected]+'.');
+  };
+  const selectedCraftRecipe=CRAFT_RECIPES.find(r=>r.weapon===craftWeapon&&r.material===craftMaterial)||null;
+  const craftWeaponCopies=craftWeapon?Math.max(0,Number(save.lootCounts[craftWeapon])||0):0;
+  const craftMaterialCount=craftMaterial?save.stock[craftMaterial]:0;
+  const craftReady=!!selectedCraftRecipe&&craftWeaponCopies>=2&&craftMaterialCount>=selectedCraftRecipe.amount&&save.sparks>=selectedCraftRecipe.cost;
+  const performCraft=()=>{
+    const recipe=selectedCraftRecipe;
+    if(!recipe){say("Для этой пары оружия и материала пока нет рецепта.");return;}
+    if(craftWeaponCopies<2){say("Для крафта нужна лишняя копия оружия. Один экземпляр остаётся у героя.");return;}
+    if(craftMaterialCount<recipe.amount){say("Не хватает материала: нужно "+recipe.amount+" · "+craftMaterialName(recipe.material)+".");return;}
+    if(save.sparks<recipe.cost){say("Не хватает Капель силы. Нужно: "+recipe.cost);return;}
+    setSave(state=>{
+      const currentCopies=Math.max(0,Number(state.lootCounts[recipe.weapon])||0);
+      if(currentCopies<2||state.stock[recipe.material]<recipe.amount||state.sparks<recipe.cost)return state;
+      const nextCounts={...state.lootCounts,[recipe.weapon]:Math.max(1,currentCopies-1)};
+      nextCounts[recipe.result]=(Number(nextCounts[recipe.result])||0)+1;
+      return {...state,
+        sparks:state.sparks-recipe.cost,
+        stock:{...state.stock,[recipe.material]:state.stock[recipe.material]-recipe.amount},
+        ownedWeapons:[...new Set([...state.ownedWeapons,recipe.result])],
+        lootCounts:nextCounts
+      };
+    });
+    haptic("success");
+    say("Крафт завершён: "+lootDisplayName(recipe.result)+" создан. Потрачена 1 лишняя копия "+lootDisplayName(recipe.weapon)+".");
+    setCraftWeapon('');setCraftMaterial('');setCraftPicker(null);
   };
   const rnd = (n: number) => Math.floor(Math.random() * n);
   const trialIdx = (id: string) => save.trials.filter(t => t.startsWith(id + ":")).length;
