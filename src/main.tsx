@@ -6236,6 +6236,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     </div></div>}
     {creditsOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}><div className="mid3d-map-panel">
       <div className="mid3d-map-title">Авторы и лицензии</div>
+      <p><b>Вика (Валькирия) — главный персонаж</b> — модель персонажа создана <a href="https://t.me/Devolik13" target="_blank" rel="noopener noreferrer">@Devolik13</a> (Telegram).</p>
+      <p>Отдельная благодарность автору за создание Вики и вклад в развитие Yggdrasil Runes.</p>
       <p><b>Ultimate Modular Men Pack — защитники Мидгарда</b> — модели и исходные анимации созданы <a href="https://quaternius.com/" target="_blank" rel="noopener noreferrer">Quaternius</a>. <a href="https://quaternius.com/packs/ultimatemodularcharacters.html" target="_blank" rel="noopener noreferrer">Источник коллекции</a>. Лицензия: <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener noreferrer">CC0</a>.</p>
       <p>Благодарность автору: спасибо Quaternius за качественную бесплатную коллекцию персонажей и анимаций, которую можно использовать и изменять в игровых проектах.</p>
       <p>Изменения для Yggdrasil Runes: один персонаж коллекции адаптирован как базовая модель защитников Мидгарда; масштаб увеличен и настроен отдельно для каждого стража; изменены цвета одежды; добавлены короткие цветные накидки и металлические застёжки; одна базовая модель используется для девяти разных стражей. Для боя настроены существующие анимации Idle_Neutral, Idle_Sword, Sword_Slash, HitRecieve и Death: защитник спокойно стоит до боя, атакует мечом, реагирует на удар, после атаки или получения урона возвращается в стойку с мечом и падает после поражения.</p>
