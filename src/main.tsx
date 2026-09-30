@@ -6685,9 +6685,23 @@ const [roadT, setRoadT] = useState(0.06);
     if(save.heroWeapon===selected){say(name+' уже в руке.');return;}
     setSave(s=>({...s,heroWeapon:selected}));haptic('success');say(name+' в руке. Сила оружия: +'+WEAPON_POWER[selected]+'.');
   };
+  const craftRecipesForWeapon=craftWeapon?CRAFT_RECIPES.filter(r=>r.weapon===craftWeapon):[];
   const selectedCraftRecipe=CRAFT_RECIPES.find(r=>r.weapon===craftWeapon&&r.material===craftMaterial)||null;
   const craftWeaponCopies=craftWeapon?Math.max(0,Number(save.lootCounts[craftWeapon])||0):0;
   const craftMaterialCount=craftMaterial?save.stock[craftMaterial]:0;
+  const directCraftWeaponIds=new Set<HeroWeapon>(CRAFT_RECIPES.map(r=>r.weapon));
+  const chooseCraftWeapon=(id:HeroWeapon)=>{
+    const recipes=CRAFT_RECIPES.filter(r=>r.weapon===id);
+    if(!recipes.length){
+      setCraftWeapon('');setCraftMaterial('');setCraftPicker(null);
+      say(lootDisplayName(id)+" не имеет прямого рецепта. Лишнюю копию можно разобрать ниже на Руническую сталь.");
+      return;
+    }
+    setCraftWeapon(id);
+    if(recipes.length===1)setCraftMaterial(recipes[0].material);
+    else if(!recipes.some(r=>r.material===craftMaterial))setCraftMaterial('');
+    setCraftPicker(null);
+  };
   const craftReady=!!selectedCraftRecipe&&craftWeaponCopies>=2&&craftMaterialCount>=selectedCraftRecipe.amount&&save.sparks>=selectedCraftRecipe.cost;
   const performCraft=()=>{
     const recipe=selectedCraftRecipe;
@@ -7670,7 +7684,7 @@ const [roadT, setRoadT] = useState(0.06);
                 {craftWeapon&&<small>копий: {craftWeaponCopies}</small>}
               </button>
               <span className="craft-op">＋</span>
-              <button className={"craft-slot"+(craftMaterial?" selected":"")} onClick={()=>setCraftPicker(craftPicker==="material"?null:"material")}>
+              <button disabled={!craftWeapon} className={"craft-slot"+(craftMaterial?" selected":"")} onClick={()=>setCraftPicker(craftPicker==="material"?null:"material")}>
                 <b>{craftMaterial?craftMaterialIcon(craftMaterial):"＋"}</b>{craftMaterial?craftMaterialName(craftMaterial):"материал"}
                 {craftMaterial&&<small>в запасе: {craftMaterialCount}</small>}
               </button>
@@ -7684,19 +7698,21 @@ const [roadT, setRoadT] = useState(0.06);
             {craftPicker==="weapon"&&<div className="craft-picker">
               <div className="craft-picker-title">Выбери лишнюю копию оружия</div>
               <div className="craft-choices">
-                {FORGE_WEAPON_MODELS.filter(([, ,id])=>id&&id!=="default"&&id!=="swordGolden"&&save.ownedWeapons.includes(id as HeroWeapon)).map(([,name,id])=>{
-                  const count=Math.max(0,Number(save.lootCounts[id])||0),usable=count>=2;
-                  return <button key={id} disabled={!usable} className={"craft-choice"+(craftWeapon===id?" on":"")} onClick={()=>{setCraftWeapon(id as HeroWeapon);setCraftPicker(null);}}>
-                    <span style={{fontSize:20}}>{weaponDisplayIcon(id)}</span><span><b>{name}</b><small>{usable?"лишних копий: "+(count-1):"нужен дубликат"}</small></span>
+                {FORGE_WEAPON_MODELS.filter(([, ,id])=>id&&directCraftWeaponIds.has(id as HeroWeapon)&&save.ownedWeapons.includes(id as HeroWeapon)).map(([,name,id])=>{
+                  const weaponId=id as HeroWeapon,count=Math.max(0,Number(save.lootCounts[weaponId])||0),usable=count>=2;
+                  return <button key={id} disabled={!usable} className={"craft-choice"+(craftWeapon===weaponId?" on":"")} onClick={()=>chooseCraftWeapon(weaponId)}>
+                    <span style={{fontSize:20}}>{weaponDisplayIcon(weaponId)}</span><span><b>{name}</b><small>{usable?"лишних копий: "+(count-1):"нужен дубликат"}</small></span>
                   </button>;
                 })}
+                {FORGE_WEAPON_MODELS.filter(([, ,id])=>id&&directCraftWeaponIds.has(id as HeroWeapon)&&save.ownedWeapons.includes(id as HeroWeapon)).length===0&&<div className="dim">Нет оружия с прямым рецептом. Остальные дубликаты разбираются ниже на Руническую сталь.</div>}
               </div>
             </div>}
 
             {craftPicker==="material"&&<div className="craft-picker">
-              <div className="craft-picker-title">Выбери материал из корзины</div>
+              <div className="craft-picker-title">{craftWeapon?"Подходящий материал для "+lootDisplayName(craftWeapon):"Сначала выбери оружие"}</div>
               <div className="craft-choices">
-                {(["wood","twigs","herbs"] as CraftMaterial[]).map(id=><button key={id} disabled={save.stock[id]<=0} className={"craft-choice"+(craftMaterial===id?" on":"")} onClick={()=>{setCraftMaterial(id);setCraftPicker(null);}}>
+                {!craftWeapon&&<div className="dim">Материал зависит от выбранного оружия.</div>}
+                {craftWeapon&&([...new Set(craftRecipesForWeapon.map(r=>r.material))] as CraftMaterial[]).map(id=><button key={id} disabled={save.stock[id]<=0} className={"craft-choice"+(craftMaterial===id?" on":"")} onClick={()=>{setCraftMaterial(id);setCraftPicker(null);}}>
                   <span style={{fontSize:20}}>{craftMaterialIcon(id)}</span><span><b>{craftMaterialName(id)}</b><small>в корзине: {save.stock[id]}</small></span>
                 </button>)}
               </div>
@@ -7706,7 +7722,7 @@ const [roadT, setRoadT] = useState(0.06);
             {selectedCraftRecipe?<div className="craft-cost">
               Рецепт: 1 лишняя копия <b>{lootDisplayName(selectedCraftRecipe.weapon)}</b> + {selectedCraftRecipe.amount} × {craftMaterialName(selectedCraftRecipe.material)} + {selectedCraftRecipe.cost} Капель силы.
               <br/>Результат: <b>{lootDisplayName(selectedCraftRecipe.result)}</b>.
-            </div>:<div className="craft-cost">Выбери оружие и материал. Если сочетание подходит, здесь появится рецепт.</div>}
+            </div>:<div className="craft-cost">{craftWeapon?"Для этого оружия выбери показанный подходящий материал.":"Выбери оружие с прямым рецептом. Оружие без продолжения разбирается ниже на Руническую сталь."}</div>}
             <button className="btn gold" disabled={!craftReady} onClick={performCraft}>{selectedCraftRecipe?"Создать: "+lootDisplayName(selectedCraftRecipe.result):"Выбери рецепт"}</button>
 
             <div className="steel-wallet">⚙️ Руническая сталь: <b>{save.runeSteel}</b></div>
