@@ -173,9 +173,9 @@ const WEAPON_ASSET:Record<Exclude<HeroWeapon,"default">,string>={
   mace:'Hammer_Small.glb',hammerDouble:'Hammer_Double.glb',spear:'Spear.glb',claymore:'Claymore.glb',scythe:'Scythe.glb'
 };
 type GearId="armor"|"shield"|"helmet"|"boots";
-type GatherKind="wood"|"twigs"|"herbs";
+type GatherKind="wood"|"twigs"|"herbs"|"ashWood";
 type GatherStock=Record<GatherKind,number>;
-const EMPTY_GATHER_STOCK:GatherStock={wood:0,twigs:0,herbs:0};
+const EMPTY_GATHER_STOCK:GatherStock={wood:0,twigs:0,herbs:0,ashWood:0};
 const GATHER_SPOTS:Array<{id:string;kind:GatherKind;x:number;z:number}>=[
   {id:'sapling1',kind:'wood',x:-15,z:54},{id:'sapling2',kind:'wood',x:-23,z:56},
   {id:'sapling3',kind:'wood',x:-30,z:60},{id:'sapling4',kind:'wood',x:17,z:59},
@@ -217,7 +217,7 @@ const loadSave = (): Save => {
     // than deleting completed quests and the bridge from the player's history.
     if(!Array.isArray(s.gathered))s.gathered=[];
     s.stock={...EMPTY_GATHER_STOCK,...(s.stock&&typeof s.stock==='object'?s.stock:{})};
-    for(const kind of ['wood','twigs','herbs'] as GatherKind[])s.stock[kind]=Math.max(0,Math.floor(Number(s.stock[kind])||0));
+    for(const kind of ['wood','twigs','herbs','ashWood'] as GatherKind[])s.stock[kind]=Math.max(0,Math.floor(Number(s.stock[kind])||0));
     if(!s.locationCooldowns||typeof s.locationCooldowns!=="object"||Array.isArray(s.locationCooldowns))s.locationCooldowns={};
     s.runeSteel=Math.max(0,Math.floor(Number(s.runeSteel)||0));
     if (!Array.isArray(s.powers)) s.powers = [];
@@ -6518,7 +6518,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     {inventoryOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}><div className="mid3d-map-panel" style={{background:"linear-gradient(145deg,#1b271c,#0e1712)",color:"#fff2d8",borderColor:"#987346"}}>
       <div className="mid3d-map-title" style={{color:"#f5d28a"}}>🎒 Запас Вики</div>
       <div className="mid3d-map-sub" style={{color:"#c3b7a2"}}>Здоровье: {banditHeroHp}/{whisperStats.maxHp} · Ледяная защита: {frostGuard} уд.</div>
-      <div className="inventory-section"><h3>🌿 Материалы</h3><div className="inventory-list"><div className="inventory-item"><span className="inventory-symbol">🪵</span><span className="inventory-detail"><b>Древесина · {stock.wood}</b><small>Плотнику Бьёрну нужно 3</small></span></div><div className="inventory-item"><span className="inventory-symbol">🌱</span><span className="inventory-detail"><b>Ветки · {stock.twigs}</b><small>Плотнику Бьёрну нужно 3</small></span></div><div className="inventory-item"><span className="inventory-symbol">🌿</span><span className="inventory-detail"><b>Травы · {stock.herbs}</b><small>Травнице Сигрид нужно 4</small></span></div></div></div>
+      <div className="inventory-section"><h3>🌿 Материалы</h3><div className="inventory-list"><div className="inventory-item"><span className="inventory-symbol">🪵</span><span className="inventory-detail"><b>Древесина · {stock.wood}</b><small>Плотнику Бьёрну нужно 3</small></span></div><div className="inventory-item"><span className="inventory-symbol">🌱</span><span className="inventory-detail"><b>Ветки · {stock.twigs}</b><small>Плотнику Бьёрну нужно 3</small></span></div><div className="inventory-item"><span className="inventory-symbol">🌿</span><span className="inventory-detail"><b>Травы · {stock.herbs}</b><small>Травнице Сигрид нужно 4</small></span></div><div className="inventory-item"><span className="inventory-symbol">🪵✨</span><span className="inventory-detail"><b>Ясеневая древесина · {stock.ashWood}</b><small>Редкий материал Поверженного ясеня для будущего крафта</small></span></div></div></div>
       <InventorySection kind="potions" potions={potions} runes={runes} equippedRune={equippedRune} hp={banditHeroHp} maxHp={whisperStats.maxHp} frostGuard={frostGuard} onUsePotion={useMidgardPotion} onEquipRune={onEquipRune}/>
       <InventorySection kind="runes" potions={potions} runes={runes} equippedRune={equippedRune} lootCounts={runeCounts} runeLevels={runeLevels} hp={banditHeroHp} maxHp={whisperStats.maxHp} frostGuard={frostGuard} onUsePotion={useMidgardPotion} onEquipRune={onEquipRune}/>
       <button className="mid3d-map-close" onClick={()=>setInventoryOpen(false)}>Вернуться в игру</button>
@@ -6698,8 +6698,8 @@ const CRAFT_RECIPES:CraftRecipe[]=[
   {weapon:"sword2",material:"wood",amount:3,cost:22,result:"swordBig"},
   {weapon:"spear",material:"twigs",amount:3,cost:20,result:"scythe"}
 ];
-const craftMaterialName=(id:CraftMaterial)=>id==="wood"?"Древесина":id==="twigs"?"Ветки":"Лечебные травы";
-const craftMaterialIcon=(id:CraftMaterial)=>id==="wood"?"🪵":id==="twigs"?"🌿":"🌱";
+const craftMaterialName=(id:CraftMaterial)=>id==="wood"?"Древесина":id==="twigs"?"Ветки":id==="ashWood"?"Ясеневая древесина":"Лечебные травы";
+const craftMaterialIcon=(id:CraftMaterial)=>id==="wood"?"🪵":id==="twigs"?"🌿":id==="ashWood"?"🪵✨":"🌱";
 const RUNE_STEEL_YIELD:Partial<Record<HeroWeapon,number>>={
   knife:1,dagger2:1,sword2:1,axeSmall:1,mace:1,
   axe:2,spear:2,swordBig:2,axeDouble:2,hammerDouble:2,
@@ -7548,11 +7548,23 @@ const [roadT, setRoadT] = useState(0.06);
         return;
       }
       if (id === "fallenAsh") {
-        if (!save.done.includes("forest:ash")) {
-          setSave(s => ({ ...s, sparks: s.sparks + 21, done: [...new Set([...s.done, "forest:ash"])] }));
-          haptic("success");
-          say("Поверженный ясень. На срезе видна почти стёртая руна. Это не случайное дерево — здесь когда-то проводили обряд. +21 ✨");
-        } else say("Старый ясень неподвижен. Под корой всё ещё виден след руны.");
+        const now=Date.now(),readyAt=save.locationCooldowns.fallenAsh||0;
+        if(now<readyAt){
+          const mins=Math.max(1,Math.ceil((readyAt-now)/60000));
+          say(`Поверженный ясень уже осмотрен. Новые сухие части можно будет собрать примерно через ${mins} мин.`);
+          return;
+        }
+        const first=!save.done.includes("forest:ashwood:first");
+        setSave(state=>({...state,
+          sparks:state.sparks+(first?5:0),
+          stock:{...state.stock,ashWood:state.stock.ashWood+1},
+          done:[...new Set([...state.done,"forest:ash","forest:ashwood:first"])],
+          locationCooldowns:{...state.locationCooldowns,fallenAsh:now+15*60*1000}
+        }));
+        haptic("success");
+        say(first
+          ?"Даже павшее дерево хранит силу. Среди старых корней найдена крепкая древесина, пропитанная энергией земли. Получено: Ясеневая древесина ×1 и +5 Капель силы."
+          :"У корней Поверженного ясеня снова найдена пригодная сухая часть. Получено: Ясеневая древесина ×1.");
         return;
       }
       if (id === "deer") {
