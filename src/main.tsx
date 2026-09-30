@@ -1901,17 +1901,25 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       groundTexture.dispose();
     }, undefined, error => console.warn("Grass texture unavailable; using painted ground", error));
 
-    // ===== NATURAL SPRUCE FOREST + MASSIVE OAK — Y-UP GLB =====
-    // Restore the real GLB spruce layer: 30 trees spread around Midgard.
-    // The spruce is intentionally darkened; no procedural firs are re-enabled.
+    // ===== MIXED FBX FOREST — PINE / BIRCH / MAPLE / BROADLEAF =====
+    // All generic Midgard trees now come from the lightweight FBX pack in img/models.
+    // The old spruce V2/V3 and Massive Oak layers are intentionally disabled.
     const gltfLoader = new GLTFLoader();
     const fbxLoader = new FBXLoader();
     let glbTreesAlive = true;
     const glbTreeInstances: THREE.Object3D[] = [];
 
-    const treeAsset = 'Midgard_Natural_Spruce_V2_YUP.glb';
-    const treeV3Asset = 'Midgard_Natural_Spruce_V3_YUP.glb';
-    const oakAsset = 'Midgard_Massive_Oak_V1_YUP.glb';
+    const mixedTreeAssets = [
+      'PineTree_3.fbx',
+      'PineTree_5.fbx',
+      'BirchTree_1.fbx',
+      'BirchTree_3.fbx',
+      'MapleTree_3.fbx',
+      'MapleTree_4.fbx',
+      'NormalTree_3.fbx'
+    ] as const;
+    type MixedTreeAsset = typeof mixedTreeAssets[number];
+
     const mountainAsset = 'Midgard_Snow_Mountain_Range_V1_YUP.glb';
     const heroHouseAsset = 'Midgard_Hero_House_V1_YUP.glb';
     const vikingHouseAsset = 'Midgard_Viking_House_V1_YUP.glb';
@@ -1927,53 +1935,23 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     const mimirWellAsset = 'Midgard_Mimir_Well_V1_YUP.glb';
     const hoddmimirAsset = 'Midgard_Hoddmimir_Holt_V2_YUP.glb';
 
-    // Deterministic positions keep the village centre and major landmarks readable.
-    const sprucePositions: Array<[number, number]> = [
+    // Keep the proven forest footprint, but every slot can now become a different tree.
+    // These coordinates already leave the village and major landmarks readable.
+    const mainForestPositions: Array<[number, number]> = [
       [-72,-62],[-51,-68],[-27,-72],[31,-67],[49,-63],[72,-55],
       [-76,-34],[-56,-38],[-36,-43],[34,-42],[57,-36],[78,-27],
       [-80,-4],[-61,-10],[-43,-8],[46,-9],[65,-3],[81,5],
       [-74,25],[-53,30],[-34,34],[39,29],[59,25],[71,39],
-      [-68,57],[-45,61],[-24,66],[30,61],[52,57],[71,66]
+      [-68,57],[-45,61],[-24,66],[30,61],[52,57],[71,66],
+      [-73,-57],[-54,-62],[-31,-61],[38,-60],[54,-58],[73,-48],
+      [-72,42],[-53,49],[-31,55],[32,53],[54,48],[72,55],
+      [9,6],[-78,-70],[-58,-73],[-37,-68],[-13,-76],[18,-74],[42,-70],[65,-72],[80,-57],
+      [-82,-47],[-64,-49],[-45,-53],[-24,-55],[28,-54],[50,-50],[71,-43],[84,-25],
+      [-83,-17],[-67,-23],[-48,-25],[48,-23],[67,-18],[83,-7],
+      [-82,13],[-64,17],[-46,14],[47,15],[65,12],[82,20],
+      [-78,42],[-59,39],[-39,46],[38,43],[58,39],[66,57],
+      [-68,69],[-43,66],[-18,74],[27,70],[55,67]
     ];
-
-    const darkenSpruceMaterial = (m:any) => {
-      if (!m) return m;
-      const mm = m.clone ? m.clone() : m;
-      // 10% darker than the current spruce appearance.
-      if (mm.color?.multiplyScalar) mm.color.multiplyScalar(0.765);
-      if ('roughness' in mm) mm.roughness = 0.96;
-      if ('metalness' in mm) mm.metalness = 0.0;
-      mm.needsUpdate = true;
-      return mm;
-    };
-
-    const prepareSpruceSource = (source: THREE.Object3D) => {
-      source.traverse((o:any) => {
-        if (!o.isMesh) return;
-        o.visible = true;
-        o.frustumCulled = false;
-        o.castShadow = true;
-        o.receiveShadow = true;
-        if (Array.isArray(o.material)) o.material = o.material.map(darkenSpruceMaterial);
-        else o.material = darkenSpruceMaterial(o.material);
-      });
-
-      sprucePositions.forEach(([x,z], i) => {
-        const tree = source.clone(true);
-        markMeshes(tree);
-        tree.rotation.set(0, midHash(i, 2101) * Math.PI * 2, 0);
-        tree.scale.setScalar(0.88 + midHash(i, 2102) * 0.22);
-        tree.position.set(0, 0, 0);
-        tree.updateMatrixWorld(true);
-        const box = new THREE.Box3().setFromObject(tree);
-        tree.position.set(x, groundY(x,z) - box.min.y, z);
-        tree.updateMatrixWorld(true);
-        scene.add(tree);
-        glbTreeInstances.push(tree);
-      });
-
-      console.log('[NATURAL SPRUCE] 30 trees loaded', `${BASE}img/models/${treeAsset}`);
-    };
 
     const loadGlbWithFolderFallback = (
       asset:string,
@@ -2011,139 +1989,113 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       tryPath(0);
     };
 
-    loadGlbWithFolderFallback(treeAsset, (gltf:any) => {
-      if (!glbTreesAlive) return;
-      prepareSpruceSource(gltf.scene);
-    }, 'NATURAL SPRUCE');
-
-    // Add a small V3 comparison grove without replacing the successful V2 forest.
-    // 12 V3 spruces, all with slightly different size and rotation.
-    const spruceV3Positions: Array<[number,number]> = [
-      [-73,-57],[-54,-62],[-31,-61],[38,-60],[54,-58],[73,-48],
-      [-72,42],[-53,49],[-31,55],[32,53],[54,48],[72,55]
-    ];
-
-    loadGlbWithFolderFallback(treeV3Asset, (gltf:any) => {
-      if (!glbTreesAlive) return;
-      const source = gltf.scene.clone(true);
-      source.traverse((o:any) => {
-        if (!o.isMesh) return;
-        o.visible = true;
-        o.frustumCulled = false;
-        o.castShadow = true;
-        o.receiveShadow = true;
-        const darkenV3 = (m:any) => {
-          if (!m) return m;
-          const mm = m.clone ? m.clone() : m;
-          // Keep V3 close to the current dark V2 forest for a fair visual comparison.
-          if (mm.color?.multiplyScalar) mm.color.multiplyScalar(0.72);
-          if ('roughness' in mm) mm.roughness = 0.96;
-          if ('metalness' in mm) mm.metalness = 0.0;
-          mm.needsUpdate = true;
+    const prepareNaturalSource = (source:THREE.Object3D) => {
+      source.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        o.visible=true;
+        o.frustumCulled=true;
+        const adapt=(m:any)=>{
+          if(!m)return m;
+          const mm=m.clone?m.clone():m;
+          if('roughness' in mm)mm.roughness=Math.max(Number(mm.roughness)||0,.88);
+          if('metalness' in mm)mm.metalness=0;
+          // Many lightweight foliage FBX files use single planes for leaves.
+          if('side' in mm)mm.side=THREE.DoubleSide;
+          mm.needsUpdate=true;
           return mm;
         };
-        if (Array.isArray(o.material)) o.material = o.material.map(darkenV3);
-        else o.material = darkenV3(o.material);
+        if(Array.isArray(o.material))o.material=o.material.map(adapt);
+        else o.material=adapt(o.material);
       });
+      source.updateMatrixWorld(true);
+      return source;
+    };
 
-      spruceV3Positions.forEach(([x,z], i) => {
-        const tree = source.clone(true);
-        markMeshes(tree);
-        tree.rotation.set(0, midHash(i, 2301) * Math.PI * 2, 0);
-        tree.scale.setScalar(0.72 + midHash(i, 2302) * 0.28);
-        tree.position.set(0,0,0);
-        tree.updateMatrixWorld(true);
-        const box = new THREE.Box3().setFromObject(tree);
-        tree.position.set(x, groundY(x,z) - box.min.y, z);
-        tree.updateMatrixWorld(true);
-        scene.add(tree);
-        glbTreeInstances.push(tree);
+    const naturalAssetPromises = new Map<string,Promise<THREE.Object3D>>();
+    const getNaturalAssetSource = (asset:string) => {
+      const cached=naturalAssetPromises.get(asset);
+      if(cached)return cached;
+      const promise=new Promise<THREE.Object3D>((resolve,reject)=>{
+        loadGlbWithFolderFallback(asset,(loaded:any)=>{
+          if(!glbTreesAlive)return;
+          resolve(prepareNaturalSource(loaded.scene));
+        },`NATURAL FBX ${asset}`,()=>reject(new Error(`Failed to load ${asset}`)));
       });
+      naturalAssetPromises.set(asset,promise);
+      return promise;
+    };
 
-      console.log('[NATURAL SPRUCE V3] 12 comparison trees loaded', `${BASE}img/models/${treeV3Asset}`);
-    }, 'NATURAL SPRUCE V3');
+    // A deterministic mix: pines are slightly more common, with birch, maple and broadleaf
+    // trees breaking up the silhouette. No two adjacent slots are forced to share a species.
+    const pickMixedTreeAsset = (seed:number):MixedTreeAsset => {
+      const r=midHash(seed,3301);
+      if(r<.20)return 'PineTree_3.fbx';
+      if(r<.36)return 'PineTree_5.fbx';
+      if(r<.49)return 'BirchTree_1.fbx';
+      if(r<.62)return 'BirchTree_3.fbx';
+      if(r<.75)return 'MapleTree_3.fbx';
+      if(r<.88)return 'MapleTree_4.fbx';
+      return 'NormalTree_3.fbx';
+    };
 
-    // Restore the GLB oak as a varied grove: 40 clones, while keeping the village centre readable.
-    loadGlbWithFolderFallback(oakAsset, (gltf:any) => {
-      if (!glbTreesAlive) return;
-      const oakSource = gltf.scene.clone(true);
-      markMeshes(oakSource);
-
-      // Another 20% darker than the previous oak pass.
-      // Recompute smooth normals where possible to soften the faceted/segmented trunk look.
-      oakSource.traverse((o:any) => {
-        if (!o.isMesh) return;
-        o.visible = true;
-        o.frustumCulled = false;
-        o.castShadow = true;
-        o.receiveShadow = true;
-        if (o.geometry?.computeVertexNormals) {
-          o.geometry = o.geometry.clone();
-          o.geometry.computeVertexNormals();
-          o.geometry.attributes?.normal && (o.geometry.attributes.normal.needsUpdate = true);
-        }
-        const darkenOak = (m:any) => {
-          if (!m) return m;
-          const mm = m.clone ? m.clone() : m;
-          if (mm.color?.multiplyScalar) mm.color.multiplyScalar(0.672); // previous 0.84 × 0.80
-          if ('roughness' in mm) mm.roughness = Math.max(mm.roughness ?? 0.9, 0.96);
-          if ('metalness' in mm) mm.metalness = 0.0;
-          if ('flatShading' in mm) mm.flatShading = false;
-          mm.needsUpdate = true;
-          return mm;
-        };
-        if (Array.isArray(o.material)) o.material = o.material.map(darkenOak);
-        else o.material = darkenOak(o.material);
+    const fittedNaturalClone = (
+      source:THREE.Object3D,
+      targetHeight:number,
+      rotationY:number,
+      castShadow:boolean
+    ) => {
+      const model=source.clone(true);
+      markMeshes(model);
+      model.position.set(0,0,0);
+      model.rotation.set(0,rotationY,0);
+      model.scale.set(1,1,1);
+      model.updateMatrixWorld(true);
+      const rawBox=new THREE.Box3().setFromObject(model);
+      const rawHeight=Math.max(.001,rawBox.max.y-rawBox.min.y);
+      const scale=targetHeight/rawHeight;
+      model.scale.setScalar(scale);
+      model.updateMatrixWorld(true);
+      const fittedBox=new THREE.Box3().setFromObject(model);
+      model.position.y=-fittedBox.min.y;
+      model.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        o.castShadow=castShadow;
+        o.receiveShadow=castShadow;
+        o.frustumCulled=true;
       });
+      return model;
+    };
 
-      // 40 deterministic positions. The first oak stays near Mimir; the rest form
-      // an irregular outer woodland and deliberately avoid the village centre.
-      const oakPositions: Array<[number,number]> = [
-        [9,6],[-78,-70],[-58,-73],[-37,-68],[-13,-76],[18,-74],[42,-70],[65,-72],[80,-57],
-        [-82,-47],[-64,-49],[-45,-53],[-24,-55],[28,-54],[50,-50],[71,-43],[84,-25],
-        [-83,-17],[-67,-23],[-48,-25],[48,-23],[67,-18],[83,-7],
-        [-82,13],[-64,17],[-46,14],[47,15],[65,12],[82,20],
-        [-78,42],[-59,39],[-39,46],[38,43],[58,39],[66,57],
-        [-68,69],[-43,66],[-18,74],[27,70],[55,67]
-      ];
+    const placeNaturalTree = (
+      source:THREE.Object3D,
+      x:number,
+      z:number,
+      targetHeight:number,
+      rotationY:number,
+      castShadow=true
+    ) => {
+      const tree=fittedNaturalClone(source,targetHeight,rotationY,castShadow);
+      tree.position.x=x;
+      tree.position.y+=groundY(x,z);
+      tree.position.z=z;
+      tree.updateMatrixWorld(true);
+      scene.add(tree);
+      glbTreeInstances.push(tree);
+      return tree;
+    };
 
-      const jointShadowMat = new THREE.MeshBasicMaterial({
-        color:0x120f0c, transparent:true, opacity:0.20, depthWrite:false
-      });
-
-      oakPositions.forEach(([oakX,oakZ], i) => {
-        const oak = oakSource.clone(true);
-        markMeshes(oak);
-        oak.rotation.set(0, midHash(i, 2211) * Math.PI * 2, 0);
-
-        // Every oak has a different size. The Mimir oak stays moderately large;
-        // the rest range from young/small to old/large.
-        const oakScale = i === 0 ? 0.82 : 0.52 + midHash(i, 2212) * 0.43;
-        oak.scale.setScalar(oakScale);
-        oak.position.set(0,0,0);
-        oak.updateMatrixWorld(true);
-        const oakBox = new THREE.Box3().setFromObject(oak);
-        oak.position.set(oakX, groundY(oakX,oakZ) - oakBox.min.y, oakZ);
-
-        // Thin soft collars hide the three visible trunk-section seams without
-        // changing the silhouette of the model. They scale together with each oak.
-        [1.72, 3.32, 5.02].forEach((yy, j) => {
-          const ring = new THREE.Mesh(
-            new THREE.TorusGeometry(0.565 - j * 0.045, 0.040, 10, 36),
-            jointShadowMat.clone()
-          );
-          ring.rotation.x = Math.PI / 2;
-          ring.position.y = yy;
-          oak.add(ring);
+    // Load each FBX only once, then clone it into all matching forest slots.
+    mixedTreeAssets.forEach(asset=>{
+      getNaturalAssetSource(asset).then(source=>{
+        if(!glbTreesAlive)return;
+        mainForestPositions.forEach(([x,z],i)=>{
+          if(pickMixedTreeAsset(i)!==asset)return;
+          const height=6.8+midHash(i,3302)*4.8;
+          placeNaturalTree(source,x,z,height,midHash(i,3303)*Math.PI*2,true);
         });
-
-        oak.updateMatrixWorld(true);
-        scene.add(oak);
-        glbTreeInstances.push(oak);
-      });
-
-      console.log('[MASSIVE OAK] 40 varied, darker, smoothed oaks loaded', `${BASE}img/models/${oakAsset}`);
-    }, 'MASSIVE OAK');
+        console.log('[MIXED FBX FOREST] loaded',asset);
+      }).catch(error=>console.warn('[MIXED FBX FOREST] skipped',asset,error));
+    });
 
     // Horizon ridge sheets removed: they were the visible translucent plates.
     // Real mountains and the distant GLB forest remain unchanged.
@@ -4116,11 +4068,13 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       ashGrove.add(st);
     }
 
-    // Ancient ash growing directly from the mound.
+    // The landmark keeps its old fallback for safety, but the new FBX broadleaf
+    // replaces it immediately when NormalTree_3.fbx is available.
+    const groveFallbackTree=new THREE.Group();
     const groveTrunk=new THREE.Mesh(new THREE.CylinderGeometry(.72,1.05,5.9,11),groveBarkMat);
     groveTrunk.position.set(0,4.72,-.20);
     groveTrunk.rotation.z=-.045;
-    ashGrove.add(groveTrunk);
+    groveFallbackTree.add(groveTrunk);
     for(let i=0;i<8;i++){
       const a=i/8*Math.PI*2+.20;
       const len=2.9+midHash(i,1330)*1.9;
@@ -4129,17 +4083,30 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       br.rotation.z=Math.cos(a)*.76;
       br.rotation.x=Math.sin(a)*.76;
       br.rotation.y=-a;
-      ashGrove.add(br);
+      groveFallbackTree.add(br);
       for(let k=0;k<3;k++){
         const leaf=new THREE.Mesh(new THREE.SphereGeometry(.78+midHash(i,k+1332)*.34,9,6),groveLeafMat.clone());
         (leaf.material as THREE.MeshStandardMaterial).color.offsetHSL((midHash(i,k+1333)-.5)*.025,0,(midHash(i,k+1334)-.5)*.07);
         leaf.scale.set(1.25,.62,1.0);
         leaf.position.set(Math.cos(a)*len*(.44+.11*k)+(midHash(k,i)-.5)*.65,7.7+k*.32+midHash(i,k)*.85,Math.sin(a)*len*(.44+.11*k)-.20+(midHash(k+4,i)-.5)*.65);
-        ashGrove.add(leaf);
+        groveFallbackTree.add(leaf);
       }
     }
+    ashGrove.add(groveFallbackTree);
 
-    markMeshes(ashGrove);
+    getNaturalAssetSource('NormalTree_3.fbx').then(source=>{
+      if(!glbTreesAlive)return;
+      const groveTree=fittedNaturalClone(source,10.8,.32,true);
+      // The mound crown is about 2.3 m above the surrounding terrain.
+      groveTree.position.y+=2.18;
+      groveTree.position.z=-.20;
+      groveFallbackTree.visible=false;
+      ashGrove.add(groveTree);
+      glbTreeInstances.push(groveTree);
+      console.log('[ASH GROVE] new NormalTree_3.fbx landmark loaded');
+    }).catch(error=>console.warn('[ASH GROVE] keeping fallback tree',error));
+
+        markMeshes(ashGrove);    markMeshes(ashGrove);
     scene.add(ashGrove);
     objects.push(ashGrove);
     addCircleCollider(ashGroveX,ashGroveZ,2.6,.08);
@@ -4991,14 +4958,11 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     addMesh(heroYard,'heroHomeYard','Двор домика героя'); objects.push(heroYard);
 
 
-    // ===== DENSE FOG-EDGE FOREST — CORRECTED POSITION =====
-    // Mountains are at negative Z (around -94), so the dense forest belongs
-    // at the FAR/NORTH edge of Midgard, directly in front of the mountain fog.
-    // Each slot contains ONLY ONE tree: spruce OR oak, never both.
-    const fogForestSlots: Array<{x:number; z:number; seed:number; kind:'spruce'|'oak'}> = [];
+    // ===== DENSE FOG-EDGE FOREST — MIXED NEW FBX TREES =====
+    // Mountains are at negative Z (around -94), so this belt stays in front of the fog.
+    // Each slot contains exactly one of the new tree models.
+    const fogForestSlots: Array<{x:number; z:number; seed:number; asset:MixedTreeAsset}> = [];
 
-    // Three staggered rows between the playable clearing and the mountains.
-    // Grid spacing prevents trunks from spawning inside each other.
     const fogRows = [-69, -76, -83];
     let fogSeed = 0;
 
@@ -5010,9 +4974,6 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         let x = xBase + (midHash(seed, 4101) - .5) * 1.45;
         let z = zBase + (midHash(seed, 4102) - .5) * 2.2;
 
-        // Keep the Circle of Power visually open: any fog-forest tree that would
-        // stand directly in front of the central monolith is transplanted sideways,
-        // not deleted.
         const powerTreeDist=Math.hypot(x-5,z+70);
         if(powerTreeDist<7.6){
           x += x<5 ? -10.5 : 10.5;
@@ -5021,104 +4982,95 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
 
         if (x < -84 || x > 84) continue;
 
-        // Keep several irregular view corridors so the forest has natural gaps.
         const gapLeft   = x > -42 && x < -33 && z > -80;
         const gapMiddle = x >  3 && x <  12 && z < -72;
-        const gapRight  = x > 47 && x <  57 && z > -81;
+        const gapRight  = x > 47 && x < 57 && z > -81;
         if (gapLeft || gapMiddle || gapRight) continue;
 
-        // The river crosses this northern belt near x≈-57.
-        // Leave a wide wooded river opening instead of growing trees in water.
         const riverX = -57 + Math.sin(((z + 94) / 6) * .42) * 4.2;
         if (Math.abs(x - riverX) < 8.0) continue;
 
-        // One type per slot. Oaks are roughly one quarter of this distant forest.
-        const kind: 'spruce'|'oak' =
-          midHash(seed, 4103) < .27 ? 'oak' : 'spruce';
-
-        fogForestSlots.push({x,z,seed,kind});
+        fogForestSlots.push({x,z,seed,asset:pickMixedTreeAsset(seed+9000)});
       }
     }
 
-    const addCorrectFogForest = (
-      source: THREE.Object3D,
-      kind: 'spruce'|'oak'
-    ) => {
-      fogForestSlots.forEach((slot) => {
-        if (slot.kind !== kind) return;
-
-        const tree = source.clone(true);
-        markMeshes(tree);
-
-        // Wide size variation, but distant oaks stay a little smaller so their
-        // crowns do not swallow the whole horizon.
-        const sizeRnd = midHash(slot.seed, kind === 'spruce' ? 4110 : 4120);
-        const scale = kind === 'spruce'
-          ? 0.52 + sizeRnd * 0.56
-          : 0.38 + sizeRnd * 0.42;
-
-        tree.scale.setScalar(scale);
-        tree.rotation.set(0, midHash(slot.seed, 4130) * Math.PI * 2, 0);
-
-        tree.traverse((o:any) => {
-          if (!o.isMesh) return;
-          o.visible = true;
-          o.castShadow = true;
-          o.receiveShadow = true;
-          o.frustumCulled = true;
+    mixedTreeAssets.forEach(asset=>{
+      getNaturalAssetSource(asset).then(source=>{
+        if(!glbTreesAlive)return;
+        fogForestSlots.forEach(slot=>{
+          if(slot.asset!==asset)return;
+          const height=5.4+midHash(slot.seed,4110)*4.0;
+          // Distant belt does not cast shadows: much cheaper on mobile.
+          placeNaturalTree(source,slot.x,slot.z,height,midHash(slot.seed,4130)*Math.PI*2,false);
         });
+      }).catch(error=>console.warn('[MIXED FOG FOREST] skipped',asset,error));
+    });
 
-        // Snap the actual model bottom to terrain after scaling.
-        tree.position.set(0,0,0);
-        tree.updateMatrixWorld(true);
-        const b = new THREE.Box3().setFromObject(tree);
-        tree.position.set(slot.x, groundY(slot.x,slot.z) - b.min.y, slot.z);
-        tree.updateMatrixWorld(true);
+    // Lightweight ground dressing from the same FBX pack.
+    // It stays in the outer woodland so roads, village buildings and interaction zones remain clear.
+    const forestPropDefs = [
+      {asset:'Bush_Flowers.fbx',count:14,minSize:1.00,maxSize:1.55},
+      {asset:'Bush_Small_Flowers.fbx',count:16,minSize:.72,maxSize:1.18},
+      {asset:'Petals_2.fbx',count:10,minSize:.55,maxSize:.95},
+      {asset:'Petals_3.fbx',count:10,minSize:.55,maxSize:.95},
+      {asset:'Rock_5.fbx',count:12,minSize:.62,maxSize:1.12}
+    ];
 
-        scene.add(tree);
-        glbTreeInstances.push(tree);
+    const fitNaturalProp = (source:THREE.Object3D,targetSize:number,rotationY:number) => {
+      const prop=source.clone(true);
+      markMeshes(prop);
+      prop.position.set(0,0,0);
+      prop.rotation.set(0,rotationY,0);
+      prop.scale.set(1,1,1);
+      prop.updateMatrixWorld(true);
+      const raw=new THREE.Box3().setFromObject(prop);
+      const rawSize=raw.getSize(new THREE.Vector3());
+      const sourceMax=Math.max(rawSize.x,rawSize.y,rawSize.z,.001);
+      prop.scale.setScalar(targetSize/sourceMax);
+      prop.updateMatrixWorld(true);
+      const fitted=new THREE.Box3().setFromObject(prop);
+      prop.position.y=-fitted.min.y;
+      prop.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        o.castShadow=false;
+        o.receiveShadow=true;
+        o.frustumCulled=true;
       });
+      return prop;
     };
 
-    // Spruces: dark distant backbone.
-    loadGlbWithFolderFallback(treeAsset, (gltf:any) => {
-      const source = gltf.scene.clone(true);
-      source.traverse((o:any) => {
-        if (!o.isMesh) return;
-        const adapt = (m:any) => {
-          if (!m) return m;
-          const mm = m.clone ? m.clone() : m;
-          if (mm.color?.multiplyScalar) mm.color.multiplyScalar(0.72);
-          if ('roughness' in mm) mm.roughness = 0.97;
-          if ('metalness' in mm) mm.metalness = 0;
-          mm.needsUpdate = true;
-          return mm;
-        };
-        if (Array.isArray(o.material)) o.material = o.material.map(adapt);
-        else o.material = adapt(o.material);
-      });
-      addCorrectFogForest(source, 'spruce');
-    }, 'FAR FOG FOREST SPRUCE');
+    const forestPropAllowed=(x:number,z:number)=>{
+      if(Math.hypot(x,z)<36)return false;
+      const riverX=-57+Math.sin(((z+94)/6)*.42)*4.2;
+      if(Math.abs(x-riverX)<9)return false;
+      const protectedPlaces:Array<[number,number,number]>=[
+        [5,-70,13],[58,-28,13],[-45,75,11],[-72,-48,11],[-72,48,11],
+        [-64,8,11],[43,32,10],[-5,75,12],[62,78,13]
+      ];
+      if(protectedPlaces.some(([px,pz,r])=>Math.hypot(x-px,z-pz)<r))return false;
+      return true;
+    };
 
-    // Oaks: fewer and broader, but never share coordinates with spruces.
-    loadGlbWithFolderFallback(oakAsset, (gltf:any) => {
-      const source = gltf.scene.clone(true);
-      source.traverse((o:any) => {
-        if (!o.isMesh) return;
-        const adapt = (m:any) => {
-          if (!m) return m;
-          const mm = m.clone ? m.clone() : m;
-          if (mm.color?.multiplyScalar) mm.color.multiplyScalar(0.64);
-          if ('roughness' in mm) mm.roughness = 0.98;
-          if ('metalness' in mm) mm.metalness = 0;
-          mm.needsUpdate = true;
-          return mm;
-        };
-        if (Array.isArray(o.material)) o.material = o.material.map(adapt);
-        else o.material = adapt(o.material);
-      });
-      addCorrectFogForest(source, 'oak');
-    }, 'FAR FOG FOREST OAK');
+    forestPropDefs.forEach((def,defIndex)=>{
+      getNaturalAssetSource(def.asset).then(source=>{
+        if(!glbTreesAlive)return;
+        let placed=0;
+        for(let attempt=0;attempt<240&&placed<def.count;attempt++){
+          const seed=defIndex*1000+attempt;
+          const x=-82+midHash(seed,4201)*164;
+          const z=-78+midHash(seed,4202)*158;
+          if(!forestPropAllowed(x,z))continue;
+          const size=def.minSize+(def.maxSize-def.minSize)*midHash(seed,4203);
+          const prop=fitNaturalProp(source,size,midHash(seed,4204)*Math.PI*2);
+          prop.position.x=x;
+          prop.position.y+=groundY(x,z)+(/Petals_/i.test(def.asset)?.018:0);
+          prop.position.z=z;
+          scene.add(prop);
+          glbTreeInstances.push(prop);
+          placed++;
+        }
+      }).catch(error=>console.warn('[FOREST PROP] skipped',def.asset,error));
+    });
 
     // Small landmarks inside the clearings.
     const campFire=fire(68,8,.75); campFire.scale.setScalar(.72);
@@ -5127,12 +5079,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     // Extra loose fallen trunk removed; the dedicated Fallen Ash landmark remains.
     for(let i=0;i<7;i++){const rune=new THREE.Mesh(new THREE.DodecahedronGeometry(.14,0),mat(0x697d72,1));const a=i/7*Math.PI*2;rune.position.set(-45+Math.cos(a)*4,.12+groundY(-45+Math.cos(a)*4,75+Math.sin(a)*4),75+Math.sin(a)*4);scene.add(rune);}
 
-    // The old procedural fir forest has been removed. Real GLB trees above now form the visible spruce layer.
-    // Sacred ash trees remain temporarily because they are landmarks; they will be replaced by real assets later.
-
-    // Three ash trees mark important places in Midgard; the largest is the village's
-    // symbolic "ash of memory", a visual hint toward Yggdrasil.
-    // Procedural ash trees are disabled in this GLB test pass.
+    // Generic Midgard woodland now uses the mixed lightweight FBX tree pack above.
+    // Special sacred-location visuals remain separate so their gameplay landmarks stay recognizable.
 
 
     // Small grass clumps and ferns break up the flat ground while staying cheap on mobile.
