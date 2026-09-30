@@ -7614,23 +7614,62 @@ const [roadT, setRoadT] = useState(0.06);
           <div className="card center" style={{background:"rgba(13,12,10,.84)",borderColor:"#71431f"}}>
             <div className="craft-fire">🔥</div>
             <div className="qhead2" style={{color:"#ffc45e"}}>Кузня Чертога</div>
-            <p className="dim">Положи два подходящих предмета и добавь Капли силы. Кузня покажет возможный результат до подтверждения.</p>
+            <p className="dim">Для крафта используется одна лишняя копия оружия. Основной экземпляр остаётся на складе. Выбери оружие, материал и подтверди создание.</p>
             <div className="craft-recipe">
-              <button className="craft-slot" onClick={()=>say("Выбери первый предмет со склада оружия.")}><b>＋</b>предмет</button>
+              <button className={"craft-slot"+(craftWeapon?" selected":"")} onClick={()=>setCraftPicker(craftPicker==="weapon"?null:"weapon")}>
+                <b>{craftWeapon?weaponDisplayIcon(craftWeapon):"＋"}</b>{craftWeapon?lootDisplayName(craftWeapon):"оружие"}
+                {craftWeapon&&<small>копий: {craftWeaponCopies}</small>}
+              </button>
               <span className="craft-op">＋</span>
-              <button className="craft-slot" onClick={()=>say("Выбери второй предмет или материал.")}><b>＋</b>материал</button>
+              <button className={"craft-slot"+(craftMaterial?" selected":"")} onClick={()=>setCraftPicker(craftPicker==="material"?null:"material")}>
+                <b>{craftMaterial?craftMaterialIcon(craftMaterial):"＋"}</b>{craftMaterial?craftMaterialName(craftMaterial):"материал"}
+                {craftMaterial&&<small>в запасе: {craftMaterialCount}</small>}
+              </button>
               <span className="craft-op">＝</span>
-              <span className="craft-slot"><b>?</b>результат</span>
+              <span className={"craft-slot"+(selectedCraftRecipe?" result":"")}>
+                <b>{selectedCraftRecipe?weaponDisplayIcon(selectedCraftRecipe.result):"?"}</b>
+                {selectedCraftRecipe?lootDisplayName(selectedCraftRecipe.result):"результат"}
+              </span>
             </div>
+
+            {craftPicker==="weapon"&&<div className="craft-picker">
+              <div className="craft-picker-title">Выбери лишнюю копию оружия</div>
+              <div className="craft-choices">
+                {FORGE_WEAPON_MODELS.filter(([, ,id])=>id&&id!=="default"&&id!=="swordGolden"&&save.ownedWeapons.includes(id as HeroWeapon)).map(([,name,id])=>{
+                  const count=Math.max(0,Number(save.lootCounts[id])||0),usable=count>=2;
+                  return <button key={id} disabled={!usable} className={"craft-choice"+(craftWeapon===id?" on":"")} onClick={()=>{setCraftWeapon(id as HeroWeapon);setCraftPicker(null);}}>
+                    <span style={{fontSize:20}}>{weaponDisplayIcon(id)}</span><span><b>{name}</b><small>{usable?"лишних копий: "+(count-1):"нужен дубликат"}</small></span>
+                  </button>;
+                })}
+              </div>
+            </div>}
+
+            {craftPicker==="material"&&<div className="craft-picker">
+              <div className="craft-picker-title">Выбери материал из корзины</div>
+              <div className="craft-choices">
+                {(["wood","twigs","herbs"] as CraftMaterial[]).map(id=><button key={id} disabled={save.stock[id]<=0} className={"craft-choice"+(craftMaterial===id?" on":"")} onClick={()=>{setCraftMaterial(id);setCraftPicker(null);}}>
+                  <span style={{fontSize:20}}>{craftMaterialIcon(id)}</span><span><b>{craftMaterialName(id)}</b><small>в корзине: {save.stock[id]}</small></span>
+                </button>)}
+              </div>
+            </div>}
+
             <div className="hrow"><SparkDrop/> Капли силы: <b>{save.sparks}</b></div>
-            <div className="dim" style={{margin:"8px 0"}}>
-              Дубликаты трофеев сохраняются для крафта: {Object.values(save.lootCounts).filter(n=>n>1).reduce((sum,n)=>sum+(n-1),0)} шт.
+            {selectedCraftRecipe?<div className="craft-cost">
+              Рецепт: 1 лишняя копия <b>{lootDisplayName(selectedCraftRecipe.weapon)}</b> + {selectedCraftRecipe.amount} × {craftMaterialName(selectedCraftRecipe.material)} + {selectedCraftRecipe.cost} Капель силы.
+              <br/>Результат: <b>{lootDisplayName(selectedCraftRecipe.result)}</b>.
+            </div>:<div className="craft-cost">Выбери оружие и материал. Если сочетание подходит, здесь появится рецепт.</div>}
+            <button className="btn gold" disabled={!craftReady} onClick={performCraft}>{selectedCraftRecipe?"Создать: "+lootDisplayName(selectedCraftRecipe.result):"Выбери рецепт"}</button>
+
+            <div className="dim" style={{margin:"10px 0 5px"}}>
+              Дубликаты трофеев для крафта: {Object.values(save.lootCounts).filter(n=>n>1).reduce((sum,n)=>sum+(n-1),0)} шт.
               {Object.entries(save.lootCounts).some(([,count])=>count>1)&&<div style={{marginTop:5,lineHeight:1.45}}>
                 {Object.entries(save.lootCounts).filter(([,count])=>count>1).map(([id,count])=>lootDisplayName(id)+" ×"+(count-1)).join(" • ")}
               </div>}
             </div>
-            <button className="btn gold" disabled>Рецепты крафта откроем следующим этапом</button>
-            <button className="btn ghost" onClick={()=>go({t:"hall"})}>Вернуться в Чертог</button>
+            <div className="craft-recipes"><b>Открытые рецепты Мидгарда:</b><br/>
+              Боевой кинжал + 2 ветки → Кинжал II · Северный топор + 3 древесины → Двойной топор · Малый топор + 2 древесины → Двойной топор · Малый молот + 3 древесины → Двойной молот · Меч II + 3 древесины → Большой меч · Копьё + 3 ветки → Боевая коса.
+            </div>
+            <button className="btn ghost" onClick={()=>{setCraftPicker(null);go({t:"hall"});}}>Вернуться в Чертог</button>
           </div>
         </div>
       )}
