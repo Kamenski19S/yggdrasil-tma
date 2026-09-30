@@ -6415,6 +6415,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       }
       if(id==="deepGrove")return <div className="mid3d-ui mid3d-interact"><b>Глубокая роща</b><span>В тени растут редкие лечебные травы. Роща восстанавливает запас раз в 15 минут.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>Собрать редкие травы</button></div>;
       if(id==="hunterCamp")return <div className="mid3d-ui mid3d-interact"><b>Забытая стоянка</b><span>В старых ящиках остаются пригодные ветки и древесина. Запасы обновляются раз в 15 минут.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>Поискать припасы</button></div>;
+      if(id==="port")return <div className="mid3d-ui mid3d-interact"><b>Речной мост</b><span>У воды можно сделать короткую передышку и восстановить до 20 здоровья. Повторно — через 10 минут.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>Отдохнуть у реки</button></div>;
       const home=id==="heroHome"||id==="heroHomeExit";
       const villageGate=id==="gate"||id==="gateRear";
       const selectedGateOpen=id==="gateRear"?rearGateOpen:villageGateOpen;
@@ -7060,7 +7061,18 @@ const [roadT, setRoadT] = useState(0.06);
         say('Северный мост повреждён. Сначала собери 3 древесины и 3 ветки, затем сдай их плотнику Бьёрну. После этого мост можно починить здесь.');
         return;
       }
-      if (id === "port") {say("Речной мост открыт. Отсюда начинается дорога к поселению.");return;}
+      if (id === "port") {
+        const maxHp=(heroDef?.hp||100)+gearHp(),currentHp=Math.min(maxHp,save.fieldHp??maxHp);
+        const now=Date.now(),readyAt=save.locationCooldowns.riverBridge||0;
+        if(currentHp>=maxHp){say("У реки спокойно. Вика уже полностью здорова — отдых сейчас не нужен.");return;}
+        if(now<readyAt){
+          const mins=Math.max(1,Math.ceil((readyAt-now)/60000));
+          say(`Ты уже отдыхал у реки. Следующая передышка будет доступна примерно через ${mins} мин.`);return;
+        }
+        const healed=Math.min(20,maxHp-currentHp),nextHp=currentHp+healed;
+        setSave(state=>({...state,fieldHp:nextHp,locationCooldowns:{...state.locationCooldowns,riverBridge:now+10*60*1000}}));
+        haptic("success");say(`Передышка у реки восстановила ${healed} здоровья. Следующий отдых здесь — через 10 минут.`);return;
+      }
       if (id === "rune") {
         say("Древний камень откликается руной ᚠ. В ладони становится теплее — будто кто-то заметил твой приход.");
         return;
@@ -7095,7 +7107,7 @@ const [roadT, setRoadT] = useState(0.06);
             stock:{...state.stock,herbs:Math.max(0,state.stock.herbs-4)},
             potions:[...state.potions,'northernMoss'],
             lootCounts:lootCountAdd(state.lootCounts,['northernMoss'])
-          }));
+          });
           haptic("success");say("В старой сушильне приготовлен Эликсир северного мха. Потрачено 4 лечебные травы.");return;
         }
         say(`В Старом хуторе сохранилась сушильня. Здесь можно приготовить Эликсир северного мха за 4 лечебные травы. Сейчас трав: ${save.stock.herbs}/4.`);
