@@ -5377,31 +5377,54 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       return tail;
     };
     const findBanditBone=(root:THREE.Object3D,patterns:RegExp[])=>{
+      const bones:THREE.Object3D[]=[];
+      const seen=new Set<THREE.Object3D>();
+      root.traverse((o:any)=>{
+        if(o.isBone&&!seen.has(o)){seen.add(o);bones.push(o);}
+        if(o.isSkinnedMesh&&o.skeleton?.bones){
+          for(const b of o.skeleton.bones as THREE.Object3D[])if(b&&!seen.has(b)){seen.add(b);bones.push(b);}
+        }
+      });
+      let best:THREE.Object3D|null=null,bestScore=-1;
+      for(const bone of bones){
+        const n=String(bone.name||'');
+        let score=0;
+        patterns.forEach((p,i)=>{if(p.test(n))score=Math.max(score,100-i*5);p.lastIndex=0;});
+        const clean=n.toLowerCase().replace(/[^a-z0-9]/g,'');
+        if(clean.includes('righthand'))score=Math.max(score,130);
+        if(clean.includes('handr'))score=Math.max(score,125);
+        if(clean.includes('rightwrist'))score=Math.max(score,120);
+        if(clean.includes('wrist')&&(/right|_r|\.r|r$/.test(n.toLowerCase())))score=Math.max(score,110);
+        if(score>bestScore){bestScore=score;best=bone;}
+      }
+      return bestScore>0?best:null;
+    };
+    const findNativeBanditSword=(root:THREE.Object3D)=>{
       let found:THREE.Object3D|null=null;
       root.traverse((o:any)=>{
-        if(found||!o.isBone)return;
-        const n=String(o.name||'');
-        if(patterns.some(p=>p.test(n)))found=o;
+        if(found||o.isBone)return;
+        const n=String(o.name||'').toLowerCase();
+        if(/sword|blade/.test(n))found=o;
       });
       return found;
     };
+    const hasBoneAncestor=(o:THREE.Object3D|null)=>{
+      let p:any=o?.parent;
+      while(p){if(p.isBone)return true;p=p.parent;}
+      return false;
+    };
     const syncBanditSword=(preview:BanditActor)=>{
-      if(!preview.weaponHand)return;
-      const handWorld=new THREE.Vector3(),shoulderWorld=new THREE.Vector3();
+      if(!preview.sword.visible||!preview.weaponHand)return;
+      // When attached directly to the hand bone, the animation system moves the sword for us.
+      if(preview.sword.parent===preview.weaponHand)return;
+      const handWorld=new THREE.Vector3(),handQ=new THREE.Quaternion(),actorQ=new THREE.Quaternion();
       preview.weaponHand.getWorldPosition(handWorld);
-      const handLocal=preview.actor.worldToLocal(handWorld.clone());
-      preview.sword.position.copy(handLocal);
-      if(preview.weaponShoulder){
-        preview.weaponShoulder.getWorldPosition(shoulderWorld);
-        const shoulderLocal=preview.actor.worldToLocal(shoulderWorld.clone());
-        const dir=handLocal.clone().sub(shoulderLocal);
-        if(dir.lengthSq()>.0001){
-          dir.normalize();
-          preview.sword.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);
-          // Slight blade roll keeps the flat of the sword readable on a phone screen.
-          preview.sword.rotateOnAxis(new THREE.Vector3(0,1,0),-.18);
-        }
-      }
+      preview.weaponHand.getWorldQuaternion(handQ);
+      preview.actor.getWorldQuaternion(actorQ);
+      preview.sword.position.copy(preview.actor.worldToLocal(handWorld.clone()));
+      preview.sword.quaternion.copy(actorQ.invert().multiply(handQ));
+      preview.sword.rotateZ(-1.05);
+      preview.sword.rotateX(.20);
     };
     const playBandit=(preview:BanditActor,name:string,now:number)=>{
       if(preview.current===name&&name==='Run')return;
@@ -5443,6 +5466,11 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         if(actions.Scene){actions.Scene.play();actions.Scene.paused=true;}
         const weaponHand=findBanditBone(root,[/hand[._ -]*r/i,/right.*hand/i,/hand.*right/i,/wrist[._ -]*r/i]);
         const weaponShoulder=findBanditBone(root,[/upper[_ .-]*arm[._ -]*r/i,/right.*upper.*arm/i,/shoulder[._ -]*r/i]);
+        const nativeSword=findNativeBanditSword(root);
+        if(nativeSword&&hasBoneAncestor(nativeSword)){
+          nativeSword.visible=true;
+          nativeSword.traverse((o:any)=>{if(o.isMesh)o.visible=true;});
+        }
         const iron=new THREE.MeshStandardMaterial({color:0xbac5c8,metalness:.72,roughness:.28,side:THREE.DoubleSide});
         const grip=new THREE.MeshStandardMaterial({color:0x38231a,roughness:.9});
         const sword=new THREE.Group();
@@ -5451,6 +5479,18 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const handle=new THREE.Mesh(new THREE.CylinderGeometry(.043,.05,.29,8),grip);handle.position.y=.03;sword.add(handle);
         const guard=new THREE.Mesh(new THREE.BoxGeometry(.37,.055,.09),iron);guard.position.y=.18;sword.add(guard);
         sword.position.set(.68,1.25,.28);sword.rotation.set(.25,0,-.95);actor.add(sword);
+        // Prefer the model's own rigged sword when it is already parented to a bone.
+        // Otherwise attach our procedural sword directly to the animated right-hand bone.
+        if(nativeSword&&hasBoneAncestor(nativeSword)){
+          sword.visible=false;
+        }else if(weaponHand){
+          actor.updateWorldMatrix(true,true);
+          sword.updateWorldMatrix(true,false);
+          weaponHand.updateWorldMatrix(true,false);
+          weaponHand.attach(sword);
+          sword.position.set(0,0,0);
+          sword.rotation.set(.20,0,-1.05);
+        }
         const preview:BanditActor={spec,root,actor,sword,weaponHand,weaponShoulder,mixer,actions,current:'Scene',next:0,alerted:false,hp:spec.hp,deathAt:0,restY:root.position.y,enemyNextAttack:0,enemyHitAt:0,collider};
         syncBanditSword(preview);
         bandits.push(preview);
