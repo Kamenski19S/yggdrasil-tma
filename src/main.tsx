@@ -5251,7 +5251,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       preview.next=now+(name==='Run'?480:name==='Attack'?1150:name==='Hit'?570:name==='Death'?Number.POSITIVE_INFINITY:0);
     };
     const spawnBandit=(spec:BanditSpec)=>{
-        if(!banditAsset||bandits.some(b=>b.spec.id===spec.id))return;
+        if(!banditAsset||bandits.some(b=>b.spec.id===spec.id)||(banditRespawnAtRef.current[spec.id]||0)>Date.now())return;
         const root=cloneSkinned(banditAsset.scene) as THREE.Object3D;
         root.updateMatrixWorld(true);
         const bounds=new THREE.Box3().setFromObject(root),height=bounds.getSize(new THREE.Vector3()).y;
@@ -5264,8 +5264,6 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const actor=new THREE.Group();actor.position.set(spec.x,groundY(spec.x,spec.z),spec.z);actor.add(root);
         root.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
         scene.add(actor);
-        const cooling=(banditRespawnAtRef.current[spec.id]||0)>Date.now();
-        if(cooling){scene.remove(actor);return;}
         const collider={id:spec.id,x:spec.x,z:spec.z,r:1.42};
         banditCollisions.push(collider);
         const mixer=new THREE.AnimationMixer(root);
