@@ -1956,6 +1956,49 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       return texture;
     };
 
+    // Re-colour the authored maple atlas to a fresh green palette while preserving
+    // its original leaf shapes, shading and transparency. This keeps Midgard in
+    // one spring/summer season instead of mixing green forest with autumn trees.
+    const greenNaturalTexture = (file:string) => {
+      const key=`green:${file}`;
+      const cached=naturalTextureCache.get(key);
+      if(cached)return cached;
+      const texture=naturalTextureLoader.load(
+        `${BASE}img/models/${file}`,
+        t=>{
+          try{
+            const image:any=t.image;
+            const canvas=document.createElement('canvas');
+            canvas.width=Math.max(1,image?.width||image?.naturalWidth||1);
+            canvas.height=Math.max(1,image?.height||image?.naturalHeight||1);
+            const ctx=canvas.getContext('2d',{willReadFrequently:true});
+            if(ctx){
+              ctx.drawImage(image,0,0,canvas.width,canvas.height);
+              const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);
+              const d=pixels.data;
+              for(let i=0;i<d.length;i+=4){
+                if(d[i+3]<4)continue;
+                const lum=.2126*d[i]+.7152*d[i+1]+.0722*d[i+2];
+                d[i]=Math.min(255,28+lum*.24);
+                d[i+1]=Math.min(255,78+lum*.72);
+                d[i+2]=Math.min(255,24+lum*.20);
+              }
+              ctx.putImageData(pixels,0,0);
+              t.image=canvas;
+            }
+          }catch(error){console.warn('[NATURAL TEXTURE] maple green recolour failed',error);}
+          t.needsUpdate=true;
+        },
+        undefined,
+        error=>console.warn(`[NATURAL TEXTURE] ${file} unavailable`,error)
+      );
+      texture.colorSpace=THREE.SRGBColorSpace;
+      texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
+      texture.anisotropy=4;
+      naturalTextureCache.set(key,texture);
+      return texture;
+    };
+
     const naturalMaps={
       birchBark:naturalTexture('BirchTree_Bark.png'),
       birchBarkNormal:naturalTexture('BirchTree_Bark_Normal.png',false),
@@ -1963,7 +2006,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       birchLeavesMask:naturalTexture('BirchTree_Leaves_Mask.png',false),
       mapleBark:naturalTexture('MapleTree_Bark.png'),
       mapleBarkNormal:naturalTexture('MapleTree_Bark_Normal.png',false),
-      mapleLeaves:naturalTexture('MapleTree_Leaves.png'),
+      mapleLeaves:greenNaturalTexture('MapleTree_Leaves.png'),
       mapleLeavesMask:naturalTexture('MapleTree_Leaves_Mask.png',false),
       normalBark:naturalTexture('NormalTree_Bark.png'),
       normalBarkNormal:naturalTexture('NormalTree_Bark_Normal.png',false),
@@ -2093,8 +2136,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         if(bark)setColorMap(naturalMaps.normalBark,naturalMaps.normalBarkNormal);
         else if(leaves)setCutout(naturalMaps.normalLeaves);
       }else if(/pinetree/i.test(asset)){
-        // The pine atlas contains both needles and bare branches; the FBX UVs select the right region.
-        if(bark||leaves)setCutout(naturalMaps.pineAtlas);
+        // Keep the trunk opaque. The pine atlas has transparency and must only be
+        // used for the needle/branch cards; using it on the bark made trunks vanish.
+        if(bark)setColorMap(naturalMaps.normalBark,naturalMaps.normalBarkNormal);
+        else if(leaves)setCutout(naturalMaps.pineAtlas);
       }else if(/bush_|petals_/i.test(asset)){
         if(leaves||flowers||/bush|petal/.test(tag))setCutout(naturalMaps.bushAtlas);
       }else if(/rock_5/i.test(asset)){
@@ -6375,6 +6420,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       <p>Отдельная благодарность автору за создание Вики и вклад в развитие Yggdrasil Runes.</p>
       <p><b>Ultimate Modular Men Pack — защитники Мидгарда</b> — модели и исходные анимации созданы <a href="https://quaternius.com/" target="_blank" rel="noopener noreferrer">Quaternius</a>. <a href="https://quaternius.com/packs/ultimatemodularcharacters.html" target="_blank" rel="noopener noreferrer">Источник коллекции</a>. Лицензия: <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener noreferrer">CC0</a>.</p>
       <p>Благодарность автору: спасибо Quaternius за качественную бесплатную коллекцию персонажей и анимаций, которую можно использовать и изменять в игровых проектах.</p>
+      <p><b>Ultimate Stylized Nature Pack — деревья, кусты, растения и камни Мидгарда</b> — модели и текстуры созданы <a href="https://quaternius.com/" target="_blank" rel="noopener noreferrer">Quaternius</a>. <a href="https://quaternius.com/packs/ultimatestylizednature.html" target="_blank" rel="noopener noreferrer">Источник коллекции</a>. Лицензия: <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener noreferrer">CC0</a>.</p>
+      <p>Отдельная благодарность Quaternius за бесплатную коллекцию природы, благодаря которой лес Мидгарда стал разнообразнее и живее.</p>
+      <p>Изменения для Yggdrasil Runes: выбраны и смешаны разные виды деревьев и кустов, настроены масштаб и размещение, восстановлены материалы и текстуры для FBX-моделей; красная листва клёнов изменена на зелёную для единого весенне-летнего облика Мидгарда.</p>
       <p>Изменения для Yggdrasil Runes: один персонаж коллекции адаптирован как базовая модель защитников Мидгарда; масштаб увеличен и настроен отдельно для каждого стража; изменены цвета одежды; добавлены короткие цветные накидки и металлические застёжки; одна базовая модель используется для девяти разных стражей. Для боя настроены существующие анимации Idle_Neutral, Idle_Sword, Sword_Slash, HitRecieve и Death: защитник спокойно стоит до боя, атакует мечом, реагирует на удар, после атаки или получения урона возвращается в стойку с мечом и падает после поражения.</p>
       <p><b>Neutral Bandit</b> — <a href="https://sketchfab.com/strong.lazzy" target="_blank" rel="noopener noreferrer">ZakRenat</a>. <a href="https://sketchfab.com/3d-models/neutral-bandit-524cad2cfdc7422f93541cb00008b0d3" target="_blank" rel="noopener noreferrer">Оригинальная модель</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
       <p>Изменения для Yggdrasil Runes: сжаты текстуры, добавлены пробные движения бега, удара, получения удара и падения; исходная анимация сохранена.</p>
