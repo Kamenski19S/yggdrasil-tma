@@ -206,8 +206,8 @@ for(const [kind,amount,salt] of [['wood',25,1],['twigs',30,2],['herbs',30,3]] as
 const GEAR_IDS:GearId[]=["armor","shield","helmet","boots"];
 const SHIELD_ASSETS=['Shield_Round.glb','Shield_Round_2.glb','Shield_Heater.glb','Shield_Heater_2.glb','Shield_Celtic_Golden.glb'];
 const shieldForgeKey=(asset:string)=>asset===SHIELD_ASSETS[0]?'shield':'shield:'+asset;
-type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; lootCounts:Record<string,number>; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; forgeLevels: Record<string,number>; forgeFreeUsed: boolean; gathered:string[]; stock:GatherStock };
-const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], lootCounts:{default:1,[SHIELD_ASSETS[0]]:1}, equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false,gathered:[],stock:{...EMPTY_GATHER_STOCK} };
+type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; lootCounts:Record<string,number>; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; forgeLevels: Record<string,number>; forgeFreeUsed: boolean; gathered:string[]; stock:GatherStock; locationCooldowns:Record<string,number> };
+const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], lootCounts:{default:1,[SHIELD_ASSETS[0]]:1}, equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false,gathered:[],stock:{...EMPTY_GATHER_STOCK},locationCooldowns:{} };
 const loadSave = (): Save => {
   try {
     const previous:any=JSON.parse(localStorage.getItem("yggdrasil") || "{}");
@@ -218,6 +218,7 @@ const loadSave = (): Save => {
     if(!Array.isArray(s.gathered))s.gathered=[];
     s.stock={...EMPTY_GATHER_STOCK,...(s.stock&&typeof s.stock==='object'?s.stock:{})};
     for(const kind of ['wood','twigs','herbs'] as GatherKind[])s.stock[kind]=Math.max(0,Math.floor(Number(s.stock[kind])||0));
+    if(!s.locationCooldowns||typeof s.locationCooldowns!=="object"||Array.isArray(s.locationCooldowns))s.locationCooldowns={};
     if (!Array.isArray(s.powers)) s.powers = [];
     if (!Array.isArray(s.done)) s.done = [];
     if (!Array.isArray(s.ownedWeapons)) s.ownedWeapons = ["default"];
@@ -3788,8 +3789,16 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const geometry=o.geometry.clone();geometry.applyMatrix4(o.matrixWorld);
         geometry.translate(-center.x,-deckY,-center.z);
         geometry.scale(BRIDGE_WIDTH/size.x,7.5/size.y,BRIDGE_SPAN/size.z);
-        geometry.rotateY(-Math.PI/2);geometry.computeBoundingBox();geometry.computeBoundingSphere();
+        geometry.rotateY(-Math.PI/2);
         const oldMaterials=Array.isArray(o.material)?o.material:[o.material];
+        if(oldMaterials.some((m:any)=>/LightWood/i.test(String(m?.name||"")))){
+          geometry.computeBoundingBox();
+          const bb=geometry.boundingBox!,sz=bb.getSize(new THREE.Vector3()),cc=bb.getCenter(new THREE.Vector3());
+          let sx=1,sy=1,szScale=1;
+          if(sz.x>=sz.y&&sz.x>=sz.z)sx=1.075;else if(sz.y>=sz.x&&sz.y>=sz.z)sy=1.075;else szScale=1.075;
+          geometry.translate(-cc.x,-cc.y,-cc.z);geometry.scale(sx,sy,szScale);geometry.translate(cc.x,cc.y,cc.z);
+        }
+        geometry.computeBoundingBox();geometry.computeBoundingSphere();
         const materials=oldMaterials.map((m:any)=>new THREE.MeshStandardMaterial({name:m.name,color:/LightWood/i.test(m.name)?0x81857f:0x4d5552,roughness:.96,metalness:0}));
         const mesh=new THREE.Mesh(geometry,Array.isArray(o.material)?materials:materials[0]);
         mesh.castShadow=true;mesh.receiveShadow=true;prepared.add(mesh);
@@ -4037,7 +4046,6 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     groveGrassMat.needsUpdate=true;
     const groveBarkMat=new THREE.MeshStandardMaterial({map:barkTexture,color:0x5a3b27,roughness:1,roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.035});
     const groveLeafMat=new THREE.MeshStandardMaterial({map:foliageTexture,color:0x4f7a43,roughness:1});
-    const groveDoorMat=new THREE.MeshStandardMaterial({color:0x7a1830,roughness:.86,metalness:.03});
     const groveStoneMat=new THREE.MeshStandardMaterial({color:0x77766b,roughness:1});
 
     // Broad earthen embankment — deliberately NOT a half-sphere.
@@ -4088,21 +4096,18 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       ashGrove.add(shoulder);
     }
 
-    // Recessed entrance cut visually into the front of the mound.
-    const groveDoorShadow=new THREE.Mesh(new THREE.BoxGeometry(2.0,2.6,.22),new THREE.MeshBasicMaterial({color:0x120c0b}));
-    groveDoorShadow.position.set(0,1.55,4.56);
-    ashGrove.add(groveDoorShadow);
-    const groveDoor=new THREE.Mesh(new THREE.BoxGeometry(1.48,2.12,.18),groveDoorMat);
-    groveDoor.position.set(0,1.48,4.70);
-    ashGrove.add(groveDoor);
-    const groveDoorFrame=mat(0x4a2c22,1);
-    const doorTop=new THREE.Mesh(new THREE.BoxGeometry(1.95,.18,.30),groveDoorFrame);
-    doorTop.position.set(0,2.62,4.68); ashGrove.add(doorTop);
-    [-.90,.90].forEach(px=>{const side=new THREE.Mesh(new THREE.BoxGeometry(.18,2.45,.30),groveDoorFrame);side.position.set(px,1.48,4.68);ashGrove.add(side);});
-    const doorKnob=new THREE.Mesh(new THREE.SphereGeometry(.09,8,6),mat(0xb3894c,.55,.45));
-    doorKnob.position.set(.46,1.48,4.82); ashGrove.add(doorKnob);
+    // Open natural sanctuary: replace the artificial red door with a carved sign.
+    const groveSign=new THREE.Group();groveSign.position.set(0,0,4.78);
+    const signWood=mat(0x5b3821,.96);
+    for(const px of [-1.22,1.22]){const post=new THREE.Mesh(new THREE.CylinderGeometry(.10,.14,1.75,8),signWood);post.position.set(px,.88,0);groveSign.add(post);}
+    const signBoard=new THREE.Mesh(new THREE.BoxGeometry(3.45,.82,.16),mat(0x6b4326,.94));signBoard.position.set(0,1.58,0);groveSign.add(signBoard);
+    const groveSignTex=signTexture("Роща Ясеня");
+    const signLetters=new THREE.Mesh(new THREE.PlaneGeometry(3.18,.64),new THREE.MeshBasicMaterial({map:groveSignTex,transparent:true,depthWrite:false,toneMapped:false}));
+    signLetters.position.set(0,1.58,.091);groveSign.add(signLetters);
+    const signRune=new THREE.Mesh(new THREE.CircleGeometry(.23,16),new THREE.MeshStandardMaterial({color:0xc49a50,emissive:0x5b3511,emissiveIntensity:.55,metalness:.35,roughness:.5}));
+    signRune.position.set(-1.47,1.58,.10);groveSign.add(signRune);ashGrove.add(groveSign);
 
-    // Short stepping-stone path so the entrance reads clearly from a distance.
+    // Short stepping-stone path leads to the sign and old ash.
     for(let i=0;i<5;i++){
       const st=new THREE.Mesh(new THREE.DodecahedronGeometry(.44-.035*i,1),sacredStoneMaterials[i%3]);
       st.scale.set(1.25,.20,.78);
@@ -6126,7 +6131,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       else camera.lookAt(q.x+(insideHomeRef.current?cd.x*.9:cd.x*1.9),hy+(insideHomeRef.current?1.25:1.2),q.z+(insideHomeRef.current?cd.z*.9:cd.z*1.9));
       let found="",foundId="";
       if(insideHomeRef.current){
-        if(q.z>heroHomeZ+1.72*HOME_SCALE){found="Дверь — выйти из дома";foundId="heroHomeExit";}
+        const restX=heroHomeX-2.15*HOME_SCALE,restZ=heroHomeZ-1.25*HOME_SCALE;
+        if(Math.hypot(q.x-restX,q.z-restZ)<1.75*HOME_SCALE){found="Кровать героя";foundId="heroRest";}
+        else if(q.z>heroHomeZ+1.72*HOME_SCALE){found="Дверь — выйти из дома";foundId="heroHomeExit";}
       } else {
         for(const d of destinations){if(Math.hypot(q.x-d.x,q.z-d.z)<d.r){found=d.label;foundId=d.id;break;}}
         let nearest=2.35;
@@ -6386,6 +6393,11 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       const villageDoor=["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman","oldfarm"].includes(id);
       if(villageDoor)return <div className="mid3d-ui mid3d-door-prompt"><b>{label}</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>id==="oldfarm"?on(id,{x:state.current.x,z:state.current.z}):villageDoorActionRef.current?.(id)}>{outsideHouse===id?"Поговорить":"Открыть ручку"}</button></div>;
       if(id==="heroHome")return <div className="mid3d-ui mid3d-door-prompt"><b>Дом героя</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>homeActionRef.current?.(true)}>Открыть ручку</button></div>;
+      if(id==="heroRest")return <div className="mid3d-ui mid3d-interact"><b>Кровать героя</b><span>Безопасный отдых после похода полностью восстанавливает здоровье.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{
+        const max=whisperStats.maxHp;
+        if(banditHpRef.current>=max){setDoorNotice("Вика уже полностью отдохнула.");return;}
+        banditHpRef.current=max;setBanditHeroHp(max);onFieldHpChange(max);setDoorNotice("Вика отдохнула дома. Здоровье полностью восстановлено.");
+      }}>Отдохнуть</button></div>;
       const guardianSpec=MIDGARD_GUARDIANS[id];
       const guardianDone=guardianResolved.includes(id);
       if(guardianSpec){
