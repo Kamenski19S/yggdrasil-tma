@@ -4310,17 +4310,110 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     addMesh(hodd,'hoddmimir','Лес Ходдмимира');objects.push(hodd);addCircleCollider(hoddX,hoddZ,4.7,.08);
     const hoddFallbackVisuals=scene.children.slice(hoddFallbackStart);
 
+    // Natural Hoddmimir base — kept outside hoddFallbackVisuals so it remains visible
+    // after the authored GLB loads. Only the central trunk, stones, water and brook
+    // are replaced; the crown and the surrounding forest remain unchanged.
+    const hoddBaseY=groundY(hoddX,hoddZ);
+    const hoddNatural=new THREE.Group();
+    hoddNatural.position.set(hoddX,hoddBaseY,hoddZ);
+    scene.add(hoddNatural);
+
+    // Single straight tapered trunk with real bark texture.
+    const hoddNaturalTrunk=new THREE.Mesh(
+      new THREE.CylinderGeometry(1.06,1.72,11.0,22,1,false),
+      specialBarkMat
+    );
+    hoddNaturalTrunk.position.set(0,5.50,0);
+    hoddNaturalTrunk.castShadow=true;
+    hoddNaturalTrunk.receiveShadow=true;
+    hoddNatural.add(hoddNaturalTrunk);
+
+    // Calm blue pool around the roots, using the same real water texture as Mimir/river.
+    const hoddPool=new THREE.Mesh(new THREE.CircleGeometry(2.65,40),specialWaterMat);
+    hoddPool.rotation.x=-Math.PI/2;
+    hoddPool.position.y=.085;
+    hoddPool.receiveShadow=true;
+    hoddNatural.add(hoddPool);
+
+    // Textured irregular stones around the pool.
+    for(let i=0;i<14;i++){
+      const a=i/14*Math.PI*2+.12;
+      const rr=2.92+midHash(i,1710)*.30;
+      const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(.34+midHash(i,1711)*.25,1),specialRockMat);
+      stone.position.set(Math.cos(a)*rr,.20+midHash(i,1712)*.07,Math.sin(a)*rr);
+      stone.scale.set(.90+midHash(i,1713)*.55,.52+midHash(i,1714)*.32,.82+midHash(i,1715)*.48);
+      stone.rotation.set(midHash(i,1716)*.35,midHash(i,1717)*Math.PI,midHash(i,1718)*.25);
+      stone.castShadow=true;stone.receiveShadow=true;hoddNatural.add(stone);
+    }
+
+    // A softly curved brook flowing away from the pool toward the interior of Midgard.
+    // It is a ribbon mesh, not a straight glowing line.
+    const brookPts=[
+      {x:-.12,z:-2.35,w:1.05},{x:-.36,z:-3.25,w:.96},{x:-.18,z:-4.15,w:.90},
+      {x:-.62,z:-5.10,w:.82},{x:-.42,z:-6.05,w:.78},{x:-.94,z:-7.00,w:.72},
+      {x:-.72,z:-7.95,w:.66},{x:-1.16,z:-8.85,w:.58}
+    ];
+    const brookVerts:number[]=[],brookUvs:number[]=[],brookIdx:number[]=[];
+    for(let i=0;i<brookPts.length;i++){
+      const p=brookPts[i],prev=brookPts[Math.max(0,i-1)],next=brookPts[Math.min(brookPts.length-1,i+1)];
+      const dx=next.x-prev.x,dz=next.z-prev.z,len=Math.max(.001,Math.hypot(dx,dz)),nx=-dz/len,nz=dx/len;
+      const y=groundY(hoddX+p.x,hoddZ+p.z)-hoddBaseY+.082;
+      brookVerts.push(p.x+nx*p.w,y,p.z+nz*p.w,p.x-nx*p.w,y,p.z-nz*p.w);
+      brookUvs.push(0,i*.62,1,i*.62);
+      if(i<brookPts.length-1){const k=i*2;brookIdx.push(k,k+1,k+2,k+1,k+3,k+2);}
+    }
+    const brookGeo=new THREE.BufferGeometry();
+    brookGeo.setAttribute('position',new THREE.Float32BufferAttribute(brookVerts,3));
+    brookGeo.setAttribute('uv',new THREE.Float32BufferAttribute(brookUvs,2));
+    brookGeo.setIndex(brookIdx);brookGeo.computeVertexNormals();
+    const hoddBrook=new THREE.Mesh(brookGeo,specialWaterMat);
+    hoddBrook.receiveShadow=true;hoddNatural.add(hoddBrook);
+
+    // A few small textured bank stones make the brook blend into the landscape.
+    for(let i=0;i<10;i++){
+      const p=brookPts[1+Math.floor(i*.58)%Math.max(1,brookPts.length-1)];
+      const side=i%2?1:-1;
+      const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(.20+midHash(i,1720)*.18,1),specialRockMat);
+      stone.position.set(p.x+side*(p.w+.20+midHash(i,1721)*.25),.12,p.z+(midHash(i,1722)-.5)*.55);
+      stone.scale.y=.55+midHash(i,1723)*.25;
+      stone.rotation.y=midHash(i,1724)*Math.PI;
+      hoddNatural.add(stone);
+    }
+
     loadGlbWithFolderFallback(hoddmimirAsset,(gltf:any)=>{
       if(!glbTreesAlive)return;
       const model=gltf.scene.clone(true);markMeshes(model);
-      model.traverse((o:any)=>{if(!o.isMesh)return;o.visible=true;o.castShadow=true;o.receiveShadow=true;o.frustumCulled=true;});
+      model.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        const mats=Array.isArray(o.material)?o.material:[o.material];
+        const labels=[String(o.name||'')].concat(mats.map((m:any)=>String(m?.name||''))).join(' ').toLowerCase();
+        const hideOldTrunk=/trunk|tree[_ -]?stem|\bbole\b/.test(labels);
+        const hideOldWater=/water|pool|brook|stream|flow/.test(labels);
+        const hideBands=/stripe|ribbon|band|gold[_ -]?line|decor[_ -]?line/.test(labels);
+
+        // Some authored stripe meshes have generic names but are extremely thin and gold.
+        const bb=new THREE.Box3().setFromObject(o),sz=new THREE.Vector3();bb.getSize(sz);
+        const goldish=mats.some((m:any)=>{
+          const col=m?.color;
+          return !!col&&col.r>.55&&col.g>.35&&col.b<.28;
+        });
+        const veryThin=Math.min(sz.x,sz.z)<.10&&Math.max(sz.x,sz.z)<3.2&&sz.y>.22;
+
+        if(hideOldTrunk||hideOldWater||hideBands||(goldish&&veryThin)){o.visible=false;return;}
+
+        // Keep the authored stone shapes when named, but give them the real rock texture.
+        if(/stone|rock/.test(labels)){
+          o.material=specialRockMat;
+        }
+        o.visible=true;o.castShadow=true;o.receiveShadow=true;o.frustumCulled=true;
+      });
       model.scale.setScalar(.76);
       model.rotation.set(0,.18,0);
       model.position.set(hoddX,groundY(hoddX,hoddZ),hoddZ);
       model.userData={id:'hoddmimir',label:'Лес Ходдмимира'};
       hoddFallbackVisuals.forEach((o:any)=>o.visible=false);
       addMesh(model,'hoddmimir','Лес Ходдмимира');objects.push(model);
-      const glow=new THREE.PointLight(0xffb13c,2.4,18,2);glow.position.set(hoddX,groundY(hoddX,hoddZ)+5,hoddZ+1.5);scene.add(glow);
+      const glow=new THREE.PointLight(0x8bdcf2,1.35,15,2);glow.position.set(hoddX,groundY(hoddX,hoddZ)+2.4,hoddZ+1.2);scene.add(glow);
       console.log('[HODDMIMIR] loaded',`${BASE}img/models/${hoddmimirAsset}`);
     },'HODDMIMIR');
 
@@ -4588,6 +4681,22 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     };
 
     makeForgottenCamp(68,8);
+    // Natural materials used only by the two special sacred trees.
+    // The rest of Midgard's forest is intentionally left untouched.
+    const specialBarkTex=new THREE.TextureLoader().load(`${BASE}img/models/NormalTree_Bark_Lite.webp`,t=>{
+      t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(1.15,3.4);t.anisotropy=4;
+    });
+    const specialRockTex=new THREE.TextureLoader().load(`${BASE}img/models/Rock_5_Diffuse_Lite.webp`,t=>{
+      t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.MirroredRepeatWrapping;t.repeat.set(1.35,1.35);t.anisotropy=4;
+    });
+    const specialBarkMat=new THREE.MeshStandardMaterial({map:specialBarkTex,color:0xffffff,roughness:.96,metalness:0,bumpMap:surfaceMaps.height,bumpScale:.022});
+    const specialRockMat=new THREE.MeshStandardMaterial({map:specialRockTex,color:0xffffff,roughness:.98,metalness:0});
+    const specialWaterMat=new THREE.MeshStandardMaterial({
+      map:mimirWaterTexture||undefined,color:0x8bdcf2,roughness:.24,metalness:.02,
+      transparent:true,opacity:.90,side:THREE.DoubleSide
+    });
+    mimirWaterMaterials.push(specialWaterMat);
+
     // Deep Grove — restore the treehouse version.
     const deepGroveAsset='Midgard_Deep_Grove_Treehouse_V1_YUP.glb';
     const deepGroveX=-45,deepGroveZ=75;
@@ -4595,12 +4704,26 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     deepGroveRoot.userData={id:'deepGrove',label:'Глубокая роща'};
     deepGroveRoot.position.set(deepGroveX,groundY(deepGroveX,deepGroveZ),deepGroveZ);
 
+    // One continuous tapered trunk: no stacked cylinders, no visible seams.
+    const deepGroveNaturalTrunk=new THREE.Mesh(
+      new THREE.CylinderGeometry(1.02,1.48,10.4,20,1,false),
+      specialBarkMat
+    );
+    deepGroveNaturalTrunk.position.set(0,5.20,0);
+    deepGroveNaturalTrunk.castShadow=true;
+    deepGroveNaturalTrunk.receiveShadow=true;
+    deepGroveRoot.add(deepGroveNaturalTrunk);
 
     loadGlbWithFolderFallback(deepGroveAsset,(gltf:any)=>{
       const grove=gltf.scene;
       markMeshes(grove);
       grove.traverse((o:any)=>{
         if(!o.isMesh)return;
+        const labels=[String(o.name||'')].concat((Array.isArray(o.material)?o.material:[o.material]).map((m:any)=>String(m?.name||''))).join(' ').toLowerCase();
+        // When the authored GLB exposes its old trunk as a separate mesh, hide it.
+        // The new tapered trunk above replaces only that central shaft; platforms,
+        // ladder, house and branches remain untouched.
+        if(/trunk|tree[_ -]?stem|\bbole\b/.test(labels)){o.visible=false;return;}
         o.castShadow=true;
         o.receiveShadow=true;
 
