@@ -206,8 +206,8 @@ for(const [kind,amount,salt] of [['wood',25,1],['twigs',30,2],['herbs',30,3]] as
 const GEAR_IDS:GearId[]=["armor","shield","helmet","boots"];
 const SHIELD_ASSETS=['Shield_Round.glb','Shield_Round_2.glb','Shield_Heater.glb','Shield_Heater_2.glb','Shield_Celtic_Golden.glb'];
 const shieldForgeKey=(asset:string)=>asset===SHIELD_ASSETS[0]?'shield':'shield:'+asset;
-type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; lootCounts:Record<string,number>; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; forgeLevels: Record<string,number>; forgeFreeUsed: boolean; gathered:string[]; stock:GatherStock; locationCooldowns:Record<string,number> };
-const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], lootCounts:{default:1,[SHIELD_ASSETS[0]]:1}, equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false,gathered:[],stock:{...EMPTY_GATHER_STOCK},locationCooldowns:{} };
+type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; lootCounts:Record<string,number>; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; forgeLevels: Record<string,number>; forgeFreeUsed: boolean; gathered:string[]; stock:GatherStock; locationCooldowns:Record<string,number>; runeSteel:number };
+const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], lootCounts:{default:1,[SHIELD_ASSETS[0]]:1}, equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false,gathered:[],stock:{...EMPTY_GATHER_STOCK},locationCooldowns:{},runeSteel:0 };
 const loadSave = (): Save => {
   try {
     const previous:any=JSON.parse(localStorage.getItem("yggdrasil") || "{}");
@@ -219,6 +219,7 @@ const loadSave = (): Save => {
     s.stock={...EMPTY_GATHER_STOCK,...(s.stock&&typeof s.stock==='object'?s.stock:{})};
     for(const kind of ['wood','twigs','herbs'] as GatherKind[])s.stock[kind]=Math.max(0,Math.floor(Number(s.stock[kind])||0));
     if(!s.locationCooldowns||typeof s.locationCooldowns!=="object"||Array.isArray(s.locationCooldowns))s.locationCooldowns={};
+    s.runeSteel=Math.max(0,Math.floor(Number(s.runeSteel)||0));
     if (!Array.isArray(s.powers)) s.powers = [];
     if (!Array.isArray(s.done)) s.done = [];
     if (!Array.isArray(s.ownedWeapons)) s.ownedWeapons = ["default"];
@@ -676,7 +677,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .hall-slots{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}.hall-slot{position:relative;width:42px;height:42px;flex:0 0 42px;border-radius:10px;border:1px solid #4b5d4e;background:#090d0a;display:flex;align-items:center;justify-content:center;font-size:20px}.hall-slot small{position:absolute;right:-3px;top:-5px;min-width:17px;padding:1px 3px;border-radius:8px;background:#6b3b18;border:1px solid #ffd76a;color:#fff4cf;font-size:8px;font-weight:900}.hall-slot.on{border-color:#ffd76a;box-shadow:0 0 9px rgba(255,215,106,.42)}.hall-slot:active{transform:scale(.91);background:#1b271e}
 .vial{position:relative;width:13px;height:21px;border:1px solid rgba(235,249,255,.72);border-radius:3px 3px 7px 7px;background:linear-gradient(180deg,rgba(255,255,255,.35) 0 35%,var(--vial) 38% 100%);box-shadow:0 0 8px var(--vial)}
 .craft-entry{width:100%;padding:13px;border-radius:15px;background:linear-gradient(135deg,#5f321b,#1c1712);border:1px solid #d68b38;text-align:left;box-shadow:inset 0 0 18px rgba(255,119,37,.12)}.craft-entry b{display:block;color:#ffc45e;font-size:14px}.craft-entry span{font-size:10px;color:#d7b891}
-.craft-screen{background:radial-gradient(circle at 50% 28%,#62331d,#18120e 58%,#090b09);padding-top:18px}.craft-fire{font-size:48px;filter:drop-shadow(0 0 15px #ff6a21)}.craft-recipe{display:grid;grid-template-columns:1fr 34px 1fr 34px 1fr;align-items:center;gap:5px;margin:16px 0}.craft-slot{aspect-ratio:1;border-radius:12px;border:1px solid #725336;background:rgba(8,10,8,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#8e806c;font-size:9px;padding:4px}.craft-slot b{font-size:24px;color:#d7b06a}.craft-slot.selected{border-color:#ffc45e;color:#ffe2a6;box-shadow:0 0 10px rgba(255,166,48,.28)}.craft-slot.result{border-color:#7fa56b;color:#d8f2c7}.craft-slot small{display:block;margin-top:3px;font-size:7px;line-height:1.2;color:#c8b79d}.craft-op{text-align:center;color:#ffbe55;font-size:20px;font-weight:900}.craft-picker{margin:8px 0 12px;padding:9px;border:1px solid #7c5732;border-radius:12px;background:rgba(12,10,8,.82);display:grid;gap:6px}.craft-picker-title{font-size:10px;color:#f2c777;font-weight:800;text-align:left}.craft-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.craft-choice{display:flex;align-items:center;gap:7px;min-height:42px;padding:7px;border:1px solid #59442d;border-radius:9px;background:#17130f;color:#f1dfbf;text-align:left}.craft-choice b{font-size:10px}.craft-choice small{display:block;color:#aa9a83;font-size:8px}.craft-choice:disabled{opacity:.43}.craft-choice.on{border-color:#f2bd58;background:#2b1d10}.craft-cost{margin:9px 0;padding:8px;border-radius:9px;background:#18130e;border:1px solid #5c452d;color:#d7c4a8;font-size:9px;line-height:1.4}.craft-recipes{margin-top:9px;text-align:left;font-size:8px;line-height:1.45;color:#9f907b}.craft-recipes b{color:#e9bd6b}
+.craft-screen{background:radial-gradient(circle at 50% 28%,#62331d,#18120e 58%,#090b09);padding-top:18px}.craft-fire{font-size:48px;filter:drop-shadow(0 0 15px #ff6a21)}.craft-recipe{display:grid;grid-template-columns:1fr 34px 1fr 34px 1fr;align-items:center;gap:5px;margin:16px 0}.craft-slot{aspect-ratio:1;border-radius:12px;border:1px solid #725336;background:rgba(8,10,8,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#8e806c;font-size:9px;padding:4px}.craft-slot b{font-size:24px;color:#d7b06a}.craft-slot.selected{border-color:#ffc45e;color:#ffe2a6;box-shadow:0 0 10px rgba(255,166,48,.28)}.craft-slot.result{border-color:#7fa56b;color:#d8f2c7}.craft-slot small{display:block;margin-top:3px;font-size:7px;line-height:1.2;color:#c8b79d}.craft-op{text-align:center;color:#ffbe55;font-size:20px;font-weight:900}.craft-picker{margin:8px 0 12px;padding:9px;border:1px solid #7c5732;border-radius:12px;background:rgba(12,10,8,.82);display:grid;gap:6px}.craft-picker-title{font-size:10px;color:#f2c777;font-weight:800;text-align:left}.craft-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.craft-choice{display:flex;align-items:center;gap:7px;min-height:42px;padding:7px;border:1px solid #59442d;border-radius:9px;background:#17130f;color:#f1dfbf;text-align:left}.craft-choice b{font-size:10px}.craft-choice small{display:block;color:#aa9a83;font-size:8px}.craft-choice:disabled{opacity:.43}.craft-choice.on{border-color:#f2bd58;background:#2b1d10}.craft-cost{margin:9px 0;padding:8px;border-radius:9px;background:#18130e;border:1px solid #5c452d;color:#d7c4a8;font-size:9px;line-height:1.4}.craft-recipes{margin-top:9px;text-align:left;font-size:8px;line-height:1.45;color:#9f907b}.craft-recipes b{color:#e9bd6b}.steel-wallet{margin:12px 0;padding:10px 12px;border-radius:12px;border:1px solid #7f8490;background:linear-gradient(135deg,#24292e,#111416);color:#e9edf2;font-size:11px}.steel-wallet b{color:#dce8f6;font-size:14px}.steel-section{margin-top:14px;padding-top:12px;border-top:1px solid #5d4933;text-align:left}.steel-section h3{margin:0 0 5px;color:#e6c27d;font-size:12px}.steel-section p{margin:0 0 9px;color:#9e9383;font-size:8px;line-height:1.4}.steel-list{display:grid;gap:6px}.steel-row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;padding:8px 9px;border-radius:9px;border:1px solid #4e4a43;background:#111311}.steel-row b{display:block;color:#eee2ca;font-size:10px}.steel-row small{display:block;color:#9d968a;font-size:8px;margin-top:2px}.steel-row button{padding:6px 8px;border-radius:7px;border:1px solid #a58a5b;background:#3c3020;color:#fff0ce;font-size:8px}.steel-row button:disabled{opacity:.42}.steel-recipe{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;padding:9px;border-radius:10px;border:1px solid #52605b;background:linear-gradient(135deg,#17201c,#101411)}.steel-recipe.locked{opacity:.48}.steel-recipe b{display:block;color:#dbe9df;font-size:10px}.steel-recipe small{display:block;color:#9fb0a5;font-size:8px;line-height:1.35;margin-top:2px}.steel-recipe button{padding:6px 8px;border-radius:7px;border:1px solid #89a48f;background:#294032;color:#eefbed;font-size:8px}.steel-recipe button:disabled{opacity:.45}
 .forge-screen{background:radial-gradient(circle at 50% 8%,rgba(239,100,27,.32),transparent 34%),linear-gradient(180deg,#21140d,#0b0d0b 72%);padding-top:14px}
 .forge-head{position:relative;flex:0 0 auto;min-height:166px;overflow:hidden;padding:14px 16px;border-radius:18px;border:1px solid #9a5a27;background:linear-gradient(145deg,rgba(82,42,19,.95),rgba(17,15,12,.96));box-shadow:inset 0 0 28px rgba(255,107,31,.13),0 8px 20px rgba(0,0,0,.35);text-align:center}.forge-head:before{content:"ᚲ";position:absolute;right:-3px;top:-22px;font-size:105px;color:rgba(255,146,53,.07);transform:rotate(10deg)}
 .forge-title{color:#ffc66c;font-size:18px;font-weight:900;letter-spacing:.7px;margin-top:1px}.forge-master{color:#d9c5a6;font-size:10px;line-height:1.35;margin:4px auto 8px;max-width:310px}.forge-advice{position:relative;margin:0 auto 9px;padding:7px 10px;max-width:310px;border-radius:10px;background:rgba(255,232,176,.09);border:1px solid rgba(255,199,92,.30);color:#ffe3a6;font-size:9px;line-height:1.35}.forge-wallet{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:11px;background:rgba(4,7,5,.72);border:1px solid rgba(255,196,94,.34);font-size:11px;color:#ffe0a0}.forge-wallet b{color:#ffb34d;font-size:13px}
@@ -6471,6 +6472,19 @@ const CRAFT_RECIPES:CraftRecipe[]=[
 ];
 const craftMaterialName=(id:CraftMaterial)=>id==="wood"?"Древесина":id==="twigs"?"Ветки":"Лечебные травы";
 const craftMaterialIcon=(id:CraftMaterial)=>id==="wood"?"🪵":id==="twigs"?"🌿":"🌱";
+const RUNE_STEEL_YIELD:Partial<Record<HeroWeapon,number>>={
+  knife:1,dagger2:1,sword2:1,axeSmall:1,mace:1,
+  axe:2,spear:2,swordBig:2,axeDouble:2,hammerDouble:2,
+  claymore:3,scythe:3
+};
+type SteelCraftRecipe={id:string;name:string;steel:number;material:CraftMaterial;amount:number;cost:number;requires:number;resultWeapon?:HeroWeapon;resultShield?:string};
+const STEEL_CRAFT_RECIPES:SteelCraftRecipe[]=[
+  {id:"steel-claymore",name:"Клеймор",steel:3,material:"wood",amount:5,cost:40,requires:4,resultWeapon:"claymore"},
+  {id:"steel-scythe",name:"Боевая коса",steel:3,material:"twigs",amount:4,cost:35,requires:4,resultWeapon:"scythe"},
+  {id:"steel-silver-shield",name:"Серебряный щит",steel:2,material:"wood",amount:3,cost:30,requires:3,resultShield:"Shield_Round_2.glb"},
+  {id:"steel-shield-2",name:"Щит II",steel:3,material:"wood",amount:4,cost:40,requires:6,resultShield:"Shield_Heater_2.glb"},
+  {id:"steel-golden-shield",name:"Золотой щит",steel:4,material:"wood",amount:5,cost:55,requires:8,resultShield:"Shield_Celtic_Golden.glb"}
+];
 
 function ForgeWeaponWall({owned,ownedShields,selected,selectedShield,onChoose}:{owned:string[];ownedShields:string[];selected:HeroWeapon;selectedShield:string|null;onChoose:(asset:string,name:string,id:string)=>void}) {
   const canvas=useRef<HTMLCanvasElement>(null);
@@ -6696,6 +6710,40 @@ const [roadT, setRoadT] = useState(0.06);
     haptic("success");
     say("Крафт завершён: "+lootDisplayName(recipe.result)+" создан. Потрачена 1 лишняя копия "+lootDisplayName(recipe.weapon)+".");
     setCraftWeapon('');setCraftMaterial('');setCraftPicker(null);
+  };
+  const guardianProgressCount=MIDGARD_GUARDIAN_ORDER.filter(id=>save.done.includes("guardian:stage:"+id)||save.done.includes("guardian:"+id)).length;
+  const dismantleWeapon=(id:HeroWeapon)=>{
+    const yieldSteel=RUNE_STEEL_YIELD[id]||0;
+    const copies=Math.max(0,Number(save.lootCounts[id])||0);
+    if(id==="default"||id==="swordGolden"||!yieldSteel){say("Это оружие нельзя разбирать.");return;}
+    if(copies<2){say("Разбирать можно только лишнюю копию. Основной экземпляр должен остаться у героя.");return;}
+    setSave(state=>{
+      const count=Math.max(0,Number(state.lootCounts[id])||0);
+      if(count<2)return state;
+      return {...state,runeSteel:state.runeSteel+yieldSteel,lootCounts:{...state.lootCounts,[id]:count-1}};
+    });
+    haptic("success");say(lootDisplayName(id)+" разобран: +"+yieldSteel+" Рунической стали.");
+  };
+  const craftRuneSteelItem=(recipe:SteelCraftRecipe)=>{
+    if(guardianProgressCount<recipe.requires){say("Этот чертёж откроется после "+recipe.requires+" испытаний Мидгарда.");return;}
+    if(save.runeSteel<recipe.steel){say("Не хватает Рунической стали. Нужно: "+recipe.steel);return;}
+    if(save.stock[recipe.material]<recipe.amount){say("Не хватает материала: нужно "+recipe.amount+" · "+craftMaterialName(recipe.material)+".");return;}
+    if(save.sparks<recipe.cost){say("Не хватает Капель силы. Нужно: "+recipe.cost);return;}
+    setSave(state=>{
+      if(state.runeSteel<recipe.steel||state.stock[recipe.material]<recipe.amount||state.sparks<recipe.cost)return state;
+      const nextCounts={...state.lootCounts};
+      if(recipe.resultWeapon)nextCounts[recipe.resultWeapon]=(Number(nextCounts[recipe.resultWeapon])||0)+1;
+      if(recipe.resultShield)nextCounts[recipe.resultShield]=(Number(nextCounts[recipe.resultShield])||0)+1;
+      return {...state,
+        runeSteel:state.runeSteel-recipe.steel,
+        sparks:state.sparks-recipe.cost,
+        stock:{...state.stock,[recipe.material]:state.stock[recipe.material]-recipe.amount},
+        ownedWeapons:recipe.resultWeapon?[...new Set([...state.ownedWeapons,recipe.resultWeapon])]:state.ownedWeapons,
+        ownedShields:recipe.resultShield?[...new Set([...state.ownedShields,recipe.resultShield])]:state.ownedShields,
+        lootCounts:nextCounts
+      };
+    });
+    haptic("success");say("Создано: "+recipe.name+". Руническая сталь и материалы списаны.");
   };
   const rnd = (n: number) => Math.floor(Math.random() * n);
   const trialIdx = (id: string) => save.trials.filter(t => t.startsWith(id + ":")).length;
@@ -7659,6 +7707,33 @@ const [roadT, setRoadT] = useState(0.06);
               <br/>Результат: <b>{lootDisplayName(selectedCraftRecipe.result)}</b>.
             </div>:<div className="craft-cost">Выбери оружие и материал. Если сочетание подходит, здесь появится рецепт.</div>}
             <button className="btn gold" disabled={!craftReady} onClick={performCraft}>{selectedCraftRecipe?"Создать: "+lootDisplayName(selectedCraftRecipe.result):"Выбери рецепт"}</button>
+
+            <div className="steel-wallet">⚙️ Руническая сталь: <b>{save.runeSteel}</b></div>
+
+            <div className="steel-section">
+              <h3>⚒ Разбор лишнего оружия</h3>
+              <p>Последний экземпляр всегда остаётся на складе. Разобрать можно только дубликат; Золотой меч разбору не подлежит.</p>
+              <div className="steel-list">
+                {save.ownedWeapons.filter(id=>id!=="default"&&id!=="swordGolden"&&(Number(save.lootCounts[id])||0)>1&&(RUNE_STEEL_YIELD[id]||0)>0).length===0
+                  ? <div className="dim">Сейчас нет лишнего оружия для разбора.</div>
+                  : save.ownedWeapons.filter(id=>id!=="default"&&id!=="swordGolden"&&(Number(save.lootCounts[id])||0)>1&&(RUNE_STEEL_YIELD[id]||0)>0).map(id=>{
+                      const copies=Number(save.lootCounts[id])||0,yieldSteel=RUNE_STEEL_YIELD[id]||0;
+                      return <div key={id} className="steel-row"><span><b>{weaponDisplayIcon(id)} {lootDisplayName(id)}</b><small>лишних копий: {copies-1} · выход: {yieldSteel} стали</small></span><button onClick={()=>dismantleWeapon(id)}>Разобрать +{yieldSteel}</button></div>;
+                    })}
+              </div>
+            </div>
+
+            <div className="steel-section">
+              <h3>⚙ Крафт из Рунической стали</h3>
+              <p>Редкие предметы создаются без обязательной копии конкретного оружия. Чертежи открываются по мере прохождения Мидгарда.</p>
+              <div className="steel-list">
+                {STEEL_CRAFT_RECIPES.map(recipe=>{
+                  const locked=guardianProgressCount<recipe.requires;
+                  const ready=!locked&&save.runeSteel>=recipe.steel&&save.stock[recipe.material]>=recipe.amount&&save.sparks>=recipe.cost;
+                  return <div key={recipe.id} className={"steel-recipe"+(locked?" locked":"")}><span><b>{recipe.resultShield?"🛡️":"⚔️"} {recipe.name}</b><small>{locked?"Откроется после "+recipe.requires+" испытаний Мидгарда":recipe.steel+" стали + "+recipe.amount+" × "+craftMaterialName(recipe.material)+" + "+recipe.cost+" Капель силы"}</small></span><button disabled={!ready} onClick={()=>craftRuneSteelItem(recipe)}>{locked?"Закрыто":"Создать"}</button></div>;
+                })}
+              </div>
+            </div>
 
             <div className="dim" style={{margin:"10px 0 5px"}}>
               Дубликаты трофеев для крафта: {Object.values(save.lootCounts).filter(n=>n>1).reduce((sum,n)=>sum+(n-1),0)} шт.
