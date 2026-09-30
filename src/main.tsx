@@ -6413,6 +6413,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const repeatDrops=2+guardianSpec.power;
         return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Испытание пройдено. Повторный бой даёт {repeatDrops} Капель силы; редкий трофей повторно не выпадает.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginGuardianRematch(id)}>⚔ Сразиться ещё раз</button></div>;
       }
+      if(id==="deepGrove")return <div className="mid3d-ui mid3d-interact"><b>Глубокая роща</b><span>В тени растут редкие лечебные травы. Роща восстанавливает запас раз в 15 минут.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>Собрать редкие травы</button></div>;
+      if(id==="hunterCamp")return <div className="mid3d-ui mid3d-interact"><b>Забытая стоянка</b><span>В старых ящиках остаются пригодные ветки и древесина. Запасы обновляются раз в 15 минут.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>Поискать припасы</button></div>;
       const home=id==="heroHome"||id==="heroHomeExit";
       const villageGate=id==="gate"||id==="gateRear";
       const selectedGateOpen=id==="gateRear"?rearGateOpen:villageGateOpen;
@@ -7011,13 +7013,20 @@ const [roadT, setRoadT] = useState(0.06);
       if(id==='herbalist'){
         if(save.done.includes('gather:herbalist')){say('Сигрид: «Благодарю за травы. Эликсир северного мха уже у тебя в запасе».');return;}
         if(save.stock.herbs<4){say(`Сигрид: «Найди четыре пучка лечебных трав у южной дороги. Сейчас у тебя ${save.stock.herbs} из 4».`);return;}
-        setSave(s=>s.done.includes('gather:herbalist')?s:{...s,stock:{...s.stock,herbs:s.stock.herbs-4},potions:[...s.potions,'northernMoss'],sparks:s.sparks+6,done:[...s.done,'gather:herbalist']});
-        haptic('success');say('Сигрид получила травы и вручила тебе Эликсир северного мха и 6 Капель силы.');return;
+        setSave(state=>state.done.includes('gather:herbalist')||state.stock.herbs<4?state:{...state,
+          stock:{...state.stock,herbs:Math.max(0,state.stock.herbs-4)},
+          potions:[...state.potions,'northernMoss'],sparks:state.sparks+6,
+          done:[...new Set([...state.done,'gather:herbalist'])]
+        });
+        haptic('success');say('Сигрид приняла 4 лечебные травы (−4) и вручила Эликсир северного мха и 6 Капель силы.');return;
       }
       if(id==='carpenter'){
         if(!save.done.includes('gather:carpenter')&&save.stock.wood>=3&&save.stock.twigs>=3){
-          setSave(s=>s.done.includes('gather:carpenter')?s:{...s,stock:{...s.stock,wood:s.stock.wood-3,twigs:s.stock.twigs-3},sparks:s.sparks+8,done:[...s.done,'gather:carpenter']});
-          haptic('success');say('✅ Задание Бьёрна выполнено! Древесина и ветки сданы, награда +8 Капель силы получена. Теперь подойди к Северному мосту и нажми «Отремонтировать мост».');return;
+          setSave(state=>state.done.includes('gather:carpenter')||state.stock.wood<3||state.stock.twigs<3?state:{...state,
+            stock:{...state.stock,wood:Math.max(0,state.stock.wood-3),twigs:Math.max(0,state.stock.twigs-3)},
+            sparks:state.sparks+8,done:[...new Set([...state.done,'gather:carpenter'])]
+          });
+          haptic('success');say('✅ Бьёрн принял 3 древесины (−3) и 3 ветки (−3). +8 Капель силы. Теперь можно ремонтировать Северный мост.');return;
         }
         if(save.done.includes('bridge:north:repaired')){say('✅ Северный мост уже восстановлен. Перейди на другой берег к золотому сундуку.');return;}
         if(save.done.includes('gather:carpenter')||(save.done.includes('chest:norns')&&save.done.includes('bridge:boards')&&save.done.includes('bridge:fittings'))){
@@ -7074,20 +7083,22 @@ const [roadT, setRoadT] = useState(0.06);
       }
       if (id === "oldfarm") {
         if(save.done.includes('chest:norns')&&!save.done.includes('bridge:boards')){
-          setSave(s=>({...s,done:[...new Set([...s.done,'bridge:boards'])]}));
-          haptic('success');say('✅ В амбаре Старого хутора найдены доски. Вместе с креплениями Торвальда они позволяют чинить Северный мост у переправы.');return;
+          setSave(state=>({...state,done:[...new Set([...state.done,'bridge:boards'])]}));
+          haptic('success');say('✅ В амбаре Старого хутора найдены доски для Северного моста.');return;
         }
-        if (save.done.includes("forest:past")) {
-          if (!save.done.includes("forest:past:reward")) {
-            setSave(s => ({ ...s, sparks: s.sparks + 20, done: [...new Set([...s.done, "forest:past:reward"])] }));
-            haptic("success");
-            say("След из видения привёл тебя сюда. Под старой телегой найден тайник: +20 ✨");
-          } else {
-            say("Старый хутор уже отдал тебе свой секрет. В пыли остался лишь след колеса.");
-          }
-        } else {
-          say("Старый хутор давно пуст. В доме ещё виден очаг, а возле амбара — следы телеги. Здесь когда-то жили люди.");
+        if(save.done.includes("forest:past")&&!save.done.includes("forest:past:reward")){
+          setSave(state=>({...state,sparks:state.sparks+20,done:[...new Set([...state.done,"forest:past:reward"])]}));
+          haptic("success");say("Под старой телегой найден тайник: +20 Капель силы.");return;
         }
+        if(save.stock.herbs>=4){
+          setSave(state=>state.stock.herbs<4?state:{...state,
+            stock:{...state.stock,herbs:Math.max(0,state.stock.herbs-4)},
+            potions:[...state.potions,'northernMoss'],
+            lootCounts:lootCountAdd(state.lootCounts,['northernMoss'])
+          }));
+          haptic("success");say("В старой сушильне приготовлен Эликсир северного мха. Потрачено 4 лечебные травы.");return;
+        }
+        say(`В Старом хуторе сохранилась сушильня. Здесь можно приготовить Эликсир северного мха за 4 лечебные травы. Сейчас трав: ${save.stock.herbs}/4.`);
         return;
       }
       if (id === "forestCache") {
@@ -7118,19 +7129,35 @@ const [roadT, setRoadT] = useState(0.06);
         return;
       }
       if (id === "hunterCamp") {
-        if (!save.done.includes("forest:camp")) {
-          setSave(s => ({ ...s, sparks: s.sparks + 14, done: [...new Set([...s.done, "forest:camp"])] }));
-          haptic("success");
-          say("Старая стоянка охотника. У костра лежит обломок ножа и свежие следы — кто-то бывает здесь до сих пор. +14 ✨");
-        } else say("Костёр давно погас, но следы вокруг стоянки всё ещё ведут глубже в лес.");
+        const now=Date.now(),readyAt=save.locationCooldowns.hunterCamp||0;
+        if(now<readyAt){
+          const mins=Math.max(1,Math.ceil((readyAt-now)/60000));
+          say(`Стоянка уже осмотрена. Новые пригодные припасы можно поискать примерно через ${mins} мин.`);return;
+        }
+        setSave(state=>({...state,
+          sparks:state.sparks+(state.done.includes("forest:camp")?0:14),
+          stock:{...state.stock,wood:state.stock.wood+1,twigs:state.stock.twigs+2},
+          done:[...new Set([...state.done,"forest:camp"])],
+          locationCooldowns:{...state.locationCooldowns,hunterCamp:now+15*60*1000}
+        }));
+        haptic("success");
+        say((save.done.includes("forest:camp")?"":"Забытая стоянка исследована: +14 Капель силы. ")+"Найдены припасы: +1 древесина и +2 ветки.");
         return;
       }
       if (id === "deepGrove") {
-        if (!save.done.includes("forest:grove")) {
-          setSave(s => ({ ...s, sparks: s.sparks + 17, done: [...new Set([...s.done, "forest:grove"])] }));
-          haptic("success");
-          say("В глубокой роще почти не слышно ветра. На камнях проступают старые знаки. Кажется, лес что-то помнит. +17 ✨");
-        } else say("Роща молчит. Но теперь ты знаешь дорогу сюда — и можешь вернуться позже.");
+        const now=Date.now(),readyAt=save.locationCooldowns.deepGrove||0;
+        if(now<readyAt){
+          const mins=Math.max(1,Math.ceil((readyAt-now)/60000));
+          say(`Редкие травы ещё восстанавливаются. Вернись примерно через ${mins} мин.`);return;
+        }
+        setSave(state=>({...state,
+          sparks:state.sparks+(state.done.includes("forest:grove")?0:17),
+          stock:{...state.stock,herbs:state.stock.herbs+2},
+          done:[...new Set([...state.done,"forest:grove"])],
+          locationCooldowns:{...state.locationCooldowns,deepGrove:now+15*60*1000}
+        }));
+        haptic("success");
+        say((save.done.includes("forest:grove")?"":"Глубокая роща открыта: +17 Капель силы. ")+"Собраны редкие лечебные травы: +2.");
         return;
       }
       if (id === "fallenAsh") {
@@ -7565,11 +7592,11 @@ const [roadT, setRoadT] = useState(0.06);
         <div className="house-dialog-panel" role="dialog" aria-modal="true" aria-label="Разговор у дома">
           <h3>{houseDialogId==="goldChest"?"Золотой сундук":houseDialogId==="northBridge"?"Северный мост":houseDialogId==="oldfarm"?"Старый хутор":houseDialogId==="carpenter"?"Плотник Бьёрн":houseDialogId==="herbalist"?"Травница Сигрид":houseDialogId==="craftsman"?"Ремесленник Торвальд":"Разговор у дома"}</h3><p>{houseDialog}</p>
           {houseDialogId==="carpenter"&&<div className="house-quest-status"><b>Задания Бьёрна</b>
-            <span>{save.done.includes('gather:carpenter')?'✅ Древесина и ветки сданы. Награда: 8 Капель силы получена.':`Собрать древесину ${save.stock.wood}/3 и ветки ${save.stock.twigs}/3 — награда 8 Капель силы.`}</span>
+            <span>{save.done.includes('gather:carpenter')?'✅ Сдано: 3 древесины и 3 ветки. Материалы списаны из запаса. Награда: 8 Капель силы.':`Собрать древесину ${save.stock.wood}/3 и ветки ${save.stock.twigs}/3 — при сдаче они будут вычтены из запаса.`}</span>
             <span>{save.done.includes('bridge:north:repaired')?'✅ Северный мост восстановлен. Путь к золотому сундуку открыт.':save.done.includes('gather:carpenter')?'✅ Ремонт доступен у Северного моста.':'○ Северный мост ждёт выполнения задания Бьёрна.'}</span>
           </div>}
           {houseDialogId==="herbalist"&&<div className="house-quest-status"><b>Задание Сигрид</b>
-            <span>{save.done.includes('gather:herbalist')?'✅ Травы сданы. Награда: Эликсир северного мха и 6 Капель силы получены.':`Собрать лечебные травы ${save.stock.herbs}/4 — награда эликсир и 6 Капель силы.`}</span>
+            <span>{save.done.includes('gather:herbalist')?'✅ Сдано: 4 лечебные травы. Материалы списаны из запаса. Награда: эликсир и 6 Капель силы.':`Собрать лечебные травы ${save.stock.herbs}/4 — при сдаче 4 травы будут вычтены из запаса.`}</span>
           </div>}
           {houseDialogId==="craftsman"&&<div className="house-quest-status"><b>Помощь Торвальда</b>
             <span>{save.done.includes('bridge:fittings')?'✅ Железные крепления для моста получены.':'○ Крепления можно получить после открытия красного сундука Норн.'}</span>
