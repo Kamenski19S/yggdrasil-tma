@@ -258,6 +258,14 @@ const loadSave = (): Save => {
       s.heroSkin = hd?.gender === "f" ? "valkyrie" : "viking";
     }
     if (!Object.prototype.hasOwnProperty.call(WEAPON_POWER,s.heroWeapon)|| (s.heroWeapon!=="default"&&!s.ownedWeapons.includes(s.heroWeapon))) s.heroWeapon = "default";
+    // Artifacts represent worlds truly completed in the current progression.
+    // Old prototype quiz runs could leave stale realm IDs in saves, so rebuild
+    // the list from explicit completion markers instead of trusting that array.
+    if(s.done?.includes("guardian:stage:hoddmimir")&&!s.done.includes("world:complete:midgard")){
+      s.done=[...new Set([...s.done,"world:complete:midgard"])];
+    }
+    const confirmedArtifacts=Object.keys(ARTIFACTS).filter(id=>s.done?.includes("world:complete:"+id));
+    s.artifacts=confirmedArtifacts;
     if (!s.watch) s.watch = Date.now();
     return s as Save;
   } catch {
@@ -650,7 +658,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .hall-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.hall-section{min-height:126px;padding:12px;border-radius:15px;text-align:left;background:linear-gradient(145deg,#18221b,#0d130f);border:1px solid #2b3c30;box-shadow:0 7px 16px rgba(0,0,0,.28)}
 .inventory-hall{grid-column:1/-1}.inventory-section h3{font-size:14px;margin:4px 0 9px;color:#e9c16c}.inventory-list{display:grid;gap:7px}.inventory-item{display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:8px;padding:7px 8px;border:1px solid rgba(184,150,94,.34);border-radius:10px;background:rgba(10,17,14,.82);color:#f5ead4}.inventory-item.empty{opacity:.48}.inventory-symbol{font-size:23px;text-align:center;color:#e9ca74}.inventory-detail b{display:block;font-size:12px}.inventory-detail small{display:block;font-size:10px;color:#aabaad;line-height:1.3;margin-top:2px}.inventory-item button{border-radius:8px;border:1px solid #bda272;background:#4b3725;color:#fff3d8;padding:6px 8px;font-size:11px;white-space:nowrap}.inventory-item button:disabled{opacity:.45}.inventory-item button.active{background:#426345;border-color:#a6cf92}
 .hall-section:active{transform:scale(.98)}.hall-section h3{font-size:13px;color:#ffd76a;margin:4px 0}.hall-section p{font-size:9px;line-height:1.35;color:#91a598}.hall-section .hall-icon{font-size:29px;display:block}.hall-count{display:inline-block;margin-top:7px;padding:3px 6px;border-radius:7px;background:#0a0e0b;border:1px solid #34473a;font-size:9px;color:#d6e3d8}
-.hall-slots{display:flex;gap:4px;margin-top:10px}.hall-slot{width:42px;height:42px;flex:0 0 42px;border-radius:10px;border:1px solid #4b5d4e;background:#090d0a;display:flex;align-items:center;justify-content:center;font-size:20px}.hall-slot.on{border-color:#ffd76a;box-shadow:0 0 9px rgba(255,215,106,.42)}.hall-slot:active{transform:scale(.91);background:#1b271e}
+.hall-slots{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}.hall-slot{position:relative;width:42px;height:42px;flex:0 0 42px;border-radius:10px;border:1px solid #4b5d4e;background:#090d0a;display:flex;align-items:center;justify-content:center;font-size:20px}.hall-slot small{position:absolute;right:-3px;top:-5px;min-width:17px;padding:1px 3px;border-radius:8px;background:#6b3b18;border:1px solid #ffd76a;color:#fff4cf;font-size:8px;font-weight:900}.hall-slot.on{border-color:#ffd76a;box-shadow:0 0 9px rgba(255,215,106,.42)}.hall-slot:active{transform:scale(.91);background:#1b271e}
 .vial{position:relative;width:13px;height:21px;border:1px solid rgba(235,249,255,.72);border-radius:3px 3px 7px 7px;background:linear-gradient(180deg,rgba(255,255,255,.35) 0 35%,var(--vial) 38% 100%);box-shadow:0 0 8px var(--vial)}
 .craft-entry{width:100%;padding:13px;border-radius:15px;background:linear-gradient(135deg,#5f321b,#1c1712);border:1px solid #d68b38;text-align:left;box-shadow:inset 0 0 18px rgba(255,119,37,.12)}.craft-entry b{display:block;color:#ffc45e;font-size:14px}.craft-entry span{font-size:10px;color:#d7b891}
 .craft-screen{background:radial-gradient(circle at 50% 28%,#62331d,#18120e 58%,#090b09);padding-top:18px}.craft-fire{font-size:48px;filter:drop-shadow(0 0 15px #ff6a21)}.craft-recipe{display:grid;grid-template-columns:1fr 34px 1fr 34px 1fr;align-items:center;gap:5px;margin:16px 0}.craft-slot{aspect-ratio:1;border-radius:12px;border:1px solid #725336;background:rgba(8,10,8,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#8e806c;font-size:9px}.craft-slot b{font-size:24px;color:#d7b06a}.craft-op{text-align:center;color:#ffbe55;font-size:20px;font-weight:900}
@@ -1377,6 +1385,7 @@ const lootDisplayName=(id:string)=>{
   const shieldNames:Record<string,string>={'Shield_Round.glb':'Круглый щит','Shield_Round_2.glb':'Серебряный щит','Shield_Heater.glb':'Щит','Shield_Heater_2.glb':'Щит II','Shield_Celtic_Golden.glb':'Золотой щит'};
   return weaponNames[id]||shieldNames[id]||RUNE_CATALOG.find(r=>r.id===id)?.name||POTION_CATALOG.find(p=>p.id===id)?.name||id;
 };
+const weaponDisplayIcon=(id:string)=>id==='axe'||id==='axeSmall'||id==='axeDouble'?'🪓':id==='mace'||id==='hammerDouble'?'🔨':id==='spear'?'🔱':id==='knife'||id==='dagger2'?'🗡️':'⚔️';
 type BanditSpec={id:string;name:string;x:number;z:number;hp:number;damage:number;sparks:number;reward:string;item?:string;kind?:'weapon'|'potion'|'rune';quantity?:number};
 const BANDIT_SPECS:BanditSpec[]=[
   {id:'forest',name:'Разбойник у моста',x:-46,z:49,hp:3,damage:9,sparks:12,reward:'Разбойничий кинжал',kind:'weapon',item:'knife'},
@@ -1391,7 +1400,7 @@ const BANDIT_SPECS:BanditSpec[]=[
 ];
 type WhisperPhase="closed"|"question"|"fight"|"reward"|"defeat";
 
-function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, northBridgeReady, goldChestOpened, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, defeatedBandits, onBanditReward, onBanditKnockout, potions, runes, equippedRune, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; defeatedBandits:string[]; onBanditReward:(id:string)=>void; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
+function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, northBridgeReady, goldChestOpened, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, defeatedBandits, onBanditReward, onBanditKnockout, potions, runes, equippedRune, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; defeatedBandits:string[]; onBanditReward:(id:string)=>void; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string,currentHp?:number)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -1408,6 +1417,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   const [heroLoadFailed, setHeroLoadFailed] = useState(false);
   const [banditHeroHp,setBanditHeroHp]=useState(fieldHp===null?whisperStats.maxHp:Math.min(whisperStats.maxHp,fieldHp));
   const [inventoryOpen,setInventoryOpen]=useState(false);
+  const [battlePotionOpen,setBattlePotionOpen]=useState(false);
   const inventoryPauseRef=useRef(false);
   const [banditOpponent,setBanditOpponent]=useState<{id:string;name:string;hp:number;maxHp:number}|null>(null);
   const [banditVictory,setBanditVictory]=useState<BanditSpec|null>(null);
@@ -1465,13 +1475,14 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     banditHpRef.current=next;setBanditHeroHp(next);onFieldHpChange(next);
   };
   const useMidgardPotion=(id:string)=>{
-    if(!onUsePotion(id))return;
+    if(!onUsePotion(id,banditHpRef.current))return;
     if(id==='lifeElixir'||id==='northernMoss'||id==='hoddmimirElixir'){
       const next=id==='northernMoss'
         ? Math.min(whisperStats.maxHp,banditHpRef.current+30)
         : whisperStats.maxHp;
       banditHpRef.current=next;setBanditHeroHp(next);
     }
+    if(id==='frostDraught'||id==='hoddmimirElixir')frostGuardRef.current=2;
   };
   const shieldActionRef = useRef<(()=>void)|null>(null);
   const shieldRaiseUntilRef=useRef(0);
@@ -1511,7 +1522,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     setWhisperAnswer(null);setWhisperReward("");setWhisperFx(null);
     setWhisperHeroHp(whisperStats.maxHp);setWhisperGuardHp(spec.hp);
     setWhisperHeroEnergy(whisperStats.power);setWhisperGuardEnergy(spec.power);
-    setWhisperShield(false);setWhisperBusy(false);setWhisperLog(spec.intro);
+    setWhisperShield(false);setWhisperBusy(false);setBattlePotionOpen(false);setWhisperLog(spec.intro);
     guardDefeatedRef.current=false;whisperBattleStartedRef.current=false;whisperReplayRef.current=false;setWhisperReplay(false);
     setWhisperPhaseSafe("question");
   };
@@ -1524,7 +1535,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     setWhisperAnswer(null);setWhisperReward("");setWhisperFx(null);
     setWhisperHeroHp(whisperStats.maxHp);setWhisperGuardHp(spec.hp);
     setWhisperHeroEnergy(whisperStats.power);setWhisperGuardEnergy(spec.power);
-    setWhisperShield(false);setWhisperBusy(false);
+    setWhisperShield(false);setWhisperBusy(false);setBattlePotionOpen(false);
     setWhisperLog(spec.name+" снова принимает вызов. Редкий трофей повторно не выпадает, но победа снова приносит Капли силы.");
     guardDefeatedRef.current=false;whisperBattleStartedRef.current=true;whisperReplayRef.current=true;setWhisperReplay(true);
     guardIdleActionRef.current?.();
@@ -1573,6 +1584,20 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         else setWhisperLog(shielded?"Щит принял удар. Получено урона: "+damage+".":spec.name+" отвечает ударом: −"+damage+" здоровья.");
       },390));
     },spec.tempo));
+  };
+  const useWhisperBattlePotion=(id:string)=>{
+    if(whisperBusy||whisperPhaseRef.current!=="fight")return;
+    if(!onUsePotion(id,whisperHeroHp))return;
+    let nextHp=whisperHeroHp;
+    if(id==='lifeElixir'||id==='hoddmimirElixir')nextHp=whisperStats.maxHp;
+    else if(id==='northernMoss')nextHp=Math.min(whisperStats.maxHp,whisperHeroHp+30);
+    if(nextHp!==whisperHeroHp)setWhisperHeroHp(nextHp);
+    if(id==='frostDraught'||id==='hoddmimirElixir')frostGuardRef.current=2;
+    const item=POTION_CATALOG.find(p=>p.id===id);
+    setBattlePotionOpen(false);
+    setWhisperBusy(true);
+    setWhisperLog((item?.name||"Эликсир")+" использован. Это действие занимает ход — страж отвечает.");
+    whisperGuardTurn(false);
   };
   const whisperFightAction=(kind:"hit"|"rune"|"shield"|"restore")=>{
     const spec=currentGuardian();
@@ -6292,8 +6317,17 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         <button className="whisper-combat-action" disabled={whisperBusy} onClick={()=>whisperFightAction("hit")}><span className="whisper-combat-icon" aria-hidden="true">🪓</span><b>Удар оружием</b><small>сила оружия</small></button>
         <button className="whisper-combat-action shield" disabled={whisperBusy} onClick={()=>whisperFightAction("shield")}><span className="whisper-combat-icon" aria-hidden="true">🛡️</span><b>Поднять щит</b><small>защита</small></button>
         <button className="whisper-combat-action rune" disabled={whisperBusy} onClick={()=>whisperFightAction("rune")}><span className="whisper-combat-icon" aria-hidden="true">{RUNE_CATALOG.find(r=>r.id===equippedRune)?.symbol||"ᚲ"}</span><b>Руна {RUNE_CATALOG.find(r=>r.id===equippedRune)?.name||"Кеназ"}</b><small>рунический удар</small></button>
-        <button className="whisper-combat-action rest" disabled={whisperBusy} onClick={()=>whisperFightAction("restore")}><span className="whisper-combat-icon" aria-hidden="true">🌿</span><b>Перевести дух</b><small>+14 здоровья</small></button>
+        <button className="whisper-combat-action rest" disabled={whisperBusy||potions.length===0} onClick={()=>setBattlePotionOpen(true)}><span className="whisper-combat-icon" aria-hidden="true">🧪</span><b>Эликсир</b><small>{potions.length?potions.length+" в запасе":"нет"}</small></button>
       </div>
+    </div>}
+    {battlePotionOpen&&whisperPhase==="fight"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
+      <h3>🧪 Боевой пояс</h3><p>Выбери эликсир. Открытие пояса не тратит ход, но применение эликсира считается действием — после него страж атакует.</p>
+      <div className="inventory-list">{POTION_CATALOG.map(item=>{
+        const count=potions.filter(id=>id===item.id).length;
+        const unusable=item.id==='frostDraught'?frostGuardRef.current>=2:item.id==='hoddmimirElixir'?whisperHeroHp>=whisperStats.maxHp&&frostGuardRef.current>=2:whisperHeroHp>=whisperStats.maxHp;
+        return <div key={item.id} className={'inventory-item'+(count?'':' empty')}><span className="inventory-symbol">{item.symbol}</span><span className="inventory-detail"><b>{item.name} · {count} шт.</b><small>{item.effect}</small></span><button disabled={!count||unusable} onClick={()=>useWhisperBattlePotion(item.id)}>{unusable&&count?'Не требуется':'Использовать'}</button></div>;
+      })}</div>
+      <button className="whisper-close" onClick={()=>setBattlePotionOpen(false)}>Вернуться к бою</button>
     </div>}
     {whisperPhase==="reward"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
       <div className="whisper-reward-icon">{whisperReplay?activeGuardian.sym:rewardIcon==="🔥"?<SparkDrop/>:rewardIcon}</div><div className="whisper-reward-rarity">{whisperReplay?"Повторное испытание":"Награда Мидгарда"}</div>
@@ -6569,10 +6603,9 @@ const [roadT, setRoadT] = useState(0.06);
   const trialIdx = (id: string) => save.trials.filter(t => t.startsWith(id + ":")).length;
   const openGate = (r: Realm) => { if (save.artifacts.includes(r.id)) { say("Мир покорён. Артефакт хранится в листе героя."); return; } haptic(); setScreen({ t: "trial", id: r.id }); };
   const finishTrial = (id: string, idx: number, add: number) => {
-    const art = idx === 2;
-    setSave(s => ({ ...s, sparks: s.sparks + add + (art ? 30 : 0), trials: [...s.trials, id + ":" + idx], artifacts: art ? [...s.artifacts, id] : s.artifacts,
-      ownedWeapons:art&&id==='midgard'?[...new Set([...s.ownedWeapons,'knife','mace','axe','spear'])]:s.ownedWeapons }));
-    if (art) { haptic("success"); say("Мир пройден! Артефакт: " + ARTIFACTS[id]+(id==='midgard'?'. Все оружие Мидгарда теперь доступно в Чертоге.':'')); }
+    const finale = idx === 2;
+    setSave(s => ({ ...s, sparks: s.sparks + add + (finale ? 30 : 0), trials: [...s.trials, id + ":" + idx] }));
+    if (finale) { haptic("success"); say("Серия испытаний завершена. Артефакт мира выдаётся только после полного прохождения его игровой локации."); }
   };
   const finishWhisperCorrect = () => {
     setSave(s=>s.done.includes("whisper:wisdom")?s:{...s,sparks:s.sparks+8,done:[...new Set([...s.done,"whisper:wisdom","guardian:stage:whisperStone"])],
@@ -6634,10 +6667,10 @@ const [roadT, setRoadT] = useState(0.06);
     });
     return 'Малый молот, эликсир северного мха и осколок Кеназ';
   };
-  const useInventoryPotion=(id:string)=>{
+  const useInventoryPotion=(id:string,currentHpOverride?:number)=>{
     const item=POTION_CATALOG.find(p=>p.id===id);
     if(!item||!save.potions.includes(id)){say('Этого эликсира пока нет в запасе.');return false;}
-    const maxHp=(heroDef?.hp||100)+gearHp(),currentHp=Math.min(maxHp,save.fieldHp??maxHp);
+    const maxHp=(heroDef?.hp||100)+gearHp(),currentHp=Math.min(maxHp,currentHpOverride??save.fieldHp??maxHp);
     if(id==='hoddmimirElixir'&&currentHp>=maxHp&&save.frostGuard>=2){say('Здоровье и защита Ходдмимира уже восстановлены.');return false;}
     if(id!=='frostDraught'&&id!=='hoddmimirElixir'&&currentHp>=maxHp){say('Здоровье уже восстановлено.');return false;}
     if(id==='frostDraught'&&save.frostGuard>=2){say('Ледяная защита уже действует на два удара.');return false;}
@@ -6853,8 +6886,11 @@ const [roadT, setRoadT] = useState(0.06);
             return !s.done.includes("guardian:"+prev);
           });
           if(missing)return s;
+          const isMidgardComplete=locationId==="hoddmimir";
           return {...s,
-          sparks:s.sparks+reward,done:[...new Set([...s.done,key,"guardian:stage:"+locationId])],
+          sparks:s.sparks+reward,
+          done:[...new Set([...s.done,key,"guardian:stage:"+locationId,...(isMidgardComplete?["world:complete:midgard"]:[])])],
+          artifacts:isMidgardComplete?[...new Set([...s.artifacts,"midgard"])]:s.artifacts,
           ownedWeapons:[...new Set([...s.ownedWeapons,...(loot.weapons||[])])],
           ownedShields:[...new Set([...s.ownedShields,...(loot.shields||[])])],
           runes:[...new Set([...s.runes,...(loot.runes||[])])],
@@ -7416,10 +7452,13 @@ const [roadT, setRoadT] = useState(0.06);
           </div>
           <div className="hall-grid">
             <div className="hall-section">
-              <span className="hall-icon">⚔️</span><h3>Оружие</h3>
-              <p>{save.heroWeapon==='default'?(save.heroSkin==='valkyrie'?'Меч валькирии':'Секира викинга'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} сейчас в руке. Нажми на найденное оружие, чтобы сменить его.</p>
-              <div className="hall-slots">{(['default','knife','axe','mace','spear'] as HeroWeapon[]).filter(id=>id==='default'||save.ownedWeapons.includes(id)).map(id=><button key={id} title={id==='default'?'Основное оружие':FORGE_WEAPON_MODELS.find(item=>item[2]===id)?.[1]} className={'hall-slot'+(save.heroWeapon===id?' on':'')} onClick={()=>{setSave(s=>({...s,heroWeapon:id}));haptic();}}>{id==='default'?'⚔':id==='axe'?'🪓':id==='spear'?'🔱':id==='mace'?'🔨':'🗡'}</button>)}</div>
-              <span className="hall-count">{save.ownedWeapons.length} предмет{save.ownedWeapons.length===1?"":"а"}</span>
+              <span className="hall-icon">⚔️</span><h3>Оружейный склад</h3>
+              <p>{save.heroWeapon==='default'?(save.heroSkin==='valkyrie'?'Меч валькирии':'Секира викинга'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} сейчас в руке. Все найденные копии остаются на складе Чертога и позже используются для крафта.</p>
+              <div className="hall-slots">{FORGE_WEAPON_MODELS.filter(([, ,id])=>id&&save.ownedWeapons.includes(id as HeroWeapon)).map(([,name,id])=>{
+                const weaponId=id as HeroWeapon,count=Math.max(1,Number(save.lootCounts[weaponId])||1);
+                return <button key={weaponId} title={name+(count>1?' · всего '+count:'')} className={'hall-slot'+(save.heroWeapon===weaponId?' on':'')} onClick={()=>{setSave(s=>({...s,heroWeapon:weaponId}));haptic();}}><span>{weaponDisplayIcon(weaponId)}</span>{count>1&&<small>×{count}</small>}</button>;
+              })}</div>
+              <span className="hall-count">Уникальных: {save.ownedWeapons.length} · дублей: {save.ownedWeapons.reduce((sum,id)=>sum+Math.max(0,(Number(save.lootCounts[id])||1)-1),0)}</span>
             </div>
             <div className="hall-section">
               <span className="hall-icon">🛡️</span><h3>Экипировка</h3>
