@@ -1999,21 +1999,20 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       return texture;
     };
 
+    // Mobile-light texture set. The original PNG pack is ~50 MB; these WEBP
+    // versions are under 0.5 MB in total and keep alpha on foliage.
+    // Normal maps are intentionally omitted here: on a phone the load/decode cost
+    // is much larger than their visual benefit for these stylised trees.
     const naturalMaps={
-      birchBark:naturalTexture('BirchTree_Bark.png'),
-      birchBarkNormal:naturalTexture('BirchTree_Bark_Normal.png',false),
-      birchLeaves:naturalTexture('BirchTree_Leaves.png'),
-      birchLeavesMask:naturalTexture('BirchTree_Leaves_Mask.png',false),
-      mapleBark:naturalTexture('MapleTree_Bark.png'),
-      mapleBarkNormal:naturalTexture('MapleTree_Bark_Normal.png',false),
-      mapleLeaves:greenNaturalTexture('MapleTree_Leaves.png'),
-      mapleLeavesMask:naturalTexture('MapleTree_Leaves_Mask.png',false),
-      normalBark:naturalTexture('NormalTree_Bark.png'),
-      normalBarkNormal:naturalTexture('NormalTree_Bark_Normal.png',false),
-      normalLeaves:naturalTexture('NormalTree_Leaves.png'),
-      pineAtlas:naturalTexture('PineTree_Leaves_Branches.png'),
-      bushAtlas:naturalTexture('Bush_Flowers.png'),
-      rockDiffuse:naturalTexture('Rock_5_Diffuse.png')
+      birchBark:naturalTexture('BirchTree_Bark_Lite.webp'),
+      birchLeaves:naturalTexture('BirchTree_Leaves_Lite.webp'),
+      mapleBark:naturalTexture('MapleTree_Bark_Lite.webp'),
+      mapleLeaves:greenNaturalTexture('MapleTree_Leaves_Lite.webp'),
+      normalBark:naturalTexture('NormalTree_Bark_Lite.webp'),
+      normalLeaves:naturalTexture('NormalTree_Leaves_Lite.webp'),
+      pineAtlas:naturalTexture('PineTree_Leaves_Branches_Lite.webp'),
+      bushAtlas:naturalTexture('Bush_Flowers_Lite.webp'),
+      rockDiffuse:naturalTexture('Rock_5_Diffuse_Lite.webp')
     };
 
     // Keep the proven forest footprint, but every slot can now become a different tree.
@@ -2127,18 +2126,18 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       };
 
       if(/birchtree/i.test(asset)){
-        if(bark)setColorMap(naturalMaps.birchBark,naturalMaps.birchBarkNormal);
-        else if(leaves)setCutout(naturalMaps.birchLeaves,naturalMaps.birchLeavesMask);
+        if(bark)setColorMap(naturalMaps.birchBark);
+        else if(leaves)setCutout(naturalMaps.birchLeaves);
       }else if(/mapletree/i.test(asset)){
-        if(bark)setColorMap(naturalMaps.mapleBark,naturalMaps.mapleBarkNormal);
-        else if(leaves)setCutout(naturalMaps.mapleLeaves,naturalMaps.mapleLeavesMask);
+        if(bark)setColorMap(naturalMaps.mapleBark);
+        else if(leaves)setCutout(naturalMaps.mapleLeaves);
       }else if(/normaltree/i.test(asset)){
-        if(bark)setColorMap(naturalMaps.normalBark,naturalMaps.normalBarkNormal);
+        if(bark)setColorMap(naturalMaps.normalBark);
         else if(leaves)setCutout(naturalMaps.normalLeaves);
       }else if(/pinetree/i.test(asset)){
         // Keep the trunk opaque. The pine atlas has transparency and must only be
         // used for the needle/branch cards; using it on the bark made trunks vanish.
-        if(bark)setColorMap(naturalMaps.normalBark,naturalMaps.normalBarkNormal);
+        if(bark)setColorMap(naturalMaps.normalBark);
         else if(leaves)setCutout(naturalMaps.pineAtlas);
       }else if(/bush_|petals_/i.test(asset)){
         if(leaves||flowers||/bush|petal/.test(tag))setCutout(naturalMaps.bushAtlas);
