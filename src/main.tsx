@@ -1421,17 +1421,17 @@ type BanditSpec={id:string;name:string;x:number;z:number;hp:number;damage:number
 const BANDIT_SPECS:BanditSpec[]=[
   {id:'forest',name:'Разбойник у моста',x:-46,z:49,hp:3,damage:9,sparks:12,reward:'Разбойничий кинжал',kind:'weapon',item:'knife'},
   {id:'grove',name:'Разбойник глубокой рощи',x:-41,z:70,hp:4,damage:10,sparks:13,reward:'Эликсир северного мха',kind:'potion',item:'northernMoss'},
-  {id:'ash',name:'Разбойник у ясеня',x:-29,z:29,hp:4,damage:11,sparks:14,reward:'Осколок руны Кеназ',kind:'rune',item:'kenazShard'},
+  {id:'ash',name:'Разбойник у ясеня',x:-29,z:29,hp:4,damage:11,sparks:14,reward:'Случайная руна Старшего Футарка',kind:'rune'},
   {id:'norns',name:'Разбойник у старой дороги',x:-46,z:-24,hp:5,damage:12,sparks:15,reward:'Морозный настой',kind:'potion',item:'frostDraught'},
-  {id:'runefield',name:'Разбойник рунного поля',x:34,z:64,hp:5,damage:13,sparks:16,reward:'Руна Райдо',kind:'rune',item:'raidoPath'},
-  {id:'deer',name:'Разбойник оленьей поляны',x:66,z:44,hp:6,damage:14,sparks:17,reward:'Руна Альгиз',kind:'rune',item:'algizGuard'},
-  {id:'camp',name:'Разбойник лесной стоянки',x:69,z:-7,hp:6,damage:15,sparks:18,reward:'Руна Уруз',kind:'rune',item:'uruzStrength'},
+  {id:'runefield',name:'Разбойник рунного поля',x:34,z:64,hp:5,damage:13,sparks:16,reward:'Случайная руна Старшего Футарка',kind:'rune'},
+  {id:'deer',name:'Разбойник оленьей поляны',x:66,z:44,hp:6,damage:14,sparks:17,reward:'Случайная руна Старшего Футарка',kind:'rune'},
+  {id:'camp',name:'Разбойник лесной стоянки',x:69,z:-7,hp:6,damage:15,sparks:18,reward:'Случайная руна Старшего Футарка',kind:'rune'},
   {id:'south',name:'Разбойник южного тракта',x:34,z:-49,hp:7,damage:16,sparks:19,reward:'Эликсир жизни',kind:'potion',item:'lifeElixir'},
   {id:'west',name:'Разбойник западного берега',x:-70,z:-16,hp:8,damage:17,sparks:21,reward:'Два эликсира северного мха',kind:'potion',item:'northernMoss',quantity:2}
 ];
 type WhisperPhase="closed"|"question"|"fight"|"reward"|"defeat";
 
-function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, northBridgeReady, goldChestOpened, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, banditRespawnAt, onBanditDefeated, onBanditReward, onBanditKnockout, potions, runes, equippedRune, runeCounts, runeLevels, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; banditRespawnAt:Record<string,number>; onBanditDefeated:(id:string)=>void; onBanditReward:(id:string)=>void; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; runeCounts?:Record<string,number>; runeLevels?:Record<string,number>; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string,currentHp?:number)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
+function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, northBridgeReady, goldChestOpened, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, banditRespawnAt, onBanditDefeated, onBanditReward, onBanditKnockout, potions, runes, equippedRune, runeCounts, runeLevels, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; banditRespawnAt:Record<string,number>; onBanditDefeated:(id:string)=>void; onBanditReward:(id:string)=>string; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; runeCounts?:Record<string,number>; runeLevels?:Record<string,number>; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string,currentHp?:number)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -1452,6 +1452,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   const inventoryPauseRef=useRef(false);
   const [banditOpponent,setBanditOpponent]=useState<{id:string;name:string;hp:number;maxHp:number}|null>(null);
   const [banditVictory,setBanditVictory]=useState<BanditSpec|null>(null);
+  const [banditVictoryLoot,setBanditVictoryLoot]=useState("");
   const banditVictoryRef=useRef<string|null>(null);
   const [banditHit,setBanditHit]=useState(0);
   const banditHpRef=useRef(fieldHp===null?whisperStats.maxHp:Math.min(whisperStats.maxHp,fieldHp));
@@ -5656,7 +5657,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           target.collider=null;target.deathAt=now;target.sword.visible=false;target.magic.visible=false;target.spellStartedAt=0;
           banditVictoryRef.current=target.spec.id;
           onBanditDefeated(target.spec.id);
-          onBanditReward(target.spec.id);
+          setBanditVictoryLoot(onBanditReward(target.spec.id));
           window.clearTimeout(banditVictoryTimer);
           banditVictoryTimer=window.setTimeout(()=>setBanditVictory(target.spec),950);
         }
@@ -6475,8 +6476,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     </div>}
     {banditVictory&&whisperPhase==="closed"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
       <div className="whisper-reward-icon">⚔</div><div className="whisper-reward-rarity">{banditVictory.name} повержен</div>
-      <div className="whisper-reward-name">+{banditVictory.sparks} Капель силы</div><p>Добыча: {banditVictory.reward}. Награда уже добавлена к твоим вещам.</p>
-      <button className="whisper-close" onClick={()=>{banditVictoryRef.current=null;setBanditVictory(null);setBanditOpponent(null);}}>Продолжить путь</button>
+      <div className="whisper-reward-name">+{banditVictory.sparks} Капель силы</div><p>Добыча: {banditVictoryLoot||banditVictory.reward}. Награда уже добавлена к твоим вещам.</p>
+      <button className="whisper-close" onClick={()=>{banditVictoryRef.current=null;setBanditVictory(null);setBanditVictoryLoot("");setBanditOpponent(null);}}>Продолжить путь</button>
     </div>}
     {banditHit>0&&whisperPhase==="closed"&&<i key={banditHit} className="mid3d-ui whisper-battle-fx guard"/>}
     {!heroReady&&<div className="mid3d-ui mid3d-hero-load"><b>{heroLoadFailed?"ᚾ":"ᛉ"}</b><span>{heroLoadFailed?"Герой не загрузился":"ПРОБУЖДЕНИЕ ГЕРОЯ"}</span></div>}
@@ -7112,19 +7113,33 @@ const [roadT, setRoadT] = useState(0.06);
     haptic('success');
     say(`Три руны ${rune.name} слиты. Руна усилена до ${level===1?'II':'III'} уровня.`);
   };
+  const pickBanditRune=(state:Save)=>{
+    const ranked=RUNE_CATALOG.map(rune=>{
+      const savedCount=Math.max(0,Number(state.lootCounts[rune.id])||0);
+      const count=Math.max(savedCount,state.runes.includes(rune.id)?1:0);
+      return {rune,count};
+    });
+    const minCount=Math.min(...ranked.map(entry=>entry.count));
+    const pool=ranked.filter(entry=>entry.count===minCount);
+    return pool[Math.floor(Math.random()*pool.length)].rune;
+  };
   const rewardBandit=(id:string)=>{
     const spec=BANDIT_SPECS.find(b=>b.id===id);
-    if(!spec)return;
+    if(!spec)return "";
+    const runeDrop=spec.kind==='rune'?pickBanditRune(save):null;
+    const rewardText=runeDrop?`Руна ${runeDrop.name} ${runeDrop.symbol}`:spec.reward;
     setSave(s=>{
-      const lootIds=spec.item?Array(spec.quantity||1).fill(spec.item):[];
+      const itemId=runeDrop?.id||spec.item||"";
+      const lootIds=itemId?Array(spec.quantity||1).fill(itemId):[];
       return {...s,sparks:s.sparks+spec.sparks,
         ownedWeapons:spec.kind==='weapon'&&spec.item?[...new Set([...s.ownedWeapons,spec.item])]:s.ownedWeapons,
         potions:spec.kind==='potion'&&spec.item?[...s.potions,...Array(spec.quantity||1).fill(spec.item)]:s.potions,
-        runes:spec.kind==='rune'&&spec.item?[...new Set([...s.runes,spec.item])]:s.runes,
-        equippedRune:spec.kind==='rune'&&spec.item&&!s.equippedRune?spec.item:s.equippedRune,
+        runes:runeDrop?[...new Set([...s.runes,runeDrop.id])]:s.runes,
+        equippedRune:runeDrop&&!s.equippedRune?runeDrop.id:s.equippedRune,
         lootCounts:lootCountAdd(s.lootCounts,lootIds)};
     });
-    haptic('success');say(`Победа: +${spec.sparks} Капель силы и ${spec.reward}. Разбойник вернётся через 15 минут игры.`);
+    haptic('success');say(`Победа: +${spec.sparks} Капель силы и ${rewardText}. Разбойник вернётся через 15 минут игры.`);
+    return rewardText;
   };
   const banditKnockout=()=>{
     setSave(s=>({...s,sparks:Math.max(0,s.sparks-5),fieldHp:(heroDef?.hp||100)+gearHp()}));
