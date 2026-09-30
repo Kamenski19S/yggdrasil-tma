@@ -5361,11 +5361,48 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
 
     // Share one GLB and its geometry across nine skinned characters. Only load
     // a character when the player reaches its part of the map.
-    type BanditActor={spec:BanditSpec;root:THREE.Object3D;actor:THREE.Group;sword:THREE.Group;mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>;current:string;next:number;alerted:boolean;hp:number;deathAt:number;restY:number;enemyNextAttack:number;enemyHitAt:number;collider:{id:string;x:number;z:number;r:number}|null};
+    type BanditActor={spec:BanditSpec;root:THREE.Object3D;actor:THREE.Group;sword:THREE.Group;weaponHand:THREE.Object3D|null;weaponShoulder:THREE.Object3D|null;mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>;current:string;next:number;alerted:boolean;hp:number;deathAt:number;restY:number;enemyNextAttack:number;enemyHitAt:number;collider:{id:string;x:number;z:number;r:number}|null};
     const bandits:BanditActor[]=[];
     let banditAsset:any=null,banditRequested=false;
     let banditVictoryTimer=0;
     let lastBanditHud=0;
+    const canonicalBanditClip=(raw:string)=>{
+      const tail=String(raw||'').split('|').pop()||String(raw||'');
+      const clean=tail.replace(/\.take.*$/i,'').replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'').toLowerCase();
+      if(clean.includes('run'))return 'Run';
+      if(clean.includes('attack')||clean.includes('slash')||(clean.includes('sword')&&!clean.includes('idle')))return 'Attack';
+      if(clean.includes('hit')||clean.includes('damage')||clean.includes('hurt'))return 'Hit';
+      if(clean.includes('death')||clean==='die'||clean.includes('dead'))return 'Death';
+      if(clean.includes('idle')||clean==='scene')return 'Scene';
+      return tail;
+    };
+    const findBanditBone=(root:THREE.Object3D,patterns:RegExp[])=>{
+      let found:THREE.Object3D|null=null;
+      root.traverse((o:any)=>{
+        if(found||!o.isBone)return;
+        const n=String(o.name||'');
+        if(patterns.some(p=>p.test(n)))found=o;
+      });
+      return found;
+    };
+    const syncBanditSword=(preview:BanditActor)=>{
+      if(!preview.weaponHand)return;
+      const handWorld=new THREE.Vector3(),shoulderWorld=new THREE.Vector3();
+      preview.weaponHand.getWorldPosition(handWorld);
+      const handLocal=preview.actor.worldToLocal(handWorld.clone());
+      preview.sword.position.copy(handLocal);
+      if(preview.weaponShoulder){
+        preview.weaponShoulder.getWorldPosition(shoulderWorld);
+        const shoulderLocal=preview.actor.worldToLocal(shoulderWorld.clone());
+        const dir=handLocal.clone().sub(shoulderLocal);
+        if(dir.lengthSq()>.0001){
+          dir.normalize();
+          preview.sword.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);
+          // Slight blade roll keeps the flat of the sword readable on a phone screen.
+          preview.sword.rotateOnAxis(new THREE.Vector3(0,1,0),-.18);
+        }
+      }
+    };
     const playBandit=(preview:BanditActor,name:string,now:number)=>{
       if(preview.current===name&&name==='Run')return;
       if(preview.current===name&&now<preview.next)return;
@@ -5397,8 +5434,15 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         banditCollisions.push(collider);
         const mixer=new THREE.AnimationMixer(root);
         const actions:Record<string,THREE.AnimationAction>={};
-        for(const clip of banditAsset.animations||[])actions[clip.name]=mixer.clipAction(clip);
+        for(const clip of banditAsset.animations||[]){
+          const action=mixer.clipAction(clip);
+          actions[clip.name]=action;
+          const canonical=canonicalBanditClip(clip.name);
+          if(!actions[canonical])actions[canonical]=action;
+        }
         if(actions.Scene){actions.Scene.play();actions.Scene.paused=true;}
+        const weaponHand=findBanditBone(root,[/hand[._ -]*r/i,/right.*hand/i,/hand.*right/i,/wrist[._ -]*r/i]);
+        const weaponShoulder=findBanditBone(root,[/upper[_ .-]*arm[._ -]*r/i,/right.*upper.*arm/i,/shoulder[._ -]*r/i]);
         const iron=new THREE.MeshStandardMaterial({color:0xbac5c8,metalness:.72,roughness:.28,side:THREE.DoubleSide});
         const grip=new THREE.MeshStandardMaterial({color:0x38231a,roughness:.9});
         const sword=new THREE.Group();
@@ -5407,7 +5451,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const handle=new THREE.Mesh(new THREE.CylinderGeometry(.043,.05,.29,8),grip);handle.position.y=.03;sword.add(handle);
         const guard=new THREE.Mesh(new THREE.BoxGeometry(.37,.055,.09),iron);guard.position.y=.18;sword.add(guard);
         sword.position.set(.68,1.25,.28);sword.rotation.set(.25,0,-.95);actor.add(sword);
-        const preview:BanditActor={spec,root,actor,sword,mixer,actions,current:'Scene',next:0,alerted:false,hp:spec.hp,deathAt:0,restY:root.position.y,enemyNextAttack:0,enemyHitAt:0,collider};
+        const preview:BanditActor={spec,root,actor,sword,weaponHand,weaponShoulder,mixer,actions,current:'Scene',next:0,alerted:false,hp:spec.hp,deathAt:0,restY:root.position.y,enemyNextAttack:0,enemyHitAt:0,collider};
+        syncBanditSword(preview);
         bandits.push(preview);
     };
     const loadBandits=()=>{
@@ -6062,14 +6107,18 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
             banditDamageRef.current(guarding?Math.max(1,Math.ceil(damage*.25)):damage,guarding);
           }
         }
-        if(preview.current==='Attack'&&now<preview.next){
-          const arm=preview.root.getObjectByName('DEF-upper_arm.R_0457');
-          const swing=Math.sin(Math.PI*THREE.MathUtils.clamp((1150-(preview.next-now))/850,0,1));
-          if(arm)arm.rotateX(-1.55*swing);
-          if(arm)arm.rotateZ(-1.1*swing);
-          preview.sword.rotation.z=-.95+2.45*swing;
-          preview.sword.rotation.x=.25-.9*swing;
-        }else{preview.sword.rotation.z=-.95;preview.sword.rotation.x=.25;}
+        // The original version rotated the upper-arm bone cumulatively every frame,
+        // which made the bandit wave/thrust the arm instead of delivering a clean sword cut.
+        // Let the authored Attack clip drive the skeleton and keep our visible sword locked
+        // to the right hand. If this asset has no usable Attack clip, use one small absolute
+        // fallback swing on the sword only (never accumulate bone rotations).
+        syncBanditSword(preview);
+        if(preview.current==='Attack'&&now<preview.next&&!preview.actions.Attack){
+          const attackT=THREE.MathUtils.clamp((1150-(preview.next-now))/1150,0,1);
+          const swing=Math.sin(Math.PI*attackT);
+          preview.sword.rotateZ(-1.35*swing);
+          preview.sword.rotateX(-.45*swing);
+        }
       }
       if(now-lastBanditHud>200){
         lastBanditHud=now;
@@ -6422,6 +6471,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       <p><b>Ultimate Stylized Nature Pack — деревья, кусты, растения и камни Мидгарда</b> — модели и текстуры созданы <a href="https://quaternius.com/" target="_blank" rel="noopener noreferrer">Quaternius</a>. <a href="https://quaternius.com/packs/ultimatestylizednature.html" target="_blank" rel="noopener noreferrer">Источник коллекции</a>. Лицензия: <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener noreferrer">CC0</a>.</p>
       <p>Отдельная благодарность Quaternius за бесплатную коллекцию природы, благодаря которой лес Мидгарда стал разнообразнее и живее.</p>
       <p>Изменения для Yggdrasil Runes: выбраны и смешаны разные виды деревьев и кустов, настроены масштаб и размещение, восстановлены материалы и текстуры для FBX-моделей; красная листва клёнов изменена на зелёную для единого весенне-летнего облика Мидгарда.</p>
+      <p><b>Modular Medieval Building Pack — стены, башни и элементы средневековой деревни</b> — модели созданы <a href="https://quaternius.com/" target="_blank" rel="noopener noreferrer">Quaternius</a>. <a href="https://quaternius.com/packs/modularmedievalbuildings.html" target="_blank" rel="noopener noreferrer">Источник коллекции</a>. Лицензия: <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener noreferrer">CC0</a>.</p>
+      <p>Отдельная благодарность Quaternius за набор модульных средневековых построек. Для Yggdrasil Runes элементы набора адаптированы по масштабу, размещению и материалам под деревню Мидгарда.</p>
       <p>Изменения для Yggdrasil Runes: один персонаж коллекции адаптирован как базовая модель защитников Мидгарда; масштаб увеличен и настроен отдельно для каждого стража; изменены цвета одежды; добавлены короткие цветные накидки и металлические застёжки; одна базовая модель используется для девяти разных стражей. Для боя настроены существующие анимации Idle_Neutral, Idle_Sword, Sword_Slash, HitRecieve и Death: защитник спокойно стоит до боя, атакует мечом, реагирует на удар, после атаки или получения урона возвращается в стойку с мечом и падает после поражения.</p>
       <p><b>Neutral Bandit</b> — <a href="https://sketchfab.com/strong.lazzy" target="_blank" rel="noopener noreferrer">ZakRenat</a>. <a href="https://sketchfab.com/3d-models/neutral-bandit-524cad2cfdc7422f93541cb00008b0d3" target="_blank" rel="noopener noreferrer">Оригинальная модель</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
       <p>Изменения для Yggdrasil Runes: сжаты текстуры, добавлены пробные движения бега, удара, получения удара и падения; исходная анимация сохранена.</p>
