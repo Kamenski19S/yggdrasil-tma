@@ -1400,7 +1400,7 @@ const BANDIT_SPECS:BanditSpec[]=[
 ];
 type WhisperPhase="closed"|"question"|"fight"|"reward"|"defeat";
 
-function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, northBridgeReady, goldChestOpened, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, defeatedBandits, onBanditReward, onBanditKnockout, potions, runes, equippedRune, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; defeatedBandits:string[]; onBanditReward:(id:string)=>void; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string,currentHp?:number)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
+function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, northBridgeReady, goldChestOpened, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, banditRespawnAt, onBanditDefeated, onBanditReward, onBanditKnockout, potions, runes, equippedRune, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; banditRespawnAt:Record<string,number>; onBanditDefeated:(id:string)=>void; onBanditReward:(id:string)=>void; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string,currentHp?:number)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -1427,6 +1427,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   const frostGuardRef=useRef(frostGuard);
   const equippedRuneRef=useRef(equippedRune);
   const banditDefenseRef=useRef(whisperStats.defense);
+  const banditRespawnAtRef=useRef(banditRespawnAt);
   const banditDamageRef=useRef<(amount:number,guarding:boolean)=>void>(()=>{});
   const [insideHome, setInsideHome] = useState(false);
   const [whisperPhase,setWhisperPhase]=useState<WhisperPhase>("closed");
@@ -1467,6 +1468,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   frostGuardRef.current=frostGuard;
   equippedRuneRef.current=equippedRune;
   banditDefenseRef.current=whisperStats.defense;
+  banditRespawnAtRef.current=banditRespawnAt;
   banditDamageRef.current=(amount:number,guarding:boolean)=>{
     if(!guarding&&frostGuardRef.current>0){amount=Math.max(1,Math.ceil(amount*.5));frostGuardRef.current--;onFrostGuardHit();}
     const next=banditHpRef.current-amount;
@@ -5262,9 +5264,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const actor=new THREE.Group();actor.position.set(spec.x,groundY(spec.x,spec.z),spec.z);actor.add(root);
         root.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
         scene.add(actor);
-        const defeated=defeatedBandits.includes(spec.id);
-        const collider=defeated?null:{id:spec.id,x:spec.x,z:spec.z,r:1.42};
-        if(collider)banditCollisions.push(collider);
+        const cooling=(banditRespawnAtRef.current[spec.id]||0)>Date.now();
+        if(cooling){scene.remove(actor);return;}
+        const collider={id:spec.id,x:spec.x,z:spec.z,r:1.42};
+        banditCollisions.push(collider);
         const mixer=new THREE.AnimationMixer(root);
         const actions:Record<string,THREE.AnimationAction>={};
         for(const clip of banditAsset.animations||[])actions[clip.name]=mixer.clipAction(clip);
@@ -5277,9 +5280,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const handle=new THREE.Mesh(new THREE.CylinderGeometry(.043,.05,.29,8),grip);handle.position.y=.03;sword.add(handle);
         const guard=new THREE.Mesh(new THREE.BoxGeometry(.37,.055,.09),iron);guard.position.y=.18;sword.add(guard);
         sword.position.set(.68,1.25,.28);sword.rotation.set(.25,0,-.95);actor.add(sword);
-        const preview:BanditActor={spec,root,actor,sword,mixer,actions,current:'Scene',next:0,alerted:false,hp:defeated?0:spec.hp,deathAt:defeated?performance.now()-1000:0,restY:root.position.y,enemyNextAttack:0,enemyHitAt:0,collider};
+        const preview:BanditActor={spec,root,actor,sword,mixer,actions,current:'Scene',next:0,alerted:false,hp:spec.hp,deathAt:0,restY:root.position.y,enemyNextAttack:0,enemyHitAt:0,collider};
         bandits.push(preview);
-        if(defeated){sword.visible=false;playBandit(preview,'Death',performance.now());}
     };
     const loadBandits=()=>{
       if(banditRequested)return;
@@ -5441,9 +5443,13 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         target.enemyHitAt=0;
         setBanditOpponent({id:target.spec.id,name:target.spec.name,hp:target.hp,maxHp:target.spec.hp});
         if(target.hp===0){
-          if(target.collider)banditCollisions.splice(banditCollisions.indexOf(target.collider),1);
+          if(target.collider){
+            const ci=banditCollisions.indexOf(target.collider);
+            if(ci>=0)banditCollisions.splice(ci,1);
+          }
           target.collider=null;target.deathAt=now;target.sword.visible=false;
           banditVictoryRef.current=target.spec.id;
+          onBanditDefeated(target.spec.id);
           onBanditReward(target.spec.id);
           window.clearTimeout(banditVictoryTimer);
           banditVictoryTimer=window.setTimeout(()=>setBanditVictory(target.spec),950);
@@ -5863,6 +5869,30 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         if(Math.hypot(q.x-spec.x,q.z-spec.z)<33)spawnBandit(spec);
       });
       for(const preview of bandits){
+        if(preview.hp<=0){
+          const elapsed=preview.deathAt?now-preview.deathAt:0;
+          if(elapsed>1350)preview.actor.visible=false;
+          const readyAt=banditRespawnAtRef.current[preview.spec.id]||0;
+          if(readyAt&&Date.now()>=readyAt){
+            preview.hp=preview.spec.hp;preview.deathAt=0;preview.alerted=false;
+            preview.enemyNextAttack=0;preview.enemyHitAt=0;preview.current='Scene';preview.next=0;
+            preview.root.rotation.set(0,0,0);preview.root.position.y=preview.restY;
+            preview.actor.position.set(preview.spec.x,groundY(preview.spec.x,preview.spec.z),preview.spec.z);
+            preview.actor.visible=true;preview.sword.visible=true;
+            preview.actions.Death?.stop();preview.actions.Hit?.stop();preview.actions.Attack?.stop();preview.actions.Run?.stop();
+            if(preview.actions.Scene){preview.actions.Scene.reset().play();preview.actions.Scene.paused=true;}
+            const collider={id:preview.spec.id,x:preview.spec.x,z:preview.spec.z,r:1.42};
+            preview.collider=collider;banditCollisions.push(collider);
+          }else{
+            preview.mixer.update(dt);
+            if(preview.deathAt){
+              const fall=THREE.MathUtils.smoothstep(elapsed/900,0,1);
+              preview.root.rotation.x=-1.38*fall;
+              preview.root.position.y=preview.restY-.3*fall;
+            }
+            continue;
+          }
+        }
         const dx=q.x-preview.actor.position.x,dz=q.z-preview.actor.position.z;
         const distance=Math.hypot(dx,dz);
         if(distance>43)continue;
@@ -5913,11 +5943,6 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           preview.sword.rotation.z=-.95+2.45*swing;
           preview.sword.rotation.x=.25-.9*swing;
         }else{preview.sword.rotation.z=-.95;preview.sword.rotation.x=.25;}
-        if(preview.deathAt){
-          const fall=THREE.MathUtils.smoothstep((now-preview.deathAt)/900,0,1);
-          preview.root.rotation.x=-1.38*fall;
-          preview.root.position.y=preview.restY-.3*fall;
-        }
       }
       if(now-lastBanditHud>200){
         lastBanditHud=now;
@@ -6479,6 +6504,10 @@ function App() {
   const [forgeTransition, setForgeTransition] = useState(false);
   const forgeTimer = useRef<number>(0);
   const midgardReturn = useRef({x:0,z:28});
+  const [banditRespawnAt,setBanditRespawnAt]=useState<Record<string,number>>({});
+  const scheduleBanditRespawn=useCallback((id:string)=>{
+    setBanditRespawnAt(prev=>({...prev,[id]:Date.now()+15*60*1000}));
+  },[]);
   const rememberMidgardPosition=useCallback((position:{x:number;z:number})=>{
     midgardReturn.current={x:position.x,z:position.z};
   },[]);
@@ -6699,18 +6728,16 @@ const [roadT, setRoadT] = useState(0.06);
   const rewardBandit=(id:string)=>{
     const spec=BANDIT_SPECS.find(b=>b.id===id);
     if(!spec)return;
-    const key=`bandit:${id}:reward`;
     setSave(s=>{
-      if(s.done.includes(key))return s;
       const lootIds=spec.item?Array(spec.quantity||1).fill(spec.item):[];
-      return {...s,sparks:s.sparks+spec.sparks,done:[...new Set([...s.done,key])],
+      return {...s,sparks:s.sparks+spec.sparks,
         ownedWeapons:spec.kind==='weapon'&&spec.item?[...new Set([...s.ownedWeapons,spec.item])]:s.ownedWeapons,
         potions:spec.kind==='potion'&&spec.item?[...s.potions,...Array(spec.quantity||1).fill(spec.item)]:s.potions,
         runes:spec.kind==='rune'&&spec.item?[...new Set([...s.runes,spec.item])]:s.runes,
         equippedRune:spec.kind==='rune'&&spec.item&&!s.equippedRune?spec.item:s.equippedRune,
         lootCounts:lootCountAdd(s.lootCounts,lootIds)};
     });
-    haptic('success');say(`Победа: +${spec.sparks} Капель силы и ${spec.reward}.`);
+    haptic('success');say(`Победа: +${spec.sparks} Капель силы и ${spec.reward}. Разбойник вернётся через 15 минут игры.`);
   };
   const banditKnockout=()=>{
     setSave(s=>({...s,sparks:Math.max(0,s.sparks-5),fieldHp:(heroDef?.hp||100)+gearHp()}));
@@ -7207,7 +7234,8 @@ const [roadT, setRoadT] = useState(0.06);
       }}
       onWhisperCorrect={finishWhisperCorrect}
       onWhisperWin={finishWhisperBattle}
-      defeatedBandits={BANDIT_SPECS.filter(b=>save.done.includes(`bandit:${b.id}:reward`)).map(b=>b.id)}
+      banditRespawnAt={banditRespawnAt}
+      onBanditDefeated={scheduleBanditRespawn}
       onBanditReward={rewardBandit}
       onBanditKnockout={banditKnockout}
       potions={save.potions}
