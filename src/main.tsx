@@ -6712,6 +6712,7 @@ const [roadT, setRoadT] = useState(0.06);
     setCraftWeapon('');setCraftMaterial('');setCraftPicker(null);
   };
   const guardianProgressCount=MIDGARD_GUARDIAN_ORDER.filter(id=>save.done.includes("guardian:stage:"+id)||save.done.includes("guardian:"+id)).length;
+  const dismantlableWeapons=(save.ownedWeapons as HeroWeapon[]).filter(id=>id!=="default"&&id!=="swordGolden"&&(Number(save.lootCounts[id])||0)>1&&(RUNE_STEEL_YIELD[id]||0)>0);
   const dismantleWeapon=(id:HeroWeapon)=>{
     const yieldSteel=RUNE_STEEL_YIELD[id]||0;
     const copies=Math.max(0,Number(save.lootCounts[id])||0);
@@ -7714,9 +7715,9 @@ const [roadT, setRoadT] = useState(0.06);
               <h3>⚒ Разбор лишнего оружия</h3>
               <p>Последний экземпляр всегда остаётся на складе. Разобрать можно только дубликат; Золотой меч разбору не подлежит.</p>
               <div className="steel-list">
-                {save.ownedWeapons.filter(id=>id!=="default"&&id!=="swordGolden"&&(Number(save.lootCounts[id])||0)>1&&(RUNE_STEEL_YIELD[id]||0)>0).length===0
+                {dismantlableWeapons.length===0
                   ? <div className="dim">Сейчас нет лишнего оружия для разбора.</div>
-                  : save.ownedWeapons.filter(id=>id!=="default"&&id!=="swordGolden"&&(Number(save.lootCounts[id])||0)>1&&(RUNE_STEEL_YIELD[id]||0)>0).map(id=>{
+                  : dismantlableWeapons.map(id=>{
                       const copies=Number(save.lootCounts[id])||0,yieldSteel=RUNE_STEEL_YIELD[id]||0;
                       return <div key={id} className="steel-row"><span><b>{weaponDisplayIcon(id)} {lootDisplayName(id)}</b><small>лишних копий: {copies-1} · выход: {yieldSteel} стали</small></span><button onClick={()=>dismantleWeapon(id)}>Разобрать +{yieldSteel}</button></div>;
                     })}
