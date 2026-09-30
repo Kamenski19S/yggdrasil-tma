@@ -4292,16 +4292,28 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     const specialBarkTex=new THREE.TextureLoader().load(`${BASE}img/models/NormalTree_Bark_Lite.webp`,t=>{
       t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(1.15,3.4);t.anisotropy=4;
     });
-    const specialRockTex=new THREE.TextureLoader().load(`${BASE}img/models/Rock_5_Diffuse_Lite.webp`,t=>{
-      t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.MirroredRepeatWrapping;t.repeat.set(1.35,1.35);t.anisotropy=4;
+    const specialRockTex=new THREE.TextureLoader().load(`${BASE}img/models/Stone_Sacred_2.jpg`,t=>{
+      t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.MirroredRepeatWrapping;t.repeat.set(1.15,1.15);t.anisotropy=4;
     });
     const specialBarkMat=new THREE.MeshStandardMaterial({map:specialBarkTex,color:0xffffff,roughness:.96,metalness:0,bumpMap:surfaceMaps.height,bumpScale:.022});
-    const specialRockMat=new THREE.MeshStandardMaterial({map:specialRockTex,color:0xffffff,roughness:.98,metalness:0});
-    const specialWaterMat=new THREE.MeshStandardMaterial({
-      map:mimirWaterTexture||undefined,color:0x8bdcf2,roughness:.24,metalness:.02,
-      transparent:true,opacity:.90,side:THREE.DoubleSide
+    const specialRockMat=new THREE.MeshStandardMaterial({
+      map:specialRockTex,
+      color:0xd5d4ce,
+      roughness:.98,
+      metalness:0
     });
-    mimirWaterMaterials.push(specialWaterMat);
+    // Keep this water independent from the darker Mimir texture so it stays visibly blue.
+    const specialWaterMat=new THREE.MeshStandardMaterial({
+      color:0x45c9ff,
+      emissive:0x0a5d82,
+      emissiveIntensity:.34,
+      roughness:.18,
+      metalness:.01,
+      transparent:true,
+      opacity:.94,
+      side:THREE.DoubleSide,
+      depthWrite:false
+    });
 
     // Hoddmímir's Holt — a sacred refuge beneath a smaller world-tree.
     const hoddFallbackStart=scene.children.length;
@@ -4350,6 +4362,13 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     hoddPool.position.y=.085;
     hoddPool.receiveShadow=true;
     hoddNatural.add(hoddPool);
+    const hoddPoolUnder=new THREE.Mesh(
+      new THREE.CircleGeometry(2.72,40),
+      new THREE.MeshBasicMaterial({color:0x159fdb,transparent:true,opacity:.34,depthWrite:false})
+    );
+    hoddPoolUnder.rotation.x=-Math.PI/2;
+    hoddPoolUnder.position.y=.072;
+    hoddNatural.add(hoddPoolUnder);
 
     // Textured irregular stones around the pool.
     for(let i=0;i<14;i++){
@@ -4405,21 +4424,20 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const labels=[String(o.name||'')].concat(mats.map((m:any)=>String(m?.name||''))).join(' ').toLowerCase();
         const hideOldTrunk=/trunk|tree[_ -]?stem|\bbole\b/.test(labels);
         const hideOldWater=/water|pool|brook|stream|flow/.test(labels);
-        const hideBands=/stripe|ribbon|band|gold[_ -]?line|decor[_ -]?line/.test(labels);
+        const hideBands=/stripe|ribbon|band|gold[_ -]?line|decor[_ -]?line|ornament[_ -]?line/.test(labels);
+        // The old GLB has a large oval stone/tablet attached directly to the trunk.
+        // We replace all authored stone/altar/tablet pieces here with our new ground stones.
+        const hideAttachedStone=/stone|rock|altar|tablet|medallion|disc|disk|oval|slab/.test(labels);
 
-        // Some authored stripe meshes have generic names but are extremely thin and gold.
-        const bb=new THREE.Box3().setFromObject(o),sz=new THREE.Vector3();bb.getSize(sz);
         const goldish=mats.some((m:any)=>{
           const col=m?.color;
-          return !!col&&col.r>.55&&col.g>.35&&col.b<.28;
+          return !!col&&col.r>.50&&col.g>.30&&col.b<.32;
         });
-        const veryThin=Math.min(sz.x,sz.z)<.10&&Math.max(sz.x,sz.z)<3.2&&sz.y>.22;
+        const naturalTreePart=/leaf|foliage|needle|bark|trunk|branch|root|wood/.test(labels);
 
-        if(hideOldTrunk||hideOldWater||hideBands||(goldish&&veryThin)){o.visible=false;return;}
-
-        // Keep the authored stone shapes when named, but give them the real rock texture.
-        if(/stone|rock/.test(labels)){
-          o.material=specialRockMat;
+        if(hideOldTrunk||hideOldWater||hideBands||hideAttachedStone||(goldish&&!naturalTreePart)){
+          o.visible=false;
+          return;
         }
         o.visible=true;o.castShadow=true;o.receiveShadow=true;o.frustumCulled=true;
       });
