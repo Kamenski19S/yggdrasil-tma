@@ -206,8 +206,8 @@ for(const [kind,amount,salt] of [['wood',25,1],['twigs',30,2],['herbs',30,3]] as
 const GEAR_IDS:GearId[]=["armor","shield","helmet","boots"];
 const SHIELD_ASSETS=['Shield_Round.glb','Shield_Round_2.glb','Shield_Heater.glb','Shield_Heater_2.glb','Shield_Celtic_Golden.glb'];
 const shieldForgeKey=(asset:string)=>asset===SHIELD_ASSETS[0]?'shield':'shield:'+asset;
-type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; lootCounts:Record<string,number>; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; forgeLevels: Record<string,number>; forgeFreeUsed: boolean; gathered:string[]; stock:GatherStock; locationCooldowns:Record<string,number>; runeSteel:number };
-const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], lootCounts:{default:1,[SHIELD_ASSETS[0]]:1}, equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false,gathered:[],stock:{...EMPTY_GATHER_STOCK},locationCooldowns:{},runeSteel:0 };
+type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; equippedArtifact:string; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; lootCounts:Record<string,number>; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; forgeLevels: Record<string,number>; forgeFreeUsed: boolean; gathered:string[]; stock:GatherStock; locationCooldowns:Record<string,number>; runeSteel:number };
+const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], equippedArtifact:"", watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], lootCounts:{default:1,[SHIELD_ASSETS[0]]:1}, equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false,gathered:[],stock:{...EMPTY_GATHER_STOCK},locationCooldowns:{},runeSteel:0 };
 const loadSave = (): Save => {
   try {
     const previous:any=JSON.parse(localStorage.getItem("yggdrasil") || "{}");
@@ -282,6 +282,7 @@ const loadSave = (): Save => {
     }
     const confirmedArtifacts=Object.keys(ARTIFACTS).filter(id=>s.done?.includes("world:complete:"+id));
     s.artifacts=confirmedArtifacts;
+    if(typeof s.equippedArtifact!=="string"||!confirmedArtifacts.includes(s.equippedArtifact))s.equippedArtifact="";
     if (!s.watch) s.watch = Date.now();
     return s as Save;
   } catch {
@@ -462,6 +463,18 @@ const ARTIFACTS: Record<string, string> = {
   svartalfheim: "Драупнир — кольцо изобилия",
   helheim: "Слеза Хель",
   asgard: "Гунгнир — копьё Всеотца",
+};
+type ArtifactDef={name:string;symbol:string;world:string;description:string;effect:string;attack?:number;rune?:number;defense?:number;power?:number};
+const ARTIFACT_INFO:Record<string,ArtifactDef>={
+  midgard:{name:ARTIFACTS.midgard,symbol:"⚡",world:"Мидгард",description:"Пояс силы, полученный после завершения пути Мидгарда. Активный артефакт усиливает физическую мощь героя.",effect:"+2 к обычному удару.",attack:2},
+  muspelheim:{name:ARTIFACTS.muspelheim,symbol:"🔥",world:"Муспельхейм",description:"Частица первородного огня Муспельхейма.",effect:"+1 к обычному и +1 к руническому удару.",attack:1,rune:1},
+  niflheim:{name:ARTIFACTS.niflheim,symbol:"❄️",world:"Нифльхейм",description:"Ледяной осколок из туманных вод Хвергельмира.",effect:"+2 к защите.",defense:2},
+  jotunheim:{name:ARTIFACTS.jotunheim,symbol:"🪨",world:"Ётунхейм",description:"Камень из земли великанов, хранящий их стойкость.",effect:"+1 к защите и +1 к общей силе.",defense:1,power:1},
+  vanaheim:{name:ARTIFACTS.vanaheim,symbol:"🌬️",world:"Ванахейм",description:"Дар ветров Ванахейма, несущий движение и внутреннюю силу.",effect:"+1 к руническому удару и +1 к общей силе.",rune:1,power:1},
+  alfheim:{name:ARTIFACTS.alfheim,symbol:"✨",world:"Альвхейм",description:"Светлый осколок Альвхейма, усиливающий руническую энергию.",effect:"+2 к руническому удару.",rune:2},
+  svartalfheim:{name:ARTIFACTS.svartalfheim,symbol:"💍",world:"Свартальфхейм",description:"Кольцо-символ мастерства и накопленной силы.",effect:"+1 к общей силе.",power:1},
+  helheim:{name:ARTIFACTS.helheim,symbol:"🕯️",world:"Хельхейм",description:"Холодная слеза, укрепляющая волю на границе миров.",effect:"+1 к защите и +1 к руническому удару.",defense:1,rune:1},
+  asgard:{name:ARTIFACTS.asgard,symbol:"🔱",world:"Асгард",description:"Копьё Всеотца — знак завершённого пути девяти миров.",effect:"+2 к обычному и +1 к руническому удару.",attack:2,rune:1}
 };
 function BgImg({ name, className }: { name: string; className: string }) {
   return (
@@ -675,6 +688,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .inventory-hall{grid-column:1/-1}.inventory-section h3{font-size:14px;margin:4px 0 9px;color:#e9c16c}.inventory-list{display:grid;gap:7px}.inventory-item{display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:8px;padding:7px 8px;border:1px solid rgba(184,150,94,.34);border-radius:10px;background:rgba(10,17,14,.82);color:#f5ead4}.inventory-item.empty{opacity:.48}.inventory-symbol{font-size:23px;text-align:center;color:#e9ca74}.inventory-detail b{display:block;font-size:12px}.inventory-detail small{display:block;font-size:10px;color:#aabaad;line-height:1.3;margin-top:2px}.inventory-item button{border-radius:8px;border:1px solid #bda272;background:#4b3725;color:#fff3d8;padding:6px 8px;font-size:11px;white-space:nowrap}.inventory-item button:disabled{opacity:.45}.inventory-item button.active{background:#426345;border-color:#a6cf92}
 .hall-section:active{transform:scale(.98)}.hall-section h3{font-size:13px;color:#ffd76a;margin:4px 0}.hall-section p{font-size:9px;line-height:1.35;color:#91a598}.hall-section .hall-icon{font-size:29px;display:block}.hall-count{display:inline-block;margin-top:7px;padding:3px 6px;border-radius:7px;background:#0a0e0b;border:1px solid #34473a;font-size:9px;color:#d6e3d8}
 .hall-slots{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}.hall-slot{position:relative;width:42px;height:42px;flex:0 0 42px;border-radius:10px;border:1px solid #4b5d4e;background:#090d0a;display:flex;align-items:center;justify-content:center;font-size:20px}.hall-slot small{position:absolute;right:-3px;top:-5px;min-width:17px;padding:1px 3px;border-radius:8px;background:#6b3b18;border:1px solid #ffd76a;color:#fff4cf;font-size:8px;font-weight:900}.hall-slot.on{border-color:#ffd76a;box-shadow:0 0 9px rgba(255,215,106,.42)}.hall-slot:active{transform:scale(.91);background:#1b271e}
+.inventory-actions{display:flex;flex-direction:column;gap:4px;min-width:72px}.inventory-actions button{width:100%}.inventory-actions .fuse{background:#3e2f54;border-color:#9f86c8}.inventory-actions .fuse:disabled{opacity:.4}
+.artifact-hall{grid-column:1/-1}.artifact-slots{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.artifact-slot{position:relative;min-width:48px;height:48px;padding:4px 7px;border:1px solid #4b5d4e;border-radius:11px;background:#090d0a;color:#f5ead4;font-size:22px}.artifact-slot small{position:absolute;right:-4px;top:-5px;padding:1px 4px;border-radius:7px;background:#5f421a;border:1px solid #ffd76a;color:#fff2c2;font-size:7px}.artifact-slot.on{border-color:#ffd76a;box-shadow:0 0 10px rgba(255,215,106,.42)}.artifact-detail{margin-top:10px;padding:10px;border:1px solid #526052;border-radius:11px;background:#0b100c}.artifact-detail b{display:block;color:#ffe19a;font-size:12px}.artifact-detail small{display:block;color:#a7b8aa;font-size:9px;line-height:1.4;margin-top:3px}.artifact-detail button{margin-top:8px;padding:7px 10px;border-radius:8px;border:1px solid #c3a55c;background:#503d20;color:#fff0c4;font-size:10px}.artifact-detail button.active{background:#34543b;border-color:#86bc90}
 .vial{position:relative;width:13px;height:21px;border:1px solid rgba(235,249,255,.72);border-radius:3px 3px 7px 7px;background:linear-gradient(180deg,rgba(255,255,255,.35) 0 35%,var(--vial) 38% 100%);box-shadow:0 0 8px var(--vial)}
 .craft-entry{width:100%;padding:13px;border-radius:15px;background:linear-gradient(135deg,#5f321b,#1c1712);border:1px solid #d68b38;text-align:left;box-shadow:inset 0 0 18px rgba(255,119,37,.12)}.craft-entry b{display:block;color:#ffc45e;font-size:14px}.craft-entry span{font-size:10px;color:#d7b891}
 .craft-screen{background:radial-gradient(circle at 50% 28%,#62331d,#18120e 58%,#090b09);padding-top:18px}.craft-fire{font-size:48px;filter:drop-shadow(0 0 15px #ff6a21)}.craft-recipe{display:grid;grid-template-columns:1fr 34px 1fr 34px 1fr;align-items:center;gap:5px;margin:16px 0}.craft-slot{aspect-ratio:1;border-radius:12px;border:1px solid #725336;background:rgba(8,10,8,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#8e806c;font-size:9px;padding:4px}.craft-slot b{font-size:24px;color:#d7b06a}.craft-slot.selected{border-color:#ffc45e;color:#ffe2a6;box-shadow:0 0 10px rgba(255,166,48,.28)}.craft-slot.result{border-color:#7fa56b;color:#d8f2c7}.craft-slot small{display:block;margin-top:3px;font-size:7px;line-height:1.2;color:#c8b79d}.craft-op{text-align:center;color:#ffbe55;font-size:20px;font-weight:900}.craft-picker{margin:8px 0 12px;padding:9px;border:1px solid #7c5732;border-radius:12px;background:rgba(12,10,8,.82);display:grid;gap:6px}.craft-picker-title{font-size:10px;color:#f2c777;font-weight:800;text-align:left}.craft-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.craft-choice{display:flex;align-items:center;gap:7px;min-height:42px;padding:7px;border:1px solid #59442d;border-radius:9px;background:#17130f;color:#f1dfbf;text-align:left}.craft-choice b{font-size:10px}.craft-choice small{display:block;color:#aa9a83;font-size:8px}.craft-choice:disabled{opacity:.43}.craft-choice.on{border-color:#f2bd58;background:#2b1d10}.craft-cost{margin:9px 0;padding:8px;border-radius:9px;background:#18130e;border:1px solid #5c452d;color:#d7c4a8;font-size:9px;line-height:1.4}.craft-recipes{margin-top:9px;text-align:left;font-size:8px;line-height:1.45;color:#9f907b}.craft-recipes b{color:#e9bd6b}.steel-wallet{margin:12px 0;padding:10px 12px;border-radius:12px;border:1px solid #7f8490;background:linear-gradient(135deg,#24292e,#111416);color:#e9edf2;font-size:11px}.steel-wallet b{color:#dce8f6;font-size:14px}.steel-section{margin-top:14px;padding-top:12px;border-top:1px solid #5d4933;text-align:left}.steel-section h3{margin:0 0 5px;color:#e6c27d;font-size:12px}.steel-section p{margin:0 0 9px;color:#9e9383;font-size:8px;line-height:1.4}.steel-list{display:grid;gap:6px}.steel-row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;padding:8px 9px;border-radius:9px;border:1px solid #4e4a43;background:#111311}.steel-row b{display:block;color:#eee2ca;font-size:10px}.steel-row small{display:block;color:#9d968a;font-size:8px;margin-top:2px}.steel-row button{padding:6px 8px;border-radius:7px;border:1px solid #a58a5b;background:#3c3020;color:#fff0ce;font-size:8px}.steel-row button:disabled{opacity:.42}.steel-recipe{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;padding:9px;border-radius:10px;border:1px solid #52605b;background:linear-gradient(135deg,#17201c,#101411)}.steel-recipe.locked{opacity:.48}.steel-recipe b{display:block;color:#dbe9df;font-size:10px}.steel-recipe small{display:block;color:#9fb0a5;font-size:8px;line-height:1.35;margin-top:2px}.steel-recipe button{padding:6px 8px;border-radius:7px;border:1px solid #89a48f;background:#294032;color:#eefbed;font-size:8px}.steel-recipe button:disabled{opacity:.45}
@@ -1416,7 +1431,7 @@ const BANDIT_SPECS:BanditSpec[]=[
 ];
 type WhisperPhase="closed"|"question"|"fight"|"reward"|"defeat";
 
-function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, northBridgeReady, goldChestOpened, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, banditRespawnAt, onBanditDefeated, onBanditReward, onBanditKnockout, potions, runes, equippedRune, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; banditRespawnAt:Record<string,number>; onBanditDefeated:(id:string)=>void; onBanditReward:(id:string)=>void; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string,currentHp?:number)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
+function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, northBridgeReady, goldChestOpened, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, banditRespawnAt, onBanditDefeated, onBanditReward, onBanditKnockout, potions, runes, equippedRune, runeCounts, runeLevels, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; banditRespawnAt:Record<string,number>; onBanditDefeated:(id:string)=>void; onBanditReward:(id:string)=>void; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; runeCounts?:Record<string,number>; runeLevels?:Record<string,number>; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string,currentHp?:number)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -5408,14 +5423,16 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     };
     const syncBanditSword=(preview:BanditActor)=>{
       if(!preview.sword.visible||!preview.weaponHand)return;
-      // When attached directly to the hand bone, the animation system moves the sword for us.
-      if(preview.sword.parent===preview.weaponHand)return;
-      const handWorld=new THREE.Vector3(),handQ=new THREE.Quaternion(),actorQ=new THREE.Quaternion();
+      // The generated Attack clip explicitly animates DEF-upper_arm.R and DEF-forearm.R.
+      // Use the hand for position, but the animated forearm for orientation so the blade
+      // follows the slash instead of staying frozen in one pose.
+      const driver=preview.weaponShoulder||preview.weaponHand;
+      const handWorld=new THREE.Vector3(),driverQ=new THREE.Quaternion(),actorQ=new THREE.Quaternion();
       preview.weaponHand.getWorldPosition(handWorld);
-      preview.weaponHand.getWorldQuaternion(handQ);
+      driver.getWorldQuaternion(driverQ);
       preview.actor.getWorldQuaternion(actorQ);
       preview.sword.position.copy(preview.actor.worldToLocal(handWorld.clone()));
-      preview.sword.quaternion.copy(actorQ.invert().multiply(handQ));
+      preview.sword.quaternion.copy(actorQ.invert().multiply(driverQ));
       preview.sword.rotateZ(-1.05);
       preview.sword.rotateX(.20);
     };
@@ -5460,9 +5477,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const exactHand=findBanditBone(root,[/hand[._ :-]*r/i,/right.*hand/i,/hand.*right/i,/r[._ :-]*hand/i,/wrist[._ :-]*r/i,/right.*wrist/i]);
         const forearm=findBanditBone(root,[/forearm[._ :-]*r/i,/right.*forearm/i,/lower[_ .:-]*arm[._ :-]*r/i,/right.*lower.*arm/i]);
         const weaponShoulder=findBanditBone(root,[/upper[_ .:-]*arm[._ :-]*r/i,/right.*upper.*arm/i,/shoulder[._ :-]*r/i,/right.*shoulder/i]);
-        // Prefer the real right-hand bone; forearm/upper-arm are emergency fallbacks so
-        // the weapon can never remain frozen in world space when a rig uses unusual names.
+        // Position comes from the hand when present; orientation is driven by the right
+        // forearm because the generated Attack clip definitely animates that bone.
         const weaponHand=exactHand||forearm||weaponShoulder;
+        const weaponDriver=forearm||weaponShoulder||exactHand;
         hideNativeBanditWeapons(root);
         const iron=new THREE.MeshStandardMaterial({color:0xbac5c8,metalness:.72,roughness:.28,side:THREE.DoubleSide});
         const grip=new THREE.MeshStandardMaterial({color:0x38231a,roughness:.9});
@@ -5472,17 +5490,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const handle=new THREE.Mesh(new THREE.CylinderGeometry(.043,.05,.29,8),grip);handle.position.y=.03;sword.add(handle);
         const guard=new THREE.Mesh(new THREE.BoxGeometry(.37,.055,.09),iron);guard.position.y=.18;sword.add(guard);
         sword.position.set(.68,1.25,.28);sword.rotation.set(.25,0,-.95);actor.add(sword);
-        // Attach the visible sword directly to the animated armature. `attach` preserves
-        // its world scale even though the imported character root is heavily rescaled.
-        if(weaponHand){
-          actor.updateWorldMatrix(true,true);
-          sword.updateWorldMatrix(true,false);
-          weaponHand.updateWorldMatrix(true,false);
-          weaponHand.attach(sword);
-          sword.position.set(0,0,0);
-          sword.rotation.set(.20,0,-1.05);
-        }
-        const preview:BanditActor={spec,root,actor,sword,weaponHand,weaponShoulder,mixer,actions,current:'Scene',next:0,alerted:false,hp:spec.hp,deathAt:0,restY:root.position.y,enemyNextAttack:0,enemyHitAt:0,collider};
+        const preview:BanditActor={spec,root,actor,sword,weaponHand,weaponShoulder:weaponDriver,mixer,actions,current:'Scene',next:0,alerted:false,hp:spec.hp,deathAt:0,restY:root.position.y,enemyNextAttack:0,enemyHitAt:0,collider};
         syncBanditSword(preview);
         bandits.push(preview);
     };
@@ -6144,11 +6152,12 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         // to the right hand. If this asset has no usable Attack clip, use one small absolute
         // fallback swing on the sword only (never accumulate bone rotations).
         syncBanditSword(preview);
-        if(preview.current==='Attack'&&now<preview.next&&!preview.actions.Attack){
+        if(preview.current==='Attack'&&now<preview.next){
           const attackT=THREE.MathUtils.clamp((1150-(preview.next-now))/1150,0,1);
           const swing=Math.sin(Math.PI*attackT);
-          preview.sword.rotateZ(-1.35*swing);
-          preview.sword.rotateX(-.45*swing);
+          // A small extra blade arc makes the authored arm slash read clearly on a phone.
+          preview.sword.rotateZ(-.55*swing);
+          preview.sword.rotateX(-.18*swing);
         }
       }
       if(now-lastBanditHud>200){
@@ -6490,7 +6499,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       <div className="mid3d-map-sub" style={{color:"#c3b7a2"}}>Здоровье: {banditHeroHp}/{whisperStats.maxHp} · Ледяная защита: {frostGuard} уд.</div>
       <div className="inventory-section"><h3>🌿 Материалы</h3><div className="inventory-list"><div className="inventory-item"><span className="inventory-symbol">🪵</span><span className="inventory-detail"><b>Древесина · {stock.wood}</b><small>Плотнику Бьёрну нужно 3</small></span></div><div className="inventory-item"><span className="inventory-symbol">🌱</span><span className="inventory-detail"><b>Ветки · {stock.twigs}</b><small>Плотнику Бьёрну нужно 3</small></span></div><div className="inventory-item"><span className="inventory-symbol">🌿</span><span className="inventory-detail"><b>Травы · {stock.herbs}</b><small>Травнице Сигрид нужно 4</small></span></div></div></div>
       <InventorySection kind="potions" potions={potions} runes={runes} equippedRune={equippedRune} hp={banditHeroHp} maxHp={whisperStats.maxHp} frostGuard={frostGuard} onUsePotion={useMidgardPotion} onEquipRune={onEquipRune}/>
-      <InventorySection kind="runes" potions={potions} runes={runes} equippedRune={equippedRune} hp={banditHeroHp} maxHp={whisperStats.maxHp} frostGuard={frostGuard} onUsePotion={useMidgardPotion} onEquipRune={onEquipRune}/>
+      <InventorySection kind="runes" potions={potions} runes={runes} equippedRune={equippedRune} lootCounts={runeCounts} runeLevels={runeLevels} hp={banditHeroHp} maxHp={whisperStats.maxHp} frostGuard={frostGuard} onUsePotion={useMidgardPotion} onEquipRune={onEquipRune}/>
       <button className="mid3d-map-close" onClick={()=>setInventoryOpen(false)}>Вернуться в игру</button>
     </div></div>}
     {creditsOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}><div className="mid3d-map-panel">
@@ -6629,7 +6638,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
 }
 
 function SparkDrop(){return <img className="spark-drop" src={`${BASE}img/BackgroundEraser_20260930_010245371.png`} alt="" aria-label="Капля силы"/>;}
-function InventorySection({kind,potions,runes,equippedRune,hp,maxHp,frostGuard,onUsePotion,onEquipRune}:{kind:'potions'|'runes';potions:string[];runes:string[];equippedRune:string;hp:number;maxHp:number;frostGuard:number;onUsePotion:(id:string)=>void;onEquipRune:(id:string)=>void}){
+function InventorySection({kind,potions,runes,equippedRune,lootCounts,runeLevels,hp,maxHp,frostGuard,onUsePotion,onEquipRune,onFuseRune}:{kind:'potions'|'runes';potions:string[];runes:string[];equippedRune:string;lootCounts?:Record<string,number>;runeLevels?:Record<string,number>;hp:number;maxHp:number;frostGuard:number;onUsePotion:(id:string)=>void;onEquipRune:(id:string)=>void;onFuseRune?:(id:string)=>void}){
+  const roman=(level:number)=>level>=3?'III':level===2?'II':'I';
   return <section className="inventory-section"><h3>{kind==='potions'?'🧪 Эликсиры':'ᛉ Руны'}</h3><div className="inventory-list">
     {kind==='potions'?POTION_CATALOG.map(item=>{
       const count=potions.filter(id=>id===item.id).length;
@@ -6641,9 +6651,12 @@ function InventorySection({kind,potions,runes,equippedRune,hp,maxHp,frostGuard,o
       return <div key={item.id} className={'inventory-item'+(count?'':' empty')}><span className="inventory-symbol">{item.symbol}</span><span className="inventory-detail"><b>{item.name} · {count} шт.</b><small>{item.effect}</small></span><button disabled={!count||unusable} onClick={()=>onUsePotion(item.id)}>{unusable&&count?'Не требуется':'Применить'}</button></div>;
     }):RUNE_CATALOG.map(item=>{
       const owned=runes.includes(item.id),active=equippedRune===item.id;
-      return <div key={item.id} className={'inventory-item'+(owned?'':' empty')}><span className="inventory-symbol">{item.symbol}</span><span className="inventory-detail"><b>{item.name} · {owned?'найдена':'не найдена'}</b><small>{item.effect}</small></span><button className={active?'active':''} disabled={!owned||active} onClick={()=>onEquipRune(item.id)}>{active?'Активна':'Выбрать'}</button></div>;
+      const count=owned?Math.max(1,Number(lootCounts?.[item.id])||1):0;
+      const level=owned?Math.min(3,1+Math.max(0,Number(runeLevels?.['rune:'+item.id])||0)):1;
+      const nextLevel=Math.min(3,level+1);
+      return <div key={item.id} className={'inventory-item'+(owned?'':' empty')}><span className="inventory-symbol">{item.symbol}</span><span className="inventory-detail"><b>{item.name} · {owned?count+' шт. · ур. '+roman(level):'не найдена'}</b><small>{item.effect}{owned&&level>1?' Усиление: уровень '+roman(level)+'.':''}</small></span><span className="inventory-actions"><button className={active?'active':''} disabled={!owned||active} onClick={()=>onEquipRune(item.id)}>{active?'Активна':'Выбрать'}</button>{owned&&onFuseRune&&<button className="fuse" disabled={count<3||level>=3} onClick={()=>onFuseRune(item.id)}>{level>=3?'Максимум':count>=3?'Слить 3 → '+roman(nextLevel):'Нужно 3'}</button>}</span></div>;
     })}
-  </div></section>;
+  </div>{kind==='runes'&&<small className="dim" style={{display:'block',marginTop:8}}>Три одинаковые руны можно слить в одну усиленную. При слиянии остаётся одна руна, а две лишние копии расходуются. Максимальный уровень — III.</small>}</section>;
 }
 
 const FORGE_WEAPON_MODELS = [
@@ -6729,6 +6742,7 @@ function ForgeWeaponWall({owned,ownedShields,selected,selectedShield,onChoose}:{
 function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
   const [save, setSave] = useState<Save>(loadSave);
+  const [selectedArtifact,setSelectedArtifact]=useState("");
   const [pick, setPick] = useState("");
   const [pickName, setPickName] = useState("");
   const [toast, setToast] = useState("");
@@ -6841,11 +6855,20 @@ const [roadT, setRoadT] = useState(0.06);
   const gearHp=()=>gearLevel('armor')*3+gearLevel('helmet')*2+(equipped('armor')?4:0)+(equipped('helmet')?2:0);
   const gearDefense=()=>Math.floor((gearLevel('armor')+gearLevel('helmet'))/2)+(equipped('armor')?1:0);
   const activeRuneDef=()=>RUNE_CATALOG.find(r=>r.id===save.equippedRune);
+  const runeLevel=(id:string)=>Math.min(3,1+Math.max(0,Number(save.forgeLevels['rune:'+id])||0));
+  const activeRuneBonus=(key:'attack'|'rune'|'defense'|'power')=>{
+    const rune=activeRuneDef();if(!rune)return 0;
+    const base=Number(rune[key]||0);if(!base)return 0;
+    const level=runeLevel(rune.id);
+    return key==='power'?base+(level>=3?1:0):base+(level-1);
+  };
+  const activeArtifactDef=()=>ARTIFACT_INFO[save.equippedArtifact];
   const heroPowerPips=()=>{
     if(!heroDef)return 1;
     const gearForge=gearLevel('armor')+gearLevel('helmet')+gearLevel('shield')+gearLevel('boots');
-    const runePower=activeRuneDef()?.power||0;
-    const score=heroDef.str+WEAPON_POWER[save.heroWeapon]+forgeLevel(save.heroWeapon)+Math.floor(gearForge/2)+runePower*2;
+    const runePower=activeRuneBonus('power');
+    const artifactPower=activeArtifactDef()?.power||0;
+    const score=heroDef.str+WEAPON_POWER[save.heroWeapon]+forgeLevel(save.heroWeapon)+Math.floor(gearForge/2)+runePower*2+artifactPower*2;
     return score>=24?5:score>=19?4:score>=15?3:score>=11?2:1;
   };
   const toggleGear=(id:GearId)=>{
@@ -7051,6 +7074,24 @@ const [roadT, setRoadT] = useState(0.06);
     if(!rune||!save.runes.includes(id))return;
     setSave(s=>({...s,equippedRune:id}));haptic();say(`Руна ${rune.name} активна. ${rune.effect}.`);
   };
+  const fuseInventoryRune=(id:string)=>{
+    const rune=RUNE_CATALOG.find(r=>r.id===id);
+    if(!rune||!save.runes.includes(id))return;
+    const count=Math.max(1,Number(save.lootCounts[id])||1),level=runeLevel(id);
+    if(level>=3){say(`Руна ${rune.name} уже достигла III уровня.`);return;}
+    if(count<3){say(`Для усиления руны ${rune.name} нужны 3 одинаковые копии. Сейчас: ${count}.`);return;}
+    setSave(s=>{
+      const current=Math.max(1,Number(s.lootCounts[id])||1);
+      const currentLevel=Math.min(3,1+Math.max(0,Number(s.forgeLevels['rune:'+id])||0));
+      if(current<3||currentLevel>=3)return s;
+      return {...s,
+        lootCounts:{...s.lootCounts,[id]:current-2},
+        forgeLevels:{...s.forgeLevels,['rune:'+id]:currentLevel}
+      };
+    });
+    haptic('success');
+    say(`Три руны ${rune.name} слиты. Руна усилена до ${level===1?'II':'III'} уровня.`);
+  };
   const rewardBandit=(id:string)=>{
     const spec=BANDIT_SPECS.find(b=>b.id===id);
     if(!spec)return;
@@ -7075,7 +7116,7 @@ const [roadT, setRoadT] = useState(0.06);
     let dmg = 0; let log = ""; let nhen = hen; let nmen = men; let nshield = shield;
     if (kind === "hit") {
       setCombatFx({kind:"hit",key:Date.now()});
-      dmg = heroDef!.str + WEAPON_POWER[save.heroWeapon] + forgeLevel(save.heroWeapon) + (save.equippedRune==='uruzStrength'?2:0) + (save.equippedRune==='sowiloLight'?2:0) + rnd(4);
+      dmg = heroDef!.str + WEAPON_POWER[save.heroWeapon] + forgeLevel(save.heroWeapon) + activeRuneBonus('attack') + (activeArtifactDef()?.attack||0) + rnd(4);
       if(hen>0)nhen=Math.max(0,hen-1);else{dmg=Math.ceil(dmg*.55);log="Силы иссякли — удар слабее. ";}
       if (save.powers.includes("fireOath")) { dmg += 5; setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "fireOath") })); log += "Огненный обет! "; }
       if (heroDef!.id === "berserk" && hhp <= Math.max(heroDef!.hp,hmax) / 2) { dmg *= 2; log += "Медвежья ярость! "; }
@@ -7084,7 +7125,7 @@ const [roadT, setRoadT] = useState(0.06);
     if (kind === "rune") {
       if (hen < 2) { say("Для рунического удара нужно 2 деления энергии."); return; }
       setCombatFx({kind:"rune",key:Date.now()});
-      nhen = hen - 2; dmg = heroDef!.en + 2 + (save.equippedRune==='kenazShard'?2:0) + (save.equippedRune==='sowiloLight'?2:0) + rnd(5);
+      nhen = hen - 2; dmg = heroDef!.en + 2 + activeRuneBonus('rune') + (activeArtifactDef()?.rune||0) + rnd(5);
       log = "Руническое заклинание вспыхивает: −" + dmg + " хозяину.";
     }
     if (kind === "shield") { if(hen<1){say("Нет энергии, чтобы удержать щит.");return;} nhen=hen-1;nshield = true; log = "Ты поднимаешь щит — удар ослабнет."; }
@@ -7100,7 +7141,7 @@ const [roadT, setRoadT] = useState(0.06);
     let md = m.atk + rnd(3); let mlog = "";
     if(nmen<=0){md=0;nmen=2;mlog=" "+m.name+" вынужден перевести дыхание и восстанавливает энергию.";}else nmen=Math.max(0,nmen-1);
     const forgedDefense=gearDefense();
-    md=Math.max(1,md-forgedDefense-(save.equippedRune==='algizGuard'?2:0));
+    md=Math.max(1,md-forgedDefense-activeRuneBonus('defense')-(activeArtifactDef()?.defense||0));
     if (nshield) { md = Math.max(0,Math.ceil(md * (equipped('shield')?.3:.6))-gearLevel('shield')-(equipped('shield')?1:0)); mlog += " Щит принял большую часть удара."; }
     if(!nshield&&md>0&&save.frostGuard>0){md=Math.max(1,Math.ceil(md*.5));setSave(s=>({...s,frostGuard:Math.max(0,s.frostGuard-1)}));mlog+=" Морозный настой ослабил удар.";}
     if (save.powers.includes("iceOath")) { md = Math.ceil(md * 0.65); setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "iceOath") })); mlog += " Ледяной обет сковал удар врага."; }
@@ -7592,9 +7633,9 @@ const [roadT, setRoadT] = useState(0.06);
       guardianResolved={MIDGARD_GUARDIAN_ORDER.filter(id=>save.done.includes("guardian:stage:"+id)||save.done.includes("guardian:"+id)) as unknown as string[]}
       whisperStats={{
         maxHp:heroDef.hp+gearHp(),
-        attack:heroDef.str+WEAPON_POWER[save.heroWeapon]+forgeLevel(save.heroWeapon)+(activeRuneDef()?.attack||0),
-        runeAttack:heroDef.en+2+(activeRuneDef()?.rune||0),
-        defense:gearDefense()+(activeRuneDef()?.defense||0),
+        attack:heroDef.str+WEAPON_POWER[save.heroWeapon]+forgeLevel(save.heroWeapon)+activeRuneBonus('attack')+(activeArtifactDef()?.attack||0),
+        runeAttack:heroDef.en+2+activeRuneBonus('rune')+(activeArtifactDef()?.rune||0),
+        defense:gearDefense()+activeRuneBonus('defense')+(activeArtifactDef()?.defense||0),
         power:heroPowerPips()
       }}
       onWhisperCorrect={finishWhisperCorrect}
@@ -7606,6 +7647,8 @@ const [roadT, setRoadT] = useState(0.06);
       potions={save.potions}
       runes={save.runes}
       equippedRune={save.equippedRune}
+      runeCounts={save.lootCounts}
+      runeLevels={save.forgeLevels}
       fieldHp={save.fieldHp}
       frostGuard={save.frostGuard}
       onUsePotion={useInventoryPotion}
@@ -7775,6 +7818,7 @@ const [roadT, setRoadT] = useState(0.06);
             <div className="hrow">🌀 {heroDef.ability}: {heroDef.abilityDesc}</div>
             <div className="hrow"><SparkDrop/> Капель силы: <b>{save.sparks}</b> • 🏺 Артефактов: <b>{save.artifacts.length}/9</b></div>
             {save.artifacts.length > 0 && <div className="hrow">🏺 {save.artifacts.map(a => ARTIFACTS[a]).join(", ")}</div>}
+            {save.equippedArtifact&&ARTIFACT_INFO[save.equippedArtifact]&&<div className="hrow">✨ Активный артефакт: <b>{ARTIFACT_INFO[save.equippedArtifact].name}</b> · {ARTIFACT_INFO[save.equippedArtifact].effect}</div>}
           </div>
         </div>
       )}
@@ -7862,8 +7906,14 @@ const [roadT, setRoadT] = useState(0.06);
               <div className="hall-slots"><button className="hall-slot on" onClick={()=>say("Надета базовая броня.")}>♜</button><button className="hall-slot on" onClick={()=>say("Экипирован базовый щит.")}>◉</button><button className="hall-slot on" onClick={()=>say("Надеты базовые сапоги.")}>⌁</button></div>
               <span className="hall-count">Базовый набор</span>
             </div>
+            <div className="hall-section artifact-hall">
+              <span className="hall-icon">🏺</span><h3>Артефакты миров</h3>
+              <p>Нажми на найденный артефакт, чтобы увидеть его происхождение и силу. Одновременно можно применять один артефакт.</p>
+              <div className="artifact-slots">{save.artifacts.length?save.artifacts.map(id=>{const item=ARTIFACT_INFO[id];if(!item)return null;return <button key={id} className={'artifact-slot'+(save.equippedArtifact===id?' on':'')} onClick={()=>{setSelectedArtifact(id);haptic();}} title={item.name}>{item.symbol}{save.equippedArtifact===id&&<small>АКТИВЕН</small>}</button>}):<span className="dim">Первый артефакт появится после полного завершения мира.</span>}</div>
+              {selectedArtifact&&ARTIFACT_INFO[selectedArtifact]&&(()=>{const item=ARTIFACT_INFO[selectedArtifact],active=save.equippedArtifact===selectedArtifact;return <div className="artifact-detail"><b>{item.symbol} {item.name}</b><small>{item.world}. {item.description}</small><small><b>Эффект:</b> {item.effect}</small><button className={active?'active':''} onClick={()=>{setSave(s=>({...s,equippedArtifact:active?'':selectedArtifact}));haptic('success');say(active?item.name+' снят.':item.name+' применён. '+item.effect);}}>{active?'Снять артефакт':'Применить'}</button></div>})()}
+            </div>
             <div className="hall-section inventory-hall"><InventorySection kind="potions" potions={save.potions} runes={save.runes} equippedRune={save.equippedRune} hp={Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp())} maxHp={(heroDef?.hp??100)+gearHp()} frostGuard={save.frostGuard} onUsePotion={useInventoryPotion} onEquipRune={equipInventoryRune}/></div>
-            <div className="hall-section inventory-hall"><InventorySection kind="runes" potions={save.potions} runes={save.runes} equippedRune={save.equippedRune} hp={Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp())} maxHp={(heroDef?.hp??100)+gearHp()} frostGuard={save.frostGuard} onUsePotion={useInventoryPotion} onEquipRune={equipInventoryRune}/></div>
+            <div className="hall-section inventory-hall"><InventorySection kind="runes" potions={save.potions} runes={save.runes} equippedRune={save.equippedRune} lootCounts={save.lootCounts} runeLevels={save.forgeLevels} hp={Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp())} maxHp={(heroDef?.hp??100)+gearHp()} frostGuard={save.frostGuard} onUsePotion={useInventoryPotion} onEquipRune={equipInventoryRune} onFuseRune={fuseInventoryRune}/></div>
           </div>
           <button className="craft-entry" onClick={()=>{haptic();go({t:"craft"});}}><b>🔥 Перейти в локацию крафта</b><span>Соединяй оружие, материалы и Капли силы в новые предметы.</span></button>
         </div>
