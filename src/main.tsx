@@ -3424,8 +3424,8 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     const shrubLeaf=new THREE.SphereGeometry(.52,7,5);
     const herbLeaf=new THREE.ConeGeometry(.14,.75,5);
     const gatherTrunkMat=mat(0x65452e,1),leafMat=mat(0x315944,1),shrubMat=mat(0x3c654e,1),herbMat=mat(0x77a964,1),flowerMat=mat(0xf4cf84,1);
-    const gatherCounts={wood:GATHER_SPOTS.filter(p=>p.kind==='wood').length,twigs:GATHER_SPOTS.filter(p=>p.kind==='twigs').length,herbs:GATHER_SPOTS.filter(p=>p.kind==='herbs').length};
-    const gatherBatches:Record<GatherKind,{parts:Array<{mesh:THREE.InstancedMesh;local:THREE.Matrix4}>;next:number}>={wood:{parts:[],next:0},twigs:{parts:[],next:0},herbs:{parts:[],next:0}};
+    const gatherCounts:Record<GatherKind,number>={wood:GATHER_SPOTS.filter(p=>p.kind==='wood').length,twigs:GATHER_SPOTS.filter(p=>p.kind==='twigs').length,herbs:GATHER_SPOTS.filter(p=>p.kind==='herbs').length,ashWood:0};
+    const gatherBatches:Record<GatherKind,{parts:Array<{mesh:THREE.InstancedMesh;local:THREE.Matrix4}>;next:number}>={wood:{parts:[],next:0},twigs:{parts:[],next:0},herbs:{parts:[],next:0},ashWood:{parts:[],next:0}};
     const addGatherPart=(kind:GatherKind,geometry:THREE.BufferGeometry,material:THREE.Material,x:number,y:number,z:number,sx=1,sy=1,sz=1,tilt=0)=>{
       const part=new THREE.Object3D();part.position.set(x,y,z);part.scale.set(sx,sy,sz);part.rotation.z=tilt;part.updateMatrix();
       const mesh=new THREE.InstancedMesh(geometry,material,gatherCounts[kind]);mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
