@@ -5376,7 +5376,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
 
     // Share one GLB and its geometry across nine skinned characters. Only load
     // a character when the player reaches its part of the map.
-    type BanditActor={spec:BanditSpec;root:THREE.Object3D;actor:THREE.Group;sword:THREE.Group;weaponHand:THREE.Object3D|null;weaponShoulder:THREE.Object3D|null;mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>;current:string;next:number;alerted:boolean;hp:number;deathAt:number;restY:number;enemyNextAttack:number;enemyHitAt:number;collider:{id:string;x:number;z:number;r:number}|null};
+    type BanditActor={spec:BanditSpec;root:THREE.Object3D;actor:THREE.Group;sword:THREE.Group;weaponHand:THREE.Object3D|null;weaponShoulder:THREE.Object3D|null;magic:THREE.Group;magicMat:THREE.MeshBasicMaterial;spellStartedAt:number;spellFrom:THREE.Vector3;mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>;current:string;next:number;alerted:boolean;hp:number;deathAt:number;restY:number;enemyNextAttack:number;enemyHitAt:number;collider:{id:string;x:number;z:number;r:number}|null};
     const bandits:BanditActor[]=[];
     let banditAsset:any=null,banditRequested=false;
     let banditVictoryTimer=0;
@@ -5421,20 +5421,13 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         if((o.isMesh||o.isSkinnedMesh)&&/sword|blade|weapon/.test(n))o.visible=false;
       });
     };
-    const syncBanditSword=(preview:BanditActor)=>{
-      if(!preview.sword.visible||!preview.weaponHand)return;
-      // The generated Attack clip explicitly animates DEF-upper_arm.R and DEF-forearm.R.
-      // Use the hand for position, but the animated forearm for orientation so the blade
-      // follows the slash instead of staying frozen in one pose.
-      const driver=preview.weaponShoulder||preview.weaponHand;
-      const handWorld=new THREE.Vector3(),driverQ=new THREE.Quaternion(),actorQ=new THREE.Quaternion();
-      preview.weaponHand.getWorldPosition(handWorld);
-      driver.getWorldQuaternion(driverQ);
-      preview.actor.getWorldQuaternion(actorQ);
-      preview.sword.position.copy(preview.actor.worldToLocal(handWorld.clone()));
-      preview.sword.quaternion.copy(actorQ.invert().multiply(driverQ));
-      preview.sword.rotateZ(-1.05);
-      preview.sword.rotateX(.20);
+    const banditCastOrigin=(preview:BanditActor,target=new THREE.Vector3())=>{
+      if(preview.weaponHand){
+        preview.weaponHand.getWorldPosition(target);
+        return target;
+      }
+      target.set(.48,1.52,.28);
+      return preview.actor.localToWorld(target);
     };
     const playBandit=(preview:BanditActor,name:string,now:number)=>{
       if(preview.current===name&&name==='Run')return;
@@ -5482,16 +5475,18 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const weaponHand=exactHand||forearm||weaponShoulder;
         const weaponDriver=forearm||weaponShoulder||exactHand;
         hideNativeBanditWeapons(root);
-        const iron=new THREE.MeshStandardMaterial({color:0xbac5c8,metalness:.72,roughness:.28,side:THREE.DoubleSide});
-        const grip=new THREE.MeshStandardMaterial({color:0x38231a,roughness:.9});
-        const sword=new THREE.Group();
-        const blade=new THREE.Mesh(new THREE.BoxGeometry(.16,.83,.055),iron);blade.position.y=.58;sword.add(blade);
-        const tip=new THREE.Mesh(new THREE.ConeGeometry(.09,.2,4),iron);tip.rotation.y=Math.PI/4;tip.position.y=1.09;sword.add(tip);
-        const handle=new THREE.Mesh(new THREE.CylinderGeometry(.043,.05,.29,8),grip);handle.position.y=.03;sword.add(handle);
-        const guard=new THREE.Mesh(new THREE.BoxGeometry(.37,.055,.09),iron);guard.position.y=.18;sword.add(guard);
-        sword.position.set(.68,1.25,.28);sword.rotation.set(.25,0,-.95);actor.add(sword);
-        const preview:BanditActor={spec,root,actor,sword,weaponHand,weaponShoulder:weaponDriver,mixer,actions,current:'Scene',next:0,alerted:false,hp:spec.hp,deathAt:0,restY:root.position.y,enemyNextAttack:0,enemyHitAt:0,collider};
-        syncBanditSword(preview);
+        // The sword is deliberately removed. The bandit's existing arm motion is now a
+        // rune-casting gesture, which is much more readable than a blade that cannot follow
+        // this imported rig reliably.
+        const sword=new THREE.Group();sword.visible=false;actor.add(sword);
+        const magicColor=spec.damage>=13?0xb16cff:spec.damage>=11?0x61cfff:0xff8a3d;
+        const magicMat=new THREE.MeshBasicMaterial({color:magicColor,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending});
+        const magic=new THREE.Group();magic.visible=false;
+        const orb=new THREE.Mesh(new THREE.SphereGeometry(.16,10,8),magicMat);magic.add(orb);
+        const ring=new THREE.Mesh(new THREE.TorusGeometry(.24,.025,6,16),magicMat);ring.rotation.x=Math.PI/2;magic.add(ring);
+        const ring2=new THREE.Mesh(new THREE.TorusGeometry(.19,.018,6,14),magicMat);ring2.rotation.set(Math.PI/2,.7,.4);magic.add(ring2);
+        scene.add(magic);
+        const preview:BanditActor={spec,root,actor,sword,weaponHand,weaponShoulder:weaponDriver,magic,magicMat,spellStartedAt:0,spellFrom:new THREE.Vector3(),mixer,actions,current:'Scene',next:0,alerted:false,hp:spec.hp,deathAt:0,restY:root.position.y,enemyNextAttack:0,enemyHitAt:0,collider};
         bandits.push(preview);
     };
     const loadBandits=()=>{
@@ -5658,7 +5653,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
             const ci=banditCollisions.indexOf(target.collider);
             if(ci>=0)banditCollisions.splice(ci,1);
           }
-          target.collider=null;target.deathAt=now;target.sword.visible=false;
+          target.collider=null;target.deathAt=now;target.sword.visible=false;target.magic.visible=false;target.spellStartedAt=0;
           banditVictoryRef.current=target.spec.id;
           onBanditDefeated(target.spec.id);
           onBanditReward(target.spec.id);
@@ -6089,7 +6084,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
             preview.enemyNextAttack=0;preview.enemyHitAt=0;preview.current='Scene';preview.next=0;
             preview.root.rotation.set(0,0,0);preview.root.position.y=preview.restY;
             preview.actor.position.set(preview.spec.x,groundY(preview.spec.x,preview.spec.z),preview.spec.z);
-            preview.actor.visible=true;preview.sword.visible=true;
+            preview.actor.visible=true;preview.sword.visible=false;preview.magic.visible=false;preview.magicMat.opacity=0;preview.spellStartedAt=0;
             preview.actions.Death?.stop();preview.actions.Hit?.stop();preview.actions.Attack?.stop();preview.actions.Run?.stop();
             if(preview.actions.Scene){preview.actions.Scene.reset().play();preview.actions.Scene.paused=true;}
             const collider={id:preview.spec.id,x:preview.spec.x,z:preview.spec.z,r:1.42};
@@ -6107,8 +6102,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const dx=q.x-preview.actor.position.x,dz=q.z-preview.actor.position.z;
         const distance=Math.hypot(dx,dz);
         if(distance>43)continue;
-        if(preview.hp>0&&preview.alerted&&distance>18){preview.alerted=false;preview.enemyHitAt=0;}
+        if(preview.hp>0&&preview.alerted&&distance>18){preview.alerted=false;preview.enemyHitAt=0;preview.spellStartedAt=0;preview.magic.visible=false;}
         if(preview.hp>0&&!preview.alerted){
+          preview.magic.visible=false;preview.spellStartedAt=0;
           const homeX=preview.spec.x-preview.actor.position.x,homeZ=preview.spec.z-preview.actor.position.z;
           const homeDistance=Math.hypot(homeX,homeZ);
           if(homeDistance>.04){
@@ -6123,16 +6119,22 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         if(!preview.alerted&&preview.hp>0&&Math.hypot(q.x-preview.spec.x,q.z-preview.spec.z)<9)preview.alerted=true;
         if(preview.alerted&&preview.hp>0&&!banditVictoryRef.current&&!encounterLocked&&!inventoryPauseRef.current){
           if(preview.current==='Hit'&&now<preview.next){/* Finish the hit reaction. */}
-          else if(distance>2.5){
+          else if(distance>5.2){
             playBandit(preview,'Run',now);
-            const step=Math.min(distance-2.5,dt*2.1);
+            const step=Math.min(distance-5.2,dt*2.1);
             const nx=preview.actor.position.x+dx/distance*step,nz=preview.actor.position.z+dz/distance*step;
             if(!inRiverWater(nx,nz)||onRiverBridge(nx,nz)){preview.actor.position.x=nx;preview.actor.position.z=nz;}
             preview.actor.position.y=groundY(preview.actor.position.x,preview.actor.position.z);
             if(preview.collider){preview.collider.x=preview.actor.position.x;preview.collider.z=preview.actor.position.z;}
           }else if(now>=preview.enemyNextAttack){
-            preview.enemyNextAttack=now+1850;
-            preview.enemyHitAt=now+560;
+            preview.enemyNextAttack=now+2050;
+            preview.enemyHitAt=now+760;
+            preview.spellStartedAt=now;
+            banditCastOrigin(preview,preview.spellFrom);
+            preview.magic.position.copy(preview.spellFrom);
+            preview.magic.scale.setScalar(.55);
+            preview.magicMat.opacity=.85;
+            preview.magic.visible=true;
             playBandit(preview,'Attack',now);
           }
           preview.actor.rotation.y=Math.atan2(dx,dz);
@@ -6140,24 +6142,42 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         preview.mixer.update(dt);
         if(preview.enemyHitAt&&now>=preview.enemyHitAt&&preview.hp>0){
           preview.enemyHitAt=0;
-          if(!banditVictoryRef.current&&!encounterLocked&&!inventoryPauseRef.current&&Math.hypot(q.x-preview.actor.position.x,q.z-preview.actor.position.z)<3.15){
+          if(!banditVictoryRef.current&&!encounterLocked&&!inventoryPauseRef.current&&Math.hypot(q.x-preview.actor.position.x,q.z-preview.actor.position.z)<7.2){
             const guarding=shieldRaiseUntilRef.current>now&&gear.includes('shield');
             const damage=Math.max(1,preview.spec.damage-banditDefenseRef.current);
             banditDamageRef.current(guarding?Math.max(1,Math.ceil(damage*.25)):damage,guarding);
           }
         }
-        // The original version rotated the upper-arm bone cumulatively every frame,
-        // which made the bandit wave/thrust the arm instead of delivering a clean sword cut.
-        // Let the authored Attack clip drive the skeleton and keep our visible sword locked
-        // to the right hand. If this asset has no usable Attack clip, use one small absolute
-        // fallback swing on the sword only (never accumulate bone rotations).
-        syncBanditSword(preview);
-        if(preview.current==='Attack'&&now<preview.next){
-          const attackT=THREE.MathUtils.clamp((1150-(preview.next-now))/1150,0,1);
-          const swing=Math.sin(Math.PI*attackT);
-          // A small extra blade arc makes the authored arm slash read clearly on a phone.
-          preview.sword.rotateZ(-.55*swing);
-          preview.sword.rotateX(-.18*swing);
+        // Rune spell: the existing arm animation becomes a casting gesture. The orb
+        // charges at the hand, flies to the hero, flashes at impact, then disappears.
+        if(preview.spellStartedAt>0){
+          const age=now-preview.spellStartedAt;
+          const chargeEnd=280,flightEnd=800,fadeEnd=980;
+          if(age<fadeEnd&&preview.hp>0){
+            const target=new THREE.Vector3(hero.position.x,hero.position.y+1.18,hero.position.z);
+            if(age<chargeEnd){
+              banditCastOrigin(preview,preview.spellFrom);
+              preview.magic.position.copy(preview.spellFrom);
+              const pulse=.58+.22*Math.sin(age*.035);
+              preview.magic.scale.setScalar(pulse);
+              preview.magic.rotation.y+=dt*5.8;
+              preview.magic.rotation.z+=dt*3.6;
+              preview.magicMat.opacity=.62+.28*Math.abs(Math.sin(age*.025));
+            }else{
+              const flight=THREE.MathUtils.clamp((age-chargeEnd)/(flightEnd-chargeEnd),0,1);
+              const eased=flight*flight*(3-2*flight);
+              const arc=Math.sin(Math.PI*flight)*.42;
+              preview.magic.position.lerpVectors(preview.spellFrom,target,eased);
+              preview.magic.position.y+=arc;
+              preview.magic.scale.setScalar(.78+.18*Math.sin(flight*Math.PI));
+              preview.magic.rotation.x+=dt*7.2;
+              preview.magic.rotation.y+=dt*8.4;
+              preview.magicMat.opacity=age<flightEnd?.92:Math.max(0,1-(age-flightEnd)/(fadeEnd-flightEnd));
+            }
+            preview.magic.visible=true;
+          }else{
+            preview.magic.visible=false;preview.magicMat.opacity=0;preview.spellStartedAt=0;
+          }
         }
       }
       if(now-lastBanditHud>200){
@@ -7108,7 +7128,7 @@ const [roadT, setRoadT] = useState(0.06);
   };
   const banditKnockout=()=>{
     setSave(s=>({...s,sparks:Math.max(0,s.sparks-5),fieldHp:(heroDef?.hp||100)+gearHp()}));
-    haptic();say('Разбойник сбил Вику с ног. Древо вернуло её к началу пути (−5 Капель силы).');
+    haptic();say('Рунический удар разбойника сбил Вику с ног. Древо вернуло её к началу пути (−5 Капель силы).');
   };
   const fightAct = (id: string, kind: "hit" | "rune" | "shield" | "restore") => {
     if (over) return;
