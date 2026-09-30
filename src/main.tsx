@@ -4287,6 +4287,22 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     scene.add(ashGrove);
     objects.push(ashGrove);
     addCircleCollider(ashGroveX,ashGroveZ,2.6,.08);
+    // Natural materials used only by the two special sacred trees.
+    // The rest of Midgard's forest is intentionally left untouched.
+    const specialBarkTex=new THREE.TextureLoader().load(`${BASE}img/models/NormalTree_Bark_Lite.webp`,t=>{
+      t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(1.15,3.4);t.anisotropy=4;
+    });
+    const specialRockTex=new THREE.TextureLoader().load(`${BASE}img/models/Rock_5_Diffuse_Lite.webp`,t=>{
+      t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.MirroredRepeatWrapping;t.repeat.set(1.35,1.35);t.anisotropy=4;
+    });
+    const specialBarkMat=new THREE.MeshStandardMaterial({map:specialBarkTex,color:0xffffff,roughness:.96,metalness:0,bumpMap:surfaceMaps.height,bumpScale:.022});
+    const specialRockMat=new THREE.MeshStandardMaterial({map:specialRockTex,color:0xffffff,roughness:.98,metalness:0});
+    const specialWaterMat=new THREE.MeshStandardMaterial({
+      map:mimirWaterTexture||undefined,color:0x8bdcf2,roughness:.24,metalness:.02,
+      transparent:true,opacity:.90,side:THREE.DoubleSide
+    });
+    mimirWaterMaterials.push(specialWaterMat);
+
     // Hoddmímir's Holt — a sacred refuge beneath a smaller world-tree.
     const hoddFallbackStart=scene.children.length;
     const hoddX=62,hoddZ=78;
@@ -4681,22 +4697,6 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     };
 
     makeForgottenCamp(68,8);
-    // Natural materials used only by the two special sacred trees.
-    // The rest of Midgard's forest is intentionally left untouched.
-    const specialBarkTex=new THREE.TextureLoader().load(`${BASE}img/models/NormalTree_Bark_Lite.webp`,t=>{
-      t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(1.15,3.4);t.anisotropy=4;
-    });
-    const specialRockTex=new THREE.TextureLoader().load(`${BASE}img/models/Rock_5_Diffuse_Lite.webp`,t=>{
-      t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.MirroredRepeatWrapping;t.repeat.set(1.35,1.35);t.anisotropy=4;
-    });
-    const specialBarkMat=new THREE.MeshStandardMaterial({map:specialBarkTex,color:0xffffff,roughness:.96,metalness:0,bumpMap:surfaceMaps.height,bumpScale:.022});
-    const specialRockMat=new THREE.MeshStandardMaterial({map:specialRockTex,color:0xffffff,roughness:.98,metalness:0});
-    const specialWaterMat=new THREE.MeshStandardMaterial({
-      map:mimirWaterTexture||undefined,color:0x8bdcf2,roughness:.24,metalness:.02,
-      transparent:true,opacity:.90,side:THREE.DoubleSide
-    });
-    mimirWaterMaterials.push(specialWaterMat);
-
     // Deep Grove — restore the treehouse version.
     const deepGroveAsset='Midgard_Deep_Grove_Treehouse_V1_YUP.glb';
     const deepGroveX=-45,deepGroveZ=75;
