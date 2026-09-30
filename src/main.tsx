@@ -219,6 +219,7 @@ const loadSave = (): Save => {
     s.stock={...EMPTY_GATHER_STOCK,...(s.stock&&typeof s.stock==='object'?s.stock:{})};
     for(const kind of ['wood','twigs','herbs'] as GatherKind[])s.stock[kind]=Math.max(0,Math.floor(Number(s.stock[kind])||0));
     if (!Array.isArray(s.powers)) s.powers = [];
+    if (!Array.isArray(s.done)) s.done = [];
     if (!Array.isArray(s.ownedWeapons)) s.ownedWeapons = ["default"];
     if(!s.lootCounts||typeof s.lootCounts!=="object"||Array.isArray(s.lootCounts))s.lootCounts={};
     s.lootCounts.default=Math.max(1,Number(s.lootCounts.default)||1);
@@ -232,6 +233,19 @@ const loadSave = (): Save => {
     if (!Array.isArray(s.potions)) s.potions = [];
     if (!Array.isArray(s.runes)) s.runes = [];
     if(s.done?.includes('chest:norns'))s.runes=[...new Set([...s.runes,'uruzStrength'])];
+
+    // Guardian progression must survive every reload. Older/broken builds used
+    // two different marker forms, so mirror them both ways.
+    for(const id of MIDGARD_GUARDIAN_ORDER){
+      const legacy="guardian:"+id, stage="guardian:stage:"+id;
+      if(s.done.includes(legacy)||s.done.includes(stage))s.done=[...new Set([...s.done,legacy,stage])];
+    }
+    // Repair Fehu completions from the build where the reward was granted but
+    // the completion marker could be lost. Fehu's rune is the direct reward
+    // from that first guardian, so existing players are not forced to repeat it.
+    if(s.runes.includes('fehuWealth')){
+      s.done=[...new Set([...s.done,'guardian:rune','guardian:stage:rune'])];
+    }
     if(typeof s.equippedRune!=="string"||!s.runes.includes(s.equippedRune))s.equippedRune=s.runes.includes('uruzStrength')?'uruzStrength':'';
     if(s.fieldHp!==null&&(!Number.isFinite(s.fieldHp)||s.fieldHp<0))s.fieldHp=null;
     if(!Number.isFinite(s.frostGuard)||s.frostGuard<0)s.frostGuard=0;
@@ -6635,7 +6649,7 @@ const [roadT, setRoadT] = useState(0.06);
     if (finale) { haptic("success"); say("Серия испытаний завершена. Артефакт мира выдаётся только после полного прохождения его игровой локации."); }
   };
   const finishWhisperCorrect = () => {
-    setSave(s=>s.done.includes("whisper:wisdom")?s:{...s,sparks:s.sparks+8,done:[...new Set([...s.done,"whisper:wisdom","guardian:stage:whisperStone"])],
+    setSave(s=>s.done.includes("whisper:wisdom")?s:{...s,sparks:s.sparks+8,done:[...new Set([...s.done,"whisper:wisdom","guardian:whisperStone","guardian:stage:whisperStone"])],
       runes:[...new Set([...s.runes,'ansuzWisdom'])],potions:[...s.potions,'northernMoss'],
       lootCounts:lootCountAdd(s.lootCounts,['ansuzWisdom','northernMoss'])});
     haptic("success");
@@ -6686,7 +6700,7 @@ const [roadT, setRoadT] = useState(0.06);
   const finishWhisperBattle=()=>{
     setSave(s=>{
       if(s.done.includes("whisper:battle"))return s;
-      return {...s,sparks:s.sparks+18,done:[...new Set([...s.done,"whisper:battle","guardian:stage:whisperStone"])],
+      return {...s,sparks:s.sparks+18,done:[...new Set([...s.done,"whisper:battle","guardian:whisperStone","guardian:stage:whisperStone"])],
         ownedWeapons:[...new Set([...s.ownedWeapons,'mace'])],
         potions:[...s.potions,'northernMoss'],
         runes:[...new Set([...s.runes,'kenazShard'])],
@@ -6898,30 +6912,33 @@ const [roadT, setRoadT] = useState(0.06);
         const battle=id.startsWith("guardian:battle:");
         const locationId=id.slice(battle?"guardian:battle:".length:"guardian:correct:".length);
         const spec=MIDGARD_GUARDIANS[locationId];
+        if(!spec)return;
         const key="guardian:"+locationId;
-        if(!spec||save.done.includes(key))return;
+        const stageKey="guardian:stage:"+locationId;
         const reward=battle?spec.battleReward:spec.correctReward;
         const loot=MIDGARD_GUARDIAN_LOOT[locationId]?.[battle?'battle':'correct']||{};
         const lootIds=[...(loot.weapons||[]),...(loot.shields||[]),...(loot.runes||[]),...(loot.potions||[])];
-        setSave(s=>{
-          if(s.done.includes(key))return s;
+        setSave(state=>{
+          if(state.done.includes(key)||state.done.includes(stageKey))return state;
           const idx=MIDGARD_GUARDIAN_ORDER.indexOf(locationId as any);
-          const missing=idx>0&&MIDGARD_GUARDIAN_ORDER.slice(0,idx).some(prev=>{
-            if(prev==="whisperStone")return !(s.done.includes("whisper:battle")||s.done.includes("whisper:wisdom")||s.done.includes("guardian:whisperStone"));
-            return !s.done.includes("guardian:"+prev);
-          });
-          if(missing)return s;
+          const completed=(guardianId:string)=>{
+            if(guardianId==="whisperStone")return state.done.includes("whisper:battle")||state.done.includes("whisper:wisdom")||state.done.includes("guardian:whisperStone")||state.done.includes("guardian:stage:whisperStone");
+            return state.done.includes("guardian:"+guardianId)||state.done.includes("guardian:stage:"+guardianId);
+          };
+          const missing=idx>0&&MIDGARD_GUARDIAN_ORDER.slice(0,idx).some(prev=>!completed(prev));
+          if(missing)return state;
           const isMidgardComplete=locationId==="hoddmimir";
-          return {...s,
-          sparks:s.sparks+reward,
-          done:[...new Set([...s.done,key,"guardian:stage:"+locationId,...(isMidgardComplete?["world:complete:midgard"]:[])])],
-          artifacts:isMidgardComplete?[...new Set([...s.artifacts,"midgard"])]:s.artifacts,
-          ownedWeapons:[...new Set([...s.ownedWeapons,...(loot.weapons||[])])],
-          ownedShields:[...new Set([...s.ownedShields,...(loot.shields||[])])],
-          runes:[...new Set([...s.runes,...(loot.runes||[])])],
-          potions:[...s.potions,...(loot.potions||[])],
-          lootCounts:lootCountAdd(s.lootCounts,lootIds)
-        }});
+          return {...state,
+            sparks:state.sparks+reward,
+            done:[...new Set([...state.done,key,stageKey,...(isMidgardComplete?["world:complete:midgard"]:[])])],
+            artifacts:isMidgardComplete?[...new Set([...state.artifacts,"midgard"])]:state.artifacts,
+            ownedWeapons:[...new Set([...state.ownedWeapons,...(loot.weapons||[])])],
+            ownedShields:[...new Set([...state.ownedShields,...(loot.shields||[])])],
+            runes:[...new Set([...state.runes,...(loot.runes||[])])],
+            potions:[...state.potions,...(loot.potions||[])],
+            lootCounts:lootCountAdd(state.lootCounts,lootIds)
+          };
+        });
         haptic("success");
         return;
       }
@@ -7222,7 +7239,7 @@ const [roadT, setRoadT] = useState(0.06);
       northBridgeReady={save.done.includes('gather:carpenter')||(save.done.includes('chest:norns')&&save.done.includes('bridge:boards')&&save.done.includes('bridge:fittings'))}
       goldChestOpened={save.done.includes('chest:gold')}
       whisperResolved={save.done.includes("whisper:battle")||save.done.includes("whisper:wisdom")}
-      guardianResolved={MIDGARD_GUARDIAN_ORDER.filter(id=>save.done.includes("guardian:stage:"+id)) as unknown as string[]}
+      guardianResolved={MIDGARD_GUARDIAN_ORDER.filter(id=>save.done.includes("guardian:stage:"+id)||save.done.includes("guardian:"+id)) as unknown as string[]}
       whisperStats={{
         maxHp:heroDef.hp+gearHp(),
         attack:heroDef.str+WEAPON_POWER[save.heroWeapon]+forgeLevel(save.heroWeapon)+(activeRuneDef()?.attack||0),
