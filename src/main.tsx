@@ -2806,10 +2806,10 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       homeTextures[key]=texture;
       homeMaterials.filter(p=>p.key===key).forEach(p=>setHomeMap(p.material,texture));
     },undefined,()=>console.warn(`House texture unavailable: ${name}`));
-    const pendingHomeBrick=loadHomeTexture("T_RedBrick_BaseColor1.png","wall");
-    const pendingHomeRoof=loadHomeTexture("T_RoundTilesBaseColorr1.png","roof");
-    const pendingForgeStone=loadHomeTexture("T_Forge_WhiteStone.png","forge");
-    const pendingElderBrick=loadHomeTexture("T_Elder_SandBrick.png","elder");
+    const pendingHomeBrick=loadHomeTexture("T_RedBrick_BaseColor1.webp","wall");
+    const pendingHomeRoof=loadHomeTexture("T_RoundTilesBaseColorr1.webp","roof");
+    const pendingForgeStone=loadHomeTexture("T_Forge_WhiteStone.webp","forge");
+    const pendingElderBrick=loadHomeTexture("T_Elder_SandBrick.webp","elder");
     const applyHomeTextures=(root:THREE.Object3D,theme:"wall"|"forge"|"elder"="wall")=>{
       repairBuilding(root);
       root.updateWorldMatrix(true,true);
@@ -3678,14 +3678,14 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         o.material=Array.isArray(o.material)?o.material.map(tune):tune(o.material);
       });
     };
-    const pendingStoneTexture=new THREE.TextureLoader().load(`${BASE}img/models/T_UnevenBrick1_BaseColor.png`,texture=>{
+    const pendingStoneTexture=new THREE.TextureLoader().load(`${BASE}img/models/T_UnevenBrick1_BaseColor.webp`,texture=>{
       if(!glbTreesAlive){texture.dispose();return;}
       texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
       texture.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());texture.needsUpdate=true;
       stoneWallTexture=texture;
       stoneWallMaterials.forEach(material=>{material.map=texture;material.color.setHex(/DarkRock/i.test(material.name)?0xd5d5d5:0xffffff);material.needsUpdate=true;});
     },undefined,()=>console.warn("Stone wall texture unavailable; retaining plain stone materials."));
-    const pendingBrickTexture=new THREE.TextureLoader().load(`${BASE}img/models/T_Brick_BaseColor1.png`,texture=>{
+    const pendingBrickTexture=new THREE.TextureLoader().load(`${BASE}img/models/T_Brick_BaseColor1.webp`,texture=>{
       if(!glbTreesAlive){texture.dispose();return;}
       texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
       texture.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());texture.needsUpdate=true;
@@ -5399,19 +5399,12 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
       }
       return bestScore>0?best:null;
     };
-    const findNativeBanditSword=(root:THREE.Object3D)=>{
-      let found:THREE.Object3D|null=null;
+    const hideNativeBanditWeapons=(root:THREE.Object3D)=>{
       root.traverse((o:any)=>{
-        if(found||o.isBone)return;
+        if(o.isBone)return;
         const n=String(o.name||'').toLowerCase();
-        if(/sword|blade/.test(n))found=o;
+        if((o.isMesh||o.isSkinnedMesh)&&/sword|blade|weapon/.test(n))o.visible=false;
       });
-      return found;
-    };
-    const hasBoneAncestor=(o:THREE.Object3D|null)=>{
-      let p:any=o?.parent;
-      while(p){if(p.isBone)return true;p=p.parent;}
-      return false;
     };
     const syncBanditSword=(preview:BanditActor)=>{
       if(!preview.sword.visible||!preview.weaponHand)return;
@@ -5464,13 +5457,13 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
           if(!actions[canonical])actions[canonical]=action;
         }
         if(actions.Scene){actions.Scene.play();actions.Scene.paused=true;}
-        const weaponHand=findBanditBone(root,[/hand[._ -]*r/i,/right.*hand/i,/hand.*right/i,/wrist[._ -]*r/i]);
-        const weaponShoulder=findBanditBone(root,[/upper[_ .-]*arm[._ -]*r/i,/right.*upper.*arm/i,/shoulder[._ -]*r/i]);
-        const nativeSword=findNativeBanditSword(root);
-        if(nativeSword&&hasBoneAncestor(nativeSword)){
-          nativeSword.visible=true;
-          nativeSword.traverse((o:any)=>{if(o.isMesh)o.visible=true;});
-        }
+        const exactHand=findBanditBone(root,[/hand[._ :-]*r/i,/right.*hand/i,/hand.*right/i,/r[._ :-]*hand/i,/wrist[._ :-]*r/i,/right.*wrist/i]);
+        const forearm=findBanditBone(root,[/forearm[._ :-]*r/i,/right.*forearm/i,/lower[_ .:-]*arm[._ :-]*r/i,/right.*lower.*arm/i]);
+        const weaponShoulder=findBanditBone(root,[/upper[_ .:-]*arm[._ :-]*r/i,/right.*upper.*arm/i,/shoulder[._ :-]*r/i,/right.*shoulder/i]);
+        // Prefer the real right-hand bone; forearm/upper-arm are emergency fallbacks so
+        // the weapon can never remain frozen in world space when a rig uses unusual names.
+        const weaponHand=exactHand||forearm||weaponShoulder;
+        hideNativeBanditWeapons(root);
         const iron=new THREE.MeshStandardMaterial({color:0xbac5c8,metalness:.72,roughness:.28,side:THREE.DoubleSide});
         const grip=new THREE.MeshStandardMaterial({color:0x38231a,roughness:.9});
         const sword=new THREE.Group();
@@ -5479,11 +5472,9 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         const handle=new THREE.Mesh(new THREE.CylinderGeometry(.043,.05,.29,8),grip);handle.position.y=.03;sword.add(handle);
         const guard=new THREE.Mesh(new THREE.BoxGeometry(.37,.055,.09),iron);guard.position.y=.18;sword.add(guard);
         sword.position.set(.68,1.25,.28);sword.rotation.set(.25,0,-.95);actor.add(sword);
-        // Prefer the model's own rigged sword when it is already parented to a bone.
-        // Otherwise attach our procedural sword directly to the animated right-hand bone.
-        if(nativeSword&&hasBoneAncestor(nativeSword)){
-          sword.visible=false;
-        }else if(weaponHand){
+        // Attach the visible sword directly to the animated armature. `attach` preserves
+        // its world scale even though the imported character root is heavily rescaled.
+        if(weaponHand){
           actor.updateWorldMatrix(true,true);
           sword.updateWorldMatrix(true,false);
           weaponHand.updateWorldMatrix(true,false);
