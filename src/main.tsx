@@ -6983,19 +6983,24 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
     sun.position.set(-8,14,9);sun.castShadow=true;
     sun.shadow.mapSize.set(1024,1024);scene.add(sun);
 
-    const ground=new THREE.Mesh(new THREE.PlaneGeometry(32,30),new THREE.MeshStandardMaterial({color:0x587340,roughness:1}));
-    ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+    // The mill channel is a real recessed trench rather than water painted over grass.
+    // This lets the wheel sit naturally with roughly its lower third in the stream.
+    const grassMat=new THREE.MeshStandardMaterial({color:0x587340,roughness:1});
+    const leftGround=new THREE.Mesh(new THREE.PlaneGeometry(9.4,30),grassMat);
+    leftGround.rotation.x=-Math.PI/2;leftGround.position.set(-11.3,0,0);leftGround.receiveShadow=true;scene.add(leftGround);
+    const rightGround=new THREE.Mesh(new THREE.PlaneGeometry(15.4,30),grassMat);
+    rightGround.rotation.x=-Math.PI/2;rightGround.position.set(8.3,0,0);rightGround.receiveShadow=true;scene.add(rightGround);
 
     const path=new THREE.Mesh(new THREE.PlaneGeometry(6.2,16),new THREE.MeshStandardMaterial({color:0x665644,roughness:1}));
     path.rotation.x=-Math.PI/2;path.position.set(7,.025,4);path.receiveShadow=true;scene.add(path);
 
-    const channelFloor=new THREE.Mesh(new THREE.BoxGeometry(6,.22,25),new THREE.MeshStandardMaterial({color:0x4d514a,roughness:.95}));
-    channelFloor.position.set(-3,-.04,-1);channelFloor.receiveShadow=true;scene.add(channelFloor);
-    const water=new THREE.Mesh(new THREE.PlaneGeometry(5.4,24.6),new THREE.MeshStandardMaterial({color:0x3c9fb9,roughness:.28,metalness:.04,transparent:true,opacity:.82,emissive:0x0c3540,emissiveIntensity:.35}));
+    const channelFloor=new THREE.Mesh(new THREE.BoxGeometry(6,.24,25),new THREE.MeshStandardMaterial({color:0x4d514a,roughness:.95}));
+    channelFloor.position.set(-3,-1.48,-1);channelFloor.receiveShadow=true;scene.add(channelFloor);
+    const water=new THREE.Mesh(new THREE.PlaneGeometry(5.4,24.6),new THREE.MeshStandardMaterial({color:0x3c9fb9,roughness:.25,metalness:.04,transparent:true,opacity:.84,emissive:0x0c3540,emissiveIntensity:.35}));
     water.rotation.x=-Math.PI/2;water.position.set(-3,.12,-1);scene.add(water);
     for(const x of [-6.25,.25]){
-      const bank=new THREE.Mesh(new THREE.BoxGeometry(.7,.75,25),new THREE.MeshStandardMaterial({color:0x8c806c,roughness:1}));
-      bank.position.set(x,.25,-1);bank.castShadow=bank.receiveShadow=true;scene.add(bank);
+      const bank=new THREE.Mesh(new THREE.BoxGeometry(.7,1.75,25),new THREE.MeshStandardMaterial({color:0x8c806c,roughness:1}));
+      bank.position.set(x,-.63,-1);bank.castShadow=bank.receiveShadow=true;scene.add(bank);
     }
 
     const flowMarks:THREE.Mesh[]=[];
@@ -7025,8 +7030,40 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
     }
 
     const wheelPivot=new THREE.Group();
-    wheelPivot.position.set(-2.9,3,-3.2);
+    // Water surface is y=.12. With a ~6-unit wheel, y=1.35 places about
+    // the lower third below the water line instead of leaving it suspended.
+    wheelPivot.position.set(-2.9,1.35,-3.2);
     scene.add(wheelPivot);wheelRef.current=wheelPivot;
+
+    // Structural mill supports: a stone pier at the house/channel edge,
+    // a timber shaft from the mill wall to the hub and triangular braces.
+    const supportWood=new THREE.MeshStandardMaterial({color:0x4b2f1b,roughness:.9});
+    const supportWoodDark=new THREE.MeshStandardMaterial({color:0x332015,roughness:.94});
+    const supportStone=new THREE.MeshStandardMaterial({color:0x777166,roughness:1});
+    const addSupportBeam=(a:THREE.Vector3,b:THREE.Vector3,width=.32,depth=.32,material=supportWood)=>{
+      const delta=new THREE.Vector3().subVectors(b,a);
+      const beam=new THREE.Mesh(new THREE.BoxGeometry(width,delta.length(),depth),material);
+      beam.position.copy(a).add(b).multiplyScalar(.5);
+      beam.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),delta.clone().normalize());
+      beam.castShadow=beam.receiveShadow=true;scene.add(beam);return beam;
+    };
+
+    const pier=new THREE.Mesh(new THREE.BoxGeometry(1.15,1.85,2.6),supportStone);
+    pier.position.set(-.18,-.05,-3.2);pier.castShadow=pier.receiveShadow=true;scene.add(pier);
+
+    // Main heavy timber arm visually transfers the wheel load into the mill/dam.
+    addSupportBeam(new THREE.Vector3(-2.72,1.35,-2.35),new THREE.Vector3(.05,1.35,-2.35),.38,.42,supportWoodDark);
+    addSupportBeam(new THREE.Vector3(-2.58,1.35,-2.35),new THREE.Vector3(.02,3.42,-2.35),.34,.34,supportWood);
+    addSupportBeam(new THREE.Vector3(-2.58,1.35,-2.35),new THREE.Vector3(.02,.38,-2.35),.34,.34,supportWood);
+
+    // A second, slightly recessed brace makes the support read as a real frame.
+    addSupportBeam(new THREE.Vector3(-2.64,1.35,-4.05),new THREE.Vector3(.02,1.35,-4.05),.3,.34,supportWoodDark);
+    addSupportBeam(new THREE.Vector3(-2.5,1.35,-4.05),new THREE.Vector3(.02,3.2,-4.05),.27,.29,supportWood);
+
+    const shaft=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,3.15,18),supportWoodDark);
+    shaft.rotation.z=Math.PI/2;shaft.position.set(-1.42,1.35,-3.2);shaft.castShadow=true;scene.add(shaft);
+    const bearing=new THREE.Mesh(new THREE.CylinderGeometry(.46,.46,.36,20),new THREE.MeshStandardMaterial({color:0x5f4424,roughness:.82,metalness:.06}));
+    bearing.rotation.z=Math.PI/2;bearing.position.set(-2.74,1.35,-3.2);bearing.castShadow=true;scene.add(bearing);
 
     let alive=true;
     const loader=new GLTFLoader();
