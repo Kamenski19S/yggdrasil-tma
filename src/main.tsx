@@ -628,10 +628,15 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .mid3d-scene{background:#8da894;overflow:hidden;position:relative;isolation:isolate;touch-action:none}
 .mid3d-scene canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none}
 .mid3d-ui{position:absolute;z-index:8;user-select:none;-webkit-user-select:none}
-.mid3d-top{top:10px;left:10px;right:10px;display:flex;justify-content:space-between;pointer-events:none}
-.mid3d-pill{padding:7px 10px;border:1px solid rgba(255,215,106,.28);border-radius:11px;background:rgba(5,12,8,.72);backdrop-filter:blur(5px);box-shadow:0 4px 12px rgba(0,0,0,.25)}
-.mid3d-pill b{display:block;color:#ffd76a;font-size:12px;line-height:1.1;letter-spacing:.8px}
-.mid3d-pill span{display:block;color:#c9d9cd;font-size:9px;line-height:1.2;margin-top:2px}
+.mid3d-top{top:10px;left:10px;right:10px;display:grid;grid-template-columns:58px minmax(0,1fr) 68px;gap:8px;align-items:stretch;pointer-events:none}
+.mid3d-top-btn,.mid3d-realm-title{min-height:48px;border:1px solid rgba(255,215,106,.78);border-radius:12px;background:linear-gradient(145deg,rgba(5,10,7,.96),rgba(13,17,13,.92));box-shadow:0 5px 16px rgba(0,0,0,.36),inset 0 0 0 1px rgba(255,215,106,.08);backdrop-filter:blur(5px)}
+.mid3d-top-btn{position:relative;display:flex;align-items:center;justify-content:center;padding:0;color:#ffd76a;pointer-events:auto;touch-action:manipulation;overflow:hidden}
+.mid3d-top-btn:active{transform:translateY(1px);background:linear-gradient(145deg,rgba(30,24,10,.98),rgba(8,12,9,.96))}
+.mid3d-map-icon{font-size:27px;line-height:1;filter:drop-shadow(0 0 5px rgba(255,202,86,.35))}
+.mid3d-realm-title{display:flex;align-items:center;justify-content:center;color:#ffd76a;font-size:16px;font-weight:900;letter-spacing:1.4px;text-shadow:0 0 10px rgba(255,199,73,.18)}
+.mid3d-wheel-icon{font-size:30px;line-height:1;color:#c88b39;text-shadow:0 0 8px rgba(255,196,79,.35)}
+.mid3d-mill-drop{position:absolute;right:7px;bottom:5px;width:13px;height:20px;object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,172,52,.75))}
+@media(max-width:380px){.mid3d-top{grid-template-columns:52px minmax(0,1fr) 62px;gap:6px}.mid3d-top-btn,.mid3d-realm-title{min-height:44px}.mid3d-realm-title{font-size:14px;letter-spacing:1px}}
 .mid3d-joy{left:14px;bottom:52px;width:132px;height:132px;border-radius:50%;background:rgba(7,14,9,.46);border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 0 25px rgba(0,0,0,.22);touch-action:none}
 .mid3d-joy:before,.mid3d-joy:after{content:"";position:absolute;left:50%;top:50%;background:rgba(255,255,255,.08);transform:translate(-50%,-50%);pointer-events:none}
 .mid3d-joy:before{width:82px;height:1px}.mid3d-joy:after{height:82px;width:1px}
@@ -6608,7 +6613,16 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   const rewardIcon=whisperReward.includes("Кеназ")?"ᚲ":whisperReward.includes("Эликсир")?"🧪":whisperReward.includes("Капель")&&!whisperReward.includes("и «")?"🔥":"⚔️";
 
   return <div className="content mid3d-scene" ref={mount} style={{touchAction:"none",userSelect:"none",WebkitUserSelect:"none"}} onPointerDown={startJoyFromZone} onPointerMove={moveJoyFromZone} onPointerUp={endJoyFromZone} onPointerCancel={endJoyFromZone} onContextMenu={e=>e.preventDefault()}>
-    {whisperPhase==="closed"&&<div className="mid3d-ui mid3d-top"><div className="mid3d-pill"><b>МИДГАРД</b><span>Деревня • река • лес • святилища</span></div><div className="mid3d-pill"><b>ᛟ</b><span>Мир живёт вокруг тебя</span></div></div>}
+    {whisperPhase==="closed"&&<div className="mid3d-ui mid3d-top">
+      <button className="mid3d-top-btn" aria-label="Карта Мидгарда" title="Карта Мидгарда" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapHero({x:state.current.x,z:state.current.z});setMapOpen(true);}}>
+        <span className="mid3d-map-icon" aria-hidden="true">🗺️</span>
+      </button>
+      <div className="mid3d-realm-title">МИДГАРД</div>
+      <button className="mid3d-top-btn" aria-label="Мельница капель бессмертия" title="Мельница" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setDoorNotice("Мельница капель бессмертия — скоро откроется.");}}>
+        <span className="mid3d-wheel-icon" aria-hidden="true">✺</span>
+        <img className="mid3d-mill-drop" src={`${BASE}img/BackgroundEraser_20260930_010245371.png`} alt=""/>
+      </button>
+    </div>}
     {banditOpponent&&whisperPhase==="closed"&&<div className="mid3d-ui" style={{top:"21%",left:"50%",transform:"translateX(-50%)",width:"min(88vw,290px)",padding:"8px 12px",borderRadius:12,background:"rgba(16,12,11,.87)",border:"1px solid rgba(227,67,50,.55)",color:"#fff",pointerEvents:"none",zIndex:12}}>
       <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}><span>Вика</span><span>{banditHeroHp}/{whisperStats.maxHp}</span></div>
       <div style={{height:5,background:"#382b29",borderRadius:6,overflow:"hidden",marginBottom:6}}><div style={{height:"100%",width:`${Math.max(0,banditHeroHp/whisperStats.maxHp*100)}%`,background:"#72c46e",transition:"width .25s"}}/></div>
@@ -6793,7 +6807,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
     <button className="mid3d-ui mid3d-block" disabled={!gear.includes('shield')} aria-label="Блок щитом" title="Блок щитом" onPointerDown={e=>e.stopPropagation()} onClick={()=>{shieldActionRef.current?.();if('vibrate' in navigator)navigator.vibrate(15);}}>🛡</button>
     <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" title="Удар оружием" onPointerDown={e=>e.stopPropagation()} onClick={()=>{attackActionRef.current?.();if("vibrate" in navigator)navigator.vibrate(12);}}>⚔</button>
     <button className="mid3d-ui mid3d-action" style={{top:125,background:"rgba(36,62,41,.94)",color:"#fff1d1"}} aria-label="Запас рун и эликсиров" title="Запас" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapOpen(false);setInventoryOpen(true);}}>🎒</button>
-    <button className="mid3d-ui mid3d-action" aria-label="Карта Мидгарда" title="Карта Мидгарда" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapHero({x:state.current.x,z:state.current.z});setMapOpen(true);}}>ᚠ</button></>}
+</>}
     {doorNotice&&<div className="mid3d-ui mid3d-hint" role="status" onClick={()=>setDoorNotice("")}>{doorNotice}</div>}
     {whisperPhase==="closed"&&!doorNotice&&<div className="mid3d-ui mid3d-hint">{insideHome?(moving?"Ты внутри дома":"Дом героя • отдых • сундук • выход"):moving?"Исследуй Мидгард":"Ворота • площадь • кузница • Мимир • норны • лес"}</div>}
   </div>;
