@@ -5275,6 +5275,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       <p>Изменения для Yggdrasil Runes: изменён масштаб модели, цвет древесины изменён на красный; остальные цвета модели сохранены. Выполнена адаптация для размещения у колодца Норн в игровой сцене.</p>
       <p><b>Angelic Alliance Chest</b> — <a href="https://skfb.ly/6WRTY" target="_blank" rel="noopener noreferrer">Arcnay</a>. <a href="https://skfb.ly/6WRTY" target="_blank" rel="noopener noreferrer">Оригинальная модель</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
       <p>Изменения для Yggdrasil Runes: размер модели уменьшен примерно до 5 метров и выполнена адаптация для размещения в Лесу Ходдмимира.</p>
+      <p><b>Medieval Water Wheel</b> — <a href="https://sketchfab.com/ameri0n" target="_blank" rel="noopener noreferrer">Milica (ameri0n)</a>. <a href="https://sketchfab.com/3d-models/medieval-water-wheel-0f0c77426a7f434aa8d9440c76b31ded" target="_blank" rel="noopener noreferrer">Оригинальная модель</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
+      <p>Изменения для Yggdrasil Runes: настроены масштаб, ориентация и положение модели в сцене мельницы; добавлено вращение колеса в зависимости от работы механизма.</p>
       <button className="mid3d-map-close" onClick={()=>setCreditsOpen(false)}>Вернуться в игру</button>
     </div></div>}
     {forestEventOpen&&!eventDone&&<div className="mid3d-ui mid3d-interact" style={{bottom:"14%",left:"50%",transform:"translateX(-50%)",width:"min(92vw,390px)",zIndex:31}}>
