@@ -628,15 +628,23 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .mid3d-scene{background:#8da894;overflow:hidden;position:relative;isolation:isolate;touch-action:none}
 .mid3d-scene canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none}
 .mid3d-ui{position:absolute;z-index:8;user-select:none;-webkit-user-select:none}
-.mid3d-top{top:10px;left:10px;right:10px;display:grid;grid-template-columns:58px minmax(0,1fr) 68px;gap:8px;align-items:stretch;pointer-events:none}
-.mid3d-top-btn,.mid3d-realm-title{min-height:48px;border:1px solid rgba(255,215,106,.78);border-radius:12px;background:linear-gradient(145deg,rgba(5,10,7,.96),rgba(13,17,13,.92));box-shadow:0 5px 16px rgba(0,0,0,.36),inset 0 0 0 1px rgba(255,215,106,.08);backdrop-filter:blur(5px)}
-.mid3d-top-btn{position:relative;display:flex;align-items:center;justify-content:center;padding:0;color:#ffd76a;pointer-events:auto;touch-action:manipulation;overflow:hidden}
-.mid3d-top-btn:active{transform:translateY(1px);background:linear-gradient(145deg,rgba(30,24,10,.98),rgba(8,12,9,.96))}
-.mid3d-map-icon{font-size:27px;line-height:1;filter:drop-shadow(0 0 5px rgba(255,202,86,.35))}
+.mid3d-top{top:10px;left:10px;right:10px;display:grid;grid-template-columns:72px minmax(0,1fr) 82px;gap:8px;align-items:stretch;pointer-events:none}
+.mid3d-top-btn,.mid3d-realm-title{position:relative;min-height:50px;border:0;background:transparent!important;box-shadow:none!important;isolation:isolate}
+.mid3d-top-btn{display:flex;align-items:center;justify-content:center;padding:0;appearance:none;-webkit-appearance:none;color:#ffd76a;pointer-events:auto;touch-action:manipulation;overflow:visible}
+.mid3d-top-btn::before,.mid3d-realm-title::before{content:"";position:absolute;inset:0;z-index:-2;background:linear-gradient(135deg,#f2cb69 0%,#b77a25 28%,#f3d377 52%,#9b611d 77%,#e5b850 100%);clip-path:polygon(8% 0,92% 0,100% 18%,100% 82%,92% 100%,8% 100%,0 82%,0 18%);filter:drop-shadow(0 4px 8px rgba(0,0,0,.42))}
+.mid3d-top-btn::after,.mid3d-realm-title::after{content:"";position:absolute;inset:1.5px;z-index:-1;background:linear-gradient(145deg,#080d09,#101611 58%,#050806);clip-path:polygon(8% 0,92% 0,100% 18%,100% 82%,92% 100%,8% 100%,0 82%,0 18%)}
+.mid3d-top-btn:active{transform:translateY(1px) scale(.985)}
+.mid3d-top-btn:active::after{background:linear-gradient(145deg,#17150b,#0b100c 62%,#050806)}
+.mid3d-top-btn .mid3d-corner,.mid3d-realm-title .mid3d-corner{position:absolute;width:7px;height:7px;border:1px solid #e5b850;transform:rotate(45deg);background:#090d0a;z-index:2;pointer-events:none}
+.mid3d-top-btn .mid3d-corner.tl,.mid3d-realm-title .mid3d-corner.tl{left:2px;top:2px}
+.mid3d-top-btn .mid3d-corner.tr,.mid3d-realm-title .mid3d-corner.tr{right:2px;top:2px}
+.mid3d-top-btn .mid3d-corner.bl,.mid3d-realm-title .mid3d-corner.bl{left:2px;bottom:2px}
+.mid3d-top-btn .mid3d-corner.br,.mid3d-realm-title .mid3d-corner.br{right:2px;bottom:2px}
 .mid3d-realm-title{display:flex;align-items:center;justify-content:center;color:#ffd76a;font-size:16px;font-weight:900;letter-spacing:1.4px;text-shadow:0 0 10px rgba(255,199,73,.18)}
-.mid3d-wheel-icon{font-size:30px;line-height:1;color:#c88b39;text-shadow:0 0 8px rgba(255,196,79,.35)}
-.mid3d-mill-drop{position:absolute;right:7px;bottom:5px;width:13px;height:20px;object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,172,52,.75))}
-@media(max-width:380px){.mid3d-top{grid-template-columns:52px minmax(0,1fr) 62px;gap:6px}.mid3d-top-btn,.mid3d-realm-title{min-height:44px}.mid3d-realm-title{font-size:14px;letter-spacing:1px}}
+.mid3d-map-svg{width:48px;height:38px;overflow:visible;filter:drop-shadow(0 1px 2px rgba(0,0,0,.7))}
+.mid3d-mill-svg{width:54px;height:40px;overflow:visible;filter:drop-shadow(0 1px 2px rgba(0,0,0,.72))}
+.mid3d-mill-drop{position:absolute;right:9px;bottom:7px;width:12px;height:18px;object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,172,52,.78));z-index:4}
+@media(max-width:380px){.mid3d-top{grid-template-columns:64px minmax(0,1fr) 74px;gap:6px}.mid3d-top-btn,.mid3d-realm-title{min-height:46px}.mid3d-realm-title{font-size:14px;letter-spacing:1px}.mid3d-map-svg{width:43px;height:34px}.mid3d-mill-svg{width:49px;height:36px}}
 .mid3d-joy{left:14px;bottom:52px;width:132px;height:132px;border-radius:50%;background:rgba(7,14,9,.46);border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 0 25px rgba(0,0,0,.22);touch-action:none}
 .mid3d-joy:before,.mid3d-joy:after{content:"";position:absolute;left:50%;top:50%;background:rgba(255,255,255,.08);transform:translate(-50%,-50%);pointer-events:none}
 .mid3d-joy:before{width:82px;height:1px}.mid3d-joy:after{height:82px;width:1px}
@@ -6615,11 +6623,31 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   return <div className="content mid3d-scene" ref={mount} style={{touchAction:"none",userSelect:"none",WebkitUserSelect:"none"}} onPointerDown={startJoyFromZone} onPointerMove={moveJoyFromZone} onPointerUp={endJoyFromZone} onPointerCancel={endJoyFromZone} onContextMenu={e=>e.preventDefault()}>
     {whisperPhase==="closed"&&<div className="mid3d-ui mid3d-top">
       <button className="mid3d-top-btn" aria-label="Карта Мидгарда" title="Карта Мидгарда" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapHero({x:state.current.x,z:state.current.z});setMapOpen(true);}}>
-        <span className="mid3d-map-icon" aria-hidden="true">🗺️</span>
+        <i className="mid3d-corner tl"/><i className="mid3d-corner tr"/><i className="mid3d-corner bl"/><i className="mid3d-corner br"/>
+        <svg className="mid3d-map-svg" viewBox="0 0 64 48" aria-hidden="true">
+          <path d="M9 7 24 4l16 4 15-4v34l-15 4-16-4-15 4Z" fill="#d5b06a" stroke="#f3d27a" strokeWidth="1.4"/>
+          <path d="M24 4v34M40 8v34" fill="none" stroke="#7a5425" strokeWidth="1.1" opacity=".8"/>
+          <path d="M14 15c6-4 10-4 15-1m15 5c4-2 6-2 8-1M12 30c5-2 9-2 13 0" fill="none" stroke="#6f4a22" strokeWidth="1.2" strokeLinecap="round"/>
+          <circle cx="32" cy="24" r="8.3" fill="#11170f" stroke="#d7a548" strokeWidth="1.4"/>
+          <path d="m32 15 2.1 6.4L40 24l-5.9 2.6L32 33l-2.1-6.4L24 24l5.9-2.6Z" fill="#e8be5d"/>
+          <circle cx="32" cy="24" r="2.1" fill="#6d4b1e"/>
+        </svg>
       </button>
-      <div className="mid3d-realm-title">МИДГАРД</div>
+      <div className="mid3d-realm-title">
+        <i className="mid3d-corner tl"/><i className="mid3d-corner tr"/><i className="mid3d-corner bl"/><i className="mid3d-corner br"/>
+        МИДГАРД
+      </div>
       <button className="mid3d-top-btn" aria-label="Мельница капель бессмертия" title="Мельница" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setDoorNotice("Мельница капель бессмертия — скоро откроется.");}}>
-        <span className="mid3d-wheel-icon" aria-hidden="true">✺</span>
+        <i className="mid3d-corner tl"/><i className="mid3d-corner tr"/><i className="mid3d-corner bl"/><i className="mid3d-corner br"/>
+        <svg className="mid3d-mill-svg" viewBox="0 0 70 52" aria-hidden="true">
+          <path d="M36 18 49 8l13 10v23H36Z" fill="#6b421f" stroke="#d39a43" strokeWidth="1.6"/>
+          <path d="M33 19 49 5l16 14" fill="none" stroke="#efc66b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <rect x="49" y="27" width="7" height="14" rx="1" fill="#1c1710" stroke="#a86d2b" strokeWidth="1"/>
+          <circle cx="25" cy="31" r="12" fill="#21170d" stroke="#e0ad4d" strokeWidth="1.7"/>
+          <circle cx="25" cy="31" r="2.4" fill="#d9a44a"/>
+          <path d="M25 19v24M13 31h24M16.5 22.5l17 17M16.5 39.5l17-17" stroke="#bb7b2d" strokeWidth="2.1" strokeLinecap="round"/>
+          <path d="M9 44c9-5 19 3 28-1 8-3 15-2 24 1" fill="none" stroke="#63b7c9" strokeWidth="2.4" strokeLinecap="round"/>
+        </svg>
         <img className="mid3d-mill-drop" src={`${BASE}img/BackgroundEraser_20260930_010245371.png`} alt=""/>
       </button>
     </div>}
