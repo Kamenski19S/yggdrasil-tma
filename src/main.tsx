@@ -724,9 +724,9 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .forge-note{margin:14px 0 6px;padding:10px 12px;border-radius:12px;border:1px solid rgba(213,155,75,.25);background:rgba(5,7,5,.62);font-size:9px;line-height:1.45;color:#bba98e}.forge-note b{color:#f1c979}.forge-exit{width:100%;margin-top:8px;padding:12px;border-radius:12px;border:1px solid #ff765a;background:radial-gradient(circle at 50% 0,rgba(255,201,96,.42),transparent 42%),linear-gradient(135deg,#b31f27,#5d0711 64%,#260207);color:#fff0db;font-size:11px;font-weight:900;box-shadow:inset 0 0 18px rgba(255,133,48,.23),0 0 14px rgba(198,28,27,.28);text-shadow:0 1px 4px #350006}.forge-exit:active{transform:scale(.98);filter:brightness(1.12)}
 .forge-transition{position:fixed;inset:0;z-index:80;background:radial-gradient(circle,rgba(255,151,46,.32),rgba(5,5,4,.94) 58%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#ffd47b;pointer-events:all}.forge-transition b{display:flex;align-items:center;justify-content:center;width:104px;height:104px;border-radius:50%;border:2px solid rgba(255,198,89,.72);background:radial-gradient(circle,rgba(255,178,56,.3),rgba(68,29,9,.42) 55%,transparent 57%);font-size:54px;box-shadow:0 0 26px rgba(255,116,25,.65),inset 0 0 25px rgba(255,188,77,.35);animation:forgePortal .72s ease-out}.forge-transition span{font-size:10px;letter-spacing:1.3px;text-transform:uppercase;text-shadow:0 2px 8px #000}
 /* ===== Mill of Immortality: independent lightweight scene ===== */
-.mill-scene{flex:1;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 25%,#26372d,#09100c 70%);isolation:isolate}
+.mill-scene{flex:1;position:relative;overflow:hidden;background:linear-gradient(180deg,#ffffff,#edf5eb 68%,#d9e8d4);isolation:isolate}
 .mill-scene canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-.mill-vignette{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,rgba(3,7,5,.18),transparent 28%,transparent 70%,rgba(2,5,3,.5)),radial-gradient(circle at 50% 48%,transparent 38%,rgba(0,0,0,.24) 100%)}
+.mill-vignette{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.03),transparent 32%,transparent 76%,rgba(28,49,33,.16)),radial-gradient(circle at 50% 48%,transparent 52%,rgba(46,73,53,.08) 100%)}
 .mill-title{position:absolute;z-index:4;top:10px;left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;gap:9px;padding:8px 11px;border:1px solid rgba(218,169,70,.62);border-radius:15px;background:linear-gradient(145deg,rgba(5,11,8,.94),rgba(12,18,13,.9));box-shadow:0 7px 18px rgba(0,0,0,.34);backdrop-filter:blur(5px)}
 .mill-title b{display:block;color:#f0c866;font-size:12px;letter-spacing:.75px}.mill-title small{display:block;color:#9fb2a7;font-size:8px;margin-top:2px}.mill-state{flex:0 0 auto;padding:4px 7px;border-radius:11px;border:1px solid rgba(135,159,142,.45);font-size:8px;font-weight:800;color:#aebcb4;background:#111b15}.mill-state.on{color:#ffda73;border-color:#d8a945;box-shadow:0 0 10px rgba(255,191,69,.2)}
 .mill-frame-card,.mill-icon-btn,.mill-sluice{position:absolute;z-index:4;background:transparent;border:0;isolation:isolate}
@@ -7011,8 +7011,8 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
     const host=mount.current;
     if(!host)return;
     const scene=new THREE.Scene();
-    scene.background=new THREE.Color(0x101a14);
-    scene.fog=new THREE.Fog(0x101a14,18,42);
+    scene.background=new THREE.Color(0xffffff);
+    scene.fog=new THREE.Fog(0xffffff,24,52);
 
     const camera=new THREE.PerspectiveCamera(48,Math.max(1,host.clientWidth)/Math.max(1,host.clientHeight),.1,100);
     camera.position.set(11,8.2,16);
@@ -7026,28 +7026,74 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
     renderer.shadowMap.type=THREE.PCFSoftShadowMap;
     host.appendChild(renderer.domElement);
 
-    scene.add(new THREE.HemisphereLight(0xcfe5d5,0x21180f,1.55));
-    const sun=new THREE.DirectionalLight(0xffe0a0,2.2);
+    let alive=true;
+    const loader=new GLTFLoader();
+    const millFbxLoader=new FBXLoader();
+    const textureLoader=new THREE.TextureLoader();
+    const millTextures:THREE.Texture[]=[];
+    const loadMillTexture=(name:string,repeatX=1,repeatY=1,srgb=true)=>{
+      const texture=textureLoader.load(`${BASE}img/models/${name}`,undefined,undefined,error=>console.warn(`[MILL TEXTURE] ${name} unavailable`,error));
+      if(srgb)texture.colorSpace=THREE.SRGBColorSpace;
+      texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
+      texture.repeat.set(repeatX,repeatY);
+      texture.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
+      millTextures.push(texture);
+      return texture;
+    };
+    const loadGreenMillTexture=(name:string)=>{
+      const texture=textureLoader.load(`${BASE}img/models/${name}`,t=>{
+        try{
+          const image:any=t.image,canvas=document.createElement('canvas');
+          canvas.width=Math.max(1,image?.width||image?.naturalWidth||1);canvas.height=Math.max(1,image?.height||image?.naturalHeight||1);
+          const ctx=canvas.getContext('2d',{willReadFrequently:true});
+          if(ctx){
+            ctx.drawImage(image,0,0,canvas.width,canvas.height);
+            const pixels=ctx.getImageData(0,0,canvas.width,canvas.height),d=pixels.data;
+            for(let i=0;i<d.length;i+=4){if(d[i+3]<4)continue;const lum=.2126*d[i]+.7152*d[i+1]+.0722*d[i+2];d[i]=Math.min(255,28+lum*.24);d[i+1]=Math.min(255,78+lum*.72);d[i+2]=Math.min(255,24+lum*.20);}
+            ctx.putImageData(pixels,0,0);t.image=canvas;
+          }
+        }catch(error){console.warn('[MILL TEXTURE] maple green recolour failed',error);}
+        t.needsUpdate=true;
+      },undefined,error=>console.warn(`[MILL TEXTURE] ${name} unavailable`,error));
+      texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
+      millTextures.push(texture);return texture;
+    };
+    const grassTexture=loadMillTexture('T_Grass_Green.jpg',4,12);
+    const pathTexture=loadMillTexture('T_Path_GrayGravel.jpg',2.2,6);
+    const stoneBankTexture=loadMillTexture('Rock_5_Diffuse_Lite.webp',1.6,8);
+    const stoneRockTexture=stoneBankTexture.clone();stoneRockTexture.repeat.set(1,1);millTextures.push(stoneRockTexture);
+    const waterTexture=loadMillTexture('T_Mimir_Water.jpg',1.25,5.5);
+    const houseWallTexture=loadMillTexture('T_RedBrick_BaseColor1.webp',2.1,2);
+    const houseRoofTexture=loadMillTexture('T_RoundTilesBaseColorr1.webp',2.4,2.2);
+    const birchBarkTexture=loadMillTexture('BirchTree_Bark_Lite.webp');
+    const birchLeavesTexture=loadMillTexture('BirchTree_Leaves_Lite.webp');
+    const mapleBarkTexture=loadMillTexture('MapleTree_Bark_Lite.webp');
+    const mapleLeavesTexture=loadGreenMillTexture('MapleTree_Leaves_Lite.webp');
+
+    scene.add(new THREE.HemisphereLight(0xeaf7ef,0x5b4a36,1.65));
+    const sun=new THREE.DirectionalLight(0xffefd0,2.15);
     sun.position.set(-8,14,9);sun.castShadow=true;
     sun.shadow.mapSize.set(1024,1024);scene.add(sun);
 
     // The mill channel is a real recessed trench rather than water painted over grass.
-    // This lets the wheel sit naturally with roughly its lower third in the stream.
-    const grassMat=new THREE.MeshStandardMaterial({color:0x587340,roughness:1});
+    // Existing Midgard textures make this scene part of the same world instead of a dark prototype.
+    const grassMat=new THREE.MeshStandardMaterial({map:grassTexture,color:0xffffff,roughness:1});
     const leftGround=new THREE.Mesh(new THREE.PlaneGeometry(9.4,30),grassMat);
     leftGround.rotation.x=-Math.PI/2;leftGround.position.set(-11.3,0,0);leftGround.receiveShadow=true;scene.add(leftGround);
     const rightGround=new THREE.Mesh(new THREE.PlaneGeometry(15.4,30),grassMat);
     rightGround.rotation.x=-Math.PI/2;rightGround.position.set(8.3,0,0);rightGround.receiveShadow=true;scene.add(rightGround);
 
-    const path=new THREE.Mesh(new THREE.PlaneGeometry(6.2,16),new THREE.MeshStandardMaterial({color:0x665644,roughness:1}));
+    const path=new THREE.Mesh(new THREE.PlaneGeometry(6.2,16),new THREE.MeshStandardMaterial({map:pathTexture,color:0xffffff,roughness:1}));
     path.rotation.x=-Math.PI/2;path.position.set(7,.025,4);path.receiveShadow=true;scene.add(path);
 
-    const channelFloor=new THREE.Mesh(new THREE.BoxGeometry(6,.24,25),new THREE.MeshStandardMaterial({color:0x4d514a,roughness:.95}));
+    const channelStoneMat=new THREE.MeshStandardMaterial({map:stoneBankTexture,color:0xe2e0d9,roughness:1});
+    const channelFloor=new THREE.Mesh(new THREE.BoxGeometry(6,.24,25),channelStoneMat);
     channelFloor.position.set(-3,-1.48,-1);channelFloor.receiveShadow=true;scene.add(channelFloor);
-    const water=new THREE.Mesh(new THREE.PlaneGeometry(5.4,24.6),new THREE.MeshStandardMaterial({color:0x3c9fb9,roughness:.25,metalness:.04,transparent:true,opacity:.84,emissive:0x0c3540,emissiveIntensity:.35}));
+    const waterMat=new THREE.MeshStandardMaterial({map:waterTexture,color:0xc9f5ff,roughness:.24,metalness:.03,transparent:true,opacity:.88,emissive:0x0b3542,emissiveIntensity:.28});
+    const water=new THREE.Mesh(new THREE.PlaneGeometry(5.4,24.6),waterMat);
     water.rotation.x=-Math.PI/2;water.position.set(-3,.12,-1);scene.add(water);
     for(const x of [-6.25,.25]){
-      const bank=new THREE.Mesh(new THREE.BoxGeometry(.7,1.75,25),new THREE.MeshStandardMaterial({color:0x8c806c,roughness:1}));
+      const bank=new THREE.Mesh(new THREE.BoxGeometry(.7,1.75,25),new THREE.MeshStandardMaterial({map:stoneBankTexture,color:0xf0eee8,roughness:1}));
       bank.position.set(x,-.63,-1);bank.castShadow=bank.receiveShadow=true;scene.add(bank);
     }
 
@@ -7074,15 +7120,89 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
     const gateBand1=new THREE.Mesh(new THREE.BoxGeometry(5.12,.11,.34),gateMetal);gateBand1.position.set(-3,.48,-9.2);scene.add(gateBand1);
     const gateBand2=new THREE.Mesh(new THREE.BoxGeometry(5.12,.11,.34),gateMetal);gateBand2.position.set(-3,1.16,-9.2);scene.add(gateBand2);
 
-    const wallMat=new THREE.MeshStandardMaterial({color:0x7a5532,roughness:.88});
+    // Textured fallback house remains until the existing Midgard house GLB is ready.
+    const wallMat=new THREE.MeshStandardMaterial({map:houseWallTexture,color:0xffffff,roughness:.92});
     const hut=new THREE.Mesh(new THREE.BoxGeometry(7,4.7,5.8),wallMat);
     hut.position.set(3.4,2.35,-3.3);hut.castShadow=hut.receiveShadow=true;scene.add(hut);
-    const roof=new THREE.Mesh(new THREE.ConeGeometry(5.2,2.5,4),new THREE.MeshStandardMaterial({color:0x4b2d1c,roughness:.95}));
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(5.2,2.5,4),new THREE.MeshStandardMaterial({map:houseRoofTexture,color:0xffffff,roughness:.95}));
     roof.position.set(3.4,5.8,-3.3);roof.rotation.y=Math.PI/4;roof.castShadow=true;scene.add(roof);
-    const door=new THREE.Mesh(new THREE.BoxGeometry(1.5,2.8,.12),new THREE.MeshStandardMaterial({color:0x2e1c10,roughness:.9}));
-    door.position.set(4.5,1.45,-.35);scene.add(door);
+    const door=new THREE.Mesh(new THREE.BoxGeometry(1.5,2.8,.12),new THREE.MeshStandardMaterial({color:0x382417,roughness:.9}));
+    door.position.set(4.5,1.45,-.35);door.castShadow=true;scene.add(door);
+    const windowGlow=new THREE.MeshStandardMaterial({color:0xffd88c,emissive:0xb46c22,emissiveIntensity:1.1,roughness:.42});
+    const millWindow=new THREE.Mesh(new THREE.BoxGeometry(1.18,1.02,.12),windowGlow);
+    millWindow.position.set(2.25,2.65,-.34);scene.add(millWindow);
 
-    const stoneMat=new THREE.MeshStandardMaterial({color:0x77746a,roughness:1});
+    const fitAndPlace=(model:THREE.Object3D,target:{x:number;y:number;z:number},max:{x:number;y:number;z:number})=>{
+      model.position.set(0,0,0);model.rotation.set(0,0,0);model.scale.set(1,1,1);model.updateMatrixWorld(true);
+      const box=new THREE.Box3().setFromObject(model),size=new THREE.Vector3();box.getSize(size);
+      const scale=Math.min(max.x/Math.max(.001,size.x),max.y/Math.max(.001,size.y),max.z/Math.max(.001,size.z));
+      model.scale.setScalar(scale);model.updateMatrixWorld(true);
+      const fitted=new THREE.Box3().setFromObject(model),center=fitted.getCenter(new THREE.Vector3());
+      model.position.set(target.x-center.x,target.y-fitted.min.y,target.z-center.z);model.updateMatrixWorld(true);
+    };
+    const applyMillHouseTextures=(root:THREE.Object3D)=>{
+      root.traverse((o:any)=>{
+        if(!o.isMesh)return;
+        o.castShadow=o.receiveShadow=true;
+        const meshName=String(o.name||'').toLowerCase();
+        const adapt=(source:any)=>{
+          const m=source?.clone?source.clone():source;if(!m)return m;
+          const tag=`${meshName} ${String(m.name||'').toLowerCase()}`;
+          if(/roof|thatch|aframe|tile/.test(tag)){m.map=houseRoofTexture;m.color?.setHex?.(0xffffff);}
+          else if(/wall|gable|main|cabin|stonebase|upper|house/.test(tag)){m.map=houseWallTexture;m.color?.setHex?.(0xffffff);}
+          if('roughness' in m)m.roughness=Math.max(.88,Number(m.roughness)||0);
+          if('metalness' in m)m.metalness=0;m.needsUpdate=true;return m;
+        };
+        o.material=Array.isArray(o.material)?o.material.map(adapt):adapt(o.material);
+      });
+    };
+    const millHouseUrl=`${BASE}img/models/Midgard_Viking_House_V1_YUP.glb`;
+    cachedGlbBuffer(millHouseUrl).then(buffer=>{
+      if(!alive)return;
+      const absolute=new URL(millHouseUrl,window.location.href).href,basePath=absolute.slice(0,absolute.lastIndexOf('/')+1);
+      loader.parse(buffer,basePath,gltf=>{
+        if(!alive)return;
+        const model=gltf.scene;applyMillHouseTextures(model);fitAndPlace(model,{x:3.4,y:0,z:-3.3},{x:7.6,y:6.7,z:6.2});
+        scene.add(model);hut.visible=roof.visible=door.visible=millWindow.visible=false;
+      },error=>console.warn('[MILL HOUSE] GLB parse failed; keeping textured fallback',error));
+    }).catch(error=>console.warn('[MILL HOUSE] GLB unavailable; keeping textured fallback',error));
+
+    const prepareMillTree=(root:THREE.Object3D,asset:string)=>{
+      root.traverse((o:any)=>{
+        if(!o.isMesh)return;o.castShadow=o.receiveShadow=true;
+        const meshName=String(o.name||'').toLowerCase();
+        const adapt=(source:any)=>{
+          const m=source?.clone?source.clone():source;if(!m)return m;
+          const tag=`${asset} ${meshName} ${String(m.name||'')}`.toLowerCase();
+          const bark=/bark|trunk|stem|branch/.test(tag),leaves=/leaf/.test(tag);
+          if(/birch/i.test(asset)){if(bark)m.map=birchBarkTexture;else if(leaves)m.map=birchLeavesTexture;}
+          else if(/maple/i.test(asset)){if(bark)m.map=mapleBarkTexture;else if(leaves)m.map=mapleLeavesTexture;}
+          if(bark||leaves)m.color?.setHex?.(0xffffff);
+          if(leaves){m.alphaTest=.28;m.transparent=false;m.depthWrite=true;m.side=THREE.DoubleSide;}
+          if('roughness' in m)m.roughness=.94;if('metalness' in m)m.metalness=0;m.needsUpdate=true;return m;
+        };
+        o.material=Array.isArray(o.material)?o.material.map(adapt):adapt(o.material);
+      });
+      return root;
+    };
+    const placeMillTree=(source:THREE.Object3D,x:number,z:number,height:number,rotation:number)=>{
+      const model=source.clone(true);model.position.set(0,0,0);model.rotation.set(0,rotation,0);model.scale.set(1,1,1);model.updateMatrixWorld(true);
+      const raw=new THREE.Box3().setFromObject(model),rawHeight=Math.max(.001,raw.max.y-raw.min.y);model.scale.setScalar(height/rawHeight);model.updateMatrixWorld(true);
+      const fitted=new THREE.Box3().setFromObject(model);model.position.set(x,-fitted.min.y,z);model.updateMatrixWorld(true);scene.add(model);
+    };
+    const loadMillTree=(asset:string,placements:Array<[number,number,number,number]>)=>{
+      const url=`${BASE}img/models/${asset}`;
+      cachedGlbBuffer(url).then(buffer=>{
+        if(!alive)return;
+        const absolute=new URL(url,window.location.href).href,basePath=absolute.slice(0,absolute.lastIndexOf('/')+1);
+        const source=prepareMillTree(millFbxLoader.parse(buffer,basePath),asset);
+        placements.forEach(([x,z,h,r])=>placeMillTree(source,x,z,h,r));
+      }).catch(error=>console.warn(`[MILL TREE] ${asset} unavailable`,error));
+    };
+    loadMillTree('BirchTree_1.fbx',[[-10.6,-8.7,7.2,.35],[10.5,-9.4,7.7,-.55]]);
+    loadMillTree('MapleTree_3.fbx',[[-10.8,5.3,6.8,-.15],[11.1,3.4,7.4,.5]]);
+
+    const stoneMat=new THREE.MeshStandardMaterial({map:stoneRockTexture,color:0xe8e5df,roughness:1});
     for(let i=0;i<18;i++){
       const r=.35+(i%4)*.12;
       const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(r,0),stoneMat);
@@ -7101,7 +7221,7 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
     // a timber shaft from the mill wall to the hub and triangular braces.
     const supportWood=new THREE.MeshStandardMaterial({color:0x4b2f1b,roughness:.9});
     const supportWoodDark=new THREE.MeshStandardMaterial({color:0x332015,roughness:.94});
-    const supportStone=new THREE.MeshStandardMaterial({color:0x777166,roughness:1});
+    const supportStone=new THREE.MeshStandardMaterial({map:stoneRockTexture,color:0xe7e4dc,roughness:1});
     const addSupportBeam=(a:THREE.Vector3,b:THREE.Vector3,width=.32,depth=.32,material=supportWood)=>{
       const delta=new THREE.Vector3().subVectors(b,a);
       const beam=new THREE.Mesh(new THREE.BoxGeometry(width,delta.length(),depth),material);
@@ -7127,8 +7247,6 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
     const bearing=new THREE.Mesh(new THREE.CylinderGeometry(.46,.46,.36,20),new THREE.MeshStandardMaterial({color:0x5f4424,roughness:.82,metalness:.06}));
     bearing.rotation.z=Math.PI/2;bearing.position.set(-2.74,1.35,-3.2);bearing.castShadow=true;scene.add(bearing);
 
-    let alive=true;
-    const loader=new GLTFLoader();
     const wheelUrl=`${BASE}img/models/water_wheel.glb`;
     cachedGlbBuffer(wheelUrl).then(buffer=>{
       if(!alive)return;
@@ -7171,7 +7289,8 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
         mark.position.z+=dt*flowSpeed;
         if(mark.position.z>11)mark.position.z=-12;
       }
-      water.material instanceof THREE.MeshStandardMaterial&&(water.material.emissiveIntensity=.24+(runningRef.current?.05:0)+flowRef.current*.025+Math.sin(performance.now()*.002)*.06);
+      waterTexture.offset.y-=dt*(runningRef.current?(.16+flowRef.current*.055):.035);
+      water.material instanceof THREE.MeshStandardMaterial&&(water.material.emissiveIntensity=.22+(runningRef.current?.05:0)+flowRef.current*.02+Math.sin(performance.now()*.002)*.05);
       renderer.render(scene,camera);
     };
     animate();
@@ -7186,6 +7305,7 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
     return()=>{
       alive=false;cancelAnimationFrame(frame);window.removeEventListener("resize",resize);
       wheelRef.current=null;gateRef.current=null;
+      millTextures.forEach(texture=>texture.dispose());
       scene.traverse(o=>{
         const mesh=o as THREE.Mesh;
         if(mesh.isMesh){mesh.geometry?.dispose?.();const mats=Array.isArray(mesh.material)?mesh.material:[mesh.material];mats.forEach((m:any)=>m?.dispose?.());}
