@@ -726,22 +726,27 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 /* ===== Mill of Immortality: independent lightweight scene ===== */
 .mill-scene{flex:1;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 25%,#26372d,#09100c 70%);isolation:isolate}
 .mill-scene canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-.mill-vignette{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,rgba(3,7,5,.18),transparent 28%,transparent 64%,rgba(2,5,3,.72)),radial-gradient(circle at 50% 48%,transparent 35%,rgba(0,0,0,.28) 100%)}
-.mill-title{position:absolute;z-index:4;top:12px;left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border:1px solid rgba(218,169,70,.62);border-radius:15px;background:linear-gradient(145deg,rgba(5,11,8,.94),rgba(12,18,13,.9));box-shadow:0 8px 22px rgba(0,0,0,.35);backdrop-filter:blur(5px)}
-.mill-title b{display:block;color:#f0c866;font-size:13px;letter-spacing:.8px}.mill-title small{display:block;color:#9fb2a7;font-size:9px;margin-top:2px}.mill-state{flex:0 0 auto;padding:5px 8px;border-radius:12px;border:1px solid rgba(135,159,142,.45);font-size:9px;font-weight:800;color:#aebcb4;background:#111b15}.mill-state.on{color:#ffda73;border-color:#d8a945;box-shadow:0 0 12px rgba(255,191,69,.22)}
-.mill-panel{position:absolute;z-index:4;left:12px;right:12px;bottom:14px;padding:11px;border:1px solid rgba(218,169,70,.5);border-radius:17px;background:linear-gradient(155deg,rgba(6,12,9,.96),rgba(12,17,13,.93));box-shadow:0 12px 30px rgba(0,0,0,.45);backdrop-filter:blur(7px)}
-.mill-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:9px}.mill-stat{padding:8px 9px;border-radius:12px;background:#0c1510;border:1px solid rgba(193,151,67,.28)}.mill-stat span{display:block;color:#91a398;font-size:8px;text-transform:uppercase;letter-spacing:.75px}.mill-stat b{display:flex;align-items:center;gap:4px;margin-top:3px;color:#ffd478;font-size:16px}.mill-stat .spark-drop{width:14px;height:21px;margin:0}
-.mill-rate{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 9px;color:#aebcaf;font-size:9px}.mill-rate b{color:#e8c36e}
-.mill-sluice{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:7px;margin:0 0 9px;padding:7px 8px;border:1px solid rgba(131,106,54,.42);border-radius:11px;background:#0a120d}
-.mill-sluice button{width:34px;height:32px;border-radius:9px;border:1px solid #6f5730;background:linear-gradient(180deg,#2b2416,#17140e);color:#ffd677;font-size:17px;font-weight:900}.mill-sluice button:disabled{opacity:.35}
-.mill-flow-readout{text-align:center;min-width:0}.mill-flow-readout small{display:block;color:#8fa197;font-size:8px;letter-spacing:.55px;text-transform:uppercase}.mill-flow-readout b{display:block;margin-top:2px;color:#e9d39b;font-size:10px}.mill-flow-readout b.good{color:#ffd76d;text-shadow:0 0 8px rgba(255,192,58,.28)}.mill-flow-readout b.warn{color:#d6b07b}
-.mill-flow-bars{display:flex;justify-content:center;gap:3px;margin-top:4px}.mill-flow-bars i{display:block;width:18px;height:4px;border-radius:4px;background:#27342b;border:1px solid #405047}.mill-flow-bars i.on{background:#d5a63f;border-color:#f1cc6f;box-shadow:0 0 5px rgba(235,180,62,.35)}
-.mill-controls{display:grid;grid-template-columns:1.25fr 1fr;gap:7px}.mill-btn{min-height:38px;border-radius:11px;border:1px solid #84642d;background:linear-gradient(180deg,#2a2110,#17140d);color:#ffe088;font-size:10px;font-weight:900;box-shadow:inset 0 0 10px rgba(235,178,70,.07)}.mill-btn.primary{background:linear-gradient(180deg,#765020,#4b2f13);border-color:#d0a348}.mill-btn.stop{background:linear-gradient(180deg,#46321e,#211810);border-color:#997044}.mill-btn.collect{background:linear-gradient(180deg,#77521e,#4a3114);border-color:#d1a447}.mill-btn:disabled{opacity:.42;filter:saturate(.55)}.mill-btn:active{transform:scale(.985)}
-.mill-back{grid-column:1/-1;min-height:34px;border-radius:10px;border:1px solid #384a3d;background:#111a14;color:#aebdb3;font-size:9px;font-weight:800}
+.mill-vignette{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,rgba(3,7,5,.18),transparent 28%,transparent 70%,rgba(2,5,3,.5)),radial-gradient(circle at 50% 48%,transparent 38%,rgba(0,0,0,.24) 100%)}
+.mill-title{position:absolute;z-index:4;top:10px;left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;gap:9px;padding:8px 11px;border:1px solid rgba(218,169,70,.62);border-radius:15px;background:linear-gradient(145deg,rgba(5,11,8,.94),rgba(12,18,13,.9));box-shadow:0 7px 18px rgba(0,0,0,.34);backdrop-filter:blur(5px)}
+.mill-title b{display:block;color:#f0c866;font-size:12px;letter-spacing:.75px}.mill-title small{display:block;color:#9fb2a7;font-size:8px;margin-top:2px}.mill-state{flex:0 0 auto;padding:4px 7px;border-radius:11px;border:1px solid rgba(135,159,142,.45);font-size:8px;font-weight:800;color:#aebcb4;background:#111b15}.mill-state.on{color:#ffda73;border-color:#d8a945;box-shadow:0 0 10px rgba(255,191,69,.2)}
+.mill-frame-card,.mill-icon-btn,.mill-sluice{position:absolute;z-index:4;background:transparent;border:0;isolation:isolate}
+.mill-frame-card::before,.mill-icon-btn::before,.mill-sluice::before{content:"";position:absolute;z-index:0;inset:4px 5px;background:linear-gradient(180deg,#070b09,#010302);clip-path:polygon(8% 1%,92% 1%,96% 7%,98.5% 17%,98.5% 83%,96% 93%,92% 99%,8% 99%,4% 93%,1.5% 83%,1.5% 17%,4% 7%)}
+.mill-frame-img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;z-index:1;pointer-events:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.4))}
+.mill-top-stats{position:absolute;z-index:4;top:68px;left:12px;right:12px;height:52px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mill-frame-card{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;padding:5px 11px;color:#ffd478}
+.mill-frame-card b{position:relative;z-index:2;font-size:18px;line-height:1}.mill-stat-icon{position:relative;z-index:2;width:38px;height:32px;display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
+.mill-sluice{left:50%;bottom:72px;transform:translateX(-50%);width:min(82vw,315px);height:66px;display:grid;grid-template-columns:42px 1fr 42px;align-items:center;gap:4px;padding:8px 9px}
+.mill-sluice .mill-frame-img{z-index:1}
+.mill-sluice button{position:relative;z-index:2;width:34px;height:32px;margin:auto;border-radius:9px;border:1px solid #6f5730;background:linear-gradient(180deg,#2b2416,#17140e);color:#ffd677;font-size:17px;font-weight:900}.mill-sluice button:disabled{opacity:.35}
+.mill-flow-readout{position:relative;z-index:2;text-align:center;min-width:0}.mill-flow-readout small{display:block;color:#8fa197;font-size:7px;letter-spacing:.45px;text-transform:uppercase}.mill-flow-readout b{display:block;margin-top:1px;color:#e9d39b;font-size:9px}.mill-flow-readout b.good{color:#ffd76d;text-shadow:0 0 8px rgba(255,192,58,.28)}.mill-flow-readout b.warn{color:#d6b07b}
+.mill-flow-bars{display:flex;justify-content:center;gap:3px;margin-top:3px}.mill-flow-bars i{display:block;width:16px;height:3px;border-radius:4px;background:#27342b;border:1px solid #405047}.mill-flow-bars i.on{background:#d5a63f;border-color:#f1cc6f;box-shadow:0 0 4px rgba(235,180,62,.35)}
+.mill-rate-pill{position:absolute;z-index:4;left:50%;bottom:139px;transform:translateX(-50%);display:flex;align-items:center;gap:7px;padding:4px 8px;border-radius:11px;background:rgba(5,10,7,.82);border:1px solid rgba(205,160,67,.36);color:#aebcaf;font-size:8px;white-space:nowrap}.mill-rate-pill b{color:#e8c36e;font-size:9px}
+.mill-controls{position:absolute;z-index:4;left:50%;bottom:12px;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:9px}
+.mill-icon-btn{position:relative;width:58px;height:48px;display:flex;align-items:center;justify-content:center;padding:0;overflow:visible}.mill-icon-btn .mill-frame-img{z-index:1}.mill-icon-btn svg{position:relative;z-index:2;width:31px;height:31px;overflow:visible;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}.mill-icon-btn.home svg{width:34px;height:30px}.mill-icon-btn.collect svg{width:34px;height:32px}.mill-icon-btn:disabled{opacity:.38;filter:saturate(.55)}.mill-icon-btn:active{transform:translateY(1px) scale(.975)}
 .mill-load{position:absolute;z-index:5;left:50%;top:48%;transform:translate(-50%,-50%);padding:8px 11px;border-radius:12px;background:rgba(4,8,6,.82);border:1px solid rgba(224,176,77,.42);color:#e6c46f;font-size:10px;pointer-events:none}
-.mill-collected{position:absolute;z-index:6;left:50%;top:31%;transform:translate(-50%,-50%);padding:8px 12px;border-radius:16px;background:rgba(15,20,13,.9);border:1px solid #e2b04c;color:#ffdf83;font-size:11px;font-weight:900;animation:millCollected .9s ease-out forwards;pointer-events:none}
+.mill-collected{position:absolute;z-index:6;left:50%;top:29%;transform:translate(-50%,-50%);padding:8px 12px;border-radius:16px;background:rgba(15,20,13,.9);border:1px solid #e2b04c;color:#ffdf83;font-size:11px;font-weight:900;animation:millCollected .9s ease-out forwards;pointer-events:none}
 @keyframes millCollected{0%{opacity:0;transform:translate(-50%,-40%) scale(.8)}25%{opacity:1;transform:translate(-50%,-50%) scale(1.06)}100%{opacity:0;transform:translate(-50%,-72%) scale(1)}}
-@media(max-width:380px){.mill-title{top:8px;left:8px;right:8px;padding:8px 9px}.mill-panel{left:8px;right:8px;bottom:9px}.mill-stat b{font-size:14px}}
+@media(max-width:380px){.mill-title{top:7px;left:8px;right:8px;padding:7px 9px}.mill-top-stats{left:8px;right:8px;top:63px;height:48px}.mill-frame-card b{font-size:16px}.mill-stat-icon{width:34px;height:29px}.mill-sluice{bottom:67px;width:min(86vw,300px);height:62px}.mill-rate-pill{bottom:132px}.mill-icon-btn{width:54px;height:45px}.mill-controls{bottom:9px;gap:7px}}
 
 `;
 
@@ -7203,29 +7208,79 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
       <span><b>МЕЛЬНИЦА БЕССМЕРТИЯ</b><small>Деревянное колесо · первый уровень</small></span>
       <span className={"mill-state"+(running?" on":"")}>{running?"ДОБЫЧА ИДЁТ":"КОЛЕСО ГОТОВО"}</span>
     </div>
+
+    <div className="mill-top-stats">
+      <div className="mill-frame-card" title="В накопителе мельницы">
+        <img className="mill-frame-img" src={`${BASE}img/models/frame_top_mid_512w.png`} alt=""/>
+        <svg className="mill-stat-icon" viewBox="0 0 64 48" aria-hidden="true">
+          <path d="M12 20h40l-4 22H16Z" fill="#6b431f" stroke="#e2b451" strokeWidth="2"/>
+          <path d="M18 19 23 8h18l5 11" fill="none" stroke="#d9a644" strokeWidth="3" strokeLinecap="round"/>
+          <path d="M18 27h28M20 34h24" stroke="#bb7b2d" strokeWidth="2"/>
+          <circle cx="25" cy="17" r="5" fill="#e1b74f" stroke="#ffda74" strokeWidth="1.4"/>
+          <circle cx="36" cy="14" r="5" fill="#c99432" stroke="#f2cb63" strokeWidth="1.4"/>
+          <circle cx="43" cy="20" r="4.5" fill="#e9c05a" stroke="#ffdc7b" strokeWidth="1.2"/>
+        </svg>
+        <b>{stored}</b>
+      </div>
+      <div className="mill-frame-card" title="Твой баланс бессмертия">
+        <img className="mill-frame-img" src={`${BASE}img/models/frame_top_mid_512w.png`} alt=""/>
+        <svg className="mill-stat-icon" viewBox="0 0 58 48" aria-hidden="true">
+          <path d="M20 12c2-5 16-5 18 0l-3 6c8 6 12 14 10 21-2 7-30 7-32 0-2-7 2-15 10-21Z" fill="#b87a23" stroke="#f1c85e" strokeWidth="2"/>
+          <path d="M22 12c4 3 10 3 14 0M21 18h16" fill="none" stroke="#ffd77a" strokeWidth="1.8" strokeLinecap="round"/>
+          <circle cx="29" cy="31" r="6" fill="#e0ad40" stroke="#ffe08b" strokeWidth="1.5"/>
+          <path d="M29 26v10M25 31h8" stroke="#8b5a1b" strokeWidth="1.4"/>
+        </svg>
+        <b>{balance}</b>
+      </div>
+    </div>
+
     {!loaded&&<div className="mill-load">Загружаем водяное колесо…</div>}
     {loadFailed&&<div className="mill-load">Колесо временно не загрузилось — механизм всё равно можно проверить.</div>}
     {!!collected&&<div className="mill-collected">+{collected} золотых капель</div>}
-    <div className="mill-panel">
-      <div className="mill-stats">
-        <div className="mill-stat"><span>В накопителе мельницы</span><b><SparkDrop/> {stored}</b></div>
-        <div className="mill-stat"><span>Твой баланс бессмертия</span><b><SparkDrop/> {balance}</b></div>
+
+    <div className="mill-rate-pill"><span>Напор меняется</span><b>{running?("+"+(liveRate||1)+" / сек"):"0 / сек"}</b></div>
+
+    <div className="mill-sluice">
+      <img className="mill-frame-img" src={`${BASE}img/models/frame_top_long_768w.png`} alt=""/>
+      <button disabled={flow<=1} onClick={()=>setFlow(v=>Math.max(1,v-1))} aria-label="Уменьшить поток">−</button>
+      <div className="mill-flow-readout">
+        <small>Напор реки {["","I","II","III"][pressure]} · шлюз {["","I","II","III"][flow]}</small>
+        <b className={flow===pressure?"good":"warn"}>{flow===pressure?(combo>=5?"РАВНОВЕСИЕ · серия "+combo+" сек":"РАВНОВЕСИЕ"):"ПОДСТРОЙ ШЛЮЗ"}</b>
+        <span className="mill-flow-bars">{[1,2,3].map(level=><i key={level} className={level<=flow?"on":""}/>)}</span>
       </div>
-      <div className="mill-rate"><span>Напор реки меняется. Подстрой шлюз и удерживай равновесие.</span><b>{running?("+"+(liveRate||1)+" / сек"):"0 / сек"}</b></div>
-      <div className="mill-sluice">
-        <button disabled={flow<=1} onClick={()=>setFlow(v=>Math.max(1,v-1))} aria-label="Уменьшить поток">−</button>
-        <div className="mill-flow-readout">
-          <small>Напор реки {["","I","II","III"][pressure]} · шлюз {["","I","II","III"][flow]}</small>
-          <b className={flow===pressure?"good":"warn"}>{flow===pressure?(combo>=5?"РАВНОВЕСИЕ · серия "+combo+" сек":"РАВНОВЕСИЕ"):"ПОДСТРОЙ ШЛЮЗ"}</b>
-          <span className="mill-flow-bars">{[1,2,3].map(level=><i key={level} className={level<=flow?"on":""}/>)}</span>
-        </div>
-        <button disabled={flow>=3} onClick={()=>setFlow(v=>Math.min(3,v+1))} aria-label="Увеличить поток">＋</button>
-      </div>
-      <div className="mill-controls">
-        <button className={"mill-btn "+(running?"stop":"primary")} onClick={()=>setRunning(v=>{const next=!v;if(!next){comboRef.current=0;setCombo(0);setLiveRate(0);}return next;})}>{running?"Остановить колесо":"Запустить мельницу"}</button>
-        <button className="mill-btn collect" disabled={!stored} onClick={collect}>Забрать капли</button>
-        <button className="mill-back" onClick={()=>{runningRef.current=false;setRunning(false);onBack();}}>← Вернуться в Мидгард</button>
-      </div>
+      <button disabled={flow>=3} onClick={()=>setFlow(v=>Math.min(3,v+1))} aria-label="Увеличить поток">＋</button>
+    </div>
+
+    <div className="mill-controls">
+      <button className={"mill-icon-btn "+(running?"stop":"start")} aria-label={running?"Остановить мельницу":"Запустить мельницу"} title={running?"Остановить мельницу":"Запустить мельницу"} onClick={()=>setRunning(v=>{const next=!v;if(!next){comboRef.current=0;setCombo(0);setLiveRate(0);}return next;})}>
+        <img className="mill-frame-img" src={`${BASE}img/models/frame_top_side_360w.png`} alt=""/>
+        <svg viewBox="0 0 52 52" aria-hidden="true">
+          <circle cx="26" cy="26" r="17" fill="#3a250f" stroke="#f0c65e" strokeWidth="2.5"/>
+          <circle cx="26" cy="26" r="4" fill="#d49a32"/>
+          <path d="M26 9v34M9 26h34M14 14l24 24M38 14 14 38" stroke="#d9a23e" strokeWidth="3" strokeLinecap="round"/>
+          <circle cx="26" cy="26" r="12" fill="none" stroke="#9b671f" strokeWidth="1.5"/>
+        </svg>
+      </button>
+
+      <button className="mill-icon-btn collect" aria-label="Забрать капли" title="Забрать капли" disabled={!stored} onClick={collect}>
+        <img className="mill-frame-img" src={`${BASE}img/models/frame_top_side_360w.png`} alt=""/>
+        <svg viewBox="0 0 58 52" aria-hidden="true">
+          <path d="M14 19h30l-3 25H17Z" fill="#704520" stroke="#e1ae4e" strokeWidth="2"/>
+          <path d="M17 25h24M16 34h26" stroke="#b5792a" strokeWidth="2"/>
+          <path d="M22 19c0-5 14-5 14 0" fill="none" stroke="#d9a647" strokeWidth="2"/>
+          <path d="M29 5c4 6 6 9 6 12a6 6 0 1 1-12 0c0-3 2-6 6-12Z" fill="#f2b43e" stroke="#ffe090" strokeWidth="1.3"/>
+        </svg>
+      </button>
+
+      <button className="mill-icon-btn home" aria-label="Вернуться в Мидгард" title="Вернуться в Мидгард" onClick={()=>{runningRef.current=false;setRunning(false);onBack();}}>
+        <img className="mill-frame-img" src={`${BASE}img/models/frame_top_side_360w.png`} alt=""/>
+        <svg viewBox="0 0 62 48" aria-hidden="true">
+          <path d="M28 18 41 8l13 10v20H28Z" fill="#6b431f" stroke="#e1ae4d" strokeWidth="2"/>
+          <path d="M25 19 41 5l16 14" fill="none" stroke="#f1c65e" strokeWidth="2.4" strokeLinecap="round"/>
+          <path d="M41 27h7v11h-7Z" fill="#20160d" stroke="#9d6827" strokeWidth="1"/>
+          <path d="M23 31H8m0 0 7-7m-7 7 7 7" fill="none" stroke="#f1c65e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
     </div>
   </div>;
 }
