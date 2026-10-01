@@ -267,10 +267,19 @@ export const SHIELD_ASSETS=['Shield_Round.glb','Shield_Round_2.glb','Shield_Heat
 export const shieldForgeKey=(asset:string)=>asset===SHIELD_ASSETS[0]?'shield':'shield:'+asset;
 
 
-export type Save = { sparks: number; immortalityDrops:number; millStored:number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; equippedArtifact:string; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; lootCounts:Record<string,number>; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; forgeLevels: Record<string,number>; forgeFreeUsed: boolean; gathered:string[]; stock:GatherStock; locationCooldowns:Record<string,number>; runeSteel:number };
+export type Save = { sparks: number; immortalityDrops:number; millStored:number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; equippedArtifact:string; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; lootCounts:Record<string,number>; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; forgeLevels: Record<string,number>; forgeFreeUsed: boolean; gathered:string[]; gatherRespawnAt:Record<string,number>; stock:GatherStock; locationCooldowns:Record<string,number>; runeSteel:number };
 
 
-export const DEF: Save = { sparks: 25, immortalityDrops:0, millStored:0, done: [], gift: "", hero: null, trials: [], artifacts: [], equippedArtifact:"", watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], lootCounts:{default:1,[SHIELD_ASSETS[0]]:1}, equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false,gathered:[],stock:{...EMPTY_GATHER_STOCK},locationCooldowns:{},runeSteel:0 };
+export const GATHER_RESPAWN_MS=15*60*1000;
+export function refreshGathering<T extends {gathered:string[];gatherRespawnAt:Record<string,number>}>(state:T,now=Date.now()):T{
+  const gathered=state.gathered.filter(id=>Number.isFinite(state.gatherRespawnAt[id])&&state.gatherRespawnAt[id]>now);
+  if(gathered.length===state.gathered.length)return state;
+  const gatherRespawnAt:Record<string,number>={};
+  for(const id of gathered)gatherRespawnAt[id]=state.gatherRespawnAt[id];
+  return {...state,gathered,gatherRespawnAt};
+}
+
+export const DEF: Save = { sparks: 25, immortalityDrops:0, millStored:0, done: [], gift: "", hero: null, trials: [], artifacts: [], equippedArtifact:"", watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], lootCounts:{default:1,[SHIELD_ASSETS[0]]:1}, equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false,gathered:[],gatherRespawnAt:{},stock:{...EMPTY_GATHER_STOCK},locationCooldowns:{},runeSteel:0 };
 
 
 export const loadSave = (): Save => {
@@ -281,6 +290,9 @@ export const loadSave = (): Save => {
     // Old saves may lack a permanent chest reward. Repair the reward rather
     // than deleting completed quests and the bridge from the player's history.
     if(!Array.isArray(s.gathered))s.gathered=[];
+    if(!s.gatherRespawnAt||typeof s.gatherRespawnAt!=='object'||Array.isArray(s.gatherRespawnAt))s.gatherRespawnAt={};
+    // Legacy permanent collections have no deadlines: make them available again.
+    const refreshed=refreshGathering(s);s.gathered=refreshed.gathered;s.gatherRespawnAt=refreshed.gatherRespawnAt;
     s.stock={...EMPTY_GATHER_STOCK,...(s.stock&&typeof s.stock==='object'?s.stock:{})};
     for(const kind of ['wood','twigs','herbs','ashWood'] as GatherKind[])s.stock[kind]=Math.max(0,Math.floor(Number(s.stock[kind])||0));
     if(!s.locationCooldowns||typeof s.locationCooldowns!=="object"||Array.isArray(s.locationCooldowns))s.locationCooldowns={};

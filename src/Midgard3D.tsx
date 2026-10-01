@@ -73,6 +73,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   const attackActionRef = useRef<(()=>void)|null>(null);
   const onRef=useRef(on);
   onRef.current=on;
+  const gatheredRef=useRef(new Set(gathered));
+  gatheredRef.current=new Set(gathered);
   const onGatherRef=useRef(onGather);
   onGatherRef.current=onGather;
   frostGuardRef.current=frostGuard;
@@ -5084,6 +5086,15 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       }
       setNear(!doorVisit&&found?`${found}|${foundId}`:"");
       for(const node of gatherNodes){
+        if(node.used&&node.hidden&&!gatheredRef.current.has(node.spot.id)){
+          node.used=false;node.hidden=false;node.fallAt=0;
+          node.root.rotation.set(0,0,0);node.root.scale.setScalar(1);
+          if(node.spot.kind==='wood'){
+            if(!node.collider)node.collider={kind:'circle',x:node.spot.x,z:node.spot.z,r:.24};
+            if(!colliders.includes(node.collider))colliders.push(node.collider);
+          }
+          updateGatherNode(node);
+        }
         if(!node.used||node.hidden)continue;
         const progress=THREE.MathUtils.clamp((now-node.fallAt)/470,0,1);
         if(progress<=0)continue;

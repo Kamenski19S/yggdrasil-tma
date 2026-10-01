@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
-import { type Screen, loadSave, type Save, type HeroWeapon, tg, cachedGlbBuffer, BASE, type GatherKind, GATHER_SPOTS, MIDGARD_GUARDIAN_ORDER, type Realm, today, LADDER, HEROES, type GearId, shieldForgeKey, ARTIFACT_INFO, WEAPON_POWER, QUESTS, MASTERS, COMBAT_ENERGY, BgImg, NAMES_F, NAMES_M, REALMS, MIDGARD_GUARDIANS, ARTIFACTS, MASTER_IMG, combatEnergyColor, GEAR_IDS, rank, NAV } from './core';
+import { type Screen, loadSave, type Save, type HeroWeapon, tg, cachedGlbBuffer, BASE, type GatherKind, GATHER_SPOTS, GATHER_RESPAWN_MS, refreshGathering, MIDGARD_GUARDIAN_ORDER, type Realm, today, LADDER, HEROES, type GearId, shieldForgeKey, ARTIFACT_INFO, WEAPON_POWER, QUESTS, MASTERS, COMBAT_ENERGY, BgImg, NAMES_F, NAMES_M, REALMS, MIDGARD_GUARDIANS, ARTIFACTS, MASTER_IMG, combatEnergyColor, GEAR_IDS, rank, NAV } from './core';
 import { type CraftMaterial, CRAFT_RECIPES, craftMaterialName, RUNE_STEEL_YIELD, type SteelCraftRecipe, FORGE_WEAPON_MODELS, SparkDrop, ForgeWeaponWall, InventorySection, craftMaterialIcon, STEEL_CRAFT_RECIPES } from './inventory';
 import { lootCountAdd, RUNE_CATALOG, lootDisplayName, POTION_CATALOG, BANDIT_SPECS, MIDGARD_GUARDIAN_LOOT, weaponDisplayIcon } from './world';
 import { CSS } from './styles';
@@ -52,6 +52,12 @@ export function App() {
   },[]);
 const [roadT, setRoadT] = useState(0.06);
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
+  useEffect(()=>{
+    const refresh=()=>setSave(s=>refreshGathering(s));
+    const id=window.setInterval(refresh,1000);
+    document.addEventListener('visibilitychange',refresh);
+    return()=>{window.clearInterval(id);document.removeEventListener('visibilitychange',refresh);};
+  },[]);
   useEffect(()=>{millScreenActiveRef.current=screen.t==="mill";},[screen.t]);
   useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
   useEffect(() => {
@@ -78,7 +84,11 @@ const [roadT, setRoadT] = useState(0.06);
   const haptic = (k: "light" | "success" = "light") => { try { if (k === "success") tg?.HapticFeedback?.notificationOccurred?.("success"); else tg?.HapticFeedback?.impactOccurred?.("light"); } catch {} };
   const gatherResource=(id:string,kind:GatherKind)=>{
     if(!GATHER_SPOTS.some(spot=>spot.id===id&&spot.kind===kind)||save.gathered.includes(id))return;
-    setSave(s=>s.gathered.includes(id)?s:{...s,gathered:[...s.gathered,id],stock:{...s.stock,[kind]:s.stock[kind]+1}});
+    setSave(s=>{
+      const current=refreshGathering(s);
+      if(current.gathered.includes(id))return current;
+      return {...current,gathered:[...current.gathered,id],gatherRespawnAt:{...current.gatherRespawnAt,[id]:Date.now()+GATHER_RESPAWN_MS},stock:{...current.stock,[kind]:current.stock[kind]+1}};
+    });
     haptic();say(kind==='wood'?'🪵 +1 древесина':kind==='twigs'?'🌱 +1 ветки':'🌿 +1 лечебные травы');
   };
   const go = (s: Screen) => { millScreenActiveRef.current=s.t==="mill"; setScreen(s); };
