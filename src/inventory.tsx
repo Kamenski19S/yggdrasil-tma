@@ -67,8 +67,8 @@ export const craftMaterialIcon=(id:CraftMaterial)=>id==="wood"?"🪵":id==="twig
 
 
 export const RUNE_STEEL_YIELD:Partial<Record<HeroWeapon,number>>={
-  knife:1,dagger2:1,sword2:1,axeSmall:1,mace:1,
-  axe:2,spear:2,swordBig:2,axeDouble:2,hammerDouble:2,
+  knife:1,dagger2:2,sword2:1,axeSmall:1,mace:1,
+  axe:2,spear:2,swordBig:2,axeDouble:3,hammerDouble:2,
   claymore:3,scythe:3
 };
 

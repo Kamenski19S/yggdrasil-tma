@@ -106,7 +106,7 @@ const [roadT, setRoadT] = useState(0.06);
     }
     const item=kind==='potion'?POTION_CATALOG[Math.floor(Math.random()*Math.min(3,POTION_CATALOG.length))]:RUNE_CATALOG[Math.floor(Math.random()*RUNE_CATALOG.length)];
     setSave(s=>({...s,
-      potions:kind==='potion'?[...new Set([...s.potions,item.id])]:s.potions,
+      potions:kind==='potion'?[...s.potions,item.id]:s.potions,
       runes:kind==='rune'?[...new Set([...s.runes,item.id])]:s.runes,
       lootCounts:lootCountAdd(s.lootCounts,[item.id])}));
     return kind==='potion'?`Пойман: ${item.name}`:`Руна ${item.name}`;
