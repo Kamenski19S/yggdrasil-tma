@@ -159,7 +159,7 @@ const REALMS: Realm[] = [
 ];
 
 const NAV = [{ id: "tree", ic: "ᚱ", t: "Путь" }, { id: "hero", ic: "ᛗ", t: "Герой" }, { id: "gift", ic: "ᚷ", t: "Дар" }, { id: "hall", ic: "ᛟ", t: "Чертог" }];
-type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" } | { t: "hero" } | { t: "gift" } | { t: "hall" } | { t: "craft" } | { t: "forge" } | { t: "trial"; id: string } | { t: "fight"; id: string };
+type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" } | { t: "hero" } | { t: "gift" } | { t: "hall" } | { t: "craft" } | { t: "forge" } | { t: "mill" } | { t: "trial"; id: string } | { t: "fight"; id: string };
 type HeroSkin = "viking" | "valkyrie";
 type HeroWeapon = "default"|"sword2"|"swordBig"|"swordGolden"|"knife"|"dagger2"|"axe"|"axeSmall"|"axeDouble"|"mace"|"hammerDouble"|"spear"|"claymore"|"scythe";
 const WEAPON_POWER:Record<HeroWeapon,number>={
@@ -206,8 +206,8 @@ for(const [kind,amount,salt] of [['wood',25,1],['twigs',30,2],['herbs',30,3]] as
 const GEAR_IDS:GearId[]=["armor","shield","helmet","boots"];
 const SHIELD_ASSETS=['Shield_Round.glb','Shield_Round_2.glb','Shield_Heater.glb','Shield_Heater_2.glb','Shield_Celtic_Golden.glb'];
 const shieldForgeKey=(asset:string)=>asset===SHIELD_ASSETS[0]?'shield':'shield:'+asset;
-type Save = { sparks: number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; equippedArtifact:string; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; lootCounts:Record<string,number>; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; forgeLevels: Record<string,number>; forgeFreeUsed: boolean; gathered:string[]; stock:GatherStock; locationCooldowns:Record<string,number>; runeSteel:number };
-const DEF: Save = { sparks: 25, done: [], gift: "", hero: null, trials: [], artifacts: [], equippedArtifact:"", watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], lootCounts:{default:1,[SHIELD_ASSETS[0]]:1}, equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false,gathered:[],stock:{...EMPTY_GATHER_STOCK},locationCooldowns:{},runeSteel:0 };
+type Save = { sparks: number; immortalityDrops:number; millStored:number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; equippedArtifact:string; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; lootCounts:Record<string,number>; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; forgeLevels: Record<string,number>; forgeFreeUsed: boolean; gathered:string[]; stock:GatherStock; locationCooldowns:Record<string,number>; runeSteel:number };
+const DEF: Save = { sparks: 25, immortalityDrops:0, millStored:0, done: [], gift: "", hero: null, trials: [], artifacts: [], equippedArtifact:"", watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], lootCounts:{default:1,[SHIELD_ASSETS[0]]:1}, equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false,gathered:[],stock:{...EMPTY_GATHER_STOCK},locationCooldowns:{},runeSteel:0 };
 const loadSave = (): Save => {
   try {
     const previous:any=JSON.parse(localStorage.getItem("yggdrasil") || "{}");
@@ -220,6 +220,8 @@ const loadSave = (): Save => {
     for(const kind of ['wood','twigs','herbs','ashWood'] as GatherKind[])s.stock[kind]=Math.max(0,Math.floor(Number(s.stock[kind])||0));
     if(!s.locationCooldowns||typeof s.locationCooldowns!=="object"||Array.isArray(s.locationCooldowns))s.locationCooldowns={};
     s.runeSteel=Math.max(0,Math.floor(Number(s.runeSteel)||0));
+    s.immortalityDrops=Math.max(0,Math.floor(Number(s.immortalityDrops)||0));
+    s.millStored=Math.max(0,Math.floor(Number(s.millStored)||0));
     if (!Array.isArray(s.powers)) s.powers = [];
     if (!Array.isArray(s.done)) s.done = [];
     if (!Array.isArray(s.ownedWeapons)) s.ownedWeapons = ["default"];
@@ -721,6 +723,22 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .forge-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}.forge-item{position:relative;min-height:49px;padding:3px 2px;border-radius:8px;border:1px solid #9c7535;background:linear-gradient(145deg,#6f4b1d,#271b0e 56%,#11100d);color:#fff0c5;box-shadow:inset 0 0 9px rgba(255,207,91,.09),0 2px 5px rgba(0,0,0,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;touch-action:manipulation}.forge-item:active{transform:scale(.96);filter:brightness(1.18)}.forge-item .fi-icon{font-size:16px;line-height:1;filter:drop-shadow(0 0 6px rgba(255,188,72,.42))}.forge-item .fi-name{font-size:7px;font-weight:800;line-height:1.12}.forge-item .fi-level{font-size:6px;color:#f3cb78}.forge-item .fi-cost{padding:1px 3px;border-radius:5px;background:rgba(7,7,5,.56);font-size:6px;color:#ffbd58}.forge-item.free{border-color:#ffd76a;box-shadow:inset 0 0 10px rgba(255,213,90,.16),0 0 6px rgba(255,166,47,.18)}.forge-item.selected{border-color:#ffe18a;box-shadow:inset 0 0 10px rgba(255,220,119,.2),0 0 8px rgba(255,135,37,.35)}.forge-item.locked{filter:saturate(.25);opacity:.56}.forge-item.locked .fi-cost{color:#9e9582}.forge-item.maxed{border-color:#9cdaae;background:linear-gradient(145deg,#37583f,#15241a 60%,#0b100c)}
 .forge-note{margin:14px 0 6px;padding:10px 12px;border-radius:12px;border:1px solid rgba(213,155,75,.25);background:rgba(5,7,5,.62);font-size:9px;line-height:1.45;color:#bba98e}.forge-note b{color:#f1c979}.forge-exit{width:100%;margin-top:8px;padding:12px;border-radius:12px;border:1px solid #ff765a;background:radial-gradient(circle at 50% 0,rgba(255,201,96,.42),transparent 42%),linear-gradient(135deg,#b31f27,#5d0711 64%,#260207);color:#fff0db;font-size:11px;font-weight:900;box-shadow:inset 0 0 18px rgba(255,133,48,.23),0 0 14px rgba(198,28,27,.28);text-shadow:0 1px 4px #350006}.forge-exit:active{transform:scale(.98);filter:brightness(1.12)}
 .forge-transition{position:fixed;inset:0;z-index:80;background:radial-gradient(circle,rgba(255,151,46,.32),rgba(5,5,4,.94) 58%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#ffd47b;pointer-events:all}.forge-transition b{display:flex;align-items:center;justify-content:center;width:104px;height:104px;border-radius:50%;border:2px solid rgba(255,198,89,.72);background:radial-gradient(circle,rgba(255,178,56,.3),rgba(68,29,9,.42) 55%,transparent 57%);font-size:54px;box-shadow:0 0 26px rgba(255,116,25,.65),inset 0 0 25px rgba(255,188,77,.35);animation:forgePortal .72s ease-out}.forge-transition span{font-size:10px;letter-spacing:1.3px;text-transform:uppercase;text-shadow:0 2px 8px #000}
+/* ===== Mill of Immortality: independent lightweight scene ===== */
+.mill-scene{flex:1;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 25%,#26372d,#09100c 70%);isolation:isolate}
+.mill-scene canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.mill-vignette{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,rgba(3,7,5,.18),transparent 28%,transparent 64%,rgba(2,5,3,.72)),radial-gradient(circle at 50% 48%,transparent 35%,rgba(0,0,0,.28) 100%)}
+.mill-title{position:absolute;z-index:4;top:12px;left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border:1px solid rgba(218,169,70,.62);border-radius:15px;background:linear-gradient(145deg,rgba(5,11,8,.94),rgba(12,18,13,.9));box-shadow:0 8px 22px rgba(0,0,0,.35);backdrop-filter:blur(5px)}
+.mill-title b{display:block;color:#f0c866;font-size:13px;letter-spacing:.8px}.mill-title small{display:block;color:#9fb2a7;font-size:9px;margin-top:2px}.mill-state{flex:0 0 auto;padding:5px 8px;border-radius:12px;border:1px solid rgba(135,159,142,.45);font-size:9px;font-weight:800;color:#aebcb4;background:#111b15}.mill-state.on{color:#ffda73;border-color:#d8a945;box-shadow:0 0 12px rgba(255,191,69,.22)}
+.mill-panel{position:absolute;z-index:4;left:12px;right:12px;bottom:14px;padding:11px;border:1px solid rgba(218,169,70,.5);border-radius:17px;background:linear-gradient(155deg,rgba(6,12,9,.96),rgba(12,17,13,.93));box-shadow:0 12px 30px rgba(0,0,0,.45);backdrop-filter:blur(7px)}
+.mill-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:9px}.mill-stat{padding:8px 9px;border-radius:12px;background:#0c1510;border:1px solid rgba(193,151,67,.28)}.mill-stat span{display:block;color:#91a398;font-size:8px;text-transform:uppercase;letter-spacing:.75px}.mill-stat b{display:flex;align-items:center;gap:4px;margin-top:3px;color:#ffd478;font-size:16px}.mill-stat .spark-drop{width:14px;height:21px;margin:0}
+.mill-rate{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 9px;color:#aebcaf;font-size:9px}.mill-rate b{color:#e8c36e}
+.mill-controls{display:grid;grid-template-columns:1.25fr 1fr;gap:7px}.mill-btn{min-height:38px;border-radius:11px;border:1px solid #84642d;background:linear-gradient(180deg,#2a2110,#17140d);color:#ffe088;font-size:10px;font-weight:900;box-shadow:inset 0 0 10px rgba(235,178,70,.07)}.mill-btn.primary{background:linear-gradient(180deg,#765020,#4b2f13);border-color:#d0a348}.mill-btn.stop{background:linear-gradient(180deg,#46321e,#211810);border-color:#997044}.mill-btn.collect{background:linear-gradient(180deg,#77521e,#4a3114);border-color:#d1a447}.mill-btn:disabled{opacity:.42;filter:saturate(.55)}.mill-btn:active{transform:scale(.985)}
+.mill-back{grid-column:1/-1;min-height:34px;border-radius:10px;border:1px solid #384a3d;background:#111a14;color:#aebdb3;font-size:9px;font-weight:800}
+.mill-load{position:absolute;z-index:5;left:50%;top:48%;transform:translate(-50%,-50%);padding:8px 11px;border-radius:12px;background:rgba(4,8,6,.82);border:1px solid rgba(224,176,77,.42);color:#e6c46f;font-size:10px;pointer-events:none}
+.mill-collected{position:absolute;z-index:6;left:50%;top:31%;transform:translate(-50%,-50%);padding:8px 12px;border-radius:16px;background:rgba(15,20,13,.9);border:1px solid #e2b04c;color:#ffdf83;font-size:11px;font-weight:900;animation:millCollected .9s ease-out forwards;pointer-events:none}
+@keyframes millCollected{0%{opacity:0;transform:translate(-50%,-40%) scale(.8)}25%{opacity:1;transform:translate(-50%,-50%) scale(1.06)}100%{opacity:0;transform:translate(-50%,-72%) scale(1)}}
+@media(max-width:380px){.mill-title{top:8px;left:8px;right:8px;padding:8px 9px}.mill-panel{left:8px;right:8px;bottom:9px}.mill-stat b{font-size:14px}}
+
 `;
 
 /* ===== Midgard 3D: реальная сцена, герой, дорога, деревня, кузница и Мимир ===== */
@@ -1441,7 +1459,7 @@ type WhisperPhase="closed"|"question"|"fight"|"reward"|"defeat";
 const MIDGARD_MAP_ICON="data:image/webp;base64,UklGRmQKAABXRUJQVlA4WAoAAAAQAAAAOQAALwAAQUxQSPYEAAABoHZtmyFJXtATEVmNsW3btm3btmfWtm3btjm2bdvTmRHv86EquxARE4CUVJ5GpPf/vDdDK6SyMkbB6/OVJS9UQ+poYxSA9L6/OwqdvAedGtp4ADIK3vfaN6QLSMvvlEmSiVYKQK1eA1YeJumEjPoEOgna8zxEZ6S3e+3pgyRp/YAxxR5oDZ0YbZQCgCZdOncYs3n7eZLOiTCbWZwHLz4TiWggklb32SdfuMTYvu8Ypy/TVPZ0NAA077ty03GSdCLOiTB+nyMRyY5GdOen7n3NJ0nf94UJt/yqoFZhBvVbtGj1zSWSdCLCpAptTegwDLlqnZC+HwiTLjxfRauwiVdoRZwwNR1fhg4jhSks7mgTpUOWuJRiFm+DF9KXqeXLIhXW47xIKmVxOiIh6m0GSbO+7/vifEsG/CifVrHwmNgkiWW4EyE7Q8dS+fZRkmEtufzp119/6vjB+34irXN/wMRCvtNJseSeCUvKAfUP3dKuad+99Lk6v46lMz9JRsDVS3IhRz6jCxY3Bfssrb+f19wieDE8dJBEOXH8tzBUZiFAIfODphj5aMO9tFtKKR1rABMkpPu5CNLR7PRU46E/hwND766/j5wFE6V1iZ9oEyHy9rfsBmXQRLYgkr7m32I6DYMeqLGbbggMAHh4kn4CnNtb7vf7MvoXQ4Z+6WRdjOAr8FQEs55fs+PwLwW1AmDUMxIkIODMaee8vBdXFYSud+HBnKsvdDEGCgV/OVnpa3bXBoBSxfZQ4hK3s8m+iVq3vb6ycwa2fFiWRwG0Wl4TpT9HG7ccCgBU2uYEBLwvk/2QhnYn+FjOjfzp6o6Bbaqd3F/X5Fo3oCqvjIMGYNQAF5/lvd3sQBiDInfwWBbJq1cu+NtLwGDas0W38w2YKHRgIu4cIv3hAUDnr5yzJI/NL4jMiBrwMCbJUzE0GhykxBPw3vKfRgzS27fr0KTdHjpa3lW3CQD0f7fAm3wuBjw8QD8BlXZWN4U/pbOkb+kcr5LvvjwdbbJafsznYyldahslrkcyjk7AsvU/dqxd+XFGv1tx4v9rN3NM8/cwmc/qGNBYRxeH5dO4aSIyACD/X09/x6+3bC0GA8xs/f5TaimfRogaZEWyJ/Z07Xk7c0Fro34+n7efvbPsqb21jNbAQ2UwnSdGGR1l0MjFQ5+t6mwvqZVBW7nVmE1vofq5L2GM1+nJNrl+FB7PiWilc77III5AxuLdV5Fu8v3/X0mDja9o3H9lgEKj9bfN70IrR6urKHi4hX4cjrvzFH6uIXS1h/PDw9YXka47d4R+uk+7nP85F/BVhNwdl7gbC4qMXl4PAJTCiI8ztAHw0UvVvxh2yYnlp7lD7o2Ljv/MyVP8hVYRIJLuVZDOCih0/4sLn6j8HS0prm8Mg7lBEA8dl9+NQs/+s6wogNx7mqLrnz2rVv2n7ie0JCkzYsCYf+jioSOfVmj66abbblk6a837b30/suD0xyt+wYCUwA8klsa6MAmjs/LP8AiazJn48crufWb0fOfVCS2+oE86krwU9ogvQlKE2Xbk6sltANVr3rIfXp3R/o6LdBIIs95+4/WWYTVIIYU31p+mhNE6Muubt177duqcNuUfOkY6Ia++2Q7ZVCiznJYiRzr0+pU2G6QE5CNTRncru/EqaUmef7MhYIzRseBhBrMY8JV+IoxXgsCSY/fTFwZ8sxWgDQAAVlA4IEgFAABQFwCdASo6ADAAPoEsk0glIiGhN/46qKAQCWwArDmN1Z6Ihp369l70mbebnmdNk3kv/M183+A8DfC77Hji0peE3ez8Ck5Jb19f71vUR7teaDxA1AD80+qZ/a+Lv85/yn7M/AJ/Kf63/z/XI9o3ot/sywxM/jy9lRPnCd5wwOi7XhsiKxKngyYsruSyGjarZnMYajc4CqFUet1s3LESRDs6A0ZGKqnCAphMscIBJzygHkRjmMDzGMH/qSetvtMmTYCV7gAA/vQk9kPwhkocMjJLme9ZJEV3ax17Tq1JDpX0qgng+HyUL5899QQ39wO9/GD3m6jVV/6cy9tUZhSRcvCH03OpF9Dy/EG3jPAHG+8jvweL5oUfEBnK+XLf4SXENZV/KapgxkDatvmZaF4ljJssHhUltBwP3TsW1f9hbY9bNgOG5JTBHc9xW18wh95aFx10ujUBo/h4aFI4SNHnUTBX7d/K5whjJZf/9iK/wIt6ANonOwS93yY7mwyG1rMTrg9ksJF+hve0l7mShbrBeSOx9tYHvy6lcBgyJJkavWgtYYqcpdlsKiYX5IX64mcPt4zdOn5pa/eHvQ4rPcQVdB6CpDZsL8OgFq56zp21xyFs09hDmV5/9kENkbrQZ/3DQwWImmbpJQQ+GoL4W4zW70GGa2AAEE/ZquL5OEMgqyWhHhmsz7ClpPW6CosTLfJ3/X/n/nAVmBeSrFKgU8sZdJOTq0kKDbYXZUxM68Ld2kZKip2Ykvq1JmxzHYXuYHUufd4KlwEosWq5ckOdVK/MUS85xrC6QiYUPnn4J8hhsKgNp9lGlRVgzslv7EMiOYn3rbusPtnzrorOCoLyRmNA9+8VElKwRh9je4n+n0dHo4OLLiMtyE2DYDypEOVasfMS+BqANdwwNZlDRkES14VFrwXZnRjM+6K9M9eTfjeJFcMTUVclor9ejnNavGXJfYxo2xHpCJigfDX1e/B91FawnGMnlgx57E2RkbYAp2omxVF75Ztqe+2GcaGNcR55q2T7sZFJqdG2PVvQYezhdf3DVz3yR+efAoXPslok2Ufs0U1jsYzd6CwLGfoSe23lSgcEl0p7QUGwOPCAzY1CZ1bF80xENxd1to0A9i1QDe/Bl57icexlAniCjy++nRwPKYT2xlrFDss//dfP5tCbSxnjql/5bcHHlP6CkjsB442r/wY/s9+YrlRPWSfakFpUmUePgVRg+RzGQv/uomSoMqx3o5oReyimaHhkfSZ2PCl3Oxnwiekq9whJXn387HImiarYdqcJXvcmPMg0dAJ3xrwjByZ8PcsJQeyGYoT9yfvjsUSHf0Sm92JVFXHj7P/nrtpTVhwOT4qYW84QBUolmapUtnV2kVTeBAeebp6A1wLm0wlcYV6Dj1WkBicZLL7OAhgJyd7PPnV6f2nlF9lUADmvQBUaoNj6fUas/PbmYJVKcjihY/9hWPW+ixrQE/z7/rotQJDDZvCwTU3koQdwU9wW2ixh1NzqWs3MPW2hbNgVNVqVDOmGNB82wOblPGIh8v2nLf5ldwT5oSvm8v9/Vif68+/KLOwhK1b2azw4/kf3SVKIJ8ZFVfIKLPrwG/POK3pMZIg4YufhSnq7Zz4+HynUGnCrOOKOQNR8Q5EpYmzlEvJ3ooHRKCthcLXRTpxuXEtSaDSfsVJKScinwrbpPcqwfbS9P4eYvwfvniKKhFFROPP+mWPepfkhDbUPldvpKJ7cGXP4DvfH1EyDKZDEzj/4mNqLWkfg2Y5T7M1UT7PxWNTMUuvhn/uvEbLWwza0INxzSdc5dn3qqdgAAA==";
 const MIDGARD_MILL_ICON="data:image/webp;base64,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";
 
-function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDone, start, rememberPosition, northBridgeRepaired, northBridgeReady, goldChestOpened, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, banditRespawnAt, onBanditDefeated, onBanditReward, onBanditKnockout, potions, runes, equippedRune, runeCounts, runeLevels, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; banditRespawnAt:Record<string,number>; onBanditDefeated:(id:string)=>void; onBanditReward:(id:string)=>string; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; runeCounts?:Record<string,number>; runeLevels?:Record<string,number>; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string,currentHp?:number)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
+function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, onOpenMill, eventDone, start, rememberPosition, northBridgeRepaired, northBridgeReady, goldChestOpened, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, banditRespawnAt, onBanditDefeated, onBanditReward, onBanditKnockout, potions, runes, equippedRune, runeCounts, runeLevels, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; onOpenMill:()=>void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; banditRespawnAt:Record<string,number>; onBanditDefeated:(id:string)=>void; onBanditReward:(id:string)=>string; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; runeCounts?:Record<string,number>; runeLevels?:Record<string,number>; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string,currentHp?:number)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -6627,7 +6645,7 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
         <img className="mid3d-frame-img" src={`${BASE}img/models/frame_top_long_768w.png`} alt=""/>
         <span>МИДГАРД</span>
       </div>
-      <button className="mid3d-top-btn" aria-label="Мельница капель бессмертия" title="Мельница" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setDoorNotice("Мельница капель бессмертия — скоро откроется.");}}>
+      <button className="mid3d-top-btn" aria-label="Мельница капель бессмертия" title="Мельница" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();rememberPosition({x:state.current.x,z:state.current.z});onOpenMill();}}>
         <img className="mid3d-frame-img" src={`${BASE}img/models/frame_top_mid_512w.png`} alt=""/>
         <img className="mid3d-top-art mid3d-mill-art" src={MIDGARD_MILL_ICON} alt="" aria-hidden="true"/>
       </button>
@@ -6924,6 +6942,184 @@ function ForgeWeaponWall({owned,ownedShields,selected,selectedShield,onChoose}:{
     <p className="forge-wall-note">Выбери полученное оружие или щит. Остальные щиты откроются по мере прохождения.</p></>;
 }
 
+function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;balance:number;onProduce:(amount:number)=>void;onCollect:()=>void;onBack:()=>void}){
+  const mount=useRef<HTMLDivElement>(null);
+  const runningRef=useRef(false);
+  const wheelRef=useRef<THREE.Group|null>(null);
+  const [running,setRunning]=useState(false);
+  const [loaded,setLoaded]=useState(false);
+  const [loadFailed,setLoadFailed]=useState(false);
+  const [collected,setCollected]=useState(0);
+
+  useEffect(()=>{runningRef.current=running;},[running]);
+  useEffect(()=>{
+    if(!running)return;
+    const id=window.setInterval(()=>onProduce(2),1000);
+    return()=>window.clearInterval(id);
+  },[running,onProduce]);
+
+  useEffect(()=>{
+    const host=mount.current;
+    if(!host)return;
+    const scene=new THREE.Scene();
+    scene.background=new THREE.Color(0x101a14);
+    scene.fog=new THREE.Fog(0x101a14,18,42);
+
+    const camera=new THREE.PerspectiveCamera(48,Math.max(1,host.clientWidth)/Math.max(1,host.clientHeight),.1,100);
+    camera.position.set(11,8.2,16);
+    camera.lookAt(0,2.6,-1.5);
+
+    const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:"high-performance"});
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.7));
+    renderer.setSize(Math.max(1,host.clientWidth),Math.max(1,host.clientHeight));
+    renderer.outputColorSpace=THREE.SRGBColorSpace;
+    renderer.shadowMap.enabled=true;
+    renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    host.appendChild(renderer.domElement);
+
+    scene.add(new THREE.HemisphereLight(0xcfe5d5,0x21180f,1.55));
+    const sun=new THREE.DirectionalLight(0xffe0a0,2.2);
+    sun.position.set(-8,14,9);sun.castShadow=true;
+    sun.shadow.mapSize.set(1024,1024);scene.add(sun);
+
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(32,30),new THREE.MeshStandardMaterial({color:0x587340,roughness:1}));
+    ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+
+    const path=new THREE.Mesh(new THREE.PlaneGeometry(6.2,16),new THREE.MeshStandardMaterial({color:0x665644,roughness:1}));
+    path.rotation.x=-Math.PI/2;path.position.set(7,.025,4);path.receiveShadow=true;scene.add(path);
+
+    const channelFloor=new THREE.Mesh(new THREE.BoxGeometry(6,.22,25),new THREE.MeshStandardMaterial({color:0x4d514a,roughness:.95}));
+    channelFloor.position.set(-3,-.04,-1);channelFloor.receiveShadow=true;scene.add(channelFloor);
+    const water=new THREE.Mesh(new THREE.PlaneGeometry(5.4,24.6),new THREE.MeshStandardMaterial({color:0x3c9fb9,roughness:.28,metalness:.04,transparent:true,opacity:.82,emissive:0x0c3540,emissiveIntensity:.35}));
+    water.rotation.x=-Math.PI/2;water.position.set(-3,.12,-1);scene.add(water);
+    for(const x of [-6.25,.25]){
+      const bank=new THREE.Mesh(new THREE.BoxGeometry(.7,.75,25),new THREE.MeshStandardMaterial({color:0x8c806c,roughness:1}));
+      bank.position.set(x,.25,-1);bank.castShadow=bank.receiveShadow=true;scene.add(bank);
+    }
+
+    const flowMarks:THREE.Mesh[]=[];
+    const markMat=new THREE.MeshBasicMaterial({color:0x9de8f1,transparent:true,opacity:.36});
+    for(let i=0;i<11;i++){
+      const mark=new THREE.Mesh(new THREE.PlaneGeometry(2.8,.08),markMat);
+      mark.rotation.x=-Math.PI/2;
+      mark.position.set(-3,.135,-12+i*2.3);
+      scene.add(mark);flowMarks.push(mark);
+    }
+
+    const wallMat=new THREE.MeshStandardMaterial({color:0x7a5532,roughness:.88});
+    const hut=new THREE.Mesh(new THREE.BoxGeometry(7,4.7,5.8),wallMat);
+    hut.position.set(3.4,2.35,-3.3);hut.castShadow=hut.receiveShadow=true;scene.add(hut);
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(5.2,2.5,4),new THREE.MeshStandardMaterial({color:0x4b2d1c,roughness:.95}));
+    roof.position.set(3.4,5.8,-3.3);roof.rotation.y=Math.PI/4;roof.castShadow=true;scene.add(roof);
+    const door=new THREE.Mesh(new THREE.BoxGeometry(1.5,2.8,.12),new THREE.MeshStandardMaterial({color:0x2e1c10,roughness:.9}));
+    door.position.set(4.5,1.45,-.35);scene.add(door);
+
+    const stoneMat=new THREE.MeshStandardMaterial({color:0x77746a,roughness:1});
+    for(let i=0;i<18;i++){
+      const r=.35+(i%4)*.12;
+      const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(r,0),stoneMat);
+      const side=i%2?-1:1;
+      stone.position.set(-3+side*(3.7+(i%3)*.45),r*.55,-11+(i*3.1)%23);
+      stone.rotation.set(i*.21,i*.37,0);stone.castShadow=stone.receiveShadow=true;scene.add(stone);
+    }
+
+    const wheelPivot=new THREE.Group();
+    wheelPivot.position.set(-2.9,3,-3.2);
+    scene.add(wheelPivot);wheelRef.current=wheelPivot;
+
+    let alive=true;
+    const loader=new GLTFLoader();
+    const wheelUrl=`${BASE}img/models/water_wheel.glb`;
+    cachedGlbBuffer(wheelUrl).then(buffer=>{
+      if(!alive)return;
+      const absolute=new URL(wheelUrl,window.location.href).href;
+      const basePath=absolute.slice(0,absolute.lastIndexOf("/")+1);
+      loader.parse(buffer,basePath,gltf=>{
+        if(!alive)return;
+        const model=gltf.scene;
+        model.traverse(o=>{
+          const mesh=o as THREE.Mesh;
+          if(mesh.isMesh){mesh.castShadow=true;mesh.receiveShadow=true;}
+        });
+        const box=new THREE.Box3().setFromObject(model);
+        const size=new THREE.Vector3(),center=new THREE.Vector3();
+        box.getSize(size);box.getCenter(center);
+        model.position.sub(center);
+        const maxDim=Math.max(size.x,size.y,size.z,1);
+        model.scale.setScalar(6/maxDim);
+        const thinAxis=size.x<=size.y&&size.x<=size.z?"x":size.y<=size.z?"y":"z";
+        if(thinAxis==="x")model.rotation.y=Math.PI/2;
+        else if(thinAxis==="y")model.rotation.x=Math.PI/2;
+        wheelPivot.add(model);
+        setLoaded(true);
+      },()=>{if(alive){setLoadFailed(true);setLoaded(true);}});
+    }).catch(()=>{if(alive){setLoadFailed(true);setLoaded(true);}});
+
+    const clock=new THREE.Clock();
+    let frame=0;
+    const animate=()=>{
+      frame=requestAnimationFrame(animate);
+      const dt=Math.min(.05,clock.getDelta());
+      if(wheelRef.current&&runningRef.current)wheelRef.current.rotation.z-=dt*1.15;
+      for(const mark of flowMarks){
+        mark.position.z+=dt*(runningRef.current?4.5:1.1);
+        if(mark.position.z>11)mark.position.z=-12;
+      }
+      water.material instanceof THREE.MeshStandardMaterial&&(water.material.emissiveIntensity=.28+Math.sin(performance.now()*.002)*.08);
+      renderer.render(scene,camera);
+    };
+    animate();
+
+    const resize=()=>{
+      if(!host)return;
+      const w=Math.max(1,host.clientWidth),h=Math.max(1,host.clientHeight);
+      camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);
+    };
+    window.addEventListener("resize",resize);
+
+    return()=>{
+      alive=false;cancelAnimationFrame(frame);window.removeEventListener("resize",resize);
+      wheelRef.current=null;
+      scene.traverse(o=>{
+        const mesh=o as THREE.Mesh;
+        if(mesh.isMesh){mesh.geometry?.dispose?.();const mats=Array.isArray(mesh.material)?mesh.material:[mesh.material];mats.forEach((m:any)=>m?.dispose?.());}
+      });
+      renderer.dispose();
+      renderer.domElement.remove();
+    };
+  },[]);
+
+  const collect=()=>{
+    if(stored<=0)return;
+    const amount=stored;setCollected(amount);onCollect();
+    try{navigator.vibrate?.(20);}catch{}
+    window.setTimeout(()=>setCollected(0),850);
+  };
+
+  return <div className="mill-scene" ref={mount}>
+    <div className="mill-vignette"/>
+    <div className="mill-title">
+      <span><b>МЕЛЬНИЦА БЕССМЕРТИЯ</b><small>Деревянное колесо · первый уровень</small></span>
+      <span className={"mill-state"+(running?" on":"")}>{running?"ДОБЫЧА ИДЁТ":"КОЛЕСО ГОТОВО"}</span>
+    </div>
+    {!loaded&&<div className="mill-load">Загружаем водяное колесо…</div>}
+    {loadFailed&&<div className="mill-load">Колесо временно не загрузилось — механизм всё равно можно проверить.</div>}
+    {!!collected&&<div className="mill-collected">+{collected} золотых капель</div>}
+    <div className="mill-panel">
+      <div className="mill-stats">
+        <div className="mill-stat"><span>В накопителе мельницы</span><b><SparkDrop/> {stored}</b></div>
+        <div className="mill-stat"><span>Твой баланс бессмертия</span><b><SparkDrop/> {balance}</b></div>
+      </div>
+      <div className="mill-rate"><span>Поток воды превращает силу в Золотые капли бессмертия.</span><b>+2 / сек</b></div>
+      <div className="mill-controls">
+        <button className={"mill-btn "+(running?"stop":"primary")} onClick={()=>setRunning(v=>!v)}>{running?"Остановить колесо":"Запустить мельницу"}</button>
+        <button className="mill-btn collect" disabled={!stored} onClick={collect}>Забрать капли</button>
+        <button className="mill-back" onClick={()=>{setRunning(false);onBack();}}>← Вернуться в Мидгард</button>
+      </div>
+    </div>
+  </div>;
+}
+
 function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
   const [save, setSave] = useState<Save>(loadSave);
@@ -6974,7 +7170,7 @@ const [roadT, setRoadT] = useState(0.06);
   }, [save.heroSkin]);
   useEffect(() => {
     if (!tg?.BackButton) return;
-    const back = () => setScreen(screen.t === "forge" ? { t: "realm", id:"midgard" } : { t: "tree" });
+    const back = () => setScreen(screen.t === "forge" || screen.t === "mill" ? { t: "realm", id:"midgard" } : { t: "tree" });
     if (screen.t !== "tree" && screen.t !== "choose" && save.hero) { tg.BackButton.show(); tg.BackButton.onClick(back); } else tg.BackButton.hide();
     return () => { tg.BackButton?.offClick?.(back); };
   }, [screen, save.hero]);
@@ -6992,6 +7188,15 @@ const [roadT, setRoadT] = useState(0.06);
     haptic();say(kind==='wood'?'🪵 +1 древесина':kind==='twigs'?'🌱 +1 ветки':'🌿 +1 лечебные травы');
   };
   const go = (s: Screen) => setScreen(s);
+  const produceMillDrops=useCallback((amount:number)=>{
+    const safe=Math.max(0,Math.floor(amount));
+    if(!safe)return;
+    setSave(s=>({...s,millStored:s.millStored+safe}));
+  },[]);
+  const collectMillDrops=useCallback(()=>{
+    setSave(s=>s.millStored<=0?s:{...s,immortalityDrops:s.immortalityDrops+s.millStored,millStored:0});
+  },[]);
+
   const enterForge=(position?:{x:number;z:number})=>{
     if(forgeTransition)return;
     if(position)midgardReturn.current={x:position.x,z:position.z};
@@ -7368,6 +7573,7 @@ const [roadT, setRoadT] = useState(0.06);
       <div className="hdr">
         {screen.t === "tree" && <div className="title">🌳 Мировое Древо Иггдрасиль</div>}
         {screen.t === "realm" && <button className="back" onClick={() => go({ t: "tree" })}>← На Древо</button>}
+        {screen.t === "mill" && <button className="back" onClick={() => go({ t: "realm", id:"midgard" })}>← Мидгард · Мельница</button>}
         {screen.t === "choose" && <div className="title">🌫️ Выбор судьбы</div>}
         {screen.t === "hero" && <div className="title">🛡 Герой</div>}
         {screen.t === "gift" && <div className="title">🎁 Дар</div>}
@@ -7376,7 +7582,7 @@ const [roadT, setRoadT] = useState(0.06);
         {screen.t === "forge" && <button className="back" onClick={() => go({ t: "realm", id:"midgard" })}>← Мидгард · Кузница</button>}
         {screen.t === "trial" && <div className="title">🗝 Испытание</div>}
         {screen.t === "fight" && <div className="title">⚔ Бой</div>}
-        <div className="sparks"><SparkDrop/> {save.sparks} Капель силы</div>
+        <div className="sparks"><SparkDrop/> {screen.t==="mill"?<>{save.immortalityDrops} Капель бессмертия</>:<>{save.sparks} Капель силы</>}</div>
       </div>
 
       {forgeTransition&&<div className="forge-transition"><b>ᚲ</b><span>Дверь кузницы открывается</span></div>}
@@ -7442,6 +7648,16 @@ const [roadT, setRoadT] = useState(0.06);
           <span className="hbst">⚔ {heroDef.str} ✨ {heroDef.en} ⏳ {watchGain()}</span>
           <span className="hbwpn">🗡</span>
         </button>
+      )}
+
+      {screen.t === "mill" && (
+        <MillScene
+          stored={save.millStored}
+          balance={save.immortalityDrops}
+          onProduce={produceMillDrops}
+          onCollect={collectMillDrops}
+          onBack={()=>go({t:"realm",id:"midgard"})}
+        />
       )}
 
       {screen.t === "realm" && (() => {
@@ -7834,6 +8050,7 @@ const [roadT, setRoadT] = useState(0.06);
       gearLevels={save.forgeLevels}
       shieldAsset={save.shieldAsset}
       on={interact}
+      onOpenMill={()=>go({t:"mill"})}
       eventDone={save.done.includes("forest:choice")}
       start={midgardReturn.current}
       rememberPosition={rememberMidgardPosition}
@@ -8224,7 +8441,7 @@ const [roadT, setRoadT] = useState(0.06);
         </div>
       )}
 
-      {save.hero && screen.t!=="forge" && (
+      {save.hero && screen.t!=="forge" && screen.t!=="mill" && (
         <div className="nav">
           {NAV.map(n => (<button key={n.id} className={"navbtn" + (isNav(n.id) ? " on" : "")} onClick={() => go(navScreen(n.id))}><span className="ic">{n.ic}</span>{n.t}</button>))}
         </div>
