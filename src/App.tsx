@@ -12,6 +12,8 @@ import { Midgard3D } from './Midgard3D';
 
 
 
+import { VILLAGE_RESIDENTS, VILLAGE_WARD_COST, type VillageResident, villageOrder, orderMaterials, preparationDone, wardPrepared, canCompleteOrder, completeVillageOrder, restoreVillageWard } from './villageQuests';
+
 export function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
   const millScreenActiveRef=useRef(false);
@@ -90,6 +92,26 @@ const [roadT, setRoadT] = useState(0.06);
       return {...current,gathered:[...current.gathered,id],gatherRespawnAt:{...current.gatherRespawnAt,[id]:Date.now()+GATHER_RESPAWN_MS},stock:{...current.stock,[kind]:current.stock[kind]+1}};
     });
     haptic();say(kind==='wood'?'🪵 +1 древесина':kind==='twigs'?'🌱 +1 ветки':'🌿 +1 лечебные травы');
+  };
+  const [,setVillageTick]=useState(0);
+  useEffect(()=>{
+    if(!houseDialog)return;
+    const timer=window.setInterval(()=>{setVillageTick(t=>t+1);},1000);
+    return()=>window.clearInterval(timer);
+  },[!!houseDialog]);
+  const resident=VILLAGE_RESIDENTS.includes(houseDialogId as VillageResident)?houseDialogId as VillageResident:null;
+  const residentOrder=resident?villageOrder(save,resident):null;
+  const submitVillageOrder=()=>{
+    if(!resident||!canCompleteOrder(save,resident))return;
+    const order=villageOrder(save,resident);
+    setSave(s=>completeVillageOrder(s,resident));
+    setHouseDialog(`Заказ выполнен. +${order.drops} капель бессмертия${order.potion?' и Эликсир северного мха':''}. Следующий заказ — через 15 минут.`);
+    haptic('success');
+  };
+  const activateVillageWard=()=>{
+    if(!wardPrepared(save)||save.immortalityDrops<VILLAGE_WARD_COST||save.done.includes('bridge:north:repaired'))return;
+    setSave(restoreVillageWard);
+    setHouseDialog('Защитная руна зажглась. Хаос отступил, Северный мост восстановлен. Путь к золотому сундуку открыт.');haptic('success');
   };
   const go = (s: Screen) => { millScreenActiveRef.current=s.t==="mill"; setScreen(s); };
   const produceMillDrops=useCallback((amount:number)=>{
@@ -659,7 +681,7 @@ const [roadT, setRoadT] = useState(0.06);
           say('Красный сундук ждёт, пока ты выберешь нить у колодца Трёх Норн.');return;
         }
         if(save.done.includes('chest:norns')){
-          say('Красный сундук уже открыт. Северный мост можно подготовить заданием Бьёрна; доски на Старом хуторе и крепления у Торвальда — ещё один путь. Ремонт выполняется у самого моста.');return;
+          say('Красный сундук уже открыт. Подготовь защиту у Сигрид, Бьёрна и Торвальда. Руна у Северного моста активируется за 300 капель бессмертия.');return;
         }
         setSave(s=>s.done.includes('chest:norns')?s:{...s,
           done:[...new Set([...s.done,'chest:norns'])],sparks:s.sparks+30,
@@ -669,7 +691,7 @@ const [roadT, setRoadT] = useState(0.06);
           ownedShields:[...new Set([...s.ownedShields,'Shield_Heater.glb'])],
           lootCounts:lootCountAdd(s.lootCounts,['knife','Shield_Heater.glb','uruzStrength','perthroFate','lifeElixir','northernMoss'])
         });
-        haptic('success');say('Красный сундук Норн открыт! +30 Капель силы, Боевой кинжал, Щит, руны Уруз ᚢ и Перт ᛈ, Эликсир жизни и Эликсир северного мха. Подсказка Норн ведёт к ремонту Северного моста.');
+        haptic('success');say('Красный сундук Норн открыт! +30 Капель силы, Боевой кинжал, Щит, руны Уруз ᚢ и Перт ᛈ, Эликсир жизни и Эликсир северного мха. Подсказка Норн ведёт к защитной руне Северного моста.');
         return;
       }
       if (id === "forge") {
@@ -681,37 +703,17 @@ const [roadT, setRoadT] = useState(0.06);
         say("Вёлунд: «Выбери сталь у двери кузницы. Горн уже разожжён».");
         return;
       }
-      if(id==='craftsman'&&save.done.includes('chest:norns')&&!save.done.includes('bridge:fittings')){
-        setSave(s=>({...s,done:[...new Set([...s.done,'bridge:fittings'])]}));
-        haptic('success');say('✅ Торвальд вручил железные крепления. Вместе с досками со Старого хутора они позволяют отремонтировать Северный мост прямо у переправы.');return;
-      }
-      if(id==='herbalist'){
-        if(save.done.includes('gather:herbalist')){say('Сигрид: «Благодарю за травы. Эликсир северного мха уже у тебя в запасе».');return;}
-        if(save.stock.herbs<4){say(`Сигрид: «Найди четыре пучка лечебных трав у южной дороги. Сейчас у тебя ${save.stock.herbs} из 4».`);return;}
-        setSave(state=>state.done.includes('gather:herbalist')||state.stock.herbs<4?state:{...state,
-          stock:{...state.stock,herbs:Math.max(0,state.stock.herbs-4)},
-          potions:[...state.potions,'northernMoss'],sparks:state.sparks+6,
-          done:[...new Set([...state.done,'gather:herbalist'])]
-        });
-        haptic('success');say('Сигрид приняла 4 лечебные травы (−4) и вручила Эликсир северного мха и 6 Капель силы.');return;
-      }
-      if(id==='carpenter'){
-        if(!save.done.includes('gather:carpenter')&&save.stock.wood>=3&&save.stock.twigs>=3){
-          setSave(state=>state.done.includes('gather:carpenter')||state.stock.wood<3||state.stock.twigs<3?state:{...state,
-            stock:{...state.stock,wood:Math.max(0,state.stock.wood-3),twigs:Math.max(0,state.stock.twigs-3)},
-            sparks:state.sparks+8,done:[...new Set([...state.done,'gather:carpenter'])]
-          });
-          haptic('success');say('✅ Бьёрн принял 3 древесины (−3) и 3 ветки (−3). +8 Капель силы. Теперь можно ремонтировать Северный мост.');return;
-        }
-        if(save.done.includes('bridge:north:repaired')){say('✅ Северный мост уже восстановлен. Перейди на другой берег к золотому сундуку.');return;}
-        if(save.done.includes('gather:carpenter')||(save.done.includes('chest:norns')&&save.done.includes('bridge:boards')&&save.done.includes('bridge:fittings'))){
-          say('✅ Материалы для ремонта готовы. Подойди к Северному мосту: там появится кнопка «Отремонтировать мост».');return;
-        }
-        say(`Бьёрн: «Принеси 3 древесины и 3 ветки для ремонта. Сейчас древесина ${save.stock.wood}/3, ветки ${save.stock.twigs}/3».`);return;
-      }
-      if (id === "house" || id === "elder") {
-        say("Старейшина: «За северной дорогой начинается лес. Но ночью там слышны голоса, которых не знает ни один охотник.»");
+      if(VILLAGE_RESIDENTS.includes(id as VillageResident)){
+        const who=id as VillageResident,order=villageOrder(save,who);
+        const remaining=Math.max(0,Math.ceil(((save.locationCooldowns['village:'+who]||0)-Date.now())/60000));
+        say(!order.initial&&remaining>0?`Спасибо за помощь. Новый заказ будет доступен через ${remaining} мин.`:
+          `${order.title}. ${orderMaterials(save,who)}. Награда: ${order.drops} капель бессмертия${order.potion?' и эликсир':''}.`);
         return;
+      }
+      if(id==='house'||id==='elder'){
+        houseDialogPending.current='house';
+        say(save.done.includes('bridge:north:repaired')?'Защита деревни восстановлена. Жители продолжают выдавать заказы — помогай им и готовься к следующему пути.':
+          'У Северного моста ослабла защитная руна. Сигрид подготовит настой, Бьёрн — основание, Торвальд — крепления. Затем принеси к мосту 300 капель бессмертия, чтобы восстановить защиту.');return;
       }
       const homeMessages:Record<string,string>={
         warriorHouse:"Дружинник: «Добро пожаловать. Перед вечерним дозором я проверяю клинок и щит».",
@@ -725,15 +727,10 @@ const [roadT, setRoadT] = useState(0.06);
         craftsman:"Торвальд: «Я чиню инструменты и выковываю крепления. Приноси материалы, если понадобится помощь»."
       };
       if(homeMessages[id]){say(homeMessages[id]);return;}
-      if (id === "northBridge") {
-        if(save.done.includes('bridge:north:repaired')){say('Северный мост восстановлен. Проход к золотому сундуку свободен.');return;}
-        const ready=save.done.includes('gather:carpenter')||(save.done.includes('chest:norns')&&save.done.includes('bridge:boards')&&save.done.includes('bridge:fittings'));
-        if(ready){
-          setSave(s=>s.done.includes('bridge:north:repaired')?s:{...s,done:[...new Set([...s.done,'bridge:north:repaired'])]});
-          haptic('success');setHouseDialogId('northBridge');setHouseDialog('✅ Северный мост отремонтирован! Заграждения сняты, проход открыт. Перейди мост и открой золотой сундук на другом берегу.');return;
-        }
-        say('Северный мост повреждён. Сначала собери 3 древесины и 3 ветки, затем сдай их плотнику Бьёрну. После этого мост можно починить здесь.');
-        return;
+      if(id==='northBridge'){
+        houseDialogPending.current='northBridge';
+        say(save.done.includes('bridge:north:repaired')?'Защитная руна горит. Северный мост открыт.':
+          'Чтобы отступил хаос, подготовь защитную руну с помощью Сигрид, Бьёрна и Торвальда. Активация у моста стоит 300 капель бессмертия.');return;
       }
       if (id === "port") {
         const maxHp=(heroDef?.hp||100)+gearHp(),currentHp=Math.min(maxHp,save.fieldHp??maxHp);
@@ -788,7 +785,7 @@ const [roadT, setRoadT] = useState(0.06);
         return;
       }
       if (id === "forestCache") {
-        if(!save.done.includes('bridge:north:repaired')){say('Золотой сундук защищён кольцом. Выполни задание Бьёрна, отремонтируй Северный мост и перейди на другой берег.');return;}
+        if(!save.done.includes('bridge:north:repaired')){say('Золотой сундук защищён кольцом. Подготовь защиту с тремя жителями, активируй руну у Северного моста за 300 капель бессмертия и перейди на другой берег.');return;}
         if(!save.done.includes('chest:gold')){
           setSave(s=>s.done.includes('chest:gold')?s:{...s,
             done:[...new Set([...s.done,'chest:gold'])],sparks:s.sparks+55,
@@ -974,7 +971,7 @@ const [roadT, setRoadT] = useState(0.06);
       start={midgardReturn.current}
       rememberPosition={rememberMidgardPosition}
       northBridgeRepaired={save.done.includes("bridge:north:repaired")}
-      northBridgeReady={save.done.includes('gather:carpenter')||(save.done.includes('chest:norns')&&save.done.includes('bridge:boards')&&save.done.includes('bridge:fittings'))}
+      northBridgeReady={wardPrepared(save)&&save.immortalityDrops>=VILLAGE_WARD_COST}
       goldChestOpened={save.done.includes('chest:gold')}
       whisperResolved={save.done.includes("whisper:battle")||save.done.includes("whisper:wisdom")}
       guardianResolved={MIDGARD_GUARDIAN_ORDER.filter(id=>save.done.includes("guardian:stage:"+id)||save.done.includes("guardian:"+id)) as unknown as string[]}
@@ -1369,16 +1366,20 @@ const [roadT, setRoadT] = useState(0.06);
       {toast && <div className="toast">{toast}</div>}
       {houseDialog&&screen.t==="realm"&&screen.id==="midgard"&&<div className="house-dialog-backdrop" onPointerDown={e=>e.stopPropagation()}>
         <div className="house-dialog-panel" role="dialog" aria-modal="true" aria-label="Разговор у дома">
-          <h3>{houseDialogId==="goldChest"?"Золотой сундук":houseDialogId==="northBridge"?"Северный мост":houseDialogId==="oldfarm"?"Старый хутор":houseDialogId==="carpenter"?"Плотник Бьёрн":houseDialogId==="herbalist"?"Травница Сигрид":houseDialogId==="craftsman"?"Ремесленник Торвальд":"Разговор у дома"}</h3><p>{houseDialog}</p>
-          {houseDialogId==="carpenter"&&<div className="house-quest-status"><b>Задания Бьёрна</b>
-            <span>{save.done.includes('gather:carpenter')?'✅ Сдано: 3 древесины и 3 ветки. Материалы списаны из запаса. Награда: 8 Капель силы.':`Собрать древесину ${save.stock.wood}/3 и ветки ${save.stock.twigs}/3 — при сдаче они будут вычтены из запаса.`}</span>
-            <span>{save.done.includes('bridge:north:repaired')?'✅ Северный мост восстановлен. Путь к золотому сундуку открыт.':save.done.includes('gather:carpenter')?'✅ Ремонт доступен у Северного моста.':'○ Северный мост ждёт выполнения задания Бьёрна.'}</span>
+          <h3>{houseDialogId==="house"||houseDialogId==="elder"?"Старейшина":houseDialogId==="goldChest"?"Золотой сундук":houseDialogId==="northBridge"?"Северный мост":houseDialogId==="oldfarm"?"Старый хутор":houseDialogId==="carpenter"?"Плотник Бьёрн":houseDialogId==="herbalist"?"Травница Сигрид":houseDialogId==="craftsman"?"Ремесленник Торвальд":"Разговор у дома"}</h3><p>{houseDialog}</p>
+          {resident&&residentOrder&&<div className="house-quest-status">
+            <b>{residentOrder.initial?'Подготовка защиты':'Заказ жителя'}: {residentOrder.title}</b>
+            <span>{orderMaterials(save,resident)}</span>
+            <span>Награда: {residentOrder.drops} капель бессмертия{residentOrder.potion?' и эликсир':''}.</span>
+            {!residentOrder.initial&&(save.locationCooldowns['village:'+resident]||0)>Date.now()&&<span>Следующий заказ через {Math.max(1,Math.ceil(((save.locationCooldowns['village:'+resident]||0)-Date.now())/60000))} мин.</span>}
+            <button type="button" disabled={!canCompleteOrder(save,resident)} onClick={submitVillageOrder}>Сдать материалы</button>
           </div>}
-          {houseDialogId==="herbalist"&&<div className="house-quest-status"><b>Задание Сигрид</b>
-            <span>{save.done.includes('gather:herbalist')?'✅ Сдано: 4 лечебные травы. Материалы списаны из запаса. Награда: эликсир и 6 Капель силы.':`Собрать лечебные травы ${save.stock.herbs}/4 — при сдаче 4 травы будут вычтены из запаса.`}</span>
-          </div>}
-          {houseDialogId==="craftsman"&&<div className="house-quest-status"><b>Помощь Торвальда</b>
-            <span>{save.done.includes('bridge:fittings')?'✅ Железные крепления для моста получены.':'○ Крепления можно получить после открытия красного сундука Норн.'}</span>
+          {['house','elder','northBridge'].includes(houseDialogId)&&<div className="house-quest-status"><b>Защита деревни</b>
+            <span>{preparationDone(save,'herbalist')?'✅':'○'} Настой Сигрид</span>
+            <span>{preparationDone(save,'carpenter')?'✅':'○'} Основание Бьёрна</span>
+            <span>{preparationDone(save,'craftsman')?'✅':'○'} Крепления Торвальда</span>
+            <span>Капли бессмертия: {save.immortalityDrops} / {VILLAGE_WARD_COST}</span>
+            {houseDialogId==='northBridge'&&!save.done.includes('bridge:north:repaired')&&<button type="button" disabled={!wardPrepared(save)||save.immortalityDrops<VILLAGE_WARD_COST} onClick={activateVillageWard}>Восстановить защиту · {VILLAGE_WARD_COST} капель</button>}
           </div>}
           {houseDialogId==="oldfarm"&&<div className="house-quest-status"><b>Старый хутор</b>
             <span>{save.done.includes('bridge:boards')?'✅ Крепкие доски для моста найдены.':'○ Доски для моста ещё не найдены.'}</span>

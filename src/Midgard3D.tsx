@@ -2464,6 +2464,17 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     };
     const riverBridge=makeStoneBridgeBase(BRIDGE_X,BRIDGE_Z,BRIDGE_Y,"port","Речной мост");
     const northBridge=makeStoneBridgeBase(NORTH_BRIDGE_X,NORTH_BRIDGE_Z,NORTH_BRIDGE_Y,"northBridge",northBridgeRepaired?"Северный мост":"Северный мост — проход закрыт");
+    const wardStone=new THREE.Mesh(new THREE.DodecahedronGeometry(.75,0),new THREE.MeshStandardMaterial({color:0x777b82,roughness:.9}));
+    wardStone.position.set(NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.2,NORTH_BRIDGE_Y+.62,NORTH_BRIDGE_Z+BRIDGE_WIDTH/2+.8);scene.add(wardStone);
+    const wardHalo=new THREE.Mesh(new THREE.TorusGeometry(.66,.045,6,24),new THREE.MeshBasicMaterial({color:northBridgeRepaired?0xffd36a:0x925bad}));
+    wardHalo.position.copy(wardStone.position);wardHalo.position.y+=.75;wardHalo.rotation.x=-Math.PI/2;scene.add(wardHalo);
+    const runeGeometry=new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0,-.4,0),new THREE.Vector3(0,.4,0),
+      new THREE.Vector3(0,.05,0),new THREE.Vector3(-.3,.35,0),
+      new THREE.Vector3(0,.05,0),new THREE.Vector3(.3,.35,0)
+    ]);
+    const wardRune=new THREE.LineSegments(runeGeometry,new THREE.LineBasicMaterial({color:northBridgeRepaired?0xffd36a:0xad83cf}));
+    wardRune.position.copy(wardStone.position);wardRune.position.y+=1.2;scene.add(wardRune);
     if(!northBridgeRepaired){
       // Visible barriers on BOTH banks agree with the closed-crossing collision.
       for(const side of [-1,1]){
@@ -5253,7 +5264,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
           <span className="map-landmark goal" style={{left:"49%",top:"53%"}}>ᚠ<small>Цель</small></span>
           <span className="map-landmark hero" style={{left:`${((mapHero.x+88)/176)*100}%`,top:`${100-((mapHero.z+89)/178)*100}%`}}>◆<small>Ты здесь</small></span>
         </div>
-        <div className="mid3d-map-goal"><b>{goldChestOpened?'Золотой сундук открыт':northBridgeRepaired?'Северный мост открыт':northBridgeReady?'Мост готов к ремонту':'Путь к золотому сундуку'}</b><br/>{goldChestOpened?'Награды получены. Следующий известный сундук ждёт в Лесу Ходдмимира.':northBridgeRepaired?'Перейди мост и открой золотой сундук напротив него.':northBridgeReady?'Подойди к Северному мосту и нажми «Отремонтировать мост».':'Собери 3 древесины и 3 ветки, отдай их плотнику Бьёрну. После этого почини Северный мост.'}</div>
+        <div className="mid3d-map-goal"><b>{goldChestOpened?'Золотой сундук открыт':northBridgeRepaired?'Северный мост открыт':northBridgeReady?'Мост готов к ремонту':'Путь к золотому сундуку'}</b><br/>{goldChestOpened?'Награды получены. Следующий известный сундук ждёт в Лесу Ходдмимира.':northBridgeRepaired?'Перейди мост и открой золотой сундук напротив него.':northBridgeReady?'Подойди к Северному мосту и восстанови защитную руну за 300 капель бессмертия.':'Подготовь руну у Сигрид, Бьёрна и Торвальда. Для активации нужны 300 капель бессмертия.'}</div>
         <button className="mid3d-map-close" onClick={()=>{setMapOpen(false);setCreditsOpen(true);}}>Авторы и лицензии</button>
         <button className="mid3d-map-close" onClick={()=>setMapOpen(false)}>Закрыть карту и продолжить путь</button>
       </div>
@@ -5359,7 +5370,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{kind==='wood'?'Вика возьмёт лёгкий рабочий топор. Древесина нужна плотнику.':kind==='herbs'?'Вика нагнётся и соберёт травы для Сигрид.':'Срежь ветки для плотника Бьёрна.'}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>gatherActionRef.current?.(id.slice(7))}>{kind==='herbs'?'Нагнуться и собрать':kind==='wood'?'Срубить':'Срезать ветки'}</button></div>;
       }
       if(id==="forge")return <div className="mid3d-ui mid3d-door-prompt"><b>Дверь кузницы</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>forgeActionRef.current?.()}>Открыть ручку</button></div>;
-      if(id==="northBridge")return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{northBridgeRepaired?'Проход открыт. Золотой сундук находится на другом берегу.':northBridgeReady?'Материалы подготовлены. Мост можно починить здесь.':'Сначала собери древесину и ветки для Бьёрна.'}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>{northBridgeRepaired?'Осмотреть мост':northBridgeReady?'Отремонтировать мост':'Осмотреть мост'}</button></div>;
+      if(id==="northBridge")return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{northBridgeRepaired?'Проход открыт. Золотой сундук находится на другом берегу.':northBridgeReady?'Защита подготовлена. Активируй руну за 300 капель бессмертия.':'Подготовь руну у Сигрид, Бьёрна и Торвальда. Нужно 300 капель бессмертия.'}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>{northBridgeRepaired?'Осмотреть мост':'Защитная руна'}</button></div>;
       const villageDoor=["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman","oldfarm"].includes(id);
       if(villageDoor)return <div className="mid3d-ui mid3d-door-prompt"><b>{label}</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>id==="oldfarm"?on(id,{x:state.current.x,z:state.current.z}):villageDoorActionRef.current?.(id)}>{outsideHouse===id?"Поговорить":"Открыть ручку"}</button></div>;
       if(id==="heroHome")return <div className="mid3d-ui mid3d-door-prompt"><b>Дом героя</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>homeActionRef.current?.(true)}>Открыть ручку</button></div>;
