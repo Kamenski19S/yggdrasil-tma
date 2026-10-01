@@ -150,7 +150,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     setWhisperHeroHp(whisperStats.maxHp);setWhisperGuardHp(spec.hp);
     setWhisperHeroEnergy(whisperStats.power);setWhisperGuardEnergy(spec.power);
     setWhisperShield(false);setWhisperBusy(false);setBattlePotionOpen(false);
-    setWhisperLog(spec.name+" снова принимает вызов. Редкий трофей повторно не выпадает, но победа снова приносит Капли силы.");
+    setWhisperLog(spec.name+" снова принимает вызов. Редкий трофей повторно не выпадает, но победа снова приносит Капли бессмертия.");
     guardDefeatedRef.current=false;whisperBattleStartedRef.current=true;whisperReplayRef.current=true;setWhisperReplay(true);
     guardIdleActionRef.current?.();
     setWhisperPhaseSafe("fight");
@@ -165,10 +165,10 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     if(answer===spec.question.c){
       if(spec.id==="whisperStone"){
         onWhisperCorrect();
-        setWhisperReward("8 Капель силы и малый молот");
+        setWhisperReward("8 Капель бессмертия и малый молот");
       }else{
         onRef.current("guardian:correct:"+spec.id);
-        setWhisperReward(spec.correctReward+" Капель силы"+(guardianLootText(spec.id,false)?" + "+guardianLootText(spec.id,false):""));
+        setWhisperReward(spec.correctReward+" Капель бессмертия"+(guardianLootText(spec.id,false)?" + "+guardianLootText(spec.id,false):""));
       }
       setWhisperLog(spec.location+" признала верный ответ. Сталь остаётся в ножнах.");
       setWhisperPhaseSafe("reward");
@@ -249,13 +249,13 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         if(whisperReplayRef.current){
           const repeatDrops=2+spec.power;
           onRef.current("guardian:repeat:"+spec.id);
-          setWhisperReward(repeatDrops+" Капель силы");
-          setWhisperLog(spec.name+" снова повержен. Редкий трофей выдаётся один раз, но за тренировочную победу получено "+repeatDrops+" Капель силы.");
+          setWhisperReward(repeatDrops+" Капель бессмертия");
+          setWhisperLog(spec.name+" снова повержен. Редкий трофей выдаётся один раз, но за тренировочную победу получено "+repeatDrops+" Капель бессмертия.");
         }else if(spec.id==="whisperStone"){
-          const reward=onWhisperWin();setWhisperReward("18 Капель силы и «"+reward+"»");setWhisperLog("Хродвитнир повержен. Камень открывает награду.");
+          const reward=onWhisperWin();setWhisperReward("18 Капель бессмертия и «"+reward+"»");setWhisperLog("Хродвитнир повержен. Камень открывает награду.");
         }else{
           onRef.current("guardian:battle:"+spec.id);
-          setWhisperReward(spec.battleReward+" Капель силы"+(guardianLootText(spec.id,true)?" + "+guardianLootText(spec.id,true):""));setWhisperLog(spec.name+" повержен. "+spec.location+" признаёт твою победу.");
+          setWhisperReward(spec.battleReward+" Капель бессмертия"+(guardianLootText(spec.id,true)?" + "+guardianLootText(spec.id,true):""));setWhisperLog(spec.name+" повержен. "+spec.location+" признаёт твою победу.");
         }
         whisperTimers.current.push(window.setTimeout(()=>{setWhisperBusy(false);setWhisperPhaseSafe("reward");},650));
       }else{
@@ -5230,7 +5230,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     </div>}
     {banditVictory&&whisperPhase==="closed"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
       <div className="whisper-reward-icon">⚔</div><div className="whisper-reward-rarity">{banditVictory.name} повержен</div>
-      <div className="whisper-reward-name">+{banditVictory.sparks} Капель силы</div><p>Добыча: {banditVictoryLoot||banditVictory.reward}. Награда уже добавлена к твоим вещам.</p>
+      <div className="whisper-reward-name">+{banditVictory.sparks} Капель бессмертия</div><p>Добыча: {banditVictoryLoot||banditVictory.reward}. Награда уже добавлена к твоим вещам.</p>
       <button className="whisper-close" onClick={()=>{banditVictoryRef.current=null;setBanditVictory(null);setBanditVictoryLoot("");setBanditOpponent(null);}}>Продолжить путь</button>
     </div>}
     {banditHit>0&&whisperPhase==="closed"&&<i key={banditHit} className="mid3d-ui whisper-battle-fx guard"/>}
@@ -5392,7 +5392,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
           return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Этап {idx+1} из {MIDGARD_GUARDIAN_ORDER.length}. {guardianSpec.intro}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginLocationEncounter(id)}>Ответить стражу</button></div>;
         }
         const repeatDrops=2+guardianSpec.power;
-        return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Испытание пройдено. Повторный бой даёт {repeatDrops} Капель силы; редкий трофей повторно не выпадает.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginGuardianRematch(id)}>⚔ Сразиться ещё раз</button></div>;
+        return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Испытание пройдено. Повторный бой даёт {repeatDrops} Капель бессмертия; редкий трофей повторно не выпадает.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginGuardianRematch(id)}>⚔ Сразиться ещё раз</button></div>;
       }
       if(id==="deepGrove")return <div className="mid3d-ui mid3d-interact"><b>Глубокая роща</b><span>В тени растут редкие лечебные травы. Роща восстанавливает запас раз в 15 минут.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>Собрать редкие травы</button></div>;
       if(id==="hunterCamp")return <div className="mid3d-ui mid3d-interact"><b>Забытая стоянка</b><span>В старых ящиках остаются пригодные ветки и древесина. Запасы обновляются раз в 15 минут.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>Поискать припасы</button></div>;

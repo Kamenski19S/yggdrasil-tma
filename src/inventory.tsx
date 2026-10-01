@@ -8,7 +8,7 @@ import { POTION_CATALOG, RUNE_CATALOG } from './world';
 
 
 
-export function SparkDrop(){return <img className="spark-drop" src={`${BASE}img/BackgroundEraser_20260930_010245371.png`} alt="" aria-label="Капля силы"/>;}
+export function SparkDrop(){return <img className="spark-drop" src={`${BASE}img/BackgroundEraser_20260930_010245371.png`} alt="" aria-label="Капля бессмертия"/>;}
 
 
 export function InventorySection({kind,potions,runes,equippedRune,lootCounts,runeLevels,hp,maxHp,frostGuard,onUsePotion,onEquipRune,onFuseRune}:{kind:'potions'|'runes';potions:string[];runes:string[];equippedRune:string;lootCounts?:Record<string,number>;runeLevels?:Record<string,number>;hp:number;maxHp:number;frostGuard:number;onUsePotion:(id:string)=>void;onEquipRune:(id:string)=>void;onFuseRune?:(id:string)=>void}){

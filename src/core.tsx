@@ -279,7 +279,7 @@ export function refreshGathering<T extends {gathered:string[];gatherRespawnAt:Re
   return {...state,gathered,gatherRespawnAt};
 }
 
-export const DEF: Save = { sparks: 25, immortalityDrops:0, millStored:0, done: [], gift: "", hero: null, trials: [], artifacts: [], equippedArtifact:"", watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], lootCounts:{default:1,[SHIELD_ASSETS[0]]:1}, equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false,gathered:[],gatherRespawnAt:{},stock:{...EMPTY_GATHER_STOCK},locationCooldowns:{},villageOrders:{},runeSteel:0 };
+export const DEF: Save = { sparks: 0, immortalityDrops:25, millStored:0, done: [], gift: "", hero: null, trials: [], artifacts: [], equippedArtifact:"", watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], lootCounts:{default:1,[SHIELD_ASSETS[0]]:1}, equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false,gathered:[],gatherRespawnAt:{},stock:{...EMPTY_GATHER_STOCK},locationCooldowns:{},villageOrders:{},runeSteel:0 };
 
 
 export const loadSave = (): Save => {
@@ -299,7 +299,12 @@ export const loadSave = (): Save => {
     if(!s.villageOrders||typeof s.villageOrders!=='object'||Array.isArray(s.villageOrders))s.villageOrders={};
     for(const key of Object.keys(s.villageOrders))s.villageOrders[key]=Math.max(0,Math.floor(Number(s.villageOrders[key])||0));
     s.runeSteel=Math.max(0,Math.floor(Number(s.runeSteel)||0));
-    s.immortalityDrops=Math.max(0,Math.floor(Number(s.immortalityDrops)||0));
+    // Merge the legacy quest balance once, then clear it before saving.
+    const legacyDrops=Math.max(0,Math.floor(Number(previous.sparks)||0));
+    const currentDrops=Object.prototype.hasOwnProperty.call(previous,'immortalityDrops')
+      ?Math.max(0,Math.floor(Number(previous.immortalityDrops)||0))
+      :Object.prototype.hasOwnProperty.call(previous,'sparks')?0:DEF.immortalityDrops;
+    s.immortalityDrops=currentDrops+legacyDrops;s.sparks=0;
     s.millStored=Math.max(0,Math.floor(Number(s.millStored)||0));
     if (!Array.isArray(s.powers)) s.powers = [];
     if (!Array.isArray(s.done)) s.done = [];
@@ -486,7 +491,7 @@ export const NAMES_M = ["Сигурд", "Рагнар", "Эйнар", "Лейф"
 export const HEROES: HeroDef[] = [
   { id: "elf", race: "Эльфийка", gender: "f", sym: "ᛊ", color: "#e8f4ff", str: 6, en: 10, hp: 90, weapon: "Лук Лунного Света", ability: "Шёпот ветров", abilityDesc: "1 раз в мире убирает один неверный ответ загадки.", img: "hero_elf.png" },
   { id: "viking", race: "Викинг", gender: "m", sym: "ᛉ", color: "#ffd76a", str: 9, en: 7, hp: 110, weapon: "Копьё Молний", ability: "Крылья бури", abilityDesc: "1 раз за бой щитом поглощает удар врага.", img: "hero_viking.png" },
-  { id: "dwarf", race: "Гном", gender: "m", sym: "ᚲ", color: "#ff9d5c", str: 10, en: 5, hp: 130, weapon: "Молот Глубин", ability: "Каменная кожа", abilityDesc: "Получает на 25% меньше урона; сундуки дают +50% Капель силы.", img: "hero_dwarf.png" },
+  { id: "dwarf", race: "Гном", gender: "m", sym: "ᚲ", color: "#ff9d5c", str: 10, en: 5, hp: 130, weapon: "Молот Глубин", ability: "Каменная кожа", abilityDesc: "Получает на 25% меньше урона; сундуки дают +50% Капель бессмертия.", img: "hero_dwarf.png" },
   { id: "berserk", race: "Берсерк", gender: "m", sym: "ᚦ", color: "#ff6b4a", str: 12, en: 4, hp: 100, weapon: "Секира «Клык Зверя»", ability: "Медвежья ярость", abilityDesc: "Когда здоровье ниже половины — урон удваивается.", img: "hero_berserk.png" },
 ];
 

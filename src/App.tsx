@@ -155,8 +155,8 @@ const [roadT, setRoadT] = useState(0.06);
   };
   const openRealm = (r: Realm) => { haptic(); setScreen({ t: "realm", id: r.id }); };
   const watchGain = () => Math.floor(Math.min(12, (Date.now() - save.watch) / 3600000) * 3);
-  const collectWatch = () => { const g = watchGain(); if (g <= 0) { say("Дозор только начался — Капли силы ещё собираются."); return; } setSave(s => ({ ...s, sparks: s.sparks + g, watch: Date.now() })); haptic("success"); say("Дозор завершён: +" + g + " Капель силы"); };
-  const claimGift = () => { if (save.gift === today()) return; const d = save.gift ? Math.round((Date.parse(today()) - Date.parse(save.gift)) / 86400000) : 99; const next = d <= 2 ? (save.streak % 7) + 1 : 1; const rew = LADDER[next - 1]; setSave(s => ({ ...s, sparks: s.sparks + rew, gift: today(), streak: next })); haptic("success"); say("Дар Древа, день " + next + ": +" + rew + " ✨"); };
+  const collectWatch = () => { const g = watchGain(); if (g <= 0) { say("Дозор только начался — Капли бессмертия ещё собираются."); return; } setSave(s => ({ ...s, immortalityDrops: s.immortalityDrops + g, watch: Date.now() })); haptic("success"); say("Дозор завершён: +" + g + " Капель бессмертия"); };
+  const claimGift = () => { if (save.gift === today()) return; const d = save.gift ? Math.round((Date.parse(today()) - Date.parse(save.gift)) / 86400000) : 99; const next = d <= 2 ? (save.streak % 7) + 1 : 1; const rew = LADDER[next - 1]; setSave(s => ({ ...s, immortalityDrops: s.immortalityDrops + rew, gift: today(), streak: next })); haptic("success"); say("Дар Древа, день " + next + ": +" + rew + " ✨"); };
   const confirmHero = () => { if (!pick || !pickName) return; setSave(s => ({ ...s, hero: { id: pick, name: pickName } })); haptic("success"); say("Путь начинается, " + pickName + "!"); setScreen({ t: "tree" }); };
   const heroDef = save.hero ? HEROES.find(h => h.id === save.hero!.id)! : null;
   const forgeItems = [
@@ -213,8 +213,8 @@ const [roadT, setRoadT] = useState(0.06);
     const level=forgeLevel(key);
     if(level>=(item.kind==='weapon'||item.id==='shield'?10:5)){say(item.name+" уже достиг максимальной закалки Мидгарда.");return;}
     const cost=forgeCost(item.id);
-    if(save.sparks<cost){say("Недостаточно Капель силы. Нужно: "+cost);return;}
-    setSave(s=>({...s,sparks:s.sparks-cost,forgeFreeUsed:true,forgeLevels:{...s.forgeLevels,[key]:(s.forgeLevels[key]||0)+1}}));
+    if(save.immortalityDrops<cost){say("Недостаточно Капель бессмертия. Нужно: "+cost);return;}
+    setSave(s=>({...s,immortalityDrops:s.immortalityDrops-cost,forgeFreeUsed:true,forgeLevels:{...s.forgeLevels,[key]:(s.forgeLevels[key]||0)+1}}));
     haptic("success");
     say((cost===0?"Первая ковка бесплатна. ":"")+item.name+": закалка +1");
   };
@@ -249,20 +249,20 @@ const [roadT, setRoadT] = useState(0.06);
     else if(!recipes.some(r=>r.material===craftMaterial))setCraftMaterial('');
     setCraftPicker(null);
   };
-  const craftReady=!!selectedCraftRecipe&&craftWeaponCopies>=2&&craftMaterialCount>=selectedCraftRecipe.amount&&save.sparks>=selectedCraftRecipe.cost;
+  const craftReady=!!selectedCraftRecipe&&craftWeaponCopies>=2&&craftMaterialCount>=selectedCraftRecipe.amount&&save.immortalityDrops>=selectedCraftRecipe.cost;
   const performCraft=()=>{
     const recipe=selectedCraftRecipe;
     if(!recipe){say("Для этой пары оружия и материала пока нет рецепта.");return;}
     if(craftWeaponCopies<2){say("Для крафта нужна лишняя копия оружия. Один экземпляр остаётся у героя.");return;}
     if(craftMaterialCount<recipe.amount){say("Не хватает материала: нужно "+recipe.amount+" · "+craftMaterialName(recipe.material)+".");return;}
-    if(save.sparks<recipe.cost){say("Не хватает Капель силы. Нужно: "+recipe.cost);return;}
+    if(save.immortalityDrops<recipe.cost){say("Не хватает Капель бессмертия. Нужно: "+recipe.cost);return;}
     setSave(state=>{
       const currentCopies=Math.max(0,Number(state.lootCounts[recipe.weapon])||0);
-      if(currentCopies<2||state.stock[recipe.material]<recipe.amount||state.sparks<recipe.cost)return state;
+      if(currentCopies<2||state.stock[recipe.material]<recipe.amount||state.immortalityDrops<recipe.cost)return state;
       const nextCounts={...state.lootCounts,[recipe.weapon]:Math.max(1,currentCopies-1)};
       nextCounts[recipe.result]=(Number(nextCounts[recipe.result])||0)+1;
       return {...state,
-        sparks:state.sparks-recipe.cost,
+        immortalityDrops:state.immortalityDrops-recipe.cost,
         stock:{...state.stock,[recipe.material]:state.stock[recipe.material]-recipe.amount},
         ownedWeapons:[...new Set([...state.ownedWeapons,recipe.result])],
         lootCounts:nextCounts
@@ -290,15 +290,15 @@ const [roadT, setRoadT] = useState(0.06);
     if(guardianProgressCount<recipe.requires){say("Этот чертёж откроется после "+recipe.requires+" испытаний Мидгарда.");return;}
     if(save.runeSteel<recipe.steel){say("Не хватает Рунической стали. Нужно: "+recipe.steel);return;}
     if(save.stock[recipe.material]<recipe.amount){say("Не хватает материала: нужно "+recipe.amount+" · "+craftMaterialName(recipe.material)+".");return;}
-    if(save.sparks<recipe.cost){say("Не хватает Капель силы. Нужно: "+recipe.cost);return;}
+    if(save.immortalityDrops<recipe.cost){say("Не хватает Капель бессмертия. Нужно: "+recipe.cost);return;}
     setSave(state=>{
-      if(state.runeSteel<recipe.steel||state.stock[recipe.material]<recipe.amount||state.sparks<recipe.cost)return state;
+      if(state.runeSteel<recipe.steel||state.stock[recipe.material]<recipe.amount||state.immortalityDrops<recipe.cost)return state;
       const nextCounts={...state.lootCounts};
       if(recipe.resultWeapon)nextCounts[recipe.resultWeapon]=(Number(nextCounts[recipe.resultWeapon])||0)+1;
       if(recipe.resultShield)nextCounts[recipe.resultShield]=(Number(nextCounts[recipe.resultShield])||0)+1;
       return {...state,
         runeSteel:state.runeSteel-recipe.steel,
-        sparks:state.sparks-recipe.cost,
+        immortalityDrops:state.immortalityDrops-recipe.cost,
         stock:{...state.stock,[recipe.material]:state.stock[recipe.material]-recipe.amount},
         ownedWeapons:recipe.resultWeapon?[...new Set([...state.ownedWeapons,recipe.resultWeapon])]:state.ownedWeapons,
         ownedShields:recipe.resultShield?[...new Set([...state.ownedShields,recipe.resultShield])]:state.ownedShields,
@@ -312,11 +312,11 @@ const [roadT, setRoadT] = useState(0.06);
   const openGate = (r: Realm) => { if (save.artifacts.includes(r.id)) { say("Мир покорён. Артефакт хранится в листе героя."); return; } haptic(); setScreen({ t: "trial", id: r.id }); };
   const finishTrial = (id: string, idx: number, add: number) => {
     const finale = idx === 2;
-    setSave(s => ({ ...s, sparks: s.sparks + add + (finale ? 30 : 0), trials: [...s.trials, id + ":" + idx] }));
+    setSave(s => ({ ...s, immortalityDrops: s.immortalityDrops + add + (finale ? 30 : 0), trials: [...s.trials, id + ":" + idx] }));
     if (finale) { haptic("success"); say("Серия испытаний завершена. Артефакт мира выдаётся только после полного прохождения его игровой локации."); }
   };
   const finishWhisperCorrect = () => {
-    setSave(s=>s.done.includes("whisper:wisdom")?s:{...s,sparks:s.sparks+8,done:[...new Set([...s.done,"whisper:wisdom","guardian:whisperStone","guardian:stage:whisperStone"])],
+    setSave(s=>s.done.includes("whisper:wisdom")?s:{...s,immortalityDrops:s.immortalityDrops+8,done:[...new Set([...s.done,"whisper:wisdom","guardian:whisperStone","guardian:stage:whisperStone"])],
       runes:[...new Set([...s.runes,'ansuzWisdom'])],potions:[...s.potions,'northernMoss'],
       lootCounts:lootCountAdd(s.lootCounts,['ansuzWisdom','northernMoss'])});
     haptic("success");
@@ -367,7 +367,7 @@ const [roadT, setRoadT] = useState(0.06);
   const finishWhisperBattle=()=>{
     setSave(s=>{
       if(s.done.includes("whisper:battle"))return s;
-      return {...s,sparks:s.sparks+18,done:[...new Set([...s.done,"whisper:battle","guardian:whisperStone","guardian:stage:whisperStone"])],
+      return {...s,immortalityDrops:s.immortalityDrops+18,done:[...new Set([...s.done,"whisper:battle","guardian:whisperStone","guardian:stage:whisperStone"])],
         ownedWeapons:[...new Set([...s.ownedWeapons,'mace'])],
         potions:[...s.potions,'northernMoss'],
         runes:[...new Set([...s.runes,'kenazShard'])],
@@ -440,19 +440,19 @@ const [roadT, setRoadT] = useState(0.06);
     setSave(s=>{
       const itemId=runeDrop?.id||spec.item||"";
       const lootIds=itemId?Array(spec.quantity||1).fill(itemId):[];
-      return {...s,sparks:s.sparks+spec.sparks,
+      return {...s,immortalityDrops:s.immortalityDrops+spec.sparks,
         ownedWeapons:spec.kind==='weapon'&&spec.item?[...new Set([...s.ownedWeapons,spec.item])]:s.ownedWeapons,
         potions:spec.kind==='potion'&&spec.item?[...s.potions,...Array(spec.quantity||1).fill(spec.item)]:s.potions,
         runes:runeDrop?[...new Set([...s.runes,runeDrop.id])]:s.runes,
         equippedRune:runeDrop&&!s.equippedRune?runeDrop.id:s.equippedRune,
         lootCounts:lootCountAdd(s.lootCounts,lootIds)};
     });
-    haptic('success');say(`Победа: +${spec.sparks} Капель силы и ${rewardText}. Разбойник вернётся через 15 минут игры.`);
+    haptic('success');say(`Победа: +${spec.sparks} Капель бессмертия и ${rewardText}. Разбойник вернётся через 15 минут игры.`);
     return rewardText;
   };
   const banditKnockout=()=>{
-    setSave(s=>({...s,sparks:Math.max(0,s.sparks-5),fieldHp:(heroDef?.hp||100)+gearHp()}));
-    haptic();say('Рунический удар разбойника сбил Вику с ног. Древо вернуло её к началу пути (−5 Капель силы).');
+    setSave(s=>({...s,immortalityDrops:Math.max(0,s.immortalityDrops-5),fieldHp:(heroDef?.hp||100)+gearHp()}));
+    haptic();say('Рунический удар разбойника сбил Вику с ног. Древо вернуло её к началу пути (−5 Капель бессмертия).');
   };
   const fightAct = (id: string, kind: "hit" | "rune" | "shield" | "restore") => {
     if (over) return;
@@ -478,7 +478,7 @@ const [roadT, setRoadT] = useState(0.06);
     if (nm <= 0) {
       setMhp(0); setHen(nhen); setMen(nmen); setOver("win");
       const add = 8 + idx * 2;
-      setFlog("Хозяин повержен! Награда: +" + add + " Капель силы");
+      setFlog("Хозяин повержен! Награда: +" + add + " Капель бессмертия");
       finishTrial(id, idx, add);
       return;
     }
@@ -499,7 +499,7 @@ const [roadT, setRoadT] = useState(0.06);
       setHhp(30); setFlog(log + " Корни Иггдрасиля удержали тебя над смертью. Ты возвращён с 30 здоровья.");
       return;
     }
-    if (nh <= 0) { setOver("lose"); setSave(s => ({ ...s, sparks: Math.max(0, s.sparks - 10) })); setFlog(log + " " + m.name + " бьёт... Ты пал. Древо возрождает тебя (−10 ✨)."); return; }
+    if (nh <= 0) { setOver("lose"); setSave(s => ({ ...s, immortalityDrops: Math.max(0, s.immortalityDrops - 10) })); setFlog(log + " " + m.name + " бьёт... Ты пал. Древо возрождает тебя (−10 ✨)."); return; }
     setFlog(md>0?log + mlog + " " + m.name + " отвечает: −" + md + ".":log+mlog);
   };
   const nextStep = (id: string) => { if (trialIdx(id) >= 3 || save.artifacts.includes(id)) setScreen({ t: "realm", id }); else setScreen({ t: "trial", id }); };
@@ -522,7 +522,7 @@ const [roadT, setRoadT] = useState(0.06);
         {screen.t === "forge" && <button className="back" onClick={() => go({ t: "realm", id:"midgard" })}>← Мидгард · Кузница</button>}
         {screen.t === "trial" && <div className="title">🗝 Испытание</div>}
         {screen.t === "fight" && <div className="title">⚔ Бой</div>}
-        <div className="sparks"><SparkDrop/> {screen.t==="mill"?<>{save.immortalityDrops} Капель бессмертия</>:<>{save.sparks} Капель силы</>}</div>
+        <div className="sparks"><SparkDrop/> {screen.t==="mill"?<>{save.immortalityDrops} Капель бессмертия</>:<>{save.immortalityDrops} Капель бессмертия</>}</div>
       </div>
 
       {forgeTransition&&<div className="forge-transition"><b>ᚲ</b><span>Дверь кузницы открывается</span></div>}
@@ -614,9 +614,9 @@ const [roadT, setRoadT] = useState(0.06);
         const spec=MIDGARD_GUARDIANS[locationId];
         if(!spec)return;
         const repeatDrops=2+spec.power;
-        setSave(s=>({...s,sparks:s.sparks+repeatDrops}));
+        setSave(s=>({...s,immortalityDrops:s.immortalityDrops+repeatDrops}));
         haptic("success");
-        say(`Повторная победа над ${spec.name}: +${repeatDrops} Капель силы.`);
+        say(`Повторная победа над ${spec.name}: +${repeatDrops} Капель бессмертия.`);
         return;
       }
       if(id.startsWith("guardian:correct:")||id.startsWith("guardian:battle:")){
@@ -640,7 +640,7 @@ const [roadT, setRoadT] = useState(0.06);
           if(missing)return state;
           const isMidgardComplete=locationId==="hoddmimir";
           return {...state,
-            sparks:state.sparks+reward,
+            immortalityDrops:state.immortalityDrops+reward,
             done:[...new Set([...state.done,key,stageKey,...(isMidgardComplete?["world:complete:midgard"]:[])])],
             artifacts:isMidgardComplete?[...new Set([...state.artifacts,"midgard"])]:state.artifacts,
             ownedWeapons:[...new Set([...state.ownedWeapons,...(loot.weapons||[])])],
@@ -657,7 +657,7 @@ const [roadT, setRoadT] = useState(0.06);
       if (id === "mimir") {
         if (save.done.includes("forest:present")) {
           if (!save.done.includes("forest:present:reward")) {
-            setSave(s => ({ ...s, sparks: s.sparks + 20, done: [...new Set([...s.done, "forest:present:reward"])] }));
+            setSave(s => ({ ...s, immortalityDrops: s.immortalityDrops + 20, done: [...new Set([...s.done, "forest:present:reward"])] }));
             haptic("success");
             say("Знак Мимира совпал с твоим выбором. В воде колодца всплывает руна: +20 ✨");
           } else {
@@ -684,18 +684,18 @@ const [roadT, setRoadT] = useState(0.06);
           say('Красный сундук уже открыт. Подготовь защиту у Сигрид, Бьёрна и Торвальда. Руна у Северного моста активируется за 300 капель бессмертия.');return;
         }
         setSave(s=>s.done.includes('chest:norns')?s:{...s,
-          done:[...new Set([...s.done,'chest:norns'])],sparks:s.sparks+30,
+          done:[...new Set([...s.done,'chest:norns'])],immortalityDrops:s.immortalityDrops+30,
           potions:[...s.potions,'lifeElixir','northernMoss'],
           runes:[...new Set([...s.runes,'uruzStrength','perthroFate'])],
           ownedWeapons:[...new Set([...s.ownedWeapons,'knife'])],
           ownedShields:[...new Set([...s.ownedShields,'Shield_Heater.glb'])],
           lootCounts:lootCountAdd(s.lootCounts,['knife','Shield_Heater.glb','uruzStrength','perthroFate','lifeElixir','northernMoss'])
         });
-        haptic('success');say('Красный сундук Норн открыт! +30 Капель силы, Боевой кинжал, Щит, руны Уруз ᚢ и Перт ᛈ, Эликсир жизни и Эликсир северного мха. Подсказка Норн ведёт к защитной руне Северного моста.');
+        haptic('success');say('Красный сундук Норн открыт! +30 Капель бессмертия, Боевой кинжал, Щит, руны Уруз ᚢ и Перт ᛈ, Эликсир жизни и Эликсир северного мха. Подсказка Норн ведёт к защитной руне Северного моста.');
         return;
       }
       if (id === "forge") {
-        say("Вёлунд открывает дверь кузницы. Огонь горна отзывается на Капли силы.");
+        say("Вёлунд открывает дверь кузницы. Огонь горна отзывается на Капли бессмертия.");
         enterForge(position);
         return;
       }
@@ -707,7 +707,7 @@ const [roadT, setRoadT] = useState(0.06);
         const who=id as VillageResident,order=villageOrder(save,who);
         const remaining=Math.max(0,Math.ceil(((save.locationCooldowns['village:'+who]||0)-Date.now())/60000));
         say(!order.initial&&remaining>0?`Спасибо за помощь. Новый заказ будет доступен через ${remaining} мин.`:
-          `${order.title}. ${orderMaterials(save,who)}. Награда: ${order.drops} капель бессмертия${order.potion?' и эликсир':''}.`);
+          `${order.initial?'Подготовка защиты':'Заказ №'+((save.villageOrders[who]||0)+1)}: ${order.title}. ${orderMaterials(save,who)}. Награда: ${order.drops} капель бессмертия${order.potion?' и эликсир':''}.`);
         return;
       }
       if(id==='house'||id==='elder'){
@@ -770,8 +770,8 @@ const [roadT, setRoadT] = useState(0.06);
           haptic('success');say('✅ В амбаре Старого хутора найдены доски для Северного моста.');return;
         }
         if(save.done.includes("forest:past")&&!save.done.includes("forest:past:reward")){
-          setSave(state=>({...state,sparks:state.sparks+20,done:[...new Set([...state.done,"forest:past:reward"])]}));
-          haptic("success");say("Под старой телегой найден тайник: +20 Капель силы.");return;
+          setSave(state=>({...state,immortalityDrops:state.immortalityDrops+20,done:[...new Set([...state.done,"forest:past:reward"])]}));
+          haptic("success");say("Под старой телегой найден тайник: +20 Капель бессмертия.");return;
         }
         if(save.stock.herbs>=4){
           setSave(state=>state.stock.herbs<4?state:{...state,
@@ -788,20 +788,20 @@ const [roadT, setRoadT] = useState(0.06);
         if(!save.done.includes('bridge:north:repaired')){say('Золотой сундук защищён кольцом. Подготовь защиту с тремя жителями, активируй руну у Северного моста за 300 капель бессмертия и перейди на другой берег.');return;}
         if(!save.done.includes('chest:gold')){
           setSave(s=>s.done.includes('chest:gold')?s:{...s,
-            done:[...new Set([...s.done,'chest:gold'])],sparks:s.sparks+55,
+            done:[...new Set([...s.done,'chest:gold'])],immortalityDrops:s.immortalityDrops+55,
             runes:[...new Set([...s.runes,'raidoPath','algizGuard','fehuWealth'])],
             potions:[...s.potions,'northernMoss','frostDraught','lifeElixir'],
             ownedWeapons:[...new Set([...s.ownedWeapons,'axe','spear','sword2'])],
             ownedShields:[...new Set([...s.ownedShields,'Shield_Heater_2.glb'])],
             lootCounts:lootCountAdd(s.lootCounts,['axe','spear','sword2','Shield_Heater_2.glb','raidoPath','algizGuard','fehuWealth','northernMoss','frostDraught','lifeElixir'])
           });
-          haptic('success');setHouseDialogId('goldChest');setHouseDialog('✅ Золотой сундук открыт! +55 Капель силы, Северный топор, Копьё, Меч II, Щит II, руны Райдо ᚱ, Альгиз ᛉ и Феху ᚠ, а также три эликсира. Следующая богатая цель — серебряный сундук в Лесу Ходдмимира.');
+          haptic('success');setHouseDialogId('goldChest');setHouseDialog('✅ Золотой сундук открыт! +55 Капель бессмертия, Северный топор, Копьё, Меч II, Щит II, руны Райдо ᚱ, Альгиз ᛉ и Феху ᚠ, а также три эликсира. Следующая богатая цель — серебряный сундук в Лесу Ходдмимира.');
         } else say('Золотой сундук уже открыт. Найденные руны, эликсиры и оружие хранятся в Чертоге.');
         return;
       }
       if (id === "forestWhisper") {
         if (!save.done.includes("forest:whisper")) {
-          setSave(s => ({ ...s, sparks: s.sparks + 16, done: [...new Set([...s.done, "forest:whisper"])] }));
+          setSave(s => ({ ...s, immortalityDrops: s.immortalityDrops + 16, done: [...new Set([...s.done, "forest:whisper"])] }));
           haptic("success");
           say("Камень шепчет: «Не всякая весть должна быть услышана сразу». Внутри трещины мерцает руна. +16 ✨");
         } else say("Шёпот стих. Но теперь ты знаешь, что этот камень когда-нибудь может заговорить снова.");
@@ -818,13 +818,13 @@ const [roadT, setRoadT] = useState(0.06);
           say(`Стоянка уже осмотрена. Новые пригодные припасы можно поискать примерно через ${mins} мин.`);return;
         }
         setSave(state=>({...state,
-          sparks:state.sparks+(state.done.includes("forest:camp")?0:14),
+          immortalityDrops:state.immortalityDrops+(state.done.includes("forest:camp")?0:14),
           stock:{...state.stock,wood:state.stock.wood+1,twigs:state.stock.twigs+2},
           done:[...new Set([...state.done,"forest:camp"])],
           locationCooldowns:{...state.locationCooldowns,hunterCamp:now+15*60*1000}
         }));
         haptic("success");
-        say((save.done.includes("forest:camp")?"":"Забытая стоянка исследована: +14 Капель силы. ")+"Найдены припасы: +1 древесина и +2 ветки.");
+        say((save.done.includes("forest:camp")?"":"Забытая стоянка исследована: +14 Капель бессмертия. ")+"Найдены припасы: +1 древесина и +2 ветки.");
         return;
       }
       if (id === "deepGrove") {
@@ -834,13 +834,13 @@ const [roadT, setRoadT] = useState(0.06);
           say(`Редкие травы ещё восстанавливаются. Вернись примерно через ${mins} мин.`);return;
         }
         setSave(state=>({...state,
-          sparks:state.sparks+(state.done.includes("forest:grove")?0:17),
+          immortalityDrops:state.immortalityDrops+(state.done.includes("forest:grove")?0:17),
           stock:{...state.stock,herbs:state.stock.herbs+2},
           done:[...new Set([...state.done,"forest:grove"])],
           locationCooldowns:{...state.locationCooldowns,deepGrove:now+15*60*1000}
         }));
         haptic("success");
-        say((save.done.includes("forest:grove")?"":"Глубокая роща открыта: +17 Капель силы. ")+"Собраны редкие лечебные травы: +2.");
+        say((save.done.includes("forest:grove")?"":"Глубокая роща открыта: +17 Капель бессмертия. ")+"Собраны редкие лечебные травы: +2.");
         return;
       }
       if (id === "fallenAsh") {
@@ -852,14 +852,14 @@ const [roadT, setRoadT] = useState(0.06);
         }
         const first=!save.done.includes("forest:ashwood:first");
         setSave(state=>({...state,
-          sparks:state.sparks+(first?5:0),
+          immortalityDrops:state.immortalityDrops+(first?5:0),
           stock:{...state.stock,ashWood:state.stock.ashWood+1},
           done:[...new Set([...state.done,"forest:ash","forest:ashwood:first"])],
           locationCooldowns:{...state.locationCooldowns,fallenAsh:now+15*60*1000}
         }));
         haptic("success");
         say(first
-          ?"Даже павшее дерево хранит силу. Среди старых корней найдена крепкая древесина, пропитанная энергией земли. Получено: Ясеневая древесина ×1 и +5 Капель силы."
+          ?"Даже павшее дерево хранит силу. Среди старых корней найдена крепкая древесина, пропитанная энергией земли. Получено: Ясеневая древесина ×1 и +5 Капель бессмертия."
           :"У корней Поверженного ясеня снова найдена пригодная сухая часть. Получено: Ясеневая древесина ×1.");
         return;
       }
@@ -874,7 +874,7 @@ const [roadT, setRoadT] = useState(0.06);
         if(!save.done.includes('chest:angelic')){
           setSave(s=>s.done.includes('chest:angelic')?s:{...s,
             done:[...new Set([...s.done,'chest:angelic'])],
-            sparks:s.sparks+80,
+            immortalityDrops:s.immortalityDrops+80,
             runes:[...new Set([...s.runes,'sowiloLight','othalaLegacy','dagazDawn'])],
             potions:[...s.potions,'hoddmimirElixir','lifeElixir','frostDraught'],
             ownedWeapons:[...new Set([...s.ownedWeapons,'claymore','hammerDouble'])],
@@ -882,7 +882,7 @@ const [roadT, setRoadT] = useState(0.06);
             lootCounts:lootCountAdd(s.lootCounts,['claymore','hammerDouble','Shield_Round_2.glb','Shield_Celtic_Golden.glb','sowiloLight','othalaLegacy','dagazDawn','hoddmimirElixir','lifeElixir','frostDraught'])
           });
           haptic('success');
-          say('Серебряный ангельский сундук открыт! +80 Капель силы, Клеймор, Двойной молот, Серебряный и Золотой щиты, редкие руны Соулу ᛋ, Отала ᛟ и Дагаз ᛞ, Эликсир Ходдмимира, Эликсир жизни и Морозный настой.');
+          say('Серебряный ангельский сундук открыт! +80 Капель бессмертия, Клеймор, Двойной молот, Серебряный и Золотой щиты, редкие руны Соулу ᛋ, Отала ᛟ и Дагаз ᛞ, Эликсир Ходдмимира, Эликсир жизни и Морозный настой.');
         } else {
           say('Серебряный ангельский сундук уже открыт. Руна Соулу, Серебряный щит и Эликсир Ходдмимира хранятся в Чертоге.');
         }
@@ -895,7 +895,7 @@ const [roadT, setRoadT] = useState(0.06);
       if (id === "ratatosk") {
         if (save.done.includes("forest:future")) {
           if (!save.done.includes("forest:future:reward")) {
-            setSave(s => ({ ...s, sparks: s.sparks + 20, done: [...new Set([...s.done, "forest:future:reward"])] }));
+            setSave(s => ({ ...s, immortalityDrops: s.immortalityDrops + 20, done: [...new Set([...s.done, "forest:future:reward"])] }));
             haptic("success");
             say("Рататоск возвращается к тебе. На этот раз он оставляет знак будущего: +20 ✨");
           } else {
@@ -913,19 +913,19 @@ const [roadT, setRoadT] = useState(0.06);
         return;
       }
       if (id === "forestEvent:past") {
-        setSave(s => ({ ...s, sparks: s.sparks + 12, done: [...new Set([...s.done, "forest:choice", "forest:past"])] }));
+        setSave(s => ({ ...s, immortalityDrops: s.immortalityDrops + 12, done: [...new Set([...s.done, "forest:choice", "forest:past"])] }));
         haptic("success");
         say("Ты видишь старую тропу и следы телеги. Видение ведёт к Старому хутору. Прошлое не исчезло — оно оставило след.");
         return;
       }
       if (id === "forestEvent:present") {
-        setSave(s => ({ ...s, sparks: s.sparks + 12, done: [...new Set([...s.done, "forest:choice", "forest:present"])] }));
+        setSave(s => ({ ...s, immortalityDrops: s.immortalityDrops + 12, done: [...new Set([...s.done, "forest:choice", "forest:present"])] }));
         haptic("success");
         say("На камне появляется знак Мимира. Ты понимаешь: ответ уже рядом, но увидеть его можно только в настоящем.");
         return;
       }
       if (id === "forestEvent:future") {
-        setSave(s => ({ ...s, sparks: s.sparks + 12, done: [...new Set([...s.done, "forest:choice", "forest:future"])] }));
+        setSave(s => ({ ...s, immortalityDrops: s.immortalityDrops + 12, done: [...new Set([...s.done, "forest:choice", "forest:future"])] }));
         haptic("success");
         say("Третья нить исчезает в лесу. Где-то впереди слышится смех Рататоска. Ты выбрал то, чего ещё нет.");
         return;
@@ -944,7 +944,7 @@ const [roadT, setRoadT] = useState(0.06);
         const key = power[ritual];
         if (!key) return;
         if (save.powers.includes(key)) { say(names[ritual] + " уже пробуждён. Его сила ждёт своего часа."); return; }
-        setSave(s => ({ ...s, sparks:s.sparks+5, powers: [...new Set([...s.powers, key])], done: [...new Set([...s.done, "ritual:" + ritual])] }));
+        setSave(s => ({ ...s, immortalityDrops:s.immortalityDrops+5, powers: [...new Set([...s.powers, key])], done: [...new Set([...s.done, "ritual:" + ritual])] }));
         const text: Record<string,string> = {
           mimir: "Око Мимира открыто. Следующая тайна может сама выдать себя тебе.",
           norn: "Нить Норн натянулась. Один раз ты сможешь избежать последствий ошибочного пути.",
@@ -953,7 +953,7 @@ const [roadT, setRoadT] = useState(0.06);
           ice: "Ледяной обет застыл на тебе. Первый удар врага в следующем бою будет слабее на 35%.",
           ygg: "Зов Иггдрасиля услышан. Один раз смертельный удар вернёт тебя к жизни с 30 здоровья."
         };
-        haptic("success"); say(text[ritual]+" +5 Капель силы.");
+        haptic("success"); say(text[ritual]+" +5 Капель бессмертия.");
         return;
       }
     };
@@ -1160,7 +1160,7 @@ const [roadT, setRoadT] = useState(0.06);
             <div className="hrow">🛡 Экипировка</div>
             <div className="chips">{GEAR_IDS.map(id=><button key={id} className={'chip'+(equipped(id)?' on':'')} onClick={()=>toggleGear(id)}>{id==='armor'?'Броня':id==='helmet'?'Шлем':id==='shield'?'Щит':'Сапоги'} · {equipped(id)?'надето':'надеть'}</button>)}</div>
             <div className="hrow">🌀 {heroDef.ability}: {heroDef.abilityDesc}</div>
-            <div className="hrow"><SparkDrop/> Капель силы: <b>{save.sparks}</b> • 🏺 Артефактов: <b>{save.artifacts.length}/9</b></div>
+            <div className="hrow"><SparkDrop/> Капель бессмертия: <b>{save.immortalityDrops}</b> • 🏺 Артефактов: <b>{save.artifacts.length}/9</b></div>
             {save.artifacts.length > 0 && <div className="hrow">🏺 {save.artifacts.map(a => ARTIFACTS[a]).join(", ")}</div>}
             {save.equippedArtifact&&ARTIFACT_INFO[save.equippedArtifact]&&<div className="hrow">✨ Активный артефакт: <b>{ARTIFACT_INFO[save.equippedArtifact].name}</b> · {ARTIFACT_INFO[save.equippedArtifact].effect}</div>}
           </div>
@@ -1178,7 +1178,7 @@ const [roadT, setRoadT] = useState(0.06);
               <div className="days">{LADDER.map((v, i) => (<span key={i} className={"day" + (i + 1 === hl ? " on" : i + 1 < hl && claimed ? " done" : "")}><b>{v}</b>день {i + 1}</span>))}</div>
               {claimed ? <button className="btn" disabled>Дар получен • вернись завтра</button> : <button className="btn gold" onClick={claimGift}>Забрать дар +{LADDER[next - 1]} ✨</button>}
             </div>
-            <div className="card center"><div className="big">⏳</div><div className="qhead2">Дозор героя</div><p className="dim">Капли силы собираются, даже когда приложение закрыто: 3 в час, до 12 часов.</p>
+            <div className="card center"><div className="big">⏳</div><div className="qhead2">Дозор героя</div><p className="dim">Капли бессмертия собираются, даже когда приложение закрыто: 3 в час, до 12 часов.</p>
               <button className="btn gold" onClick={collectWatch}>Завершить дозор · +{watchGain()} <SparkDrop/></button>
             </div>
           </div>
@@ -1206,7 +1206,7 @@ const [roadT, setRoadT] = useState(0.06);
             <div className="forge-title">Кузница Вёлунда</div>
             <div className="forge-master">«Сталь помнит каждый бой. Отдай её огню — и она вернётся сильнее».</div>
             <div className="forge-advice"><b>Совет:</b> выбери оружие или щит на стене. Их предел закалки +10; броня, шлем и сапоги — до +5.</div>
-            <div className="forge-wallet"><span>Запас:</span><b><SparkDrop/> {save.sparks}</b><span>Капель силы</span></div>
+            <div className="forge-wallet"><span>Запас:</span><b><SparkDrop/> {save.immortalityDrops}</b><span>Капель бессмертия</span></div>
           </div>
           <div className={"forge-free"+(!save.forgeFreeUsed?" ready":"")}>{save.forgeFreeUsed
             ? "Следующая закалка оплачивается Каплями силы. Цена растёт вместе с уровнем предмета."
@@ -1228,10 +1228,10 @@ const [roadT, setRoadT] = useState(0.06);
             <div className="big">🏛️</div>
             <div className="qhead2">Чертог героя</div>
             <div className="stats">
-              <div className="stat"><b><SparkDrop/> {save.sparks}</b><span>Капли силы</span></div>
+              <div className="stat"><b><SparkDrop/> {save.immortalityDrops}</b><span>Капли бессмертия</span></div>
               <div className="stat"><b>🏺 {save.artifacts.length}/9</b><span>артефакты</span></div>
             </div>
-            <div className="rank">🏆 Ранг: {rank(save.sparks)}</div>
+            <div className="rank">🏆 Ранг: {rank(save.immortalityDrops)}</div>
             {save.hero && heroDef && <p className="dim">Герой: {save.hero.name} • {heroDef.race} • испытаний пройдено: {save.trials.length}</p>}
           </div>
           <div className="hall-grid">
@@ -1259,7 +1259,7 @@ const [roadT, setRoadT] = useState(0.06);
             <div className="hall-section inventory-hall"><InventorySection kind="potions" potions={save.potions} runes={save.runes} equippedRune={save.equippedRune} hp={Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp())} maxHp={(heroDef?.hp??100)+gearHp()} frostGuard={save.frostGuard} onUsePotion={useInventoryPotion} onEquipRune={equipInventoryRune}/></div>
             <div className="hall-section inventory-hall"><InventorySection kind="runes" potions={save.potions} runes={save.runes} equippedRune={save.equippedRune} lootCounts={save.lootCounts} runeLevels={save.forgeLevels} hp={Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp())} maxHp={(heroDef?.hp??100)+gearHp()} frostGuard={save.frostGuard} onUsePotion={useInventoryPotion} onEquipRune={equipInventoryRune} onFuseRune={fuseInventoryRune}/></div>
           </div>
-          <button className="craft-entry" onClick={()=>{haptic();go({t:"craft"});}}><b>🔥 Перейти в локацию крафта</b><span>Соединяй оружие, материалы и Капли силы в новые предметы.</span></button>
+          <button className="craft-entry" onClick={()=>{haptic();go({t:"craft"});}}><b>🔥 Перейти в локацию крафта</b><span>Соединяй оружие, материалы и Капли бессмертия в новые предметы.</span></button>
         </div>
       )}
 
@@ -1309,9 +1309,9 @@ const [roadT, setRoadT] = useState(0.06);
               </div>
             </div>}
 
-            <div className="hrow"><SparkDrop/> Капли силы: <b>{save.sparks}</b></div>
+            <div className="hrow"><SparkDrop/> Капли бессмертия: <b>{save.immortalityDrops}</b></div>
             {selectedCraftRecipe?<div className="craft-cost">
-              Рецепт: 1 лишняя копия <b>{lootDisplayName(selectedCraftRecipe.weapon)}</b> + {selectedCraftRecipe.amount} × {craftMaterialName(selectedCraftRecipe.material)} + {selectedCraftRecipe.cost} Капель силы.
+              Рецепт: 1 лишняя копия <b>{lootDisplayName(selectedCraftRecipe.weapon)}</b> + {selectedCraftRecipe.amount} × {craftMaterialName(selectedCraftRecipe.material)} + {selectedCraftRecipe.cost} Капель бессмертия.
               <br/>Результат: <b>{lootDisplayName(selectedCraftRecipe.result)}</b>.
             </div>:<div className="craft-cost">{craftWeapon?"Для этого оружия выбери показанный подходящий материал.":"Выбери оружие с прямым рецептом. Оружие без продолжения разбирается ниже на Руническую сталь."}</div>}
             <button className="btn gold" disabled={!craftReady} onClick={performCraft}>{selectedCraftRecipe?"Создать: "+lootDisplayName(selectedCraftRecipe.result):"Выбери рецепт"}</button>
@@ -1337,8 +1337,8 @@ const [roadT, setRoadT] = useState(0.06);
               <div className="steel-list">
                 {STEEL_CRAFT_RECIPES.map(recipe=>{
                   const locked=guardianProgressCount<recipe.requires;
-                  const ready=!locked&&save.runeSteel>=recipe.steel&&save.stock[recipe.material]>=recipe.amount&&save.sparks>=recipe.cost;
-                  return <div key={recipe.id} className={"steel-recipe"+(locked?" locked":"")}><span><b>{recipe.resultShield?"🛡️":"⚔️"} {recipe.name}</b><small>{locked?"Откроется после "+recipe.requires+" испытаний Мидгарда":recipe.steel+" стали + "+recipe.amount+" × "+craftMaterialName(recipe.material)+" + "+recipe.cost+" Капель силы"}</small></span><button disabled={!ready} onClick={()=>craftRuneSteelItem(recipe)}>{locked?"Закрыто":"Создать"}</button></div>;
+                  const ready=!locked&&save.runeSteel>=recipe.steel&&save.stock[recipe.material]>=recipe.amount&&save.immortalityDrops>=recipe.cost;
+                  return <div key={recipe.id} className={"steel-recipe"+(locked?" locked":"")}><span><b>{recipe.resultShield?"🛡️":"⚔️"} {recipe.name}</b><small>{locked?"Откроется после "+recipe.requires+" испытаний Мидгарда":recipe.steel+" стали + "+recipe.amount+" × "+craftMaterialName(recipe.material)+" + "+recipe.cost+" Капель бессмертия"}</small></span><button disabled={!ready} onClick={()=>craftRuneSteelItem(recipe)}>{locked?"Закрыто":"Создать"}</button></div>;
                 })}
               </div>
             </div>
@@ -1368,7 +1368,7 @@ const [roadT, setRoadT] = useState(0.06);
         <div className="house-dialog-panel" role="dialog" aria-modal="true" aria-label="Разговор у дома">
           <h3>{houseDialogId==="house"||houseDialogId==="elder"?"Старейшина":houseDialogId==="goldChest"?"Золотой сундук":houseDialogId==="northBridge"?"Северный мост":houseDialogId==="oldfarm"?"Старый хутор":houseDialogId==="carpenter"?"Плотник Бьёрн":houseDialogId==="herbalist"?"Травница Сигрид":houseDialogId==="craftsman"?"Ремесленник Торвальд":"Разговор у дома"}</h3><p>{houseDialog}</p>
           {resident&&residentOrder&&<div className="house-quest-status">
-            <b>{residentOrder.initial?'Подготовка защиты':'Заказ жителя'}: {residentOrder.title}</b>
+            <b>{residentOrder.initial?'Подготовка защиты':'Заказ №'+((save.villageOrders[resident]||0)+1)}: {residentOrder.title}</b>
             <span>{orderMaterials(save,resident)}</span>
             <span>Награда: {residentOrder.drops} капель бессмертия{residentOrder.potion?' и эликсир':''}.</span>
             {!residentOrder.initial&&(save.locationCooldowns['village:'+resident]||0)>Date.now()&&<span>Следующий заказ через {Math.max(1,Math.ceil(((save.locationCooldowns['village:'+resident]||0)-Date.now())/60000))} мин.</span>}
