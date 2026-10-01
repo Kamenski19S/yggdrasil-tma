@@ -6953,9 +6953,10 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
 
   useEffect(()=>{runningRef.current=running;},[running]);
   useEffect(()=>{
+    runningRef.current=running;
     if(!running)return;
-    const id=window.setInterval(()=>onProduce(2),1000);
-    return()=>window.clearInterval(id);
+    const id=window.setInterval(()=>{if(runningRef.current)onProduce(2);},1000);
+    return()=>{runningRef.current=false;window.clearInterval(id);};
   },[running,onProduce]);
 
   useEffect(()=>{
@@ -7114,7 +7115,7 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
       <div className="mill-controls">
         <button className={"mill-btn "+(running?"stop":"primary")} onClick={()=>setRunning(v=>!v)}>{running?"Остановить колесо":"Запустить мельницу"}</button>
         <button className="mill-btn collect" disabled={!stored} onClick={collect}>Забрать капли</button>
-        <button className="mill-back" onClick={()=>{setRunning(false);onBack();}}>← Вернуться в Мидгард</button>
+        <button className="mill-back" onClick={()=>{runningRef.current=false;setRunning(false);onBack();}}>← Вернуться в Мидгард</button>
       </div>
     </div>
   </div>;
@@ -7122,6 +7123,7 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
 
 function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
+  const millScreenActiveRef=useRef(false);
   const [save, setSave] = useState<Save>(loadSave);
   const [selectedArtifact,setSelectedArtifact]=useState("");
   const [pick, setPick] = useState("");
@@ -7159,6 +7161,7 @@ function App() {
   },[]);
 const [roadT, setRoadT] = useState(0.06);
   useEffect(() => { localStorage.setItem("yggdrasil", JSON.stringify(save)); }, [save]);
+  useEffect(()=>{millScreenActiveRef.current=screen.t==="mill";},[screen.t]);
   useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
   useEffect(() => {
     // Warm only the selected hero. The second character is loaded later when
@@ -7170,7 +7173,7 @@ const [roadT, setRoadT] = useState(0.06);
   }, [save.heroSkin]);
   useEffect(() => {
     if (!tg?.BackButton) return;
-    const back = () => setScreen(screen.t === "forge" || screen.t === "mill" ? { t: "realm", id:"midgard" } : { t: "tree" });
+    const back = () => { if(screen.t==="mill")millScreenActiveRef.current=false; setScreen(screen.t === "forge" || screen.t === "mill" ? { t: "realm", id:"midgard" } : { t: "tree" }); };
     if (screen.t !== "tree" && screen.t !== "choose" && save.hero) { tg.BackButton.show(); tg.BackButton.onClick(back); } else tg.BackButton.hide();
     return () => { tg.BackButton?.offClick?.(back); };
   }, [screen, save.hero]);
@@ -7187,8 +7190,9 @@ const [roadT, setRoadT] = useState(0.06);
     setSave(s=>s.gathered.includes(id)?s:{...s,gathered:[...s.gathered,id],stock:{...s.stock,[kind]:s.stock[kind]+1}});
     haptic();say(kind==='wood'?'🪵 +1 древесина':kind==='twigs'?'🌱 +1 ветки':'🌿 +1 лечебные травы');
   };
-  const go = (s: Screen) => setScreen(s);
+  const go = (s: Screen) => { millScreenActiveRef.current=s.t==="mill"; setScreen(s); };
   const produceMillDrops=useCallback((amount:number)=>{
+    if(!millScreenActiveRef.current)return;
     const safe=Math.max(0,Math.floor(amount));
     if(!safe)return;
     setSave(s=>({...s,millStored:s.millStored+safe}));
