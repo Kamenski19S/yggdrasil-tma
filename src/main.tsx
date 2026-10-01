@@ -732,6 +732,10 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .mill-panel{position:absolute;z-index:4;left:12px;right:12px;bottom:14px;padding:11px;border:1px solid rgba(218,169,70,.5);border-radius:17px;background:linear-gradient(155deg,rgba(6,12,9,.96),rgba(12,17,13,.93));box-shadow:0 12px 30px rgba(0,0,0,.45);backdrop-filter:blur(7px)}
 .mill-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:9px}.mill-stat{padding:8px 9px;border-radius:12px;background:#0c1510;border:1px solid rgba(193,151,67,.28)}.mill-stat span{display:block;color:#91a398;font-size:8px;text-transform:uppercase;letter-spacing:.75px}.mill-stat b{display:flex;align-items:center;gap:4px;margin-top:3px;color:#ffd478;font-size:16px}.mill-stat .spark-drop{width:14px;height:21px;margin:0}
 .mill-rate{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 9px;color:#aebcaf;font-size:9px}.mill-rate b{color:#e8c36e}
+.mill-sluice{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:7px;margin:0 0 9px;padding:7px 8px;border:1px solid rgba(131,106,54,.42);border-radius:11px;background:#0a120d}
+.mill-sluice button{width:34px;height:32px;border-radius:9px;border:1px solid #6f5730;background:linear-gradient(180deg,#2b2416,#17140e);color:#ffd677;font-size:17px;font-weight:900}.mill-sluice button:disabled{opacity:.35}
+.mill-flow-readout{text-align:center;min-width:0}.mill-flow-readout small{display:block;color:#8fa197;font-size:8px;letter-spacing:.55px;text-transform:uppercase}.mill-flow-readout b{display:block;margin-top:2px;color:#e9d39b;font-size:10px}.mill-flow-readout b.good{color:#ffd76d;text-shadow:0 0 8px rgba(255,192,58,.28)}.mill-flow-readout b.warn{color:#d6b07b}
+.mill-flow-bars{display:flex;justify-content:center;gap:3px;margin-top:4px}.mill-flow-bars i{display:block;width:18px;height:4px;border-radius:4px;background:#27342b;border:1px solid #405047}.mill-flow-bars i.on{background:#d5a63f;border-color:#f1cc6f;box-shadow:0 0 5px rgba(235,180,62,.35)}
 .mill-controls{display:grid;grid-template-columns:1.25fr 1fr;gap:7px}.mill-btn{min-height:38px;border-radius:11px;border:1px solid #84642d;background:linear-gradient(180deg,#2a2110,#17140d);color:#ffe088;font-size:10px;font-weight:900;box-shadow:inset 0 0 10px rgba(235,178,70,.07)}.mill-btn.primary{background:linear-gradient(180deg,#765020,#4b2f13);border-color:#d0a348}.mill-btn.stop{background:linear-gradient(180deg,#46321e,#211810);border-color:#997044}.mill-btn.collect{background:linear-gradient(180deg,#77521e,#4a3114);border-color:#d1a447}.mill-btn:disabled{opacity:.42;filter:saturate(.55)}.mill-btn:active{transform:scale(.985)}
 .mill-back{grid-column:1/-1;min-height:34px;border-radius:10px;border:1px solid #384a3d;background:#111a14;color:#aebdb3;font-size:9px;font-weight:800}
 .mill-load{position:absolute;z-index:5;left:50%;top:48%;transform:translate(-50%,-50%);padding:8px 11px;border-radius:12px;background:rgba(4,8,6,.82);border:1px solid rgba(224,176,77,.42);color:#e6c46f;font-size:10px;pointer-events:none}
@@ -6946,18 +6950,57 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
   const mount=useRef<HTMLDivElement>(null);
   const runningRef=useRef(false);
   const wheelRef=useRef<THREE.Group|null>(null);
+  const gateRef=useRef<THREE.Mesh|null>(null);
+  const flowRef=useRef(2);
+  const pressureRef=useRef(2);
+  const comboRef=useRef(0);
   const [running,setRunning]=useState(false);
   const [loaded,setLoaded]=useState(false);
   const [loadFailed,setLoadFailed]=useState(false);
   const [collected,setCollected]=useState(0);
+  const [flow,setFlow]=useState(2);
+  const [pressure,setPressure]=useState(2);
+  const [combo,setCombo]=useState(0);
+  const [liveRate,setLiveRate]=useState(0);
 
   useEffect(()=>{runningRef.current=running;},[running]);
+  useEffect(()=>{flowRef.current=flow;},[flow]);
+  useEffect(()=>{pressureRef.current=pressure;},[pressure]);
+
   useEffect(()=>{
     runningRef.current=running;
-    if(!running)return;
-    const id=window.setInterval(()=>{if(runningRef.current)onProduce(2);},1000);
+    if(!running){setLiveRate(0);return;}
+    const id=window.setInterval(()=>{
+      if(!runningRef.current)return;
+      const diff=Math.abs(flowRef.current-pressureRef.current);
+      let rate=1;
+      if(diff===0){
+        const next=Math.min(99,comboRef.current+1);
+        comboRef.current=next;setCombo(next);
+        rate=4+Math.min(2,Math.floor(next/5));
+      }else{
+        comboRef.current=0;setCombo(0);
+        rate=diff===1?2:1;
+      }
+      setLiveRate(rate);
+      onProduce(rate);
+    },1000);
     return()=>{runningRef.current=false;window.clearInterval(id);};
   },[running,onProduce]);
+
+  useEffect(()=>{
+    if(!running)return;
+    const id=window.setInterval(()=>{
+      setPressure(prev=>{
+        let next=1+Math.floor(Math.random()*3);
+        if(next===prev)next=prev%3+1;
+        pressureRef.current=next;
+        comboRef.current=0;setCombo(0);
+        return next;
+      });
+    },7500);
+    return()=>window.clearInterval(id);
+  },[running]);
 
   useEffect(()=>{
     const host=mount.current;
@@ -7011,6 +7054,20 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
       mark.position.set(-3,.135,-12+i*2.3);
       scene.add(mark);flowMarks.push(mark);
     }
+
+    // Working sluice upstream: the player raises or lowers this gate to match river pressure.
+    const gateWood=new THREE.MeshStandardMaterial({color:0x4a2f1b,roughness:.92});
+    const gateMetal=new THREE.MeshStandardMaterial({color:0x6c5c42,roughness:.72,metalness:.22});
+    for(const x of [-5.75,-.25]){
+      const post=new THREE.Mesh(new THREE.BoxGeometry(.32,3.3,.42),gateWood);
+      post.position.set(x,1.05,-9.2);post.castShadow=post.receiveShadow=true;scene.add(post);
+    }
+    const crossbar=new THREE.Mesh(new THREE.BoxGeometry(5.9,.34,.42),gateWood);
+    crossbar.position.set(-3,2.55,-9.2);crossbar.castShadow=true;scene.add(crossbar);
+    const gate=new THREE.Mesh(new THREE.BoxGeometry(5.05,1.35,.28),new THREE.MeshStandardMaterial({color:0x604022,roughness:.9}));
+    gate.position.set(-3,.82,-9.2);gate.castShadow=gate.receiveShadow=true;scene.add(gate);gateRef.current=gate;
+    const gateBand1=new THREE.Mesh(new THREE.BoxGeometry(5.12,.11,.34),gateMetal);gateBand1.position.set(-3,.48,-9.2);scene.add(gateBand1);
+    const gateBand2=new THREE.Mesh(new THREE.BoxGeometry(5.12,.11,.34),gateMetal);gateBand2.position.set(-3,1.16,-9.2);scene.add(gateBand2);
 
     const wallMat=new THREE.MeshStandardMaterial({color:0x7a5532,roughness:.88});
     const hut=new THREE.Mesh(new THREE.BoxGeometry(7,4.7,5.8),wallMat);
@@ -7098,12 +7155,18 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
     const animate=()=>{
       frame=requestAnimationFrame(animate);
       const dt=Math.min(.05,clock.getDelta());
-      if(wheelRef.current&&runningRef.current)wheelRef.current.rotation.z-=dt*1.15;
+      const balanced=flowRef.current===pressureRef.current;
+      const flowSpeed=runningRef.current?(2.2+flowRef.current*1.35):.7;
+      if(wheelRef.current&&runningRef.current)wheelRef.current.rotation.z-=dt*(.68+flowRef.current*.23+(balanced ? .18 : 0));
+      if(gateRef.current){
+        const targetY=.28+(flowRef.current-1)*.55;
+        gateRef.current.position.y+=(targetY-gateRef.current.position.y)*Math.min(1,dt*7);
+      }
       for(const mark of flowMarks){
-        mark.position.z+=dt*(runningRef.current?4.5:1.1);
+        mark.position.z+=dt*flowSpeed;
         if(mark.position.z>11)mark.position.z=-12;
       }
-      water.material instanceof THREE.MeshStandardMaterial&&(water.material.emissiveIntensity=.28+Math.sin(performance.now()*.002)*.08);
+      water.material instanceof THREE.MeshStandardMaterial&&(water.material.emissiveIntensity=.24+(runningRef.current?.05:0)+flowRef.current*.025+Math.sin(performance.now()*.002)*.06);
       renderer.render(scene,camera);
     };
     animate();
@@ -7117,7 +7180,7 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
 
     return()=>{
       alive=false;cancelAnimationFrame(frame);window.removeEventListener("resize",resize);
-      wheelRef.current=null;
+      wheelRef.current=null;gateRef.current=null;
       scene.traverse(o=>{
         const mesh=o as THREE.Mesh;
         if(mesh.isMesh){mesh.geometry?.dispose?.();const mats=Array.isArray(mesh.material)?mesh.material:[mesh.material];mats.forEach((m:any)=>m?.dispose?.());}
@@ -7148,9 +7211,18 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
         <div className="mill-stat"><span>В накопителе мельницы</span><b><SparkDrop/> {stored}</b></div>
         <div className="mill-stat"><span>Твой баланс бессмертия</span><b><SparkDrop/> {balance}</b></div>
       </div>
-      <div className="mill-rate"><span>Поток воды превращает силу в Золотые капли бессмертия.</span><b>+2 / сек</b></div>
+      <div className="mill-rate"><span>Напор реки меняется. Подстрой шлюз и удерживай равновесие.</span><b>{running?("+"+(liveRate||1)+" / сек"):"0 / сек"}</b></div>
+      <div className="mill-sluice">
+        <button disabled={flow<=1} onClick={()=>setFlow(v=>Math.max(1,v-1))} aria-label="Уменьшить поток">−</button>
+        <div className="mill-flow-readout">
+          <small>Напор реки {["","I","II","III"][pressure]} · шлюз {["","I","II","III"][flow]}</small>
+          <b className={flow===pressure?"good":"warn"}>{flow===pressure?(combo>=5?"РАВНОВЕСИЕ · серия "+combo+" сек":"РАВНОВЕСИЕ"):"ПОДСТРОЙ ШЛЮЗ"}</b>
+          <span className="mill-flow-bars">{[1,2,3].map(level=><i key={level} className={level<=flow?"on":""}/>)}</span>
+        </div>
+        <button disabled={flow>=3} onClick={()=>setFlow(v=>Math.min(3,v+1))} aria-label="Увеличить поток">＋</button>
+      </div>
       <div className="mill-controls">
-        <button className={"mill-btn "+(running?"stop":"primary")} onClick={()=>setRunning(v=>!v)}>{running?"Остановить колесо":"Запустить мельницу"}</button>
+        <button className={"mill-btn "+(running?"stop":"primary")} onClick={()=>setRunning(v=>{const next=!v;if(!next){comboRef.current=0;setCombo(0);setLiveRate(0);}return next;})}>{running?"Остановить колесо":"Запустить мельницу"}</button>
         <button className="mill-btn collect" disabled={!stored} onClick={collect}>Забрать капли</button>
         <button className="mill-back" onClick={()=>{runningRef.current=false;setRunning(false);onBack();}}>← Вернуться в Мидгард</button>
       </div>
