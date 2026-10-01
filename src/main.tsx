@@ -629,22 +629,18 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .mid3d-scene canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none}
 .mid3d-ui{position:absolute;z-index:8;user-select:none;-webkit-user-select:none}
 .mid3d-top{top:10px;left:10px;right:10px;display:grid;grid-template-columns:72px minmax(0,1fr) 82px;gap:8px;align-items:stretch;pointer-events:none}
-.mid3d-top-btn,.mid3d-realm-title{position:relative;min-height:50px;border:0;background:transparent!important;box-shadow:none!important;isolation:isolate}
-.mid3d-top-btn{display:flex;align-items:center;justify-content:center;padding:0;appearance:none;-webkit-appearance:none;color:#ffd76a;pointer-events:auto;touch-action:manipulation;overflow:visible}
-.mid3d-top-btn::before,.mid3d-realm-title::before{content:"";position:absolute;inset:0;z-index:-2;background:linear-gradient(135deg,#f2cb69 0%,#b77a25 28%,#f3d377 52%,#9b611d 77%,#e5b850 100%);clip-path:polygon(8% 0,92% 0,100% 18%,100% 82%,92% 100%,8% 100%,0 82%,0 18%);filter:drop-shadow(0 4px 8px rgba(0,0,0,.42))}
-.mid3d-top-btn::after,.mid3d-realm-title::after{content:"";position:absolute;inset:1.5px;z-index:-1;background:linear-gradient(145deg,#080d09,#101611 58%,#050806);clip-path:polygon(8% 0,92% 0,100% 18%,100% 82%,92% 100%,8% 100%,0 82%,0 18%)}
+.mid3d-top-btn,.mid3d-realm-title{position:relative;min-height:50px;border:0;background:#060b08;color:#ffd76a;box-shadow:none;isolation:isolate;overflow:visible;clip-path:polygon(9% 0,91% 0,94% 7%,98% 10%,100% 18%,100% 82%,98% 90%,94% 93%,91% 100%,9% 100%,6% 93%,2% 90%,0 82%,0 18%,2% 10%,6% 7%)}
+.mid3d-top-btn{display:flex;align-items:center;justify-content:center;padding:0;appearance:none;-webkit-appearance:none;pointer-events:auto;touch-action:manipulation}
 .mid3d-top-btn:active{transform:translateY(1px) scale(.985)}
-.mid3d-top-btn:active::after{background:linear-gradient(145deg,#17150b,#0b100c 62%,#050806)}
-.mid3d-top-btn .mid3d-corner,.mid3d-realm-title .mid3d-corner{position:absolute;width:7px;height:7px;border:1px solid #e5b850;transform:rotate(45deg);background:#090d0a;z-index:2;pointer-events:none}
-.mid3d-top-btn .mid3d-corner.tl,.mid3d-realm-title .mid3d-corner.tl{left:2px;top:2px}
-.mid3d-top-btn .mid3d-corner.tr,.mid3d-realm-title .mid3d-corner.tr{right:2px;top:2px}
-.mid3d-top-btn .mid3d-corner.bl,.mid3d-realm-title .mid3d-corner.bl{left:2px;bottom:2px}
-.mid3d-top-btn .mid3d-corner.br,.mid3d-realm-title .mid3d-corner.br{right:2px;bottom:2px}
-.mid3d-realm-title{display:flex;align-items:center;justify-content:center;color:#ffd76a;font-size:16px;font-weight:900;letter-spacing:1.4px;text-shadow:0 0 10px rgba(255,199,73,.18)}
-.mid3d-map-svg{width:48px;height:38px;overflow:visible;filter:drop-shadow(0 1px 2px rgba(0,0,0,.7))}
-.mid3d-mill-svg{width:54px;height:40px;overflow:visible;filter:drop-shadow(0 1px 2px rgba(0,0,0,.72))}
-.mid3d-mill-drop{position:absolute;right:9px;bottom:7px;width:12px;height:18px;object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,172,52,.78));z-index:4}
-@media(max-width:380px){.mid3d-top{grid-template-columns:64px minmax(0,1fr) 74px;gap:6px}.mid3d-top-btn,.mid3d-realm-title{min-height:46px}.mid3d-realm-title{font-size:14px;letter-spacing:1px}.mid3d-map-svg{width:43px;height:34px}.mid3d-mill-svg{width:49px;height:36px}}
+.mid3d-realm-title{display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;letter-spacing:1.4px;text-shadow:0 0 10px rgba(255,199,73,.18)}
+.mid3d-frame-svg{position:absolute;inset:0;width:100%;height:100%;z-index:3;overflow:visible;pointer-events:none;filter:drop-shadow(0 3px 5px rgba(0,0,0,.4))}
+.mid3d-frame-main{fill:none;stroke:#e8b84e;stroke-width:1.25;vector-effect:non-scaling-stroke}
+.mid3d-frame-inner{fill:none;stroke:#8f621f;stroke-width:.55;opacity:.8;vector-effect:non-scaling-stroke}
+.mid3d-frame-knot{fill:#0a0f0b;stroke:#e8b84e;stroke-width:1;vector-effect:non-scaling-stroke}
+.mid3d-map-svg{position:relative;z-index:2;width:50px;height:39px;overflow:visible;filter:drop-shadow(0 1px 2px rgba(0,0,0,.72))}
+.mid3d-mill-svg{position:relative;z-index:2;width:56px;height:41px;overflow:visible;filter:drop-shadow(0 1px 2px rgba(0,0,0,.75))}
+.mid3d-mill-drop{position:absolute;right:8px;bottom:6px;width:12px;height:18px;object-fit:contain;filter:drop-shadow(0 0 5px rgba(255,172,52,.78));z-index:4}
+@media(max-width:380px){.mid3d-top{grid-template-columns:64px minmax(0,1fr) 74px;gap:6px}.mid3d-top-btn,.mid3d-realm-title{min-height:46px}.mid3d-realm-title{font-size:14px;letter-spacing:1px}.mid3d-map-svg{width:45px;height:35px}.mid3d-mill-svg{width:51px;height:37px}}
 .mid3d-joy{left:14px;bottom:52px;width:132px;height:132px;border-radius:50%;background:rgba(7,14,9,.46);border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 0 25px rgba(0,0,0,.22);touch-action:none}
 .mid3d-joy:before,.mid3d-joy:after{content:"";position:absolute;left:50%;top:50%;background:rgba(255,255,255,.08);transform:translate(-50%,-50%);pointer-events:none}
 .mid3d-joy:before{width:82px;height:1px}.mid3d-joy:after{height:82px;width:1px}
@@ -6623,30 +6619,43 @@ function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, eventDo
   return <div className="content mid3d-scene" ref={mount} style={{touchAction:"none",userSelect:"none",WebkitUserSelect:"none"}} onPointerDown={startJoyFromZone} onPointerMove={moveJoyFromZone} onPointerUp={endJoyFromZone} onPointerCancel={endJoyFromZone} onContextMenu={e=>e.preventDefault()}>
     {whisperPhase==="closed"&&<div className="mid3d-ui mid3d-top">
       <button className="mid3d-top-btn" aria-label="Карта Мидгарда" title="Карта Мидгарда" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapHero({x:state.current.x,z:state.current.z});setMapOpen(true);}}>
-        <i className="mid3d-corner tl"/><i className="mid3d-corner tr"/><i className="mid3d-corner bl"/><i className="mid3d-corner br"/>
-        <svg className="mid3d-map-svg" viewBox="0 0 64 48" aria-hidden="true">
-          <path d="M9 7 24 4l16 4 15-4v34l-15 4-16-4-15 4Z" fill="#d5b06a" stroke="#f3d27a" strokeWidth="1.4"/>
-          <path d="M24 4v34M40 8v34" fill="none" stroke="#7a5425" strokeWidth="1.1" opacity=".8"/>
-          <path d="M14 15c6-4 10-4 15-1m15 5c4-2 6-2 8-1M12 30c5-2 9-2 13 0" fill="none" stroke="#6f4a22" strokeWidth="1.2" strokeLinecap="round"/>
-          <circle cx="32" cy="24" r="8.3" fill="#11170f" stroke="#d7a548" strokeWidth="1.4"/>
-          <path d="m32 15 2.1 6.4L40 24l-5.9 2.6L32 33l-2.1-6.4L24 24l5.9-2.6Z" fill="#e8be5d"/>
-          <circle cx="32" cy="24" r="2.1" fill="#6d4b1e"/>
+        <svg className="mid3d-frame-svg" viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden="true">
+          <path className="mid3d-frame-main" d="M11 2H89c1.8 0 2.8 1.2 3.2 3l.8 3.2c.4 1.5 1.1 2.1 2.6 2.6l2.1.7c1.4.5 2.3 1.8 2.3 3.3v20.4c0 1.5-.9 2.8-2.3 3.3l-2.1.7c-1.5.5-2.2 1.1-2.6 2.6l-.8 3.2c-.4 1.8-1.4 3-3.2 3H11c-1.8 0-2.8-1.2-3.2-3L7 41.8c-.4-1.5-1.1-2.1-2.6-2.6l-2.1-.7C.9 38 .1 36.7.1 35.2V14.8c0-1.5.8-2.8 2.2-3.3l2.1-.7C5.9 10.3 6.6 9.7 7 8.2L7.8 5C8.2 3.2 9.2 2 11 2Z"/>
+          <path className="mid3d-frame-inner" d="M13 4H87c1.2 0 2 .8 2.4 2.1l.9 3.2c.5 1.8 1.5 2.8 3.2 3.4l2.1.8c1 .4 1.5 1.1 1.5 2.2v18.6c0 1.1-.5 1.8-1.5 2.2l-2.1.8c-1.7.6-2.7 1.6-3.2 3.4l-.9 3.2C89 45.2 88.2 46 87 46H13c-1.2 0-2-.8-2.4-2.1l-.9-3.2c-.5-1.8-1.5-2.8-3.2-3.4l-2.1-.8c-1-.4-1.5-1.1-1.5-2.2V15.7c0-1.1.5-1.8 1.5-2.2l2.1-.8c1.7-.6 2.7-1.6 3.2-3.4l.9-3.2C11 4.8 11.8 4 13 4Z"/>
+          <circle className="mid3d-frame-knot" cx="2.3" cy="25" r="1.6"/><circle className="mid3d-frame-knot" cx="97.7" cy="25" r="1.6"/>
+        </svg>
+        <svg className="mid3d-map-svg" viewBox="0 0 68 50" aria-hidden="true">
+          <path d="M10 9c7-2.5 15-3 22-1l1 32c-7-2.1-14-1.8-22 1Z" fill="#dfbd78" stroke="#f0cf86" strokeWidth="1.3"/>
+          <path d="M32 8c7-2 15-1.5 23 1v32c-8-2.8-15-3-22-1Z" fill="#c99b55" stroke="#f0cf86" strokeWidth="1.3"/>
+          <path d="M16 17c4-1.6 8-1.7 12-.4M16 24c4-1.4 8-1.4 12-.2M38 16c4-.8 8-.5 12 .7M38 23c4-.7 8-.3 12 .8" fill="none" stroke="#6e4b22" strokeWidth="1.1" strokeLinecap="round"/>
+          <circle cx="45" cy="31" r="10" fill="#11170f" stroke="#e4b34d" strokeWidth="1.5"/>
+          <circle cx="45" cy="31" r="7.2" fill="none" stroke="#a8752e" strokeWidth="1"/>
+          <path d="M45 20.5 47.5 28l7.3 3-7.3 3L45 41.5 42.5 34l-7.3-3 7.3-3Z" fill="#e7bc59"/>
+          <circle cx="45" cy="31" r="2" fill="#6c471d"/>
         </svg>
       </button>
       <div className="mid3d-realm-title">
-        <i className="mid3d-corner tl"/><i className="mid3d-corner tr"/><i className="mid3d-corner bl"/><i className="mid3d-corner br"/>
+        <svg className="mid3d-frame-svg" viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden="true">
+          <path className="mid3d-frame-main" d="M11 2H89c1.8 0 2.8 1.2 3.2 3l.8 3.2c.4 1.5 1.1 2.1 2.6 2.6l2.1.7c1.4.5 2.3 1.8 2.3 3.3v20.4c0 1.5-.9 2.8-2.3 3.3l-2.1.7c-1.5.5-2.2 1.1-2.6 2.6l-.8 3.2c-.4 1.8-1.4 3-3.2 3H11c-1.8 0-2.8-1.2-3.2-3L7 41.8c-.4-1.5-1.1-2.1-2.6-2.6l-2.1-.7C.9 38 .1 36.7.1 35.2V14.8c0-1.5.8-2.8 2.2-3.3l2.1-.7C5.9 10.3 6.6 9.7 7 8.2L7.8 5C8.2 3.2 9.2 2 11 2Z"/>
+          <path className="mid3d-frame-inner" d="M13 4H87c1.2 0 2 .8 2.4 2.1l.9 3.2c.5 1.8 1.5 2.8 3.2 3.4l2.1.8c1 .4 1.5 1.1 1.5 2.2v18.6c0 1.1-.5 1.8-1.5 2.2l-2.1.8c-1.7.6-2.7 1.6-3.2 3.4l-.9 3.2C89 45.2 88.2 46 87 46H13c-1.2 0-2-.8-2.4-2.1l-.9-3.2c-.5-1.8-1.5-2.8-3.2-3.4l-2.1-.8c-1-.4-1.5-1.1-1.5-2.2V15.7c0-1.1.5-1.8 1.5-2.2l2.1-.8c1.7-.6 2.7-1.6 3.2-3.4l.9-3.2C11 4.8 11.8 4 13 4Z"/>
+          <circle className="mid3d-frame-knot" cx="2.3" cy="25" r="1.6"/><circle className="mid3d-frame-knot" cx="97.7" cy="25" r="1.6"/>
+        </svg>
         МИДГАРД
       </div>
       <button className="mid3d-top-btn" aria-label="Мельница капель бессмертия" title="Мельница" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setDoorNotice("Мельница капель бессмертия — скоро откроется.");}}>
-        <i className="mid3d-corner tl"/><i className="mid3d-corner tr"/><i className="mid3d-corner bl"/><i className="mid3d-corner br"/>
-        <svg className="mid3d-mill-svg" viewBox="0 0 70 52" aria-hidden="true">
-          <path d="M36 18 49 8l13 10v23H36Z" fill="#6b421f" stroke="#d39a43" strokeWidth="1.6"/>
-          <path d="M33 19 49 5l16 14" fill="none" stroke="#efc66b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          <rect x="49" y="27" width="7" height="14" rx="1" fill="#1c1710" stroke="#a86d2b" strokeWidth="1"/>
-          <circle cx="25" cy="31" r="12" fill="#21170d" stroke="#e0ad4d" strokeWidth="1.7"/>
-          <circle cx="25" cy="31" r="2.4" fill="#d9a44a"/>
-          <path d="M25 19v24M13 31h24M16.5 22.5l17 17M16.5 39.5l17-17" stroke="#bb7b2d" strokeWidth="2.1" strokeLinecap="round"/>
-          <path d="M9 44c9-5 19 3 28-1 8-3 15-2 24 1" fill="none" stroke="#63b7c9" strokeWidth="2.4" strokeLinecap="round"/>
+        <svg className="mid3d-frame-svg" viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden="true">
+          <path className="mid3d-frame-main" d="M11 2H89c1.8 0 2.8 1.2 3.2 3l.8 3.2c.4 1.5 1.1 2.1 2.6 2.6l2.1.7c1.4.5 2.3 1.8 2.3 3.3v20.4c0 1.5-.9 2.8-2.3 3.3l-2.1.7c-1.5.5-2.2 1.1-2.6 2.6l-.8 3.2c-.4 1.8-1.4 3-3.2 3H11c-1.8 0-2.8-1.2-3.2-3L7 41.8c-.4-1.5-1.1-2.1-2.6-2.6l-2.1-.7C.9 38 .1 36.7.1 35.2V14.8c0-1.5.8-2.8 2.2-3.3l2.1-.7C5.9 10.3 6.6 9.7 7 8.2L7.8 5C8.2 3.2 9.2 2 11 2Z"/>
+          <path className="mid3d-frame-inner" d="M13 4H87c1.2 0 2 .8 2.4 2.1l.9 3.2c.5 1.8 1.5 2.8 3.2 3.4l2.1.8c1 .4 1.5 1.1 1.5 2.2v18.6c0 1.1-.5 1.8-1.5 2.2l-2.1.8c-1.7.6-2.7 1.6-3.2 3.4l-.9 3.2C89 45.2 88.2 46 87 46H13c-1.2 0-2-.8-2.4-2.1l-.9-3.2c-.5-1.8-1.5-2.8-3.2-3.4l-2.1-.8c-1-.4-1.5-1.1-1.5-2.2V15.7c0-1.1.5-1.8 1.5-2.2l2.1-.8c1.7-.6 2.7-1.6 3.2-3.4l.9-3.2C11 4.8 11.8 4 13 4Z"/>
+          <circle className="mid3d-frame-knot" cx="2.3" cy="25" r="1.6"/><circle className="mid3d-frame-knot" cx="97.7" cy="25" r="1.6"/>
+        </svg>
+        <svg className="mid3d-mill-svg" viewBox="0 0 74 52" aria-hidden="true">
+          <path d="M39 18 51 8l13 10v23H39Z" fill="#76502c" stroke="#e0ad52" strokeWidth="1.5"/>
+          <path d="M36 19 51 5l16 14" fill="none" stroke="#f0c968" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M50 27h7v14h-7Z" fill="#20160d" stroke="#9f6a2a" strokeWidth="1"/>
+          <circle cx="27" cy="31" r="12.5" fill="#26180d" stroke="#e4b34f" strokeWidth="1.8"/>
+          <circle cx="27" cy="31" r="2.5" fill="#dca64a"/>
+          <path d="M27 18.5v25M14.5 31h25M18.2 22.2l17.6 17.6M18.2 39.8l17.6-17.6" stroke="#bd7d2e" strokeWidth="2.2" strokeLinecap="round"/>
+          <path d="M9 44c8-4 16 1 23-1 8-2.5 18-1 31 1" fill="none" stroke="#5eb7c8" strokeWidth="2.4" strokeLinecap="round"/>
         </svg>
         <img className="mid3d-mill-drop" src={`${BASE}img/BackgroundEraser_20260930_010245371.png`} alt=""/>
       </button>
