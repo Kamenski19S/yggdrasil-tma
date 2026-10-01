@@ -724,7 +724,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .forge-note{margin:14px 0 6px;padding:10px 12px;border-radius:12px;border:1px solid rgba(213,155,75,.25);background:rgba(5,7,5,.62);font-size:9px;line-height:1.45;color:#bba98e}.forge-note b{color:#f1c979}.forge-exit{width:100%;margin-top:8px;padding:12px;border-radius:12px;border:1px solid #ff765a;background:radial-gradient(circle at 50% 0,rgba(255,201,96,.42),transparent 42%),linear-gradient(135deg,#b31f27,#5d0711 64%,#260207);color:#fff0db;font-size:11px;font-weight:900;box-shadow:inset 0 0 18px rgba(255,133,48,.23),0 0 14px rgba(198,28,27,.28);text-shadow:0 1px 4px #350006}.forge-exit:active{transform:scale(.98);filter:brightness(1.12)}
 .forge-transition{position:fixed;inset:0;z-index:80;background:radial-gradient(circle,rgba(255,151,46,.32),rgba(5,5,4,.94) 58%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#ffd47b;pointer-events:all}.forge-transition b{display:flex;align-items:center;justify-content:center;width:104px;height:104px;border-radius:50%;border:2px solid rgba(255,198,89,.72);background:radial-gradient(circle,rgba(255,178,56,.3),rgba(68,29,9,.42) 55%,transparent 57%);font-size:54px;box-shadow:0 0 26px rgba(255,116,25,.65),inset 0 0 25px rgba(255,188,77,.35);animation:forgePortal .72s ease-out}.forge-transition span{font-size:10px;letter-spacing:1.3px;text-transform:uppercase;text-shadow:0 2px 8px #000}
 /* ===== Mill of Immortality: independent lightweight scene ===== */
-.mill-scene{flex:1;position:relative;overflow:hidden;background:linear-gradient(180deg,#ffffff,#edf5eb 68%,#d9e8d4);isolation:isolate}
+.mill-scene{flex:1;position:relative;overflow:hidden;background:linear-gradient(180deg,#b9d5eb,#d9e8ef 68%,#d9e8d4);isolation:isolate}
 .mill-scene canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .mill-vignette{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.03),transparent 32%,transparent 76%,rgba(28,49,33,.16)),radial-gradient(circle at 50% 48%,transparent 52%,rgba(46,73,53,.08) 100%)}
 .mill-title{position:absolute;z-index:4;top:10px;left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;gap:9px;padding:8px 11px;border:1px solid rgba(218,169,70,.62);border-radius:15px;background:linear-gradient(145deg,rgba(5,11,8,.94),rgba(12,18,13,.9));box-shadow:0 7px 18px rgba(0,0,0,.34);backdrop-filter:blur(5px)}
@@ -7011,8 +7011,8 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
     const host=mount.current;
     if(!host)return;
     const scene=new THREE.Scene();
-    scene.background=new THREE.Color(0xffffff);
-    scene.fog=new THREE.Fog(0xffffff,24,52);
+    scene.background=new THREE.Color(0xb9d5eb);
+    scene.fog=new THREE.Fog(0xb9d5eb,32,80);
 
     const camera=new THREE.PerspectiveCamera(48,Math.max(1,host.clientWidth)/Math.max(1,host.clientHeight),.1,100);
     camera.position.set(11,8.2,16);
@@ -7059,6 +7059,8 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
       millTextures.push(texture);return texture;
     };
     const grassTexture=loadMillTexture('T_Grass_Green.jpg',4,12);
+    const rightGrassTexture=loadMillTexture('T_Grass_Green.jpg',4*59.4/15.4,12*100/30);
+    grassTexture.repeat.set(4*53.4/9.4,12*100/30);
     const pathTexture=loadMillTexture('T_Path_GrayGravel.jpg',2.2,6);
     const stoneBankTexture=loadMillTexture('Rock_5_Diffuse_Lite.webp',1.6,8);
     const stoneRockTexture=stoneBankTexture.clone();stoneRockTexture.repeat.set(1,1);millTextures.push(stoneRockTexture);
@@ -7070,18 +7072,18 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
     const mapleBarkTexture=loadMillTexture('MapleTree_Bark_Lite.webp');
     const mapleLeavesTexture=loadGreenMillTexture('MapleTree_Leaves_Lite.webp');
 
-    scene.add(new THREE.HemisphereLight(0xeaf7ef,0x5b4a36,1.65));
-    const sun=new THREE.DirectionalLight(0xffefd0,2.15);
+    scene.add(new THREE.HemisphereLight(0xe2efff,0x5b4a36,1.1));
+    const sun=new THREE.DirectionalLight(0xffefd0,1.5);
     sun.position.set(-8,14,9);sun.castShadow=true;
     sun.shadow.mapSize.set(1024,1024);scene.add(sun);
 
     // The mill channel is a real recessed trench rather than water painted over grass.
     // Existing Midgard textures make this scene part of the same world instead of a dark prototype.
     const grassMat=new THREE.MeshStandardMaterial({map:grassTexture,color:0xffffff,roughness:1});
-    const leftGround=new THREE.Mesh(new THREE.PlaneGeometry(9.4,30),grassMat);
-    leftGround.rotation.x=-Math.PI/2;leftGround.position.set(-11.3,0,0);leftGround.receiveShadow=true;scene.add(leftGround);
-    const rightGround=new THREE.Mesh(new THREE.PlaneGeometry(15.4,30),grassMat);
-    rightGround.rotation.x=-Math.PI/2;rightGround.position.set(8.3,0,0);rightGround.receiveShadow=true;scene.add(rightGround);
+    const leftGround=new THREE.Mesh(new THREE.PlaneGeometry(53.4,100),grassMat);
+    leftGround.rotation.x=-Math.PI/2;leftGround.position.set(-33.3,0,0);leftGround.receiveShadow=true;scene.add(leftGround);
+    const rightGround=new THREE.Mesh(new THREE.PlaneGeometry(59.4,100),new THREE.MeshStandardMaterial({map:rightGrassTexture,color:0xffffff,roughness:1}));
+    rightGround.rotation.x=-Math.PI/2;rightGround.position.set(30.3,0,0);rightGround.receiveShadow=true;scene.add(rightGround);
 
     const path=new THREE.Mesh(new THREE.PlaneGeometry(6.2,16),new THREE.MeshStandardMaterial({map:pathTexture,color:0xffffff,roughness:1}));
     path.rotation.x=-Math.PI/2;path.position.set(7,.025,4);path.receiveShadow=true;scene.add(path);
@@ -7141,19 +7143,40 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
       model.position.set(target.x-center.x,target.y-fitted.min.y,target.z-center.z);model.updateMatrixWorld(true);
     };
     const applyMillHouseTextures=(root:THREE.Object3D)=>{
+      root.updateMatrixWorld(true);
       root.traverse((o:any)=>{
         if(!o.isMesh)return;
         o.castShadow=o.receiveShadow=true;
-        const meshName=String(o.name||'').toLowerCase();
         const adapt=(source:any)=>{
-          const m=source?.clone?source.clone():source;if(!m)return m;
-          const tag=`${meshName} ${String(m.name||'').toLowerCase()}`;
-          if(/roof|thatch|aframe|tile/.test(tag)){m.map=houseRoofTexture;m.color?.setHex?.(0xffffff);}
-          else if(/wall|gable|main|cabin|stonebase|upper|house/.test(tag)){m.map=houseWallTexture;m.color?.setHex?.(0xffffff);}
-          if('roughness' in m)m.roughness=Math.max(.88,Number(m.roughness)||0);
-          if('metalness' in m)m.metalness=0;m.needsUpdate=true;return m;
+          const material=source?.clone?source.clone():source;if(!material)return material;
+          const tag=`${o.name||''} ${material.name||''}`.toLowerCase();
+          const detail=/window|door|frame|beam|post|rail|step|porch|platform|ridge|batten|glass/.test(tag);
+          const roof=!detail&&/roof|thatch|aframe|tile|canopy/.test(tag);
+          const wall=!detail&&/wall|gable|main|cabin|stonebase|upper|house|side|back|front|chimney/.test(tag);
+          if(roof||wall){
+            material.map=roof?houseRoofTexture:houseWallTexture;
+            material.color?.setHex?.(0xffffff);material.vertexColors=false;
+            material.emissive?.setHex?.(0x000000);material.emissiveMap=null;
+            material.roughness=.94;material.metalness=0;
+          }
+          material.needsUpdate=true;return material;
         };
-        o.material=Array.isArray(o.material)?o.material.map(adapt):adapt(o.material);
+        const materials=Array.isArray(o.material)?o.material:[o.material];
+        const changed=materials.map(adapt);
+        if(changed.some((m:any)=>m?.map===houseWallTexture||m?.map===houseRoofTexture)){
+          const geo=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();
+          const pos=geo.getAttribute('position'),uv=new Float32Array(pos.count*2);
+          const p=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()];
+          const normal=new THREE.Vector3(),edgeA=new THREE.Vector3(),edgeB=new THREE.Vector3();
+          for(let i=0;i+2<pos.count;i+=3){
+            for(let k=0;k<3;k++)p[k].fromBufferAttribute(pos,i+k).applyMatrix4(o.matrixWorld);
+            normal.crossVectors(edgeA.subVectors(p[1],p[0]),edgeB.subVectors(p[2],p[0])).normalize();
+            const top=Math.abs(normal.y)>.5,side=Math.abs(normal.x)>Math.abs(normal.z);
+            for(let k=0;k<3;k++){const v=p[k];uv[(i+k)*2]=(top?v.z:side?v.z:v.x)/3.2;uv[(i+k)*2+1]=(top?v.x:v.y)/3.2;}
+          }
+          geo.setAttribute('uv',new THREE.BufferAttribute(uv,2));o.geometry=geo;
+        }
+        o.material=Array.isArray(o.material)?changed:changed[0];
       });
     };
     const millHouseUrl=`${BASE}img/models/Midgard_Viking_House_V1_YUP.glb`;
@@ -7162,7 +7185,7 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
       const absolute=new URL(millHouseUrl,window.location.href).href,basePath=absolute.slice(0,absolute.lastIndexOf('/')+1);
       loader.parse(buffer,basePath,gltf=>{
         if(!alive)return;
-        const model=gltf.scene;applyMillHouseTextures(model);fitAndPlace(model,{x:3.4,y:0,z:-3.3},{x:7.6,y:6.7,z:6.2});
+        const model=gltf.scene;fitAndPlace(model,{x:3.4,y:0,z:-3.3},{x:7.6,y:6.7,z:6.2});applyMillHouseTextures(model);
         scene.add(model);hut.visible=roof.visible=door.visible=millWindow.visible=false;
       },error=>console.warn('[MILL HOUSE] GLB parse failed; keeping textured fallback',error));
     }).catch(error=>console.warn('[MILL HOUSE] GLB unavailable; keeping textured fallback',error));
@@ -7174,10 +7197,11 @@ function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;ba
         const adapt=(source:any)=>{
           const m=source?.clone?source.clone():source;if(!m)return m;
           const tag=`${asset} ${meshName} ${String(m.name||'')}`.toLowerCase();
-          const bark=/bark|trunk|stem|branch/.test(tag),leaves=/leaf/.test(tag);
+          const bark=/bark|trunk|stem|branch/.test(tag),leaves=/leaf|leaves|foliage|crown/.test(tag);
           if(/birch/i.test(asset)){if(bark)m.map=birchBarkTexture;else if(leaves)m.map=birchLeavesTexture;}
           else if(/maple/i.test(asset)){if(bark)m.map=mapleBarkTexture;else if(leaves)m.map=mapleLeavesTexture;}
-          if(bark||leaves)m.color?.setHex?.(0xffffff);
+          if(bark||leaves){m.color?.setHex?.(0xffffff);m.vertexColors=false;m.emissive?.setHex?.(0x000000);m.emissiveMap=null;}
+          if(leaves)m.alphaMap=null;
           if(leaves){m.alphaTest=.28;m.transparent=false;m.depthWrite=true;m.side=THREE.DoubleSide;}
           if('roughness' in m)m.roughness=.94;if('metalness' in m)m.metalness=0;m.needsUpdate=true;return m;
         };
