@@ -7,7 +7,7 @@ import { type Screen, loadSave, type Save, type HeroWeapon, tg, cachedGlbBuffer,
 import { type CraftMaterial, CRAFT_RECIPES, craftMaterialName, RUNE_STEEL_YIELD, type SteelCraftRecipe, FORGE_WEAPON_MODELS, SparkDrop, ForgeWeaponWall, InventorySection, craftMaterialIcon, STEEL_CRAFT_RECIPES } from './inventory';
 import { lootCountAdd, RUNE_CATALOG, lootDisplayName, POTION_CATALOG, BANDIT_SPECS, MIDGARD_GUARDIAN_LOOT, weaponDisplayIcon } from './world';
 import { CSS } from './styles';
-import { MillScene } from './MillScene';
+import { MillScene, type MillFind } from './MillScene';
 import { Midgard3D } from './Midgard3D';
 
 
@@ -97,6 +97,19 @@ const [roadT, setRoadT] = useState(0.06);
     const safe=Math.max(0,Math.floor(amount));
     if(!safe)return;
     setSave(s=>({...s,millStored:s.millStored+safe}));
+  },[]);
+  const findMillReward=useCallback((kind:MillFind)=>{
+    if(!millScreenActiveRef.current)return '';
+    if(kind==='drops'){
+      const amount=20+Math.floor(Math.random()*21);
+      setSave(s=>({...s,millStored:s.millStored+amount}));return `+${amount} капель в накопитель`;
+    }
+    const item=kind==='potion'?POTION_CATALOG[Math.floor(Math.random()*Math.min(3,POTION_CATALOG.length))]:RUNE_CATALOG[Math.floor(Math.random()*RUNE_CATALOG.length)];
+    setSave(s=>({...s,
+      potions:kind==='potion'?[...new Set([...s.potions,item.id])]:s.potions,
+      runes:kind==='rune'?[...new Set([...s.runes,item.id])]:s.runes,
+      lootCounts:lootCountAdd(s.lootCounts,[item.id])}));
+    return kind==='potion'?`Пойман: ${item.name}`:`Руна ${item.name}`;
   },[]);
   const collectMillDrops=useCallback(()=>{
     setSave(s=>s.millStored<=0?s:{...s,immortalityDrops:s.immortalityDrops+s.millStored,millStored:0});
@@ -561,6 +574,7 @@ const [roadT, setRoadT] = useState(0.06);
           balance={save.immortalityDrops}
           onProduce={produceMillDrops}
           onCollect={collectMillDrops}
+          onFind={findMillReward}
           onBack={()=>go({t:"realm",id:"midgard"})}
         />
       )}

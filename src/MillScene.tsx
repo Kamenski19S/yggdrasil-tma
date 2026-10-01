@@ -7,7 +7,9 @@ import { BASE, cachedGlbBuffer } from './core';
 
 
 
-export function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:number;balance:number;onProduce:(amount:number)=>void;onCollect:()=>void;onBack:()=>void}){
+export type MillFind='drops'|'potion'|'rune';
+type RiverParcel={kind:MillFind;start:number;end:number};
+export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{stored:number;balance:number;onProduce:(amount:number)=>void;onCollect:()=>void;onFind:(kind:MillFind)=>string;onBack:()=>void}){
   const mount=useRef<HTMLDivElement>(null);
   const runningRef=useRef(false);
   const wheelRef=useRef<THREE.Group|null>(null);
@@ -23,6 +25,25 @@ export function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:nu
   const [pressure,setPressure]=useState(2);
   const [combo,setCombo]=useState(0);
   const [liveRate,setLiveRate]=useState(0);
+
+  const [hint,setHint]=useState('');
+  const [parcel,setParcel]=useState<RiverParcel|null>(null);
+  const parcelRef=useRef<RiverParcel|null>(null);
+  const warningRef=useRef(0);
+  const netUntilRef=useRef(0);
+  const hintTimerRef=useRef<number>(0);
+  const showHint=(message:string)=>{
+    window.clearTimeout(hintTimerRef.current);setHint(message);
+    hintTimerRef.current=window.setTimeout(()=>setHint(''),2400);
+  };
+  useEffect(()=>()=>window.clearTimeout(hintTimerRef.current),[]);
+  const catchParcel=()=>{
+    const found=parcelRef.current;
+    if(!runningRef.current||!found||performance.now()>found.end)return;
+    parcelRef.current=null;setParcel(null);netUntilRef.current=performance.now()+1100;
+    showHint(onFind(found.kind));
+    try{navigator.vibrate?.(20);}catch{}
+  };
 
   useEffect(()=>{runningRef.current=running;},[running]);
   useEffect(()=>{flowRef.current=flow;},[flow]);
@@ -50,17 +71,34 @@ export function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:nu
   },[running,onProduce]);
 
   useEffect(()=>{
-    if(!running)return;
-    const id=window.setInterval(()=>{
-      setPressure(prev=>{
-        let next=1+Math.floor(Math.random()*3);
-        if(next===prev)next=prev%3+1;
-        pressureRef.current=next;
-        comboRef.current=0;setCombo(0);
-        return next;
-      });
-    },7500);
-    return()=>window.clearInterval(id);
+    if(!running){warningRef.current=0;parcelRef.current=null;setParcel(null);return;}
+    let alive=true,warningTimer=0,changeTimer=0;
+    const schedule=()=>{
+      warningTimer=window.setTimeout(()=>{
+        if(!alive)return;
+        const current=pressureRef.current;
+        let next=1+Math.floor(Math.random()*3);if(next===current)next=current%3+1;
+        warningRef.current=next>current?1:-1;
+        showHint(next>current?'Поток усиливается':'Поток слабеет');
+        changeTimer=window.setTimeout(()=>{
+          if(!alive)return;
+          pressureRef.current=next;setPressure(next);warningRef.current=0;
+          comboRef.current=0;setCombo(0);schedule();
+        },2000);
+      },5500);
+    };
+    schedule();
+    let nextFind=performance.now()+35000+Math.random()*20000;
+    const parcelTimer=window.setInterval(()=>{
+      const now=performance.now();
+      if(parcelRef.current&&now>=parcelRef.current.end){parcelRef.current=null;setParcel(null);}
+      if(now<nextFind)return;
+      nextFind=now+70000+Math.random()*40000;
+      const roll=Math.random(),kind:MillFind=roll<.65?'drops':roll<.9?'potion':'rune';
+      const found={kind,start:now,end:now+9000};parcelRef.current=found;setParcel(found);
+      showHint('Находка в потоке');
+    },250);
+    return()=>{alive=false;window.clearTimeout(warningTimer);window.clearTimeout(changeTimer);window.clearInterval(parcelTimer);warningRef.current=0;parcelRef.current=null;};
   },[running]);
 
   useEffect(()=>{
@@ -170,6 +208,17 @@ export function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:nu
       mark.position.set(-3,.135,-12+i*2.3);
       scene.add(mark);flowMarks.push(mark);
     }
+
+    // Small floating parcel and a temporary collection net by the near bank.
+    const parcelGroup=new THREE.Group();
+    const parcelBody=new THREE.Mesh(new THREE.BoxGeometry(.65,.42,.55),new THREE.MeshStandardMaterial({color:0xd4ac62,roughness:.8}));
+    parcelGroup.add(parcelBody);
+    const parcelRibbon=new THREE.Mesh(new THREE.BoxGeometry(.12,.45,.58),new THREE.MeshStandardMaterial({color:0xffdf85,emissive:0x8f5d18,emissiveIntensity:.5}));
+    parcelGroup.add(parcelRibbon);
+    const halo=new THREE.Mesh(new THREE.TorusGeometry(.48,.035,6,24),new THREE.MeshBasicMaterial({color:0xffd36a}));
+    halo.rotation.x=Math.PI/2;halo.position.y=-.17;parcelGroup.add(halo);parcelGroup.visible=false;scene.add(parcelGroup);
+    const net=new THREE.Mesh(new THREE.SphereGeometry(.9,8,5,0,Math.PI*2,0,Math.PI/2),new THREE.MeshStandardMaterial({color:0xe2c985,wireframe:true,side:THREE.DoubleSide}));
+    net.position.set(-1.3,.22,5.8);net.visible=false;scene.add(net);
 
     // Working sluice upstream: the player raises or lowers this gate to match river pressure.
     const gateWood=new THREE.MeshStandardMaterial({color:0x4a2f1b,roughness:.92});
@@ -366,7 +415,17 @@ export function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:nu
       frame=requestAnimationFrame(animate);
       const dt=Math.min(.05,clock.getDelta());
       const balanced=flowRef.current===pressureRef.current;
-      const flowSpeed=runningRef.current?(2.2+flowRef.current*1.35):.7;
+      const flowSpeed=(runningRef.current?(2.2+flowRef.current*1.35):.7)*(1+warningRef.current*.18);
+      const now=performance.now(),found=parcelRef.current;
+      parcelGroup.visible=!!found&&runningRef.current;
+      if(found){
+        const progress=THREE.MathUtils.clamp((now-found.start)/(found.end-found.start),0,1);
+        parcelGroup.position.set(-2.2,.45+Math.sin(now*.005)*.07,-8+progress*16);
+        parcelGroup.rotation.y=now*.0005;
+        halo.material instanceof THREE.MeshBasicMaterial&&halo.material.color.setHex(found.kind==='rune'?0x9dcaff:found.kind==='potion'?0x9cf2c0:0xffd36a);
+      }
+      net.visible=now<netUntilRef.current;
+      if(net.visible){parcelGroup.visible=true;parcelGroup.position.set(-1.3,.55,5.8);}
       if(wheelRef.current&&runningRef.current)wheelRef.current.rotation.z-=dt*(.68+flowRef.current*.23+(balanced ? .18 : 0));
       if(gateRef.current){
         const targetY=.28+(flowRef.current-1)*.55;
@@ -444,6 +503,12 @@ export function MillScene({stored,balance,onProduce,onCollect,onBack}:{stored:nu
     {!loaded&&<div className="mill-load">Загружаем водяное колесо…</div>}
     {loadFailed&&<div className="mill-load">Колесо временно не загрузилось — механизм всё равно можно проверить.</div>}
     {!!collected&&<div className="mill-collected">+{collected} золотых капель</div>}
+
+    {hint&&<div className="mill-river-hint" role="status">{hint}</div>}
+    {parcel&&<button className="mill-icon-btn mill-net-btn" aria-label="Поймать находку водосборником" title="Поймать находку" onClick={catchParcel}>
+      <img className="mill-frame-img" src={`${BASE}img/models/frame_top_side_360w.png`} alt=""/>
+      <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M9 16h30L32 38H16Z" fill="#352a15" stroke="#f0c866" strokeWidth="2"/><path d="m15 17 4 20m5-20v20m9-20-4 20M12 24h24M14 31h20" stroke="#c69a44" strokeWidth="1.4"/><path d="M24 4c-5 7-5 11 0 11s5-4 0-11" fill="#f0c866"/></svg>
+    </button>}
 
     <div className="mill-rate-pill"><span>Напор меняется</span><b>{running?("+"+(liveRate||1)+" / сек"):"0 / сек"}</b></div>
 
