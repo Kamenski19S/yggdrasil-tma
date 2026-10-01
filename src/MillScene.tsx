@@ -322,7 +322,9 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
       return root;
     };
     const placeMillTree=(source:THREE.Object3D,x:number,z:number,height:number,rotation:number)=>{
-      const model=source.clone(true);model.position.set(0,0,0);model.rotation.set(0,rotation,0);model.scale.set(1,1,1);model.updateMatrixWorld(true);
+      const model=source.clone(true);
+      if(z<-15)model.traverse((o:any)=>{if(o.isMesh)o.castShadow=false;});
+      model.position.set(0,0,0);model.rotation.set(0,rotation,0);model.scale.set(1,1,1);model.updateMatrixWorld(true);
       const raw=new THREE.Box3().setFromObject(model),rawHeight=Math.max(.001,raw.max.y-raw.min.y);model.scale.setScalar(height/rawHeight);model.updateMatrixWorld(true);
       const fitted=new THREE.Box3().setFromObject(model);model.position.set(x,-fitted.min.y,z);model.updateMatrixWorld(true);scene.add(model);
     };
@@ -335,8 +337,8 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
         placements.forEach(([x,z,h,r])=>placeMillTree(source,x,z,h,r));
       }).catch(error=>console.warn(`[MILL TREE] ${asset} unavailable`,error));
     };
-    loadMillTree('BirchTree_1.fbx',[[-10.6,-8.7,7.2,.35],[10.5,-9.4,7.7,-.55]]);
-    loadMillTree('MapleTree_3.fbx',[[-10.8,5.3,6.8,-.15],[11.1,3.4,7.4,.5]]);
+    loadMillTree('BirchTree_1.fbx',[[-10.6,-8.7,7.2,.35],[10.5,-9.4,7.7,-.55],[-9,-17,6.6,.7],[-3,-23,5.8,-.3]]);
+    loadMillTree('MapleTree_3.fbx',[[-10.8,5.3,6.8,-.15],[11.1,3.4,7.4,.5],[7,-18,6.4,.35],[14,-23,5.6,-.65]]);
 
     const stoneMat=new THREE.MeshStandardMaterial({map:stoneRockTexture,color:0xe8e5df,roughness:1});
     for(let i=0;i<18;i++){
