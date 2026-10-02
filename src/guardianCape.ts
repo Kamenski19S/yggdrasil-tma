@@ -8,8 +8,10 @@ export function attachGuardianCape(actor:THREE.Group,guardian:THREE.Object3D,sou
  cape.traverse((part:any)=>{if(part.isMesh){part.geometry.computeBoundingBox();bounds.union(part.geometry.boundingBox.clone().applyMatrix4(part.matrixWorld));}});
  const center=bounds.getCenter(new THREE.Vector3());
  const factor=1.10/(bounds.max.y-bounds.min.y);
- cape.scale.multiplyScalar(factor);cape.scale.z*=.75;
- cape.position.set(-center.x*factor,-bounds.max.y*factor,-bounds.max.z*factor*.75);
+ // Stretch vertically about the shoulder edge; width and back clearance stay fixed.
+ const lengthRatio=1.40/1.10;
+ cape.scale.multiplyScalar(factor);cape.scale.y*=lengthRatio;cape.scale.z*=.75;
+ cape.position.set(-center.x*factor,-bounds.max.y*factor*lengthRatio,-bounds.max.z*factor*.75);
  const hem:Array<{bone:THREE.Bone;rest:THREE.Quaternion;phase:number}>=[];
  cape.traverse((part:any)=>{
   if(part.isMesh){part.castShadow=true;part.receiveShadow=true;part.frustumCulled=false;
