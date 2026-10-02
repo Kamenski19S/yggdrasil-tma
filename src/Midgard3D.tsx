@@ -1,3 +1,4 @@
+import {REPEAT_ASH_CHANCE} from './woodEconomy';
 import {attachGuardianCape} from './guardianCape';
 import {REPAIR_GOODS} from './locationRepairs';
 import { CHAOS_GATES, chaosKey, gateForLocation } from './chaosProgression';
@@ -260,8 +261,9 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         guardDefeatedRef.current=true;guardDeathActionRef.current?.();
         if(whisperReplayRef.current){
           const repeatDrops=spec.repeatReward;
-          onRef.current("guardian:repeat:"+spec.id);
-          setWhisperReward(repeatDrops+" Капель бессмертия"+(spec.id==="ashgrove"?" + Ясеневая древесина ×1":""));
+          const ashReward=spec.id==="ashgrove"&&Math.random()<REPEAT_ASH_CHANCE;
+          onRef.current("guardian:repeat:"+spec.id+(ashReward?":ashwood":""));
+          setWhisperReward(repeatDrops+" Капель бессмертия"+(ashReward?" + Ясеневая древесина ×1":""));
           setWhisperLog(spec.name+" снова повержен. Редкий трофей выдаётся один раз, но за тренировочную победу получено "+repeatDrops+" Капель бессмертия.");
         }else if(spec.id==="whisperStone"){
           const reward=onWhisperWin();setWhisperReward(spec.battleReward+" Капель бессмертия и «"+reward+"»");setWhisperLog("Хродвитнир повержен. Камень открывает награду.");
@@ -5436,7 +5438,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
           return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Этап {idx+1} из {MIDGARD_GUARDIAN_ORDER.length}. {guardianSpec.intro}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginLocationEncounter(id)}>Ответить стражу</button></div>;
         }
         const repeatDrops=guardianSpec.repeatReward;
-        return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Испытание пройдено. Повторный бой даёт {repeatDrops} Капель бессмертия{id==="ashgrove"?" и ясеневую древесину ×1":""}; редкий трофей повторно не выпадает.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginGuardianRematch(id)}>⚔ Сразиться ещё раз</button></div>;
+        return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Испытание пройдено. Повторный бой даёт {repeatDrops} Капель бессмертия{id==="ashgrove"?" и шанс 10% получить ясеневую древесину ×1":""}; редкий трофей повторно не выпадает.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginGuardianRematch(id)}>⚔ Сразиться ещё раз</button></div>;
       }
       if(id==="deepGrove")return <div className="mid3d-ui mid3d-interact"><b>Глубокая роща</b><span>В тени растут редкие лечебные травы. Роща восстанавливает запас раз в 15 минут.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>Собрать редкие травы</button></div>;
       if(id==="hunterCamp")return <div className="mid3d-ui mid3d-interact"><b>Забытая стоянка</b><span>В старых ящиках остаются пригодные ветки и древесина. Запасы обновляются раз в 15 минут.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>Поискать припасы</button></div>;

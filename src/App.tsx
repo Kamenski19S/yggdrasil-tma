@@ -1,3 +1,4 @@
+import {WOOD_TRADES,exchangeWood,forgeAshCost} from './woodEconomy';
 import { REPAIR_RESIDENTS, REPAIR_GOODS, REPAIR_PROJECTS, type RepairResident, nextRepairJob, residentRepairIntro, repaired, repairKey, workKey, canPrepareRepair, prepareRepair, canRestore, restoreLocation } from './locationRepairs';
 import { CHAOS_GATES, chaosKey, gateForLocation, runeCopies, runeStrength, canCleanseGate, cleanseGate } from './chaosProgression';
 import { rollBanditLoot, applyBanditLoot } from './banditLoot';
@@ -225,9 +226,11 @@ const [roadT, setRoadT] = useState(0.06);
     const key=item.id==='shield'?shieldForgeKey(save.shieldAsset):item.id;
     const level=forgeLevel(key);
     if(level>=(item.kind==='weapon'||item.id==='shield'?10:5)){say(item.name+" уже достиг максимальной закалки Мидгарда.");return;}
+    const ashCost=forgeAshCost(item.kind==="weapon"||item.id==="shield",level,!save.forgeFreeUsed);
+    if(save.stock.ashWood<ashCost){say("Для закалки от +5 нужна ясеневая древесина ×1.");return;}
     const cost=forgeCost(item.id);
     if(save.immortalityDrops<cost){say("Недостаточно Капель бессмертия. Нужно: "+cost);return;}
-    setSave(s=>({...s,immortalityDrops:s.immortalityDrops-cost,forgeFreeUsed:true,forgeLevels:{...s.forgeLevels,[key]:(s.forgeLevels[key]||0)+1}}));
+    setSave(s=>s.stock.ashWood<ashCost||s.immortalityDrops<cost?s:({...s,stock:{...s.stock,ashWood:s.stock.ashWood-ashCost},immortalityDrops:s.immortalityDrops-cost,forgeFreeUsed:true,forgeLevels:{...s.forgeLevels,[key]:(s.forgeLevels[key]||0)+1}}));
     haptic("success");
     say((cost===0?"Первая ковка бесплатна. ":"")+item.name+": закалка +1");
   };
@@ -300,19 +303,20 @@ const [roadT, setRoadT] = useState(0.06);
     haptic("success");say(lootDisplayName(id)+" разобран: +"+yieldSteel+" Рунической стали.");
   };
   const craftRuneSteelItem=(recipe:SteelCraftRecipe)=>{
+    if(save.stock.ashWood<(recipe.ashWood||0)){say("Нужна ясеневая древесина ×"+recipe.ashWood);return;}
     if(guardianProgressCount<recipe.requires){say("Этот чертёж откроется после "+recipe.requires+" испытаний Мидгарда.");return;}
     if(save.runeSteel<recipe.steel){say("Не хватает Рунической стали. Нужно: "+recipe.steel);return;}
     if(save.stock[recipe.material]<recipe.amount){say("Не хватает материала: нужно "+recipe.amount+" · "+craftMaterialName(recipe.material)+".");return;}
     if(save.immortalityDrops<recipe.cost){say("Не хватает Капель бессмертия. Нужно: "+recipe.cost);return;}
     setSave(state=>{
-      if(state.runeSteel<recipe.steel||state.stock[recipe.material]<recipe.amount||state.immortalityDrops<recipe.cost)return state;
+      if(state.runeSteel<recipe.steel||state.stock[recipe.material]<recipe.amount||state.stock.ashWood<(recipe.ashWood||0)||state.immortalityDrops<recipe.cost)return state;
       const nextCounts={...state.lootCounts};
       if(recipe.resultWeapon)nextCounts[recipe.resultWeapon]=(Number(nextCounts[recipe.resultWeapon])||0)+1;
       if(recipe.resultShield)nextCounts[recipe.resultShield]=(Number(nextCounts[recipe.resultShield])||0)+1;
       return {...state,
         runeSteel:state.runeSteel-recipe.steel,
         immortalityDrops:state.immortalityDrops-recipe.cost,
-        stock:{...state.stock,[recipe.material]:state.stock[recipe.material]-recipe.amount},
+        stock:{...state.stock,[recipe.material]:state.stock[recipe.material]-recipe.amount,ashWood:state.stock.ashWood-(recipe.ashWood||0)},
         ownedWeapons:recipe.resultWeapon?[...new Set([...state.ownedWeapons,recipe.resultWeapon])]:state.ownedWeapons,
         ownedShields:recipe.resultShield?[...new Set([...state.ownedShields,recipe.resultShield])]:state.ownedShields,
         lootCounts:nextCounts
@@ -608,14 +612,15 @@ const [roadT, setRoadT] = useState(0.06);
       if(requiredGate&&!save.done.includes(chaosKey(requiredGate.id))){openChaosGate(requiredGate.id);return;}
       if(requiredGate&&!repaired(save,requiredGate.id)){setRepairDialog(requiredGate.id);return;}
       if(id.startsWith("guardian:repeat:")){
-        const locationId=id.slice("guardian:repeat:".length);
+        const [locationId,ashFlag]=id.slice("guardian:repeat:".length).split(":");
+        const ashReward=locationId==="ashgrove"&&ashFlag==="ashwood"?1:0;
         const spec=MIDGARD_GUARDIANS[locationId];
         const gate=gateForLocation(locationId);if(gate&&(!save.done.includes(chaosKey(gate.id))||!repaired(save,gate.id)))return;
         if(!spec)return;
         const repeatDrops=spec.repeatReward;
-        setSave(s=>({...s,immortalityDrops:s.immortalityDrops+repeatDrops,stock:{...s.stock,ashWood:s.stock.ashWood+(locationId==="ashgrove"?1:0)}}));
+        setSave(s=>({...s,immortalityDrops:s.immortalityDrops+repeatDrops,stock:{...s.stock,ashWood:s.stock.ashWood+ashReward}}));
         haptic("success");
-        say(`Повторная победа над ${spec.name}: +${repeatDrops} Капель бессмертия${locationId==="ashgrove"?", Ясеневая древесина ×1":""}.`);
+        say(`Повторная победа над ${spec.name}: +${repeatDrops} Капель бессмертия${ashReward?", Ясеневая древесина ×1":""}.`);
         return;
       }
       if(id.startsWith("guardian:correct:")||id.startsWith("guardian:battle:")){
@@ -1179,7 +1184,7 @@ const [roadT, setRoadT] = useState(0.06);
             const on=equipped(item.id as GearId);
             return <div key={item.id} className={'forge-item'+(on?' selected':'')}>{label}<div className="forge-gear-actions">
               <button className={on?'on':''} onClick={()=>toggleGear(item.id as GearId)}>{on?'Снять':'Надеть'}</button>
-              <button disabled={maxed} onClick={()=>improveForgeItem(item)}>{maxed?'★':free?'0':<>{forgeCost(item.id)}<SparkDrop/></>}</button>
+              <button disabled={maxed} onClick={()=>improveForgeItem(item)}>{maxed?'★':free?'0':<>{forgeCost(item.id)}<SparkDrop/>{forgeAshCost(item.id==='shield',level,!save.forgeFreeUsed)>0?' + 🪵✨1':''}</>}</button>
             </div></div>;
           }
           return null;
@@ -1188,7 +1193,7 @@ const [roadT, setRoadT] = useState(0.06);
           <div className="forge-head">
             <div className="forge-title">Кузница Вёлунда</div>
             <div className="forge-master">«Сталь помнит каждый бой. Отдай её огню — и она вернётся сильнее».</div>
-            <div className="forge-advice"><b>Совет:</b> выбери оружие или щит на стене. Их предел закалки +10; броня, шлем и сапоги — до +5.</div>
+            <div className="forge-advice"><b>Совет:</b> выбери оружие или щит на стене. Их предел закалки +10; броня, шлем и сапоги — до +5. Для оружия и щитов начиная с +5 дополнительно нужна ясеневая древесина ×1. В запасе: {save.stock.ashWood}.</div>
             <div className="forge-wallet"><span>Запас:</span><b><SparkDrop/> {save.immortalityDrops}</b><span>Капель бессмертия</span></div>
           </div>
           <div className={"forge-free"+(!save.forgeFreeUsed?" ready":"")}>{save.forgeFreeUsed
@@ -1197,7 +1202,7 @@ const [roadT, setRoadT] = useState(0.06);
           <div className="forge-group-title">Стена оружия Вёлунда</div>
           <ForgeWeaponWall owned={save.ownedWeapons} ownedShields={save.ownedShields} selected={save.heroWeapon} selectedShield={equipped('shield')?save.shieldAsset:null} onChoose={chooseForgeWeapon}/>
           <div className="forge-equipped"><span>В руке: {save.heroWeapon==='default'?(save.heroSkin==='valkyrie'?'Меч валькирии':'Секира викинга'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} · сила +{WEAPON_POWER[save.heroWeapon]} · закалка +{forgeLevel(save.heroWeapon)}</span>
-            <button disabled={forgeLevel(save.heroWeapon)>=10} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=10?'Максимум +10':<>Закалить {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/></>:'бесплатно'}</>}</button></div>
+            <button disabled={forgeLevel(save.heroWeapon)>=10} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=10?'Максимум +10':<>Закалить {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/>{forgeAshCost(true,forgeLevel(save.heroWeapon),!save.forgeFreeUsed)>0?" + ясень ×1":""}</>:'бесплатно'}</>}</button></div>
           <div className="forge-group-title">Экипировка</div>
           <div className="forge-grid">{gear.map(forgeButton)}</div>
                     <div className="forge-note"><b>Закалка действует в бою.</b> Оружие усиливает обычный удар; броня и шлем добавляют здоровье и снижают урон; щит крепче держит защиту; улучшенные сапоги помогают быстрее восстановить энергию.</div>
@@ -1320,8 +1325,8 @@ const [roadT, setRoadT] = useState(0.06);
               <div className="steel-list">
                 {STEEL_CRAFT_RECIPES.map(recipe=>{
                   const locked=guardianProgressCount<recipe.requires;
-                  const ready=!locked&&save.runeSteel>=recipe.steel&&save.stock[recipe.material]>=recipe.amount&&save.immortalityDrops>=recipe.cost;
-                  return <div key={recipe.id} className={"steel-recipe"+(locked?" locked":"")}><span><b>{recipe.resultShield?"🛡️":"⚔️"} {recipe.name}</b><small>{locked?"Откроется после "+recipe.requires+" испытаний Мидгарда":recipe.steel+" стали + "+recipe.amount+" × "+craftMaterialName(recipe.material)+" + "+recipe.cost+" Капель бессмертия"}</small></span><button disabled={!ready} onClick={()=>craftRuneSteelItem(recipe)}>{locked?"Закрыто":"Создать"}</button></div>;
+                  const ready=!locked&&save.runeSteel>=recipe.steel&&save.stock[recipe.material]>=recipe.amount&&save.stock.ashWood>=(recipe.ashWood||0)&&save.immortalityDrops>=recipe.cost;
+                  return <div key={recipe.id} className={"steel-recipe"+(locked?" locked":"")}><span><b>{recipe.resultShield?"🛡️":"⚔️"} {recipe.name}</b><small>{locked?"Откроется после "+recipe.requires+" испытаний Мидгарда":recipe.steel+" стали + "+recipe.amount+" × "+craftMaterialName(recipe.material)+(recipe.ashWood?" + "+recipe.ashWood+" × Ясеневая древесина":"")+" + "+recipe.cost+" Капель бессмертия"}</small></span><button disabled={!ready} onClick={()=>craftRuneSteelItem(recipe)}>{locked?"Закрыто":"Создать"}</button></div>;
                 })}
               </div>
             </div>
@@ -1375,6 +1380,7 @@ const [roadT, setRoadT] = useState(0.06);
             {!residentOrder.initial&&(save.locationCooldowns['village:'+resident]||0)>Date.now()&&<span>Следующий заказ через {Math.max(1,Math.ceil(((save.locationCooldowns['village:'+resident]||0)-Date.now())/60000))} мин.</span>}
             <button type="button" disabled={!canCompleteOrder(save,resident)} onClick={submitVillageOrder}>Сдать материалы</button>
           </div>}
+          {houseDialogId==='carpenter'&&<div className="house-quest-status"><b>Обмен излишков древесины</b><span>В запасе: {save.stock.wood}. Обмен добровольный.</span>{WOOD_TRADES.map(t=><button key={t.id} disabled={save.stock.wood<t.wood} onClick={()=>{setSave(s=>exchangeWood(s,t.id));haptic('success');setHouseDialog('Обмен выполнен. Материалы добавлены в рюкзак.');}}>{t.label}</button>)}</div>}
           {['house','elder','northBridge'].includes(houseDialogId)&&<div className="house-quest-status"><b>Ремонт Северного моста</b>
             <span>{preparationDone(save,'herbalist')?'✅':'○'} Настой Сигрид</span>
             <span>{preparationDone(save,'carpenter')?'✅':'○'} Основание Бьёрна</span>

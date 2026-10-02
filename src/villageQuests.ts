@@ -12,8 +12,8 @@ const FIRST:Record<VillageResident,Order>={
 };
 const REPEAT:Record<VillageResident,Order[]>={
  herbalist:[{title:'Пополнить запас лечебных трав',cost:{herbs:4},drops:20,potion:'northernMoss'},{title:'Материалы для сушки трав',cost:{herbs:3,twigs:2},drops:25,potion:'northernMoss'}],
- carpenter:[{title:'Доски для деревенских построек',cost:{wood:4},drops:25},{title:'Починка ограды',cost:{wood:2,twigs:4},drops:30}],
- craftsman:[{title:'Рукояти для инструментов',cost:{wood:2,twigs:3},drops:25},{title:'Материалы для новых креплений',cost:{wood:3,twigs:2},drops:30}]
+ carpenter:[{title:'Ремонт деревенских домов',cost:{wood:6,twigs:2},drops:35},{title:'Доски для деревенских построек',cost:{wood:4},drops:25},{title:'Починка ограды',cost:{wood:2,twigs:4},drops:30}],
+ craftsman:[{title:'Заготовки для щитов',cost:{wood:5,twigs:2},drops:35},{title:'Рукояти для инструментов',cost:{wood:2,twigs:3},drops:25},{title:'Материалы для новых креплений',cost:{wood:3,twigs:2},drops:30}]
 };
 export const preparationDone=(s:Save,id:VillageResident)=>s.done.includes('bridge:north:repaired')||s.done.includes('defense:'+id);
 export const wardPrepared=(s:Save)=>VILLAGE_RESIDENTS.every(id=>preparationDone(s,id));

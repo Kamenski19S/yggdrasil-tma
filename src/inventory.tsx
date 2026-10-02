@@ -73,15 +73,15 @@ export const RUNE_STEEL_YIELD:Partial<Record<HeroWeapon,number>>={
 };
 
 
-export type SteelCraftRecipe={id:string;name:string;steel:number;material:CraftMaterial;amount:number;cost:number;requires:number;resultWeapon?:HeroWeapon;resultShield?:string};
+export type SteelCraftRecipe={ashWood?:number;id:string;name:string;steel:number;material:CraftMaterial;amount:number;cost:number;requires:number;resultWeapon?:HeroWeapon;resultShield?:string};
 
 
 export const STEEL_CRAFT_RECIPES:SteelCraftRecipe[]=[
-  {id:"steel-claymore",name:"Клеймор",steel:3,material:"wood",amount:5,cost:40,requires:4,resultWeapon:"claymore"},
+  {id:"steel-claymore",ashWood:1,name:"Клеймор",steel:3,material:"wood",amount:5,cost:40,requires:4,resultWeapon:"claymore"},
   {id:"steel-scythe",name:"Боевая коса",steel:3,material:"twigs",amount:4,cost:35,requires:4,resultWeapon:"scythe"},
-  {id:"steel-silver-shield",name:"Серебряный щит",steel:2,material:"wood",amount:3,cost:30,requires:3,resultShield:"Shield_Round_2.glb"},
+  {id:"steel-silver-shield",ashWood:1,name:"Серебряный щит",steel:2,material:"wood",amount:3,cost:30,requires:3,resultShield:"Shield_Round_2.glb"},
   {id:"steel-shield-2",name:"Щит II",steel:3,material:"wood",amount:4,cost:40,requires:6,resultShield:"Shield_Heater_2.glb"},
-  {id:"steel-golden-shield",name:"Золотой щит",steel:4,material:"wood",amount:5,cost:55,requires:8,resultShield:"Shield_Celtic_Golden.glb"}
+  {id:"steel-golden-shield",ashWood:2,name:"Золотой щит",steel:4,material:"wood",amount:5,cost:55,requires:8,resultShield:"Shield_Celtic_Golden.glb"}
 ];
 
 
