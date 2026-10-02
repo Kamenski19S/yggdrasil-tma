@@ -1,3 +1,4 @@
+import { CHAOS_GATE_KEY, CHAOS_GATE_COST, CHAOS_GATE_RUNES, cleanseChaosGate } from './chaosGate';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -22,6 +23,8 @@ export function App() {
   const [pick, setPick] = useState("");
   const [pickName, setPickName] = useState("");
   const [toast, setToast] = useState("");
+  const [chaosDialog,setChaosDialog]=useState(false);
+  const [chaosRune,setChaosRune]=useState('');
   const [houseDialog,setHouseDialog]=useState("");
   const [houseDialogId,setHouseDialogId]=useState("");
   const houseDialogPending=useRef<string|null>(null);
@@ -727,6 +730,7 @@ const [roadT, setRoadT] = useState(0.06);
         craftsman:"Торвальд: «Я чиню инструменты и выковываю крепления. Приноси материалы, если понадобится помощь»."
       };
       if(homeMessages[id]){say(homeMessages[id]);return;}
+      if(id==='chaosGate'){setChaosRune(CHAOS_GATE_RUNES.find(r=>save.runes.includes(r))||'');setChaosDialog(true);return;}
       if(id==='northBridge'){
         houseDialogPending.current='northBridge';
         say(save.done.includes('bridge:north:repaired')?'Защитная руна горит. Северный мост открыт.':
@@ -970,6 +974,7 @@ const [roadT, setRoadT] = useState(0.06);
       eventDone={save.done.includes("forest:choice")}
       start={midgardReturn.current}
       rememberPosition={rememberMidgardPosition}
+      chaosGateCleared={save.done.includes(CHAOS_GATE_KEY)}
       northBridgeRepaired={save.done.includes("bridge:north:repaired")}
       northBridgeReady={wardPrepared(save)&&save.immortalityDrops>=VILLAGE_WARD_COST}
       goldChestOpened={save.done.includes('chest:gold')}
@@ -1363,6 +1368,17 @@ const [roadT, setRoadT] = useState(0.06);
         </div>
       )}
 
+      {chaosDialog&&screen.t==='realm'&&screen.id==='midgard'&&<div style={{position:'fixed',zIndex:120,bottom:145,left:'50%',transform:'translateX(-50%)',width:'min(330px,88vw)',padding:14,border:'1px solid #a780bd',borderRadius:12,background:'#17121ef2',color:'#e3d4ec',fontSize:12}} onPointerDown={e=>e.stopPropagation()} role="dialog" aria-label="Врата хаоса">
+        <b>Врата хаоса · Северный мост</b>
+        <p>{save.done.includes(CHAOS_GATE_KEY)?'Заклинание снято. Руны и тёмная завеса исчезли, каменная арка осталась.':'Силы хаоса наложили печать Хагалаз, Наутиз и Иса. Напитай противодействующую руну каплями бессмертия, чтобы рассеять завесу.'}</p>
+        {!save.done.includes(CHAOS_GATE_KEY)&&<>
+          <label>Руна <select value={chaosRune} onChange={e=>setChaosRune(e.target.value)} style={{background:'#22182d',color:'#ead9f6',padding:5}}><option value="">Выбери руну</option>{CHAOS_GATE_RUNES.map(id=><option key={id} value={id} disabled={!save.runes.includes(id)}>{RUNE_CATALOG.find(r=>r.id===id)?.name}{save.runes.includes(id)?'':' — нет в арсенале'}</option>)}</select></label>
+          <p>Капли: {save.immortalityDrops} / {CHAOS_GATE_COST}. Руна остаётся у героя.</p>
+          {!CHAOS_GATE_RUNES.some(id=>save.runes.includes(id))&&<p>Феху можно получить у Древнего камня Феху. Руны также встречаются в добыче разбойников и мельницы.</p>}
+          <button disabled={!save.runes.includes(chaosRune)||!CHAOS_GATE_RUNES.includes(chaosRune)||save.immortalityDrops<CHAOS_GATE_COST} onClick={()=>{setSave(s=>cleanseChaosGate(s,chaosRune));haptic('success');}}>Очистить · {CHAOS_GATE_COST} капель</button>
+        </>}
+        <button style={{marginLeft:8}} onClick={()=>setChaosDialog(false)}>Закрыть</button>
+      </div>}
       {toast && <div className="toast">{toast}</div>}
       {houseDialog&&screen.t==="realm"&&screen.id==="midgard"&&<div className="house-dialog-backdrop" onPointerDown={e=>e.stopPropagation()}>
         <div className="house-dialog-panel" role="dialog" aria-modal="true" aria-label="Разговор у дома">
