@@ -1,3 +1,4 @@
+import { CHAOS_GATES, chaosKey, gateForLocation, runeCopies, runeStrength, canCleanseGate, cleanseGate } from './chaosProgression';
 import { rollBanditLoot, applyBanditLoot } from './banditLoot';
 import { CHAOS_GATE_KEY, CHAOS_GATE_COST, CHAOS_GATE_RUNES, cleanseChaosGate } from './chaosGate';
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -24,8 +25,10 @@ export function App() {
   const [pick, setPick] = useState("");
   const [pickName, setPickName] = useState("");
   const [toast, setToast] = useState("");
-  const [chaosDialog,setChaosDialog]=useState(false);
-  const [chaosRune,setChaosRune]=useState('');
+  const [chaosDialog,setChaosDialog]=useState<string|null>(null);
+  const [chaosRecipe,setChaosRecipe]=useState(0);
+  const currentChaosGate=CHAOS_GATES.find(g=>g.id===chaosDialog);
+  const openChaosGate=(gateId:string)=>{const gate=CHAOS_GATES.find(g=>g.id===gateId);if(!gate)return;const choice=gate.recipes.findIndex(needs=>needs.every(n=>runeCopies(save,n.id)>=n.quantity&&runeStrength(save,n.id)>=n.level));setChaosRecipe(Math.max(0,choice));setChaosDialog(gateId);};
   const [houseDialog,setHouseDialog]=useState("");
   const [houseDialogId,setHouseDialogId]=useState("");
   const houseDialogPending=useRef<string|null>(null);
@@ -593,9 +596,13 @@ const [roadT, setRoadT] = useState(0.06);
 
     const interact = (id: string, position?:{x:number;z:number}) => {
       haptic();
+      if(id.startsWith('chaosGate:')){openChaosGate(id.slice(10));return;}
+      const requiredGate=gateForLocation(id);
+      if(requiredGate&&!save.done.includes(chaosKey(requiredGate.id))){openChaosGate(requiredGate.id);return;}
       if(id.startsWith("guardian:repeat:")){
         const locationId=id.slice("guardian:repeat:".length);
         const spec=MIDGARD_GUARDIANS[locationId];
+        const gate=gateForLocation(locationId);if(gate&&!save.done.includes(chaosKey(gate.id)))return;
         if(!spec)return;
         const repeatDrops=2+spec.power;
         setSave(s=>({...s,immortalityDrops:s.immortalityDrops+repeatDrops}));
@@ -607,6 +614,7 @@ const [roadT, setRoadT] = useState(0.06);
         const battle=id.startsWith("guardian:battle:");
         const locationId=id.slice(battle?"guardian:battle:".length:"guardian:correct:".length);
         const spec=MIDGARD_GUARDIANS[locationId];
+        const gate=gateForLocation(locationId);if(gate&&!save.done.includes(chaosKey(gate.id)))return;
         if(!spec)return;
         const key="guardian:"+locationId;
         const stageKey="guardian:stage:"+locationId;
@@ -711,7 +719,7 @@ const [roadT, setRoadT] = useState(0.06);
         craftsman:"Торвальд: «Я чиню инструменты и выковываю крепления. Приноси материалы, если понадобится помощь»."
       };
       if(homeMessages[id]){say(homeMessages[id]);return;}
-      if(id==='chaosGate'){setChaosRune(CHAOS_GATE_RUNES.find(r=>save.runes.includes(r))||'');setChaosDialog(true);return;}
+      if(id==='chaosGate'){openChaosGate('north');return;}
       if(id==='northBridge'){
         houseDialogPending.current='northBridge';
         say(save.done.includes('bridge:north:repaired')?'Защитная руна горит. Северный мост открыт.':
@@ -955,6 +963,7 @@ const [roadT, setRoadT] = useState(0.06);
       eventDone={save.done.includes("forest:choice")}
       start={midgardReturn.current}
       rememberPosition={rememberMidgardPosition}
+      chaosCleared={CHAOS_GATES.filter(g=>save.done.includes(chaosKey(g.id))).map(g=>g.id)}
       chaosGateCleared={save.done.includes(CHAOS_GATE_KEY)}
       northBridgeRepaired={save.done.includes("bridge:north:repaired")}
       northBridgeReady={wardPrepared(save)&&save.immortalityDrops>=VILLAGE_WARD_COST}
@@ -1349,14 +1358,14 @@ const [roadT, setRoadT] = useState(0.06);
         </div>
       )}
 
-      {chaosDialog&&screen.t==='realm'&&screen.id==='midgard'&&<div className="chaos-panel" onPointerDown={e=>e.stopPropagation()} role="dialog" aria-label="Врата хаоса">
-        <div className="chaos-panel-title"><b>Врата хаоса</b><button aria-label="Закрыть" onClick={()=>setChaosDialog(false)}>×</button></div>
-        {save.done.includes(CHAOS_GATE_KEY)?<p>Печать снята. Проход свободен.</p>:<>
-          <p>Печать Хагалаз · Наутиз · Иса.<br/>Выбери одну противодействующую руну.</p>
-          <div className="chaos-runes">{CHAOS_GATE_RUNES.map(id=>{const rune=RUNE_CATALOG.find(r=>r.id===id)!;const available=save.runes.includes(id);return <button key={id} className={chaosRune===id?'chosen':''} disabled={!available} onClick={()=>setChaosRune(id)}><strong>{rune.symbol}</strong><span>{rune.name}</span><small>{available?'×'+Math.max(1,save.lootCounts[id]||1):'Нет'}</small></button>;})}</div>
-          <p>Будет потрачено: 1 руна + {CHAOS_GATE_COST} капель.<br/>Баланс: {save.immortalityDrops}.</p>
-          {!CHAOS_GATE_RUNES.some(id=>save.runes.includes(id))&&<p>Добудь руны у разбойников или мельницы. Феху даёт Древний камень.</p>}
-          <button className="chaos-cleanse" disabled={!save.runes.includes(chaosRune)||!CHAOS_GATE_RUNES.includes(chaosRune)||save.immortalityDrops<CHAOS_GATE_COST} onClick={()=>{setSave(s=>cleanseChaosGate(s,chaosRune));haptic('success');}}>Снять печать</button>
+      {currentChaosGate&&screen.t==='realm'&&screen.id==='midgard'&&<div className="chaos-panel" onPointerDown={e=>e.stopPropagation()} role="dialog" aria-label="Врата хаоса">
+        <div className="chaos-panel-title"><b>{currentChaosGate.name}</b><button aria-label="Закрыть" onClick={()=>setChaosDialog(null)}>×</button></div>
+        {save.done.includes(chaosKey(currentChaosGate.id))?<p>Печать снята. Проход свободен.</p>:<>
+          <p>Тёмная печать {currentChaosGate.seal.join(' · ')}.<br/>Выбери один способ очищения.</p>
+          <div className="chaos-recipes">{currentChaosGate.recipes.map((needs,index)=>{const available=needs.every(n=>runeCopies(save,n.id)>=n.quantity&&runeStrength(save,n.id)>=n.level);return <button key={index} className={chaosRecipe===index?'chosen':''} disabled={!available} onClick={()=>setChaosRecipe(index)}>{needs.map(n=>{const rune=RUNE_CATALOG.find(r=>r.id===n.id)!;return <span key={n.id}><strong>{rune.symbol}</strong> {rune.name} ×{n.quantity} · {['I','II','III'][n.level-1]}<small>В запасе: {runeCopies(save,n.id)} · уровень {['I','II','III'][runeStrength(save,n.id)-1]}</small></span>;})}</button>;})}</div>
+          <p>Стоимость: {currentChaosGate.cost} капель.<br/>Баланс: {save.immortalityDrops}. Указанные руны расходуются.</p>
+          {!currentChaosGate.recipes.some(needs=>needs.every(n=>runeCopies(save,n.id)>=n.quantity&&runeStrength(save,n.id)>=n.level))&&<p>Руны дают разбойники и мельница. Усиль руны до нужного уровня в Чертоге.</p>}
+          <button className="chaos-cleanse" disabled={!canCleanseGate(save,currentChaosGate,chaosRecipe)} onClick={()=>{setSave(s=>cleanseGate(s,currentChaosGate.id,chaosRecipe));haptic('success');}}>Снять печать</button>
         </>}
       </div>}
       {toast && <div className="toast">{toast}</div>}

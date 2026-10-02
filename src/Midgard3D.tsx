@@ -1,3 +1,4 @@
+import { CHAOS_GATES, chaosKey, gateForLocation } from './chaosProgression';
 import { createChaosGate } from './chaosGate';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
@@ -10,7 +11,7 @@ import { InventorySection, SparkDrop } from './inventory';
 
 
 
-export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, onOpenMill, eventDone, start, rememberPosition, northBridgeRepaired, chaosGateCleared, northBridgeReady, goldChestOpened, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, banditRespawnAt, onBanditDefeated, onBanditReward, onBanditKnockout, potions, runes, equippedRune, runeCounts, runeLevels, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; onOpenMill:()=>void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; chaosGateCleared:boolean; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; banditRespawnAt:Record<string,number>; onBanditDefeated:(id:string)=>void; onBanditReward:(id:string)=>string; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; runeCounts?:Record<string,number>; runeLevels?:Record<string,number>; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string,currentHp?:number)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
+export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, onOpenMill, eventDone, start, rememberPosition, northBridgeRepaired, chaosGateCleared, chaosCleared, northBridgeReady, goldChestOpened, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, banditRespawnAt, onBanditDefeated, onBanditReward, onBanditKnockout, potions, runes, equippedRune, runeCounts, runeLevels, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; onOpenMill:()=>void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; chaosGateCleared:boolean; chaosCleared:string[]; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; banditRespawnAt:Record<string,number>; onBanditDefeated:(id:string)=>void; onBanditReward:(id:string)=>string; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; runeCounts?:Record<string,number>; runeLevels?:Record<string,number>; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string,currentHp?:number)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -72,6 +73,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   const insideHomeRef = useRef(false);
   const homeActionRef = useRef<((inside:boolean)=>void)|null>(null);
   const attackActionRef = useRef<(()=>void)|null>(null);
+  const clearedGatesRef=useRef(new Set(chaosCleared));clearedGatesRef.current=new Set(chaosCleared);
   const chaosClearedRef=useRef(chaosGateCleared);
   chaosClearedRef.current=chaosGateCleared;
   const onRef=useRef(on);
@@ -125,6 +127,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     return idx<=0||MIDGARD_GUARDIAN_ORDER.slice(0,idx).every(prev=>guardianResolved.includes(prev));
   };
   const beginLocationEncounter=(id:string)=>{
+    const gate=gateForLocation(id);if(gate&&!clearedGatesRef.current.has(gate.id)){onRef.current('chaosGate:'+gate.id,{x:state.current.x,z:state.current.z});return;}
     if(!guardianPrerequisitesDone(id)){
       const idx=MIDGARD_GUARDIAN_ORDER.indexOf(id as any);
       const missing=MIDGARD_GUARDIAN_ORDER.slice(0,Math.max(0,idx)).find(prev=>!guardianResolved.includes(prev));
@@ -145,6 +148,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   };
   const beginWhisperEncounter=()=>beginLocationEncounter("whisperStone");
   const beginGuardianRematch=(id:string)=>{
+    const gate=gateForLocation(id);if(gate&&!clearedGatesRef.current.has(gate.id)){onRef.current('chaosGate:'+gate.id,{x:state.current.x,z:state.current.z});return;}
     const spec=MIDGARD_GUARDIANS[id]||MIDGARD_GUARDIANS.whisperStone;
     activeGuardianIdRef.current=spec.id;setActiveGuardianId(spec.id);
     clearWhisperTimers();
@@ -953,6 +957,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       // The northern crossing stays blocked from either bank until its repair quest is complete.
       if(!northBridgeRepaired&&hits(x,z,{kind:"rect",x:NORTH_BRIDGE_X,z:NORTH_BRIDGE_Z,w:BRIDGE_SPAN+.6,d:BRIDGE_WIDTH+.5,rot:0}))return true;
       if(!chaosClearedRef.current&&hits(x,z,{kind:"rect",x:NORTH_BRIDGE_X,z:NORTH_BRIDGE_Z,w:BRIDGE_SPAN+.6,d:BRIDGE_WIDTH+.5,rot:0}))return true;
+      for(const gate of CHAOS_GATES){if(!gate.location||clearedGatesRef.current.has(gate.id))continue;const d=Math.hypot(x-gate.centerX,z-gate.centerZ),previous=Math.hypot(state.current.x-gate.centerX,state.current.z-gate.centerZ);const limit=gate.radius+HERO_RADIUS;if(d<limit&&(previous>=limit||d<previous-.001))return true;}
       // A ward protects the cache itself until the northern bridge is repaired.
       if(!northBridgeRepaired&&Math.hypot(x+72,z-48)<3.25+HERO_RADIUS)return true;
       // Water can be crossed only on an open bridge deck.
@@ -960,7 +965,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       // Each gate blocks its own opening until its leaves have swung far enough.
       if(villageGateProgress < .78 && hits(x,z,{kind:"segment",x1:-2.87,z1:gateFrontZ,x2:2.87,z2:gateFrontZ,r:1.12})) return true;
       if(rearGateProgress < .78 && hits(x,z,{kind:"segment",x1:-2.87,z1:gateRearZ,x2:2.87,z2:gateRearZ,r:1.12}))return true;
-      if(chaosGate.blocks(x,z)&&!chaosGate.blocks(state.current.x,state.current.z))return true;
+      if(chaosVisuals.some(g=>!clearedGatesRef.current.has(g.id)&&g.visual.sealedAt(x,z)&&!g.visual.sealedAt(state.current.x,state.current.z)))return true;
+      if(chaosVisuals.some(g=>g.visual.blocks(x,z)&&!g.visual.blocks(state.current.x,state.current.z)))return true;
       return colliders.some(c=>hits(x,z,c));
     };
     const moveWithCollision=(q:{x:number;z:number},nx:number,nz:number)=>{
@@ -2469,7 +2475,15 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     };
     const riverBridge=makeStoneBridgeBase(BRIDGE_X,BRIDGE_Z,BRIDGE_Y,"port","Речной мост");
     const northBridge=makeStoneBridgeBase(NORTH_BRIDGE_X,NORTH_BRIDGE_Z,NORTH_BRIDGE_Y,"northBridge",northBridgeRepaired?"Северный мост":"Северный мост — проход закрыт");
-    const chaosGate=createChaosGate(scene,NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.6,NORTH_BRIDGE_Y+.12,NORTH_BRIDGE_Z,callback=>loadGlbWithFolderFallback('ancient-gateway-chaos.glb',callback,'Врата хаоса'));
+    let chaosBase:any=null,chaosRequested=false;
+    const chaosWaiting:Array<(asset:any)=>void>=[];
+    const cloneChaos=(asset:any)=>{const model=asset.scene.clone(true);model.traverse((o:any)=>{if(o.material)o.material=Array.isArray(o.material)?o.material.map((m:any)=>m.clone()):o.material.clone();});return {scene:model};};
+    const loadChaos=(callback:(asset:any)=>void)=>{if(chaosBase){callback(cloneChaos(chaosBase));return;}chaosWaiting.push(callback);if(chaosRequested)return;chaosRequested=true;loadGlbWithFolderFallback('ancient-gateway-chaos.glb',asset=>{chaosBase=asset;for(const done of chaosWaiting.splice(0))done(cloneChaos(asset));},'Врата хаоса');};
+    const chaosVisuals=CHAOS_GATES.map(gate=>({id:gate.id,visual:createChaosGate(scene,
+      gate.location?gate.x:NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.6,
+      gate.location?groundY(gate.x,gate.z)+.12:NORTH_BRIDGE_Y+.12,
+      gate.location?gate.z:NORTH_BRIDGE_Z,loadChaos,
+      {rotation:gate.rotation,color:gate.color,seal:gate.seal,ward:gate.location?{x:gate.centerX,z:gate.centerZ,y:groundY(gate.centerX,gate.centerZ),radius:gate.radius}:undefined})}));
     if(!northBridgeRepaired){
       // Visible barriers on BOTH banks agree with the closed-crossing collision.
       for(const side of [-1,1]){
@@ -4697,7 +4711,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     homeActionRef.current=setHomeMode;
 
     const destinations=[
-      {id:"chaosGate",label:"Врата хаоса",x:NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.6,z:NORTH_BRIDGE_Z,r:8.5},
+      {id:"chaosGate:north",label:"Врата хаоса · Северный мост",x:NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.6,z:NORTH_BRIDGE_Z,r:8.5},
+      ...CHAOS_GATES.filter(g=>g.location).map(g=>({id:'chaosGate:'+g.id,label:'Врата хаоса · '+g.name,x:g.x,z:g.z,r:7.5})),
       // Door points sit on the front side of each house rather than at its
       // centre, so the white interaction cloud appears only by the entrance.
       ...homeDestinations,
@@ -4797,7 +4812,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         cameraDir.current.x=0;cameraDir.current.z=-1;
       }
       const baseHy=insideHomeRef.current?groundY(heroHomeX,heroHomeZ)+.58*HOME_SCALE*BUILDING_HEIGHT:onRiverBridge(q.x,q.z)?bridgeHeight(q.x,q.z)+.12:groundY(q.x,q.z);
-      const hy=insideHomeRef.current?baseHy:chaosGate.floorAt(q.x,q.z,baseHy);
+      const hy=insideHomeRef.current?baseHy:chaosVisuals.reduce((height,g)=>g.visual.floorAt(q.x,q.z,height),baseHy);
       const moving=!encounterLocked&&l>.05;
       hero.position.set(q.x,hy+.04,q.z);
       if(!banditRequested&&BANDIT_SPECS.some(spec=>Math.hypot(q.x-spec.x,q.z-spec.z)<34))loadBandits();
@@ -5084,12 +5099,14 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         if(Math.hypot(q.x-restX,q.z-restZ)<1.75*HOME_SCALE){found="Кровать героя";foundId="heroRest";}
         else if(q.z>heroHomeZ+1.72*HOME_SCALE){found="Дверь — выйти из дома";foundId="heroHomeExit";}
       } else {
-        for(const d of destinations){if(Math.hypot(q.x-d.x,q.z-d.z)<d.r){found=d.label;foundId=d.id;break;}}
+        for(const d of destinations){if(d.id.startsWith('chaosGate:')&&clearedGatesRef.current.has(d.id.slice(10)))continue;if(Math.hypot(q.x-d.x,q.z-d.z)<d.r){found=d.label;foundId=d.id;break;}}
+        const sealedNearby=CHAOS_GATES.filter(g=>g.location&&!clearedGatesRef.current.has(g.id)&&Math.hypot(q.x-g.centerX,q.z-g.centerZ)<g.radius+2).sort((a,b)=>Math.hypot(q.x-a.centerX,q.z-a.centerZ)-a.radius-(Math.hypot(q.x-b.centerX,q.z-b.centerZ)-b.radius))[0];
+        if(sealedNearby){found='Врата хаоса · '+sealedNearby.name;foundId='chaosGate:'+sealedNearby.id;}
         let nearest=2.35;
         for(const node of gatherNodes){
           if(node.used)continue;
           const distance=Math.hypot(q.x-node.spot.x,q.z-node.spot.z);
-          if(foundId!=="chaosGate"&&distance<nearest){nearest=distance;found=node.spot.kind==='wood'?'Молодая ель':node.spot.kind==='twigs'?'Лесной куст':'Лечебные травы';foundId='gather:'+node.spot.id;}
+          if(!foundId.startsWith("chaosGate:")&&distance<nearest){nearest=distance;found=node.spot.kind==='wood'?'Молодая ель':node.spot.kind==='twigs'?'Лесной куст':'Лечебные травы';foundId='gather:'+node.spot.id;}
         }
       }
       setNear(!doorVisit&&found?`${found}|${foundId}`:"");
@@ -5187,12 +5204,12 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         p.opacity = 0.48 + Math.sin(now*0.00055 + i*1.7)*0.07;
         m.rotation.z += Math.sin(now*0.00018+i)*0.00008;
       });
-      chaosGate.update(dt,chaosClearedRef.current,now);
+      for(const g of chaosVisuals)g.visual.update(dt,clearedGatesRef.current.has(g.id),now,q.x,q.z);
       renderer.render(scene,camera);raf=requestAnimationFrame(loop);
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{chaosGate.dispose();window.clearTimeout(banditVictoryTimer);rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();deerFurTexture?.dispose();nornsStoneTexture?.dispose();nornsColumnTexture?.dispose();furTextures.forEach(texture=>texture.dispose());lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;guardAttackActionRef.current=null;guardHitActionRef.current=null;guardDeathActionRef.current=null;guardIdleActionRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;shieldActionRef.current=null;forgeActionRef.current=null;villageDoorActionRef.current=null;};
+    return()=>{chaosVisuals.forEach(g=>g.visual.dispose());if(chaosBase){const textures=new Set<THREE.Texture>();chaosBase.scene.traverse((o:any)=>{o.geometry?.dispose();if(o.material)for(const m of [].concat(o.material) as any[]){for(const value of Object.values(m))if(value instanceof THREE.Texture)textures.add(value);m.dispose();}});textures.forEach(t=>t.dispose());}window.clearTimeout(banditVictoryTimer);rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();deerFurTexture?.dispose();nornsStoneTexture?.dispose();nornsColumnTexture?.dispose();furTextures.forEach(texture=>texture.dispose());lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;guardAttackActionRef.current=null;guardHitActionRef.current=null;guardDeathActionRef.current=null;guardIdleActionRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;shieldActionRef.current=null;forgeActionRef.current=null;villageDoorActionRef.current=null;};
   },[h.id,skin,weapon,gear.join(','),gearLevels.armor,gearLevels.helmet,gearLevels.boots,shieldAsset,eventDone,rememberPosition,northBridgeRepaired]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
@@ -5262,7 +5279,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
           <span className="map-landmark goal" style={{left:"49%",top:"53%"}}>ᚠ<small>Цель</small></span>
           <span className="map-landmark hero" style={{left:`${((mapHero.x+88)/176)*100}%`,top:`${100-((mapHero.z+89)/178)*100}%`}}>◆<small>Ты здесь</small></span>
         </div>
-        <div className="mid3d-map-goal"><b>{goldChestOpened?'Золотой сундук открыт':northBridgeRepaired?'Северный мост открыт':northBridgeReady?'Мост готов к ремонту':'Путь к золотому сундуку'}</b><br/>{goldChestOpened?'Награды получены. Следующий известный сундук ждёт в Лесу Ходдмимира.':northBridgeRepaired?'Перейди мост и открой золотой сундук напротив него.':northBridgeReady?'Подойди к Северному мосту и восстанови защитную руну за 300 капель бессмертия.':'Подготовь руну у Сигрид, Бьёрна и Торвальда. Для активации нужны 300 капель бессмертия.'}</div>
+        <div className="mid3d-map-goal"><small>Печати хаоса сняты: {chaosCleared.length} / {CHAOS_GATES.length}</small><br/><b>{goldChestOpened?'Золотой сундук открыт':northBridgeRepaired?'Северный мост открыт':northBridgeReady?'Мост готов к ремонту':'Путь к золотому сундуку'}</b><br/>{goldChestOpened?'Награды получены. Следующий известный сундук ждёт в Лесу Ходдмимира.':northBridgeRepaired?'Перейди мост и открой золотой сундук напротив него.':northBridgeReady?'Подойди к Северному мосту и восстанови защитную руну за 300 капель бессмертия.':'Подготовь руну у Сигрид, Бьёрна и Торвальда. Для активации нужны 300 капель бессмертия.'}</div>
         <button className="mid3d-map-close" onClick={()=>{setMapOpen(false);setCreditsOpen(true);}}>Авторы и лицензии</button>
         <button className="mid3d-map-close" onClick={()=>setMapOpen(false)}>Закрыть карту и продолжить путь</button>
       </div>
@@ -5369,7 +5386,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{kind==='wood'?'Вика возьмёт лёгкий рабочий топор. Древесина нужна плотнику.':kind==='herbs'?'Вика нагнётся и соберёт травы для Сигрид.':'Срежь ветки для плотника Бьёрна.'}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>gatherActionRef.current?.(id.slice(7))}>{kind==='herbs'?'Нагнуться и собрать':kind==='wood'?'Срубить':'Срезать ветки'}</button></div>;
       }
       if(id==="forge")return <div className="mid3d-ui mid3d-door-prompt"><b>Дверь кузницы</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>forgeActionRef.current?.()}>Открыть ручку</button></div>;
-      if(id==="chaosGate")return <div className="mid3d-ui mid3d-interact"><b>Врата хаоса</b><span>{chaosGateCleared?'Тёмные знаки уничтожены. Проход свободен.':'Тёмное заклинание запечатало путь. Для очищения нужны руна и 300 капель.'}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>{chaosGateCleared?'Осмотреть':'Снять заклинание'}</button></div>;
+      const selectedGate=id.startsWith('chaosGate:')?CHAOS_GATES.find(g=>g.id===id.slice(10)):gateForLocation(id);
+      if(selectedGate&&!clearedGatesRef.current.has(selectedGate.id))return <div className="mid3d-ui mid3d-interact"><b>Врата хаоса · {selectedGate.name}</b><span>Путь запечатан. Нужны руны и {selectedGate.cost} капель бессмертия.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on('chaosGate:'+selectedGate.id,{x:state.current.x,z:state.current.z})}>Снять заклинание</button></div>;
       if(id==="northBridge")return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{northBridgeRepaired?'Проход открыт. Золотой сундук находится на другом берегу.':northBridgeReady?'Защита подготовлена. Активируй руну за 300 капель бессмертия.':'Подготовь руну у Сигрид, Бьёрна и Торвальда. Нужно 300 капель бессмертия.'}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>{northBridgeRepaired?'Осмотреть мост':'Защитная руна'}</button></div>;
       const villageDoor=["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman","oldfarm"].includes(id);
       if(villageDoor)return <div className="mid3d-ui mid3d-door-prompt"><b>{label}</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>id==="oldfarm"?on(id,{x:state.current.x,z:state.current.z}):villageDoorActionRef.current?.(id)}>{outsideHouse===id?"Поговорить":"Открыть ручку"}</button></div>;

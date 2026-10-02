@@ -320,7 +320,7 @@ export const loadSave = (): Save => {
     delete s.forgeLevels?.bow;
     if (!Array.isArray(s.potions)) s.potions = [];
     if (!Array.isArray(s.runes)) s.runes = [];
-    if(s.done?.includes('chest:norns'))s.runes=[...new Set([...s.runes,'uruzStrength'])];
+    if(s.done?.includes('chest:norns')&&(!Object.prototype.hasOwnProperty.call(s.lootCounts,'uruzStrength')||Number(s.lootCounts.uruzStrength)>0))s.runes=[...new Set([...s.runes,'uruzStrength'])];
 
     // Guardian progression must survive every reload. Older/broken builds used
     // two different marker forms, so mirror them both ways.
@@ -331,7 +331,7 @@ export const loadSave = (): Save => {
     // Repair Fehu completions from the build where the reward was granted but
     // the completion marker could be lost. Fehu's rune is the direct reward
     // from that first guardian, so existing players are not forced to repeat it.
-    if(s.runes.includes('fehuWealth')){
+    if(s.runes.includes('fehuWealth')&&!Object.prototype.hasOwnProperty.call(s.lootCounts,'fehuWealth')){
       s.done=[...new Set([...s.done,'guardian:rune','guardian:stage:rune'])];
     }
     if(typeof s.equippedRune!=="string"||!s.runes.includes(s.equippedRune))s.equippedRune=s.runes.includes('uruzStrength')?'uruzStrength':'';
