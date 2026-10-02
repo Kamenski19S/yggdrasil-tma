@@ -5,7 +5,7 @@ import {clone} from 'three/examples/jsm/utils/SkeletonUtils.js';
 export function attachGuardianCape(actor:THREE.Group,guardian:THREE.Object3D,source:THREE.Object3D,guardianScale:number,color=0x742934){
  const cape=clone(source);cape.updateWorldMatrix(true,true);
  const bounds=new THREE.Box3().setFromObject(cape),center=bounds.getCenter(new THREE.Vector3());
- const factor=guardianScale*1.10/(bounds.max.y-bounds.min.y);
+ const factor=1.10/(bounds.max.y-bounds.min.y);
  cape.scale.multiplyScalar(factor);cape.position.set(-center.x*factor,-bounds.max.y*factor,-bounds.max.z*factor);
  const hem:Array<{bone:THREE.Bone;rest:THREE.Quaternion;phase:number}>=[];
  cape.traverse((part:any)=>{
@@ -14,9 +14,21 @@ export function attachGuardianCape(actor:THREE.Group,guardian:THREE.Object3D,sou
   }
   if(part.isBone&&/^Bone(003|007|010)_/.test(part.name))hem.push({bone:part,rest:part.quaternion.clone(),phase:hem.length*.7});
  });
- const mount=new THREE.Group();mount.name='GuardianCape';mount.position.set(0,1.47*guardianScale,-.13*guardianScale);mount.add(cape);actor.add(mount);
- actor.updateWorldMatrix(true,true);
+ const mount=new THREE.Group();mount.name='GuardianCape';mount.position.set(0,1.47,-.13);mount.add(cape);
+ // Loading can finish during an attack. Use the skeleton's bind pose rather
+ // than preserving the animated chest transform at the instant of attachment.
+ const restGuardian=clone(guardian);
+ restGuardian.traverse((part:any)=>{if(part.isSkinnedMesh)part.skeleton.pose();});
+ restGuardian.updateWorldMatrix(true,true);
+ const restChest=restGuardian.getObjectByName('Chest')||restGuardian.getObjectByName('Torso');
  const chest=guardian.getObjectByName('Chest')||guardian.getObjectByName('Torso');
- if(chest)chest.attach(mount);
+ if(chest&&restChest){
+  const chestInModel=new THREE.Matrix4().copy(restGuardian.matrixWorld).invert().multiply(restChest.matrixWorld);
+  mount.updateMatrix();
+  const local=chestInModel.invert().multiply(mount.matrix);
+  local.decompose(mount.position,mount.quaternion,mount.scale);
+  chest.add(mount);
+ }else guardian.add(mount);
+ actor.updateWorldMatrix(true,true);
  return {mount,hem,update(time:number,fallen=false){for(const h of hem){h.bone.quaternion.copy(h.rest);if(!fallen){h.bone.rotateX(Math.sin(time*.0019+h.phase)*.045);h.bone.rotateZ(Math.sin(time*.0014+h.phase)*.025);}}}};
 }
