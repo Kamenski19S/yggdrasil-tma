@@ -691,12 +691,12 @@ export function midHero3d(h: HeroDef) {
 
 
 
-export type GuardianLoot={weapons?:HeroWeapon[];shields?:string[];runes?:string[];potions?:string[]};
+export type GuardianLoot={ashWood?:number;weapons?:HeroWeapon[];shields?:string[];runes?:string[];potions?:string[]};
 
 
 export const MIDGARD_GUARDIAN_LOOT:Record<string,{correct:GuardianLoot;battle:GuardianLoot}>={
   rune:{correct:{runes:['fehuWealth']},battle:{weapons:['knife'],runes:['fehuWealth'],potions:['northernMoss']}},
-  ashgrove:{correct:{runes:['berkanoHeal']},battle:{weapons:['axeSmall'],runes:['berkanoHeal'],potions:['northernMoss']}},
+  ashgrove:{correct:{ashWood:2,runes:['berkanoHeal']},battle:{ashWood:3,weapons:['axeSmall'],runes:['berkanoHeal'],potions:['northernMoss']}},
   norns:{correct:{runes:['perthroFate']},battle:{weapons:['sword2'],runes:['perthroFate'],potions:['lifeElixir']}},
   threeThreads:{correct:{runes:['algizGuard']},battle:{weapons:['dagger2'],shields:['Shield_Heater.glb'],runes:['algizGuard'],potions:['frostDraught']}},
   whisperStone:{correct:{runes:['ansuzWisdom']},battle:{weapons:['mace'],runes:['kenazShard'],potions:['northernMoss']}},
@@ -715,6 +715,7 @@ export const lootCountAdd=(counts:Record<string,number>,ids:string[])=>{
 export const guardianLootText=(id:string,battle:boolean)=>{
   const loot=MIDGARD_GUARDIAN_LOOT[id]?.[battle?'battle':'correct'];if(!loot)return '';
   const names:string[]=[];
+  if(loot.ashWood)names.push('Ясеневая древесина ×'+loot.ashWood);
   for(const w of loot.weapons||[])names.push(({knife:'Боевой кинжал',dagger2:'Кинжал II',axe:'Северный топор',axeSmall:'Малый топор',axeDouble:'Двойной топор',mace:'Малый молот',hammerDouble:'Двойной молот',spear:'Копьё',sword2:'Меч II',swordBig:'Большой меч',swordGolden:'Золотой меч',claymore:'Клеймор',scythe:'Боевая коса',default:'Оружие'} as Record<string,string>)[w]||w);
   for(const s of loot.shields||[])names.push(({ 'Shield_Round.glb':'Круглый щит','Shield_Round_2.glb':'Серебряный щит','Shield_Heater.glb':'Щит','Shield_Heater_2.glb':'Щит II','Shield_Celtic_Golden.glb':'Золотой щит'} as Record<string,string>)[s]||s);
   for(const r of loot.runes||[])names.push('руна '+(RUNE_CATALOG.find(x=>x.id===r)?.name||r));

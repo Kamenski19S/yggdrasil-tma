@@ -261,7 +261,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         if(whisperReplayRef.current){
           const repeatDrops=spec.repeatReward;
           onRef.current("guardian:repeat:"+spec.id);
-          setWhisperReward(repeatDrops+" Капель бессмертия");
+          setWhisperReward(repeatDrops+" Капель бессмертия"+(spec.id==="ashgrove"?" + Ясеневая древесина ×1":""));
           setWhisperLog(spec.name+" снова повержен. Редкий трофей выдаётся один раз, но за тренировочную победу получено "+repeatDrops+" Капель бессмертия.");
         }else if(spec.id==="whisperStone"){
           const reward=onWhisperWin();setWhisperReward(spec.battleReward+" Капель бессмертия и «"+reward+"»");setWhisperLog("Хродвитнир повержен. Камень открывает награду.");
@@ -3204,10 +3204,11 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
 
       // Brown broken ash stump: low-poly, heavy and old, without the three plank-like pieces on top.
       const fallenBark=new THREE.MeshStandardMaterial({
-        map:barkTexture,color:0x6b4128,roughness:1,
+        map:specialBarkTex,color:0xffffff,roughness:1,
         roughnessMap:surfaceMaps.rough,bumpMap:surfaceMaps.height,bumpScale:.04
       });
-      const stump=new THREE.Mesh(new THREE.CylinderGeometry(1.45,2.15,4.9,11),fallenBark);
+      const cutWood=new THREE.MeshStandardMaterial({map:woodTex,color:0xc6a576,roughness:1});
+      const stump=new THREE.Mesh(new THREE.CylinderGeometry(1.45,2.15,4.9,11),[fallenBark,cutWood,cutWood]);
       stump.position.set(0,2.45,.2);
       stump.rotation.z=-.035;
       g.add(stump);
@@ -3229,7 +3230,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       const door=new THREE.Mesh(new THREE.BoxGeometry(1.08,1.82,.16),new THREE.MeshStandardMaterial({color:0x050505,roughness:.95}));
       door.position.set(0,1.18,2.08);
       g.add(door);
-      const jambMat=mat(0x3f2619,1);
+      const jambMat=new THREE.MeshStandardMaterial({map:woodTex,color:0x85684a,roughness:1});
       const lintel=new THREE.Mesh(new THREE.BoxGeometry(1.48,.16,.28),jambMat);lintel.position.set(0,2.10,2.05);g.add(lintel);
       [-.68,.68].forEach(px=>{const j=new THREE.Mesh(new THREE.BoxGeometry(.15,2.04,.28),jambMat);j.position.set(px,1.20,2.05);g.add(j);});
       const handle=new THREE.Mesh(new THREE.SphereGeometry(.07,7,5),mat(0x8a6b3a,.6,.35));
@@ -5310,7 +5311,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       <div className="mid3d-map-title" style={{color:"#f5d28a"}}>🎒 Запас Вики</div>
       <div className="mid3d-map-sub" style={{color:"#c3b7a2"}}>Здоровье: {banditHeroHp}/{whisperStats.maxHp} · Ледяная защита: {frostGuard} уд.</div>
       {Object.values(repairStock).some(n=>n>0)&&<div className="inventory-section"><h3>🔧 Припасы для восстановления</h3><div className="inventory-list">{Object.entries(repairStock).filter(([,n])=>n>0).map(([id,n])=><div key={id} className="inventory-item"><span className="inventory-symbol">📦</span><span className="inventory-detail"><b>{REPAIR_GOODS[id as keyof typeof REPAIR_GOODS]||id} · {n}</b><small>Для ремонта локаций после снятия печатей хаоса</small></span></div>)}</div></div>}
-      <div className="inventory-section"><h3>🌿 Материалы</h3><div className="inventory-list"><div className="inventory-item"><span className="inventory-symbol">🪵</span><span className="inventory-detail"><b>Древесина · {stock.wood}</b><small>Плотнику Бьёрну нужно 3</small></span></div><div className="inventory-item"><span className="inventory-symbol">🌱</span><span className="inventory-detail"><b>Ветки · {stock.twigs}</b><small>Плотнику Бьёрну нужно 3</small></span></div><div className="inventory-item"><span className="inventory-symbol">🌿</span><span className="inventory-detail"><b>Травы · {stock.herbs}</b><small>Травнице Сигрид нужно 4</small></span></div><div className="inventory-item"><span className="inventory-symbol">🪵✨</span><span className="inventory-detail"><b>Ясеневая древесина · {stock.ashWood}</b><small>Редкий материал Поверженного ясеня для будущего крафта</small></span></div></div></div>
+      <div className="inventory-section"><h3>🌿 Материалы</h3><div className="inventory-list"><div className="inventory-item"><span className="inventory-symbol">🪵</span><span className="inventory-detail"><b>Древесина · {stock.wood}</b><small>Плотнику Бьёрну нужно 3</small></span></div><div className="inventory-item"><span className="inventory-symbol">🌱</span><span className="inventory-detail"><b>Ветки · {stock.twigs}</b><small>Плотнику Бьёрну нужно 3</small></span></div><div className="inventory-item"><span className="inventory-symbol">🌿</span><span className="inventory-detail"><b>Травы · {stock.herbs}</b><small>Травнице Сигрид нужно 4</small></span></div><div className="inventory-item"><span className="inventory-symbol">🪵✨</span><span className="inventory-detail"><b>Ясеневая древесина · {stock.ashWood}</b><small>У Поверженного ясеня каждые 15 минут и в наградах стража Рощи Ясеня</small></span></div></div></div>
       <InventorySection kind="potions" potions={potions} runes={runes} equippedRune={equippedRune} hp={banditHeroHp} maxHp={whisperStats.maxHp} frostGuard={frostGuard} onUsePotion={useMidgardPotion} onEquipRune={onEquipRune}/>
       <InventorySection kind="runes" potions={potions} runes={runes} equippedRune={equippedRune} lootCounts={runeCounts} runeLevels={runeLevels} hp={banditHeroHp} maxHp={whisperStats.maxHp} frostGuard={frostGuard} onUsePotion={useMidgardPotion} onEquipRune={onEquipRune}/>
       <button className="mid3d-map-close" onClick={()=>setInventoryOpen(false)}>Вернуться в игру</button>
@@ -5435,7 +5436,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
           return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Этап {idx+1} из {MIDGARD_GUARDIAN_ORDER.length}. {guardianSpec.intro}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginLocationEncounter(id)}>Ответить стражу</button></div>;
         }
         const repeatDrops=guardianSpec.repeatReward;
-        return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Испытание пройдено. Повторный бой даёт {repeatDrops} Капель бессмертия; редкий трофей повторно не выпадает.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginGuardianRematch(id)}>⚔ Сразиться ещё раз</button></div>;
+        return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Испытание пройдено. Повторный бой даёт {repeatDrops} Капель бессмертия{id==="ashgrove"?" и ясеневую древесину ×1":""}; редкий трофей повторно не выпадает.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginGuardianRematch(id)}>⚔ Сразиться ещё раз</button></div>;
       }
       if(id==="deepGrove")return <div className="mid3d-ui mid3d-interact"><b>Глубокая роща</b><span>В тени растут редкие лечебные травы. Роща восстанавливает запас раз в 15 минут.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>Собрать редкие травы</button></div>;
       if(id==="hunterCamp")return <div className="mid3d-ui mid3d-interact"><b>Забытая стоянка</b><span>В старых ящиках остаются пригодные ветки и древесина. Запасы обновляются раз в 15 минут.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>Поискать припасы</button></div>;

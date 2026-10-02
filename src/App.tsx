@@ -613,9 +613,9 @@ const [roadT, setRoadT] = useState(0.06);
         const gate=gateForLocation(locationId);if(gate&&(!save.done.includes(chaosKey(gate.id))||!repaired(save,gate.id)))return;
         if(!spec)return;
         const repeatDrops=spec.repeatReward;
-        setSave(s=>({...s,immortalityDrops:s.immortalityDrops+repeatDrops}));
+        setSave(s=>({...s,immortalityDrops:s.immortalityDrops+repeatDrops,stock:{...s.stock,ashWood:s.stock.ashWood+(locationId==="ashgrove"?1:0)}}));
         haptic("success");
-        say(`Повторная победа над ${spec.name}: +${repeatDrops} Капель бессмертия.`);
+        say(`Повторная победа над ${spec.name}: +${repeatDrops} Капель бессмертия${locationId==="ashgrove"?", Ясеневая древесина ×1":""}.`);
         return;
       }
       if(id.startsWith("guardian:correct:")||id.startsWith("guardian:battle:")){
@@ -641,6 +641,7 @@ const [roadT, setRoadT] = useState(0.06);
           const isMidgardComplete=locationId==="hoddmimir";
           return {...state,
             immortalityDrops:state.immortalityDrops+reward,
+            stock:{...state.stock,ashWood:state.stock.ashWood+(loot.ashWood||0)},
             done:[...new Set([...state.done,key,stageKey,...(isMidgardComplete?["world:complete:midgard"]:[])])],
             artifacts:isMidgardComplete?[...new Set([...state.artifacts,"midgard"])]:state.artifacts,
             ownedWeapons:[...new Set([...state.ownedWeapons,...(loot.weapons||[])])],
