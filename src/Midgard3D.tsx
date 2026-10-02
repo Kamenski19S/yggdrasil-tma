@@ -960,6 +960,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       // Each gate blocks its own opening until its leaves have swung far enough.
       if(villageGateProgress < .78 && hits(x,z,{kind:"segment",x1:-2.87,z1:gateFrontZ,x2:2.87,z2:gateFrontZ,r:1.12})) return true;
       if(rearGateProgress < .78 && hits(x,z,{kind:"segment",x1:-2.87,z1:gateRearZ,x2:2.87,z2:gateRearZ,r:1.12}))return true;
+      if(chaosGate.blocks(x,z)&&!chaosGate.blocks(state.current.x,state.current.z))return true;
       return colliders.some(c=>hits(x,z,c));
     };
     const moveWithCollision=(q:{x:number;z:number},nx:number,nz:number)=>{
@@ -4795,7 +4796,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         hero.rotation.y=Math.PI;
         cameraDir.current.x=0;cameraDir.current.z=-1;
       }
-      const hy=insideHomeRef.current?groundY(heroHomeX,heroHomeZ)+.58*HOME_SCALE*BUILDING_HEIGHT:onRiverBridge(q.x,q.z)?bridgeHeight(q.x,q.z)+.12:groundY(q.x,q.z);
+      const baseHy=insideHomeRef.current?groundY(heroHomeX,heroHomeZ)+.58*HOME_SCALE*BUILDING_HEIGHT:onRiverBridge(q.x,q.z)?bridgeHeight(q.x,q.z)+.12:groundY(q.x,q.z);
+      const hy=insideHomeRef.current?baseHy:chaosGate.floorAt(q.x,q.z,baseHy);
       const moving=!encounterLocked&&l>.05;
       hero.position.set(q.x,hy+.04,q.z);
       if(!banditRequested&&BANDIT_SPECS.some(spec=>Math.hypot(q.x-spec.x,q.z-spec.z)<34))loadBandits();

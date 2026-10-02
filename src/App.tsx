@@ -1,3 +1,4 @@
+import { rollBanditLoot, applyBanditLoot } from './banditLoot';
 import { CHAOS_GATE_KEY, CHAOS_GATE_COST, CHAOS_GATE_RUNES, cleanseChaosGate } from './chaosGate';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
@@ -425,33 +426,13 @@ const [roadT, setRoadT] = useState(0.06);
     haptic('success');
     say(`Три руны ${rune.name} слиты. Руна усилена до ${level===1?'II':'III'} уровня.`);
   };
-  const pickBanditRune=(state:Save)=>{
-    const ranked=RUNE_CATALOG.map(rune=>{
-      const savedCount=Math.max(0,Number(state.lootCounts[rune.id])||0);
-      const count=Math.max(savedCount,state.runes.includes(rune.id)?1:0);
-      return {rune,count};
-    });
-    const minCount=Math.min(...ranked.map(entry=>entry.count));
-    const pool=ranked.filter(entry=>entry.count===minCount);
-    return pool[Math.floor(Math.random()*pool.length)].rune;
-  };
   const rewardBandit=(id:string)=>{
-    const spec=BANDIT_SPECS.find(b=>b.id===id);
-    if(!spec)return "";
-    const runeDrop=spec.kind==='rune'?pickBanditRune(save):null;
-    const rewardText=runeDrop?`Руна ${runeDrop.name} ${runeDrop.symbol}`:spec.reward;
-    setSave(s=>{
-      const itemId=runeDrop?.id||spec.item||"";
-      const lootIds=itemId?Array(spec.quantity||1).fill(itemId):[];
-      return {...s,immortalityDrops:s.immortalityDrops+spec.sparks,
-        ownedWeapons:spec.kind==='weapon'&&spec.item?[...new Set([...s.ownedWeapons,spec.item])]:s.ownedWeapons,
-        potions:spec.kind==='potion'&&spec.item?[...s.potions,...Array(spec.quantity||1).fill(spec.item)]:s.potions,
-        runes:runeDrop?[...new Set([...s.runes,runeDrop.id])]:s.runes,
-        equippedRune:runeDrop&&!s.equippedRune?runeDrop.id:s.equippedRune,
-        lootCounts:lootCountAdd(s.lootCounts,lootIds)};
-    });
-    haptic('success');say(`Победа: +${spec.sparks} Капель бессмертия и ${rewardText}. Разбойник вернётся через 15 минут игры.`);
-    return rewardText;
+    const spec=BANDIT_SPECS.find(b=>b.id===id);if(!spec)return '';
+    const loot=rollBanditLoot(save,spec);
+    const tally=(ids:string[])=>Object.entries(ids.reduce((counts:Record<string,number>,id)=>{counts[id]=(counts[id]||0)+1;return counts;},{})).map(([id,n])=>lootDisplayName(id)+(n>1?' ×'+n:'')).join(', ');
+    const rewardText=[tally(loot.runes),tally(loot.potions),tally(loot.weapons)].filter(Boolean).join(' · ');
+    setSave(s=>applyBanditLoot(s,loot));haptic('success');
+    say(`Победа: +${loot.drops} капель · ${rewardText}`);return rewardText;
   };
   const banditKnockout=()=>{
     setSave(s=>({...s,immortalityDrops:Math.max(0,s.immortalityDrops-5),fieldHp:(heroDef?.hp||100)+gearHp()}));
@@ -1368,16 +1349,15 @@ const [roadT, setRoadT] = useState(0.06);
         </div>
       )}
 
-      {chaosDialog&&screen.t==='realm'&&screen.id==='midgard'&&<div style={{position:'fixed',zIndex:120,bottom:145,left:'50%',transform:'translateX(-50%)',width:'min(330px,88vw)',padding:14,border:'1px solid #a780bd',borderRadius:12,background:'#17121ef2',color:'#e3d4ec',fontSize:12}} onPointerDown={e=>e.stopPropagation()} role="dialog" aria-label="Врата хаоса">
-        <b>Врата хаоса · Северный мост</b>
-        <p>{save.done.includes(CHAOS_GATE_KEY)?'Заклинание снято. Руны и тёмная завеса исчезли, каменная арка осталась.':'Силы хаоса наложили печать Хагалаз, Наутиз и Иса. Напитай противодействующую руну каплями бессмертия, чтобы рассеять завесу.'}</p>
-        {!save.done.includes(CHAOS_GATE_KEY)&&<>
-          <label>Руна <select value={chaosRune} onChange={e=>setChaosRune(e.target.value)} style={{background:'#22182d',color:'#ead9f6',padding:5}}><option value="">Выбери руну</option>{CHAOS_GATE_RUNES.map(id=><option key={id} value={id} disabled={!save.runes.includes(id)}>{RUNE_CATALOG.find(r=>r.id===id)?.name}{save.runes.includes(id)?'':' — нет в арсенале'}</option>)}</select></label>
-          <p>Капли: {save.immortalityDrops} / {CHAOS_GATE_COST}. Руна остаётся у героя.</p>
-          {!CHAOS_GATE_RUNES.some(id=>save.runes.includes(id))&&<p>Феху можно получить у Древнего камня Феху. Руны также встречаются в добыче разбойников и мельницы.</p>}
-          <button disabled={!save.runes.includes(chaosRune)||!CHAOS_GATE_RUNES.includes(chaosRune)||save.immortalityDrops<CHAOS_GATE_COST} onClick={()=>{setSave(s=>cleanseChaosGate(s,chaosRune));haptic('success');}}>Очистить · {CHAOS_GATE_COST} капель</button>
+      {chaosDialog&&screen.t==='realm'&&screen.id==='midgard'&&<div className="chaos-panel" onPointerDown={e=>e.stopPropagation()} role="dialog" aria-label="Врата хаоса">
+        <div className="chaos-panel-title"><b>Врата хаоса</b><button aria-label="Закрыть" onClick={()=>setChaosDialog(false)}>×</button></div>
+        {save.done.includes(CHAOS_GATE_KEY)?<p>Печать снята. Проход свободен.</p>:<>
+          <p>Печать Хагалаз · Наутиз · Иса.<br/>Выбери одну противодействующую руну.</p>
+          <div className="chaos-runes">{CHAOS_GATE_RUNES.map(id=>{const rune=RUNE_CATALOG.find(r=>r.id===id)!;const available=save.runes.includes(id);return <button key={id} className={chaosRune===id?'chosen':''} disabled={!available} onClick={()=>setChaosRune(id)}><strong>{rune.symbol}</strong><span>{rune.name}</span><small>{available?'×'+Math.max(1,save.lootCounts[id]||1):'Нет'}</small></button>;})}</div>
+          <p>Будет потрачено: 1 руна + {CHAOS_GATE_COST} капель.<br/>Баланс: {save.immortalityDrops}.</p>
+          {!CHAOS_GATE_RUNES.some(id=>save.runes.includes(id))&&<p>Добудь руны у разбойников или мельницы. Феху даёт Древний камень.</p>}
+          <button className="chaos-cleanse" disabled={!save.runes.includes(chaosRune)||!CHAOS_GATE_RUNES.includes(chaosRune)||save.immortalityDrops<CHAOS_GATE_COST} onClick={()=>{setSave(s=>cleanseChaosGate(s,chaosRune));haptic('success');}}>Снять печать</button>
         </>}
-        <button style={{marginLeft:8}} onClick={()=>setChaosDialog(false)}>Закрыть</button>
       </div>}
       {toast && <div className="toast">{toast}</div>}
       {houseDialog&&screen.t==="realm"&&screen.id==="midgard"&&<div className="house-dialog-backdrop" onPointerDown={e=>e.stopPropagation()}>

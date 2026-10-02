@@ -5,7 +5,11 @@ export const CHAOS_GATE_COST=300;
 export const CHAOS_GATE_RUNES=['fehuWealth','algizGuard','thurisazStrike'];
 export function cleanseChaosGate(s:Save,rune:string):Save {
   if(s.done.includes(CHAOS_GATE_KEY)||!CHAOS_GATE_RUNES.includes(rune)||!s.runes.includes(rune)||s.immortalityDrops<CHAOS_GATE_COST)return s;
-  return {...s,immortalityDrops:s.immortalityDrops-CHAOS_GATE_COST,done:[...s.done,CHAOS_GATE_KEY]};
+  const remaining=Math.max(1,s.lootCounts[rune]||1)-1;
+  const forgeLevels={...s.forgeLevels};if(!remaining)delete forgeLevels['rune:'+rune];
+  return {...s,immortalityDrops:s.immortalityDrops-CHAOS_GATE_COST,done:[...s.done,CHAOS_GATE_KEY],
+    lootCounts:{...s.lootCounts,[rune]:remaining},runes:remaining?s.runes:s.runes.filter(id=>id!==rune),
+    equippedRune:!remaining&&s.equippedRune===rune?'':s.equippedRune,forgeLevels};
 }
 // The veil and inscriptions are separate from the stone frame and dissolve together.
 export function createChaosGate(scene:THREE.Scene,x:number,y:number,z:number,load:(callback:(asset:any)=>void)=>void){
@@ -19,15 +23,34 @@ export function createChaosGate(scene:THREE.Scene,x:number,y:number,z:number,loa
   const ink=new THREE.MeshBasicMaterial({map:texture,transparent:true,side:THREE.DoubleSide,depthWrite:false,opacity:.85});
   const marks=new THREE.Mesh(new THREE.PlaneGeometry(4.4,4.4),ink);marks.position.set(0,3,-1.29);group.add(marks);
   const veilMaterials:THREE.Material[]=[];let progress=1;
+  const floorSamples:Array<{z:number;y:number}>=[];
   load(asset=>{
     if(!group.parent){asset.scene.traverse((o:any)=>{o.geometry?.dispose();if(o.material)for(const m of [].concat(o.material)) (m as any).dispose();});return;}
     const model=asset.scene;const bounds=new THREE.Box3().setFromObject(model);const center=bounds.getCenter(new THREE.Vector3());const size=bounds.getSize(new THREE.Vector3());const scale=9.1/size.x;
     model.scale.multiplyScalar(scale);model.position.set(-center.x*scale,-bounds.min.y*scale,-center.z*scale);group.add(model);
     model.traverse((o:any)=>{if(o.name==='ChaosVeil'&&o.isMesh){const mat=o.material as THREE.Material;mat.depthWrite=false;mat.transparent=true;veilMaterials.push(mat);}});
+    // Sample the central stone stair profile once; no per-frame triangle raycasts.
+    model.updateWorldMatrix(true,true);
+    const stones:THREE.Object3D[]=[];model.traverse((o:any)=>{if(o.isMesh&&o.name!=='ChaosVeil')stones.push(o);});
+    const ray=new THREE.Raycaster();ray.far=4;
+    for(let i=0;i<=28;i++){
+      const localZ=-3.5+i*.25;const point=group.localToWorld(new THREE.Vector3(0,2.4,localZ));
+      ray.set(point,new THREE.Vector3(0,-1,0));
+      const hit=ray.intersectObjects(stones,false).find(hit=>!hit.face||hit.face.normal.y>.25);
+      floorSamples.push({z:localZ,y:hit?hit.point.y:y-.12});
+    }
     // Canvas marks sit just in front of the supplied veil, in its actual plane.
     const veil=model.getObjectByName('ChaosVeil');if(veil){veil.updateWorldMatrix(true,false);const p=group.worldToLocal(new THREE.Box3().setFromObject(veil).getCenter(new THREE.Vector3()));marks.position.z=p.z+.015;}
   });
   return {
+    floorAt(wx:number,wz:number,base:number){
+      const p=group.worldToLocal(new THREE.Vector3(wx,y,wz));
+      if(Math.abs(p.x)>1.85||Math.abs(p.z)>3.5||!floorSamples.length)return base;
+      const i=Math.min(floorSamples.length-2,Math.max(0,Math.floor((p.z+3.5)/.25)));
+      const a=floorSamples[i],b=floorSamples[i+1],t=(p.z-a.z)/.25;
+      return Math.max(base,THREE.MathUtils.lerp(a.y,b.y,t));
+    },
+    blocks(wx:number,wz:number){const p=group.worldToLocal(new THREE.Vector3(wx,y,wz));return Math.abs(p.z)<2.45&&Math.abs(p.x)>1.9&&Math.abs(p.x)<3.5;},
     update(dt:number,cleared:boolean,time:number){progress=Math.max(0,Math.min(1,progress+(cleared?-dt:dt)));marks.visible=progress>0;ink.opacity=progress*(.78+Math.sin(time*.0018)*.12);for(const material of veilMaterials){material.opacity=.8*progress;material.visible=progress>0;}},
     dispose(){scene.remove(group);texture.dispose();group.traverse((o:any)=>{o.geometry?.dispose();if(o.material)for(const m of [].concat(o.material))(m as any).dispose();});}
   };
