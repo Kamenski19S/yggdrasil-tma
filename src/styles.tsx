@@ -171,6 +171,15 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .mid3d-strike{right:22px;bottom:112px;width:52px;height:52px;border-radius:50%;border:1px solid rgba(255,225,174,.66);background:radial-gradient(circle at 38% 30%,rgba(255,155,75,.98),rgba(126,38,20,.96));color:#fff4df;font-size:22px;font-weight:900;text-shadow:0 1px 4px rgba(0,0,0,.85);box-shadow:0 5px 15px rgba(0,0,0,.42),0 0 12px rgba(255,99,43,.25);touch-action:none}
 .mid3d-strike:active{transform:scale(.88);box-shadow:0 2px 8px rgba(0,0,0,.45),0 0 18px rgba(255,114,54,.55)}
 .mid3d-block{right:22px;bottom:178px;width:52px;height:52px;border-radius:50%;border:1px solid rgba(178,230,255,.83);background:radial-gradient(circle at 38% 30%,#89c2da,#284966);color:#fff;font-size:23px;box-shadow:0 5px 15px rgba(0,0,0,.42);touch-action:none}.mid3d-block:active{transform:scale(.91);filter:brightness(1.25)}.mid3d-block:disabled{opacity:.46}
+/* Transparent artwork supplies the gold frame and button face. */
+.mid3d-control-art{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none}
+.mid3d-action,.mid3d-strike,.mid3d-block{padding:0;border:0;background:transparent;box-shadow:none;text-shadow:none;filter:drop-shadow(0 4px 6px rgba(0,0,0,.45))}
+.mid3d-joy{border:0;background:transparent;box-shadow:none}
+.mid3d-joy:before,.mid3d-joy:after{display:none}
+.mid3d-knob{background:rgba(245,202,96,.18);border-color:rgba(255,222,145,.55);pointer-events:none}
+.whisper-combat-icon.custom-art{border:0;background:transparent;box-shadow:none;text-shadow:none}
+.whisper-combat-icon.custom-art:after{display:none}
+.whisper-combat-icon.custom-art img{width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none}
 .mid3d-hero-load{left:50%;top:58%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;color:#f4d36d;text-shadow:0 2px 8px rgba(0,0,0,.85)}
 .mid3d-hero-load b{font-size:34px;line-height:1;animation:heroRunePulse 1.05s ease-in-out infinite}.mid3d-hero-load span{font-size:9px;letter-spacing:.8px;padding:3px 7px;border-radius:8px;background:rgba(4,9,6,.55)}
 .mid3d-hint{left:50%;bottom:9px;transform:translateX(-50%);padding:6px 10px;border-radius:9px;background:rgba(5,10,7,.68);border:1px solid rgba(126,231,135,.18);color:#d0dfd3;font-size:10px;line-height:1.2;white-space:nowrap;pointer-events:none}
