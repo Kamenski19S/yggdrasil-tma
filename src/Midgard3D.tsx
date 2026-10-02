@@ -1,3 +1,4 @@
+import {MidgardGuide,MIDGARD_GUIDE_CSS} from './MidgardGuide';
 import {REPEAT_ASH_CHANCE} from './woodEconomy';
 import {attachGuardianCape} from './guardianCape';
 import {REPAIR_GOODS} from './locationRepairs';
@@ -26,6 +27,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   const [ritualOpen, setRitualOpen] = useState(false);
   const [forestEventOpen, setForestEventOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const [guideOpen,setGuideOpen]=useState(false);
   const [mapHero, setMapHero] = useState({x:0,z:28});
   const [heroReady, setHeroReady] = useState(false);
   const [heroLoadFailed, setHeroLoadFailed] = useState(false);
@@ -113,7 +115,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   const gatherActionRef=useRef<((id:string)=>void)|null>(null);
   const [villageGateOpen, setVillageGateOpen] = useState(false);
   const [creditsOpen,setCreditsOpen]=useState(false);
-  inventoryPauseRef.current=inventoryOpen||mapOpen||creditsOpen;
+  inventoryPauseRef.current=inventoryOpen||mapOpen||creditsOpen||guideOpen;
   const villageGateOpenRef = useRef(false);
   const [rearGateOpen,setRearGateOpen]=useState(false);
   const rearGateOpenRef=useRef(false);
@@ -5253,10 +5255,10 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         <img className="mid3d-frame-img" src={`${BASE}img/models/frame_top_side_360w.png`} alt=""/>
         <img className="mid3d-top-art mid3d-map-art" src={MIDGARD_MAP_ICON} alt="" aria-hidden="true"/>
       </button>
-      <div className="mid3d-realm-title">
+      <button className="mid3d-realm-title" style={{pointerEvents:"auto",cursor:"pointer"}} aria-label="Открыть летопись и прохождение Мидгарда" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setGuideOpen(true);}}>
         <img className="mid3d-frame-img" src={`${BASE}img/models/frame_top_long_768w.png`} alt=""/>
         <span>МИДГАРД</span>
-      </div>
+      </button>
       <button className="mid3d-top-btn" aria-label="Мельница капель бессмертия" title="Мельница" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();rememberPosition({x:state.current.x,z:state.current.z});onOpenMill();}}>
         <img className="mid3d-frame-img" src={`${BASE}img/models/frame_top_mid_512w.png`} alt=""/>
         <img className="mid3d-top-art mid3d-mill-art" src={MIDGARD_MILL_ICON} alt="" aria-hidden="true"/>
@@ -5275,6 +5277,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     </div>}
     {banditHit>0&&whisperPhase==="closed"&&<i key={banditHit} className="mid3d-ui whisper-battle-fx guard"/>}
     {!heroReady&&<div className="mid3d-ui mid3d-hero-load"><b>{heroLoadFailed?"ᚾ":"ᛉ"}</b><span>{heroLoadFailed?"Герой не загрузился":"ПРОБУЖДЕНИЕ ГЕРОЯ"}</span></div>}
+    <style>{MIDGARD_GUIDE_CSS}</style>
+    {guideOpen&&<MidgardGuide onClose={()=>setGuideOpen(false)} completed={guardianResolved} cleared={chaosCleared} restored={repairedLocations}/>}
     {mapOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}>
       <div className="mid3d-map-panel">
         <div className="mid3d-map-title">ᚠ Карта Мидгарда</div>
