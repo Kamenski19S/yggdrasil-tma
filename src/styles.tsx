@@ -163,6 +163,12 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .mid3d-mill-art{width:76px;height:42px}
 .mid3d-realm-title>span{position:relative;z-index:2}
 @media(max-width:380px){.mid3d-top{grid-template-columns:62px minmax(0,1fr) 84px;gap:6px}.mid3d-top-btn,.mid3d-realm-title{min-height:46px}.mid3d-realm-title{font-size:14px;letter-spacing:1px}.mid3d-map-art{width:47px;height:38px}.mid3d-mill-art{width:69px;height:38px}}
+.mid3d-top{grid-template-columns:58px minmax(0,1fr) 58px;align-items:center}
+.mid3d-top-btn{width:58px;height:58px;min-height:0}
+.mid3d-realm-title{padding:0;min-height:0;width:100%;aspect-ratio:768/357}
+.mid3d-top-btn::before,.mid3d-realm-title::before{display:none}
+.mid3d-top-button-art{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none;filter:drop-shadow(0 3px 5px rgba(0,0,0,.42))}
+@media(max-width:380px){.mid3d-top{grid-template-columns:50px minmax(0,1fr) 50px;gap:6px}.mid3d-top-btn{width:50px;height:50px;min-height:0}.mid3d-realm-title{min-height:0}}
 .mid3d-joy{left:14px;bottom:52px;width:132px;height:132px;border-radius:50%;background:rgba(7,14,9,.46);border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 0 25px rgba(0,0,0,.22);touch-action:none}
 .mid3d-joy:before,.mid3d-joy:after{content:"";position:absolute;left:50%;top:50%;background:rgba(255,255,255,.08);transform:translate(-50%,-50%);pointer-events:none}
 .mid3d-joy:before{width:82px;height:1px}.mid3d-joy:after{height:82px;width:1px}

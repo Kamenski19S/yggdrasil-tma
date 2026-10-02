@@ -5252,16 +5252,13 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   return <div className="content mid3d-scene" ref={mount} style={{touchAction:"none",userSelect:"none",WebkitUserSelect:"none"}} onPointerDown={startJoyFromZone} onPointerMove={moveJoyFromZone} onPointerUp={endJoyFromZone} onPointerCancel={endJoyFromZone} onContextMenu={e=>e.preventDefault()}>
     {whisperPhase==="closed"&&<div className="mid3d-ui mid3d-top">
       <button className="mid3d-top-btn" aria-label="Карта Мидгарда" title="Карта Мидгарда" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapHero({x:state.current.x,z:state.current.z});setMapOpen(true);}}>
-        <img className="mid3d-frame-img" src={`${BASE}img/models/frame_top_side_360w.png`} alt=""/>
-        <img className="mid3d-top-art mid3d-map-art" src={MIDGARD_MAP_ICON} alt="" aria-hidden="true"/>
+        <img className="mid3d-top-button-art" src={`${BASE}img/models/ui_map.png`} alt="" draggable={false}/>
       </button>
       <button className="mid3d-realm-title" style={{pointerEvents:"auto",cursor:"pointer"}} aria-label="Открыть летопись и прохождение Мидгарда" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setGuideOpen(true);}}>
-        <img className="mid3d-frame-img" src={`${BASE}img/models/frame_top_long_768w.png`} alt=""/>
-        <span>МИДГАРД</span>
+        <img className="mid3d-top-button-art" src={`${BASE}img/models/ui_midgard.png`} alt="" draggable={false}/>
       </button>
       <button className="mid3d-top-btn" aria-label="Мельница капель бессмертия" title="Мельница" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();rememberPosition({x:state.current.x,z:state.current.z});onOpenMill();}}>
-        <img className="mid3d-frame-img" src={`${BASE}img/models/frame_top_mid_512w.png`} alt=""/>
-        <img className="mid3d-top-art mid3d-mill-art" src={MIDGARD_MILL_ICON} alt="" aria-hidden="true"/>
+        <img className="mid3d-top-button-art" src={`${BASE}img/models/ui_mill.png`} alt="" draggable={false}/>
       </button>
     </div>}
     {banditOpponent&&whisperPhase==="closed"&&<div className="mid3d-ui" style={{top:"21%",left:"50%",transform:"translateX(-50%)",width:"min(88vw,290px)",padding:"8px 12px",borderRadius:12,background:"rgba(16,12,11,.87)",border:"1px solid rgba(227,67,50,.55)",color:"#fff",pointerEvents:"none",zIndex:12}}>
