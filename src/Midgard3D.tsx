@@ -624,7 +624,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     };
 
     // Keep the proven forest footprint, but every slot can now become a different tree.
-    // These coordinates already leave the village and major landmarks readable.
+    // These coordinates leave the village and major landmarks readable.
+    // The fir formerly at (55,67) now stands at (80,68), outside the Fehu battle camera.
     const mainForestPositions: Array<[number, number]> = [
       [-72,-62],[-51,-68],[-27,-72],[31,-67],[49,-63],[72,-55],
       [-76,-34],[-56,-38],[-36,-43],[34,-42],[57,-36],[78,-27],
@@ -638,7 +639,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       [-83,-17],[-67,-23],[-48,-25],[48,-23],[67,-18],[83,-7],
       [-82,13],[-64,17],[-46,14],[47,15],[65,12],[82,20],
       [-78,42],[-59,39],[-39,46],[38,43],[58,39],[66,57],
-      [-68,69],[-43,66],[-18,74],[27,70],[55,67]
+      [-68,69],[-43,66],[-18,74],[27,70],[80,68]
     ];
 
     const loadGlbWithFolderFallback = (
