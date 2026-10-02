@@ -8,7 +8,8 @@ export function attachGuardianCape(actor:THREE.Group,guardian:THREE.Object3D,sou
  cape.traverse((part:any)=>{if(part.isMesh){part.geometry.computeBoundingBox();bounds.union(part.geometry.boundingBox.clone().applyMatrix4(part.matrixWorld));}});
  const center=bounds.getCenter(new THREE.Vector3());
  const factor=1.10/(bounds.max.y-bounds.min.y);
- cape.scale.multiplyScalar(factor);cape.position.set(-center.x*factor,-bounds.max.y*factor,-bounds.max.z*factor);
+ cape.scale.multiplyScalar(factor);cape.scale.z*=.75;
+ cape.position.set(-center.x*factor,-bounds.max.y*factor,-bounds.max.z*factor*.75);
  const hem:Array<{bone:THREE.Bone;rest:THREE.Quaternion;phase:number}>=[];
  cape.traverse((part:any)=>{
   if(part.isMesh){part.castShadow=true;part.receiveShadow=true;part.frustumCulled=false;
@@ -16,7 +17,7 @@ export function attachGuardianCape(actor:THREE.Group,guardian:THREE.Object3D,sou
   }
   if(part.isBone&&/^Bone(003|007|010)_/.test(part.name))hem.push({bone:part,rest:part.quaternion.clone(),phase:hem.length*.7});
  });
- const mount=new THREE.Group();mount.name='GuardianCape';mount.position.set(0,1.47,-.13);mount.add(cape);
+ const mount=new THREE.Group();mount.name='GuardianCape';mount.position.set(0,1.47,-.075);mount.add(cape);
  // Loading can finish during an attack. Use the skeleton's bind pose rather
  // than preserving the animated chest transform at the instant of attachment.
  const restGuardian=clone(guardian);
