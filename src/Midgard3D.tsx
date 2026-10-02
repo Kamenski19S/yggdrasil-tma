@@ -1246,6 +1246,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     road([[0,49],[-10,49],[-20,49],[-28,48],[-34,44],[-35,36]],1.88);
     road([[0,49],[10,52],[18,55]],1.86);
     road([[18,55],[32,58],[42,59],[50,60]],1.62);
+    // Reach the first trial without paying for the later Rune Field seal.
+    road([[0,49],[6,45],[16,44],[26,46],[31,52],[32,58]],1.55);
     road([[50,60],[55,68],[62,78]],1.48);
 
     // East side: deer glade, homes, camp and the southern sacred places.
@@ -1260,6 +1262,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     // The trail by the river in front of the Norns' wheel bends north and
     // joins the northern bridge approach. It must not end at z=38 in grass.
     road([[-35,36],[-42,37],[-48,38],[-49,42],[-49,47],[NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.8,NORTH_BRIDGE_Z]],1.55);
+    // Bridge repairs and its seal remain reachable outside the Norns ward.
+    road([[-35,36],[-41,43],[-46,48],[NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.8,NORTH_BRIDGE_Z]],1.4);
     // The forest-side trail must rejoin the northern crossing, not stop at
     // the lone spruce above the riverbank.
     road([[-35,44],[-39,54],[-43,64],[-45,75]],1.48);
