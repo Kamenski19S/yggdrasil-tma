@@ -14,7 +14,10 @@ const teams:RepairResident[][]=[['elder','carpenter','fisher'],['herbalist','hun
 const damage=['Расколото основание камня. Нужно укрепить площадку и снабдить рабочих.','Магия иссушила корни. Нужны защитный настой и утепление молодых деревьев.','Повреждены колонны и нити. Требуются крепления, шерсть и верёвки.','Источник засорён, настил разбит. Нужно очистить воду и восстановить подход.','Трещины в камне опасны. Нужны инструменты, крепления и очищающий настой.','Рунические камни расшатаны. Нужно укрепить основание и связать опоры.','Повреждены края источника. Нужны защитный настой, крепления и перевязки для рабочих.','Расколот ритуальный настил. Нужны новые доски, инструменты и припасы.','Лес пострадал от хаоса. Нужно укрепить тропы и защитить молодые деревья.'];
 export const repairKey=(id:string)=>'repair:'+id+':restored';
 export const workKey=(id:string,resident:RepairResident)=>'repair:'+id+':work:'+resident;
-export const REPAIR_PROJECTS=CHAOS_GATES.filter(g=>g.location).map((g,i)=>({id:g.id,name:g.name,damage:damage[i],reward:35+i*10,jobs:teams[i].map(r=>({...works[r],quantity:1+Math.floor(i/3),cost:Object.fromEntries(Object.entries(works[r].cost).map(([k,n])=>[k,n!+Math.floor(i/3)])) as Work['cost']}))}));
+// A single rare ash piece reinforces selected fittings or ritual floorboards.
+// It does not scale with the ordinary resource costs of later locations.
+const ashRepairWork:Record<string,RepairResident>={norns:'craftsman',mimir:'blacksmith',powerCircle:'carpenter'};
+export const REPAIR_PROJECTS=CHAOS_GATES.filter(g=>g.location).map((g,i)=>({id:g.id,name:g.name,damage:damage[i]+(ashRepairWork[g.id]?' Для прочных опор понадобится одна часть ясеневой древесины.':''),reward:35+i*10,jobs:teams[i].map(r=>({...works[r],quantity:1+Math.floor(i/3),cost:{...Object.fromEntries(Object.entries(works[r].cost).map(([k,n])=>[k,n!+Math.floor(i/3)])),...(ashRepairWork[g.id]===r?{ashWood:1}:{})} as Work['cost']}))}));
 export type RepairProject=typeof REPAIR_PROJECTS[number];
 export type RepairJob=RepairProject['jobs'][number];
 export const repaired=(s:Save,id:string)=>s.done.includes(repairKey(id));
