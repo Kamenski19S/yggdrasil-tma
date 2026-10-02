@@ -28,15 +28,19 @@ export function createChaosGate(scene:THREE.Scene,x:number,y:number,z:number,loa
     const model=asset.scene;const bounds=new THREE.Box3().setFromObject(model);const center=bounds.getCenter(new THREE.Vector3());const size=bounds.getSize(new THREE.Vector3());const scale=9.1/size.x;
     model.scale.multiplyScalar(scale);model.position.set(-center.x*scale,-bounds.min.y*scale,-center.z*scale);group.add(model);
     const recolored=new Map<THREE.Texture,THREE.Texture>();
-    if(options.color&&options.color!==0xb9ed70){model.traverse((o:any)=>{
+    if(options.color!==undefined){model.traverse((o:any)=>{
       if(!o.isMesh||o.name==='ChaosVeil')return;
       for(const material of [].concat(o.material) as THREE.MeshStandardMaterial[]){
-        const map=material.map;if(!map?.image)return;
+        // Both maps use the green atlas, but retain different UV channels.
+        for(const slot of ['map','emissiveMap'] as const){
+        const map=material[slot];if(!map?.image)continue;
         let tinted=recolored.get(map);
         if(!tinted){const canvas=document.createElement('canvas');canvas.width=canvas.height=512;const c=canvas.getContext('2d')!;c.drawImage(map.image as CanvasImageSource,0,0,512,512);const pixels=c.getImageData(0,0,512,512);const color=new THREE.Color(options.color).convertLinearToSRGB();const rgb=[color.r,color.g,color.b].map(v=>Math.round(THREE.MathUtils.clamp(v,0,1)*255));
-          for(let i=0;i<pixels.data.length;i+=4){const r=pixels.data[i],g=pixels.data[i+1],b=pixels.data[i+2];if(g>r*1.2&&g>b*1.12&&g>65){const light=g/255;pixels.data[i]=rgb[0]*light;pixels.data[i+1]=rgb[1]*light;pixels.data[i+2]=rgb[2]*light;}}
+          for(let i=0;i<pixels.data.length;i+=4){const r=pixels.data[i],g=pixels.data[i+1],b=pixels.data[i+2];if(g>r*1.2&&g>b*.65&&g>65){const light=g/255;pixels.data[i]=rgb[0]*light;pixels.data[i+1]=rgb[1]*light;pixels.data[i+2]=rgb[2]*light;}}
           c.putImageData(pixels,0,0);tinted=map.clone();tinted.image=canvas;tinted.needsUpdate=true;recolored.set(map,tinted);coloredTextures.push(tinted);
-        }material.map=tinted;
+        }material[slot]=tinted;
+        }
+        material.needsUpdate=true;
       }
     });}
     model.traverse((o:any)=>{if(o.name==='ChaosVeil'&&o.isMesh){const mat=o.material as THREE.Material;mat.depthWrite=false;mat.transparent=true;veilMaterials.push(mat);}});

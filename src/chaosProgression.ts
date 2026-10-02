@@ -13,7 +13,8 @@ export const CHAOS_GATES:ChaosGateDef[]=[
  {id:'mimir',location:'mimir',name:'Колодец Мимира',cost:7000,color:0x65d5ff,seal:['ᛁ','ᚾ','ᛈ','ᛇ'],recipes:[[need('ansuzWisdom',2,2),need('mannazMind',2,2)],[need('perthroFate',2,2),need('eihwazResilience',2,2)]],x:1,z:8,rotation:0,centerX:1,centerZ:0,radius:5.5},
  {id:'powerCircle',location:'powerCircle',name:'Круг Силы',cost:10000,color:0xffd464,seal:['ᚺ','ᚾ','ᛁ','ᛇ','ᛈ'],recipes:[[need('tiwazValor',1,3),need('sowiloLight',2,2)],[need('uruzStrength',1,3),need('algizGuard',2,2)]],x:12,z:-64,rotation:Math.atan2(-7,-6),centerX:5,centerZ:-70,radius:7.6},
  {id:'hoddmimir',location:'hoddmimir',name:'Лес Ходдмимира',cost:14000,color:0xe7dfff,seal:['ᚺ','ᚾ','ᛁ','ᛇ','ᛈ','ᛟ'],recipes:[[need('dagazDawn',1,3),need('othalaLegacy',1,3),need('algizGuard',2,2)],[need('sowiloLight',1,3),need('eihwazResilience',1,3),need('berkanoHeal',2,2)]],x:56,z:70,rotation:Math.atan2(6,8),centerX:62,centerZ:78,radius:8.5}
-];
+].map(g=>({...g,rotation:g.location?Math.atan2(g.x-g.centerX,g.z-g.centerZ):g.rotation}));
+// The model’s steps face local +Z: orient them away from the sealed location.
 export const chaosKey=(id:string)=>'chaos:'+id+':cleared';
 export const gateForLocation=(location:string)=>CHAOS_GATES.find(g=>g.location===location);
 export const runeCopies=(s:Save,id:string)=>s.runes.includes(id)?Math.max(1,Number(s.lootCounts[id])||1):0;
