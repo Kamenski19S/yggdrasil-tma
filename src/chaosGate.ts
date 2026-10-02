@@ -5,7 +5,6 @@ export const CHAOS_GATE_KEY='chaos:north:cleared';
 export const CHAOS_GATE_COST=300;
 export const CHAOS_GATE_RUNES=['fehuWealth','algizGuard','thurisazStrike'];
 export function cleanseChaosGate(s:Save,rune:string):Save {return cleanseGate(s,'north',CHAOS_GATE_RUNES.indexOf(rune));}
-const FIRE_COLOR=0xff3020;
 const floorProfiles=new WeakMap<THREE.BufferGeometry,Array<{z:number;y:number}>>();
 // The veil and inscriptions are separate from the stone frame and dissolve together.
 export function createChaosGate(scene:THREE.Scene,x:number,y:number,z:number,load:(callback:(asset:any)=>void)=>void,options:{rotation?:number;color?:number;seal?:string[];ward?:{x:number;z:number;y:number;radius:number}}={}){
@@ -35,22 +34,27 @@ export function createChaosGate(scene:THREE.Scene,x:number,y:number,z:number,loa
     if(!group.parent){asset.scene.traverse((o:any)=>{if(o.material)for(const m of [].concat(o.material)) (m as any).dispose();});return;}
     const model=asset.scene;const bounds=new THREE.Box3().setFromObject(model);const center=bounds.getCenter(new THREE.Vector3());const size=bounds.getSize(new THREE.Vector3());const scale=9.1/size.x;
     model.scale.multiplyScalar(scale);model.position.set(-center.x*scale,-bounds.min.y*scale,-center.z*scale);group.add(model);
-    const recolored=new Map<THREE.Texture,THREE.Texture>();
-    if(options.color!==undefined){model.traverse((o:any)=>{
+    // Recolor the sampled atlas in the shader. GLTF ImageBitmap orientation and
+    // its three UV channels stay exactly as loaded; never redraw the atlas.
+    model.traverse((o:any)=>{
       if(!o.isMesh||o.name==='ChaosVeil')return;
       for(const material of [].concat(o.material) as THREE.MeshStandardMaterial[]){
-        // Both maps use the green atlas, but retain different UV channels.
-        for(const slot of ['map','emissiveMap'] as const){
-        const map=material[slot];if(!map?.image)continue;
-        let tinted=recolored.get(map);
-        if(!tinted){const canvas=document.createElement('canvas');canvas.width=canvas.height=512;const c=canvas.getContext('2d')!;c.drawImage(map.image as CanvasImageSource,0,0,512,512);const pixels=c.getImageData(0,0,512,512);const color=new THREE.Color(FIRE_COLOR).convertLinearToSRGB();const rgb=[color.r,color.g,color.b].map(v=>Math.round(THREE.MathUtils.clamp(v,0,1)*255));
-          for(let i=0;i<pixels.data.length;i+=4){const r=pixels.data[i],g=pixels.data[i+1],b=pixels.data[i+2];if(g>r*1.2&&g>b*.65&&g>65){const light=g/255;pixels.data[i]=rgb[0]*light;pixels.data[i+1]=rgb[1]*light;pixels.data[i+2]=rgb[2]*light;}}
-          c.putImageData(pixels,0,0);tinted=map.clone();tinted.source=new THREE.Source(canvas);tinted.needsUpdate=true;recolored.set(map,tinted);coloredTextures.push(tinted);
-        }material[slot]=tinted;
-        }
+        material.onBeforeCompile=shader=>{
+          shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
+            float fireMax = max(diffuseColor.g, diffuseColor.b);
+            if (fireMax > diffuseColor.r * 1.35 && fireMax - min(diffuseColor.r, min(diffuseColor.g, diffuseColor.b)) > 0.08) {
+              diffuseColor.rgb = vec3(1.0, 0.025, 0.012) * fireMax;
+            }`);
+          shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
+            float glowMax = max(totalEmissiveRadiance.g, totalEmissiveRadiance.b);
+            if (glowMax > totalEmissiveRadiance.r * 1.35 && glowMax - min(totalEmissiveRadiance.r, min(totalEmissiveRadiance.g, totalEmissiveRadiance.b)) > 0.08) {
+              totalEmissiveRadiance = vec3(1.0, 0.025, 0.012) * glowMax * 1.6;
+            }`);
+        };
+        material.customProgramCacheKey=()=> 'chaos-red-fire-v2';
         material.needsUpdate=true;
       }
-    });}
+    });
     model.traverse((o:any)=>{if(o.name==='ChaosVeil'&&o.isMesh){const mat=o.material as THREE.Material;mat.depthWrite=false;mat.transparent=true;veilMaterials.push(mat);}});
     // Sample the central stone stair profile once; no per-frame triangle raycasts.
     model.updateWorldMatrix(true,true);
