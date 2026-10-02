@@ -2329,6 +2329,16 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       wallFallbacks.forEach(g=>g.visible=false);
     },"STONE WALLS");
 
+    const applyGateWoodTexture=(root:THREE.Object3D,all=false)=>{
+      root.traverse((part:any)=>{
+        if(!part.isMesh)return;
+        for(const material of (Array.isArray(part.material)?part.material:[part.material]) as THREE.MeshStandardMaterial[]){
+          if(!all&&!/Wood/i.test(material.name))continue;
+          material.map=woodTex;material.color.setHex(/DarkWood/i.test(material.name)?0x93806b:0xffffff);
+          material.roughness=.92;material.metalness=0;material.needsUpdate=true;
+        }
+      });
+    };
     const gateFrontZ=44,gateRearZ=-31;
     const fortGates=[{id:"gate",z:gateFrontZ,facing:1},{id:"gateRear",z:gateRearZ,facing:-1}].map(config=>{
       const root=new THREE.Group();root.position.set(0,groundY(0,config.z)-.04,config.z);root.rotation.y=config.facing===1?0:Math.PI;
@@ -2340,8 +2350,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       left.position.set(-2.84,0,1.06);right.position.set(2.87,0,1.06);
       const leftLeaf=box(2.78,4.1,.25,0x69513a,1);leftLeaf.position.set(1.39,2.05,0);left.add(leftLeaf);
       const rightLeaf=box(2.78,4.1,.25,0x69513a,1);rightLeaf.position.set(-1.39,2.05,0);right.add(rightLeaf);
-      root.add(left,right);
-      const bar=box(6.1,.26,.30,0x35291f,1);bar.position.set(0,2.3,1.37);root.add(bar);
+      root.add(left,right);applyGateWoodTexture(left,true);applyGateWoodTexture(right,true);
+      const bar=box(6.1,.26,.30,0x35291f,1);bar.position.set(0,2.3,1.37);root.add(bar);applyGateWoodTexture(bar,true);
       addMesh(root,config.id,config.id==="gate"?"Передние ворота":"Задние ворота");
       applyWallStoneTexture(fallback,true);
       // Pier collision follows the clear opening of the door frame.
@@ -2358,6 +2368,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       baked.model.children.forEach((part:any)=>{
         part.geometry.scale(sx,sy,sz);part.geometry.computeBoundingBox();
       });
+      applyWallStoneTexture(baked.model,true);applyGateWoodTexture(baked.model);
       const leftPart=baked.model.getObjectByName("LeftDoor") as THREE.Mesh|undefined;
       const rightPart=baked.model.getObjectByName("RightDoor") as THREE.Mesh|undefined;
       if(!leftPart||!rightPart)return;
@@ -4298,13 +4309,6 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         const nativeSword=model.getObjectByName('Sword');
         if(nativeSword)nativeSword.visible=true;
         const actor=new THREE.Group();actor.name='Guardian_'+spec.id;actor.visible=false;actor.add(model);
-        if(spec.cloak!==undefined){
-          const f=spec.scale/1.92;
-          const cape=new THREE.Mesh(new THREE.PlaneGeometry(1.28*f,.92*f),new THREE.MeshStandardMaterial({color:spec.cloak,roughness:.96,metalness:0,side:THREE.DoubleSide}));
-          cape.position.set(0,1.86*f,-.36*f);cape.rotation.x=-.10;cape.castShadow=true;actor.add(cape);
-          const clasp=new THREE.Mesh(new THREE.TorusGeometry(.12*f,.025*f,8,18),new THREE.MeshStandardMaterial({color:spec.accent,roughness:.45,metalness:.72}));
-          clasp.position.set(0,2.28*f,-.30*f);clasp.rotation.x=Math.PI/2;actor.add(clasp);
-        }
         scene.add(actor);
         const mixer=new THREE.AnimationMixer(model),actions:Record<string,THREE.AnimationAction>={};
         for(const clip of gltf.animations||[]){
