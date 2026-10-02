@@ -5,6 +5,7 @@ export const CHAOS_GATE_KEY='chaos:north:cleared';
 export const CHAOS_GATE_COST=300;
 export const CHAOS_GATE_RUNES=['fehuWealth','algizGuard','thurisazStrike'];
 export function cleanseChaosGate(s:Save,rune:string):Save {return cleanseGate(s,'north',CHAOS_GATE_RUNES.indexOf(rune));}
+const FIRE_COLOR=0xff3020;
 const floorProfiles=new WeakMap<THREE.BufferGeometry,Array<{z:number;y:number}>>();
 // The veil and inscriptions are separate from the stone frame and dissolve together.
 export function createChaosGate(scene:THREE.Scene,x:number,y:number,z:number,load:(callback:(asset:any)=>void)=>void,options:{rotation?:number;color?:number;seal?:string[];ward?:{x:number;z:number;y:number;radius:number}}={}){
@@ -19,6 +20,13 @@ export function createChaosGate(scene:THREE.Scene,x:number,y:number,z:number,loa
   const marks=new THREE.Mesh(new THREE.PlaneGeometry(4.4,4.4),ink);marks.position.set(0,3,-1.29);group.add(marks);
   const veilMaterials:THREE.Material[]=[];let progress=1;
   const coloredTextures:THREE.Texture[]=[];
+  // Additive halos provide visible fire glow without extra shadow-casting lights.
+  const glowCanvas=document.createElement('canvas');glowCanvas.width=glowCanvas.height=64;
+  const gc=glowCanvas.getContext('2d')!;const gradient=gc.createRadialGradient(32,32,0,32,32,32);
+  gradient.addColorStop(0,'rgba(255,110,65,.8)');gradient.addColorStop(.3,'rgba(255,40,20,.35)');gradient.addColorStop(1,'rgba(255,10,0,0)');gc.fillStyle=gradient;gc.fillRect(0,0,64,64);
+  const glowTexture=new THREE.CanvasTexture(glowCanvas);glowTexture.colorSpace=THREE.SRGBColorSpace;coloredTextures.push(glowTexture);
+  const glowMaterial=new THREE.SpriteMaterial({map:glowTexture,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false,opacity:.75});
+  const halos=[-1,1].map(side=>{const sprite=new THREE.Sprite(glowMaterial);sprite.position.set(side*2.7,3.4,.2);sprite.scale.set(2.1,2.1,1);group.add(sprite);return sprite;});
   let ward:THREE.Mesh|undefined;
   if(options.ward){const w=options.ward;ward=new THREE.Mesh(new THREE.CylinderGeometry(w.radius,w.radius,3.4,48,1,true),new THREE.MeshBasicMaterial({color:options.color??0x998899,transparent:true,opacity:.09,side:THREE.DoubleSide,depthWrite:false}));ward.position.set(w.x,w.y+1.6,w.z);scene.add(ward);}
 
@@ -35,9 +43,9 @@ export function createChaosGate(scene:THREE.Scene,x:number,y:number,z:number,loa
         for(const slot of ['map','emissiveMap'] as const){
         const map=material[slot];if(!map?.image)continue;
         let tinted=recolored.get(map);
-        if(!tinted){const canvas=document.createElement('canvas');canvas.width=canvas.height=512;const c=canvas.getContext('2d')!;c.drawImage(map.image as CanvasImageSource,0,0,512,512);const pixels=c.getImageData(0,0,512,512);const color=new THREE.Color(options.color).convertLinearToSRGB();const rgb=[color.r,color.g,color.b].map(v=>Math.round(THREE.MathUtils.clamp(v,0,1)*255));
+        if(!tinted){const canvas=document.createElement('canvas');canvas.width=canvas.height=512;const c=canvas.getContext('2d')!;c.drawImage(map.image as CanvasImageSource,0,0,512,512);const pixels=c.getImageData(0,0,512,512);const color=new THREE.Color(FIRE_COLOR).convertLinearToSRGB();const rgb=[color.r,color.g,color.b].map(v=>Math.round(THREE.MathUtils.clamp(v,0,1)*255));
           for(let i=0;i<pixels.data.length;i+=4){const r=pixels.data[i],g=pixels.data[i+1],b=pixels.data[i+2];if(g>r*1.2&&g>b*.65&&g>65){const light=g/255;pixels.data[i]=rgb[0]*light;pixels.data[i+1]=rgb[1]*light;pixels.data[i+2]=rgb[2]*light;}}
-          c.putImageData(pixels,0,0);tinted=map.clone();tinted.image=canvas;tinted.needsUpdate=true;recolored.set(map,tinted);coloredTextures.push(tinted);
+          c.putImageData(pixels,0,0);tinted=map.clone();tinted.source=new THREE.Source(canvas);tinted.needsUpdate=true;recolored.set(map,tinted);coloredTextures.push(tinted);
         }material[slot]=tinted;
         }
         material.needsUpdate=true;
@@ -74,7 +82,7 @@ export function createChaosGate(scene:THREE.Scene,x:number,y:number,z:number,loa
     },
     sealedAt(wx:number,wz:number){if(Math.abs(wx-x)>6||Math.abs(wz-z)>6)return false;const p=group.worldToLocal(new THREE.Vector3(wx,y,wz));return Math.abs(p.x)<2.5&&Math.abs(p.z-marks.position.z)<.3;},
     blocks(wx:number,wz:number){if(Math.abs(wx-x)>6||Math.abs(wz-z)>6)return false;const p=group.worldToLocal(new THREE.Vector3(wx,y,wz));return Math.abs(p.z)<2.45&&Math.abs(p.x)>1.9&&Math.abs(p.x)<3.5;},
-    update(dt:number,cleared:boolean,time:number,wx?:number,wz?:number){group.visible=wx===undefined||Math.hypot(wx-x,(wz??0)-z)<65;if(ward){ward.visible=progress>0&&group.visible;(ward.material as THREE.Material).opacity=.09*progress;}progress=Math.max(0,Math.min(1,progress+(cleared?-dt:dt)));marks.visible=progress>0;ink.opacity=progress*(.78+Math.sin(time*.0018)*.12);for(const material of veilMaterials){material.opacity=.8*progress;material.visible=progress>0;}},
+    update(dt:number,cleared:boolean,time:number,wx?:number,wz?:number){glowMaterial.opacity=.68+Math.sin(time*.004)*.1;halos.forEach(h=>h.scale.setScalar(2.1+Math.sin(time*.003)*.06));group.visible=wx===undefined||Math.hypot(wx-x,(wz??0)-z)<65;if(ward){ward.visible=progress>0&&group.visible;(ward.material as THREE.Material).opacity=.09*progress;}progress=Math.max(0,Math.min(1,progress+(cleared?-dt:dt)));marks.visible=progress>0;ink.opacity=progress*(.78+Math.sin(time*.0018)*.12);for(const material of veilMaterials){material.opacity=.8*progress;material.visible=progress>0;}},
     dispose(){scene.remove(group);texture.dispose();marks.geometry.dispose();coloredTextures.forEach(t=>t.dispose());if(ward){scene.remove(ward);ward.geometry.dispose();(ward.material as THREE.Material).dispose();}group.traverse((o:any)=>{if(o.material)for(const m of [].concat(o.material))(m as any).dispose();});}
   };
 }
