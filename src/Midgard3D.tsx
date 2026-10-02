@@ -1,3 +1,4 @@
+import {REPAIR_GOODS} from './locationRepairs';
 import { CHAOS_GATES, chaosKey, gateForLocation } from './chaosProgression';
 import { createChaosGate } from './chaosGate';
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -11,7 +12,7 @@ import { InventorySection, SparkDrop } from './inventory';
 
 
 
-export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, onOpenMill, eventDone, start, rememberPosition, northBridgeRepaired, chaosGateCleared, chaosCleared, northBridgeReady, goldChestOpened, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, banditRespawnAt, onBanditDefeated, onBanditReward, onBanditKnockout, potions, runes, equippedRune, runeCounts, runeLevels, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; onOpenMill:()=>void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; chaosGateCleared:boolean; chaosCleared:string[]; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; banditRespawnAt:Record<string,number>; onBanditDefeated:(id:string)=>void; onBanditReward:(id:string)=>string; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; runeCounts?:Record<string,number>; runeLevels?:Record<string,number>; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string,currentHp?:number)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
+export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, onOpenMill, eventDone, start, rememberPosition, northBridgeRepaired, chaosGateCleared, chaosCleared, repairedLocations, repairStock, northBridgeReady, goldChestOpened, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, banditRespawnAt, onBanditDefeated, onBanditReward, onBanditKnockout, potions, runes, equippedRune, runeCounts, runeLevels, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; onOpenMill:()=>void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; chaosGateCleared:boolean; chaosCleared:string[]; repairedLocations:string[]; repairStock:Record<string,number>; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; banditRespawnAt:Record<string,number>; onBanditDefeated:(id:string)=>void; onBanditReward:(id:string)=>string; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; runeCounts?:Record<string,number>; runeLevels?:Record<string,number>; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string,currentHp?:number)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -73,6 +74,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   const insideHomeRef = useRef(false);
   const homeActionRef = useRef<((inside:boolean)=>void)|null>(null);
   const attackActionRef = useRef<(()=>void)|null>(null);
+  const repairedRef=useRef(new Set(repairedLocations));repairedRef.current=new Set(repairedLocations);
   const clearedGatesRef=useRef(new Set(chaosCleared));clearedGatesRef.current=new Set(chaosCleared);
   const chaosClearedRef=useRef(chaosGateCleared);
   chaosClearedRef.current=chaosGateCleared;
@@ -128,6 +130,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   };
   const beginLocationEncounter=(id:string)=>{
     const gate=gateForLocation(id);if(gate&&!clearedGatesRef.current.has(gate.id)){onRef.current('chaosGate:'+gate.id,{x:state.current.x,z:state.current.z});return;}
+    if(gate&&!repairedRef.current.has(gate.id)){onRef.current('repair:'+gate.id,{x:state.current.x,z:state.current.z});return;}
     if(!guardianPrerequisitesDone(id)){
       const idx=MIDGARD_GUARDIAN_ORDER.indexOf(id as any);
       const missing=MIDGARD_GUARDIAN_ORDER.slice(0,Math.max(0,idx)).find(prev=>!guardianResolved.includes(prev));
@@ -149,6 +152,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   const beginWhisperEncounter=()=>beginLocationEncounter("whisperStone");
   const beginGuardianRematch=(id:string)=>{
     const gate=gateForLocation(id);if(gate&&!clearedGatesRef.current.has(gate.id)){onRef.current('chaosGate:'+gate.id,{x:state.current.x,z:state.current.z});return;}
+    if(gate&&!repairedRef.current.has(gate.id)){onRef.current('repair:'+gate.id,{x:state.current.x,z:state.current.z});return;}
     const spec=MIDGARD_GUARDIANS[id]||MIDGARD_GUARDIANS.whisperStone;
     activeGuardianIdRef.current=spec.id;setActiveGuardianId(spec.id);
     clearWhisperTimers();
@@ -5296,6 +5300,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     {inventoryOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}><div className="mid3d-map-panel" style={{background:"linear-gradient(145deg,#1b271c,#0e1712)",color:"#fff2d8",borderColor:"#987346"}}>
       <div className="mid3d-map-title" style={{color:"#f5d28a"}}>🎒 Запас Вики</div>
       <div className="mid3d-map-sub" style={{color:"#c3b7a2"}}>Здоровье: {banditHeroHp}/{whisperStats.maxHp} · Ледяная защита: {frostGuard} уд.</div>
+      {Object.values(repairStock).some(n=>n>0)&&<div className="inventory-section"><h3>🔧 Припасы для восстановления</h3><div className="inventory-list">{Object.entries(repairStock).filter(([,n])=>n>0).map(([id,n])=><div key={id} className="inventory-item"><span className="inventory-symbol">📦</span><span className="inventory-detail"><b>{REPAIR_GOODS[id as keyof typeof REPAIR_GOODS]||id} · {n}</b><small>Для ремонта локаций после снятия печатей хаоса</small></span></div>)}</div></div>}
       <div className="inventory-section"><h3>🌿 Материалы</h3><div className="inventory-list"><div className="inventory-item"><span className="inventory-symbol">🪵</span><span className="inventory-detail"><b>Древесина · {stock.wood}</b><small>Плотнику Бьёрну нужно 3</small></span></div><div className="inventory-item"><span className="inventory-symbol">🌱</span><span className="inventory-detail"><b>Ветки · {stock.twigs}</b><small>Плотнику Бьёрну нужно 3</small></span></div><div className="inventory-item"><span className="inventory-symbol">🌿</span><span className="inventory-detail"><b>Травы · {stock.herbs}</b><small>Травнице Сигрид нужно 4</small></span></div><div className="inventory-item"><span className="inventory-symbol">🪵✨</span><span className="inventory-detail"><b>Ясеневая древесина · {stock.ashWood}</b><small>Редкий материал Поверженного ясеня для будущего крафта</small></span></div></div></div>
       <InventorySection kind="potions" potions={potions} runes={runes} equippedRune={equippedRune} hp={banditHeroHp} maxHp={whisperStats.maxHp} frostGuard={frostGuard} onUsePotion={useMidgardPotion} onEquipRune={onEquipRune}/>
       <InventorySection kind="runes" potions={potions} runes={runes} equippedRune={equippedRune} lootCounts={runeCounts} runeLevels={runeLevels} hp={banditHeroHp} maxHp={whisperStats.maxHp} frostGuard={frostGuard} onUsePotion={useMidgardPotion} onEquipRune={onEquipRune}/>
@@ -5397,6 +5402,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       if(id==="forge")return <div className="mid3d-ui mid3d-door-prompt"><b>Дверь кузницы</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>forgeActionRef.current?.()}>Открыть ручку</button></div>;
       const selectedGate=id.startsWith('chaosGate:')?CHAOS_GATES.find(g=>g.id===id.slice(10)):gateForLocation(id);
       if(selectedGate&&!clearedGatesRef.current.has(selectedGate.id))return <div className="mid3d-ui mid3d-interact"><b>Врата хаоса · {selectedGate.name}</b><span>Путь запечатан. Нужны руны и {selectedGate.cost} капель бессмертия.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on('chaosGate:'+selectedGate.id,{x:state.current.x,z:state.current.z})}>Снять заклинание</button></div>;
+      if(selectedGate&&!repairedRef.current.has(selectedGate.id))return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Печать снята, но локация повреждена. Жители помогут её восстановить.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on('repair:'+selectedGate.id,{x:state.current.x,z:state.current.z})}>Осмотреть повреждения</button></div>;
       if(id==="northBridge")return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{northBridgeRepaired?'Проход открыт. Золотой сундук находится на другом берегу.':northBridgeReady?'Материалы подготовлены. Заверши ремонт за 300 капель бессмертия.':'Подготовь материалы у Сигрид, Бьёрна и Торвальда. Ремонт стоит 300 капель бессмертия.'}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>{northBridgeRepaired?'Осмотреть мост':'Ремонт моста'}</button></div>;
       const villageDoor=["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman","oldfarm"].includes(id);
       if(villageDoor)return <div className="mid3d-ui mid3d-door-prompt"><b>{label}</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>id==="oldfarm"?on(id,{x:state.current.x,z:state.current.z}):villageDoorActionRef.current?.(id)}>{outsideHouse===id?"Поговорить":"Открыть ручку"}</button></div>;

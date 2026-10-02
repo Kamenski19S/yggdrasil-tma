@@ -267,7 +267,7 @@ export const SHIELD_ASSETS=['Shield_Round.glb','Shield_Round_2.glb','Shield_Heat
 export const shieldForgeKey=(asset:string)=>asset===SHIELD_ASSETS[0]?'shield':'shield:'+asset;
 
 
-export type Save = { sparks: number; immortalityDrops:number; millStored:number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; equippedArtifact:string; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; lootCounts:Record<string,number>; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; forgeLevels: Record<string,number>; forgeFreeUsed: boolean; gathered:string[]; gatherRespawnAt:Record<string,number>; stock:GatherStock; locationCooldowns:Record<string,number>; villageOrders:Record<string,number>; runeSteel:number };
+export type Save = { sparks: number; immortalityDrops:number; millStored:number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; equippedArtifact:string; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; lootCounts:Record<string,number>; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; forgeLevels: Record<string,number>; forgeFreeUsed: boolean; gathered:string[]; gatherRespawnAt:Record<string,number>; stock:GatherStock; locationCooldowns:Record<string,number>; villageOrders:Record<string,number>; repairStock:Record<string,number>; runeSteel:number };
 
 
 export const GATHER_RESPAWN_MS=15*60*1000;
@@ -279,7 +279,7 @@ export function refreshGathering<T extends {gathered:string[];gatherRespawnAt:Re
   return {...state,gathered,gatherRespawnAt};
 }
 
-export const DEF: Save = { sparks: 0, immortalityDrops:25, millStored:0, done: [], gift: "", hero: null, trials: [], artifacts: [], equippedArtifact:"", watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], lootCounts:{default:1,[SHIELD_ASSETS[0]]:1}, equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false,gathered:[],gatherRespawnAt:{},stock:{...EMPTY_GATHER_STOCK},locationCooldowns:{},villageOrders:{},runeSteel:0 };
+export const DEF: Save = { sparks: 0, immortalityDrops:25, millStored:0, done: [], gift: "", hero: null, trials: [], artifacts: [], equippedArtifact:"", watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], lootCounts:{default:1,[SHIELD_ASSETS[0]]:1}, equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,forgeLevels: {}, forgeFreeUsed: false,gathered:[],gatherRespawnAt:{},stock:{...EMPTY_GATHER_STOCK},locationCooldowns:{},villageOrders:{},repairStock:{},runeSteel:0 };
 
 
 export const loadSave = (): Save => {
@@ -298,6 +298,8 @@ export const loadSave = (): Save => {
     if(!s.locationCooldowns||typeof s.locationCooldowns!=="object"||Array.isArray(s.locationCooldowns))s.locationCooldowns={};
     if(!s.villageOrders||typeof s.villageOrders!=='object'||Array.isArray(s.villageOrders))s.villageOrders={};
     for(const key of Object.keys(s.villageOrders))s.villageOrders[key]=Math.max(0,Math.floor(Number(s.villageOrders[key])||0));
+    if(!s.repairStock||typeof s.repairStock!=='object'||Array.isArray(s.repairStock))s.repairStock={};
+    for(const key of Object.keys(s.repairStock))s.repairStock[key]=Math.max(0,Math.floor(Number(s.repairStock[key])||0));
     s.runeSteel=Math.max(0,Math.floor(Number(s.runeSteel)||0));
     // Merge the legacy quest balance once, then clear it before saving.
     const legacyDrops=Math.max(0,Math.floor(Number(previous.sparks)||0));
@@ -425,55 +427,55 @@ export const MIDGARD_GUARDIAN_ORDER=['rune','ashgrove','norns','threeThreads','w
 export const MIDGARD_GUARDIANS:Record<string,MidgardGuardianSpec>={
   rune:{
     id:"rune",location:"Древний камень Феху",name:"Фейр",title:"Страж Феху",sym:"ᚠ",
-    x:50,z:60,hp:24,atk:5,scale:2.40,cloth:0x805635,cloak:0x9b5b2e,accent:0xd7a14a,tempo:760,power:1,
+    x:50,z:60,hp:85,atk:10,scale:2.40,cloth:0x805635,cloak:0x9b5b2e,accent:0xd7a14a,tempo:760,power:2,
     question:{q:"Что прежде всего означает руна Феху в древней традиции?",a:["Лёд и неподвижность","Скот, имущество и достаток","Путешествие по морю"],c:1},
     intro:"Золотая руна вспыхивает на камне. Страж проверяет, понимаешь ли ты смысл Феху.",correctReward:5,battleReward:10
   },
   ashgrove:{
     id:"ashgrove",location:"Роща Ясеня",name:"Аскольд",title:"Страж Ясеня",sym:"ᛇ",
-    x:-5,z:75,hp:30,atk:6,scale:2.10,cloth:0x4f6840,cloak:0x2f402a,accent:0x8fb66d,tempo:730,power:1,
+    x:-5,z:75,hp:100,atk:11,scale:2.10,cloth:0x4f6840,cloak:0x2f402a,accent:0x8fb66d,tempo:730,power:2,
     question:{q:"Как звали первого мужчину, которого боги создали из дерева?",a:["Аск","Бальдр","Хёд"],c:0},
     intro:"Листья стихли. Из тени ясеней слышится вопрос хранителя рощи.",correctReward:6,battleReward:12
   },
   norns:{
     id:"norns",location:"Прядильня Норн",name:"Вердаль",title:"Страж Нитей",sym:"ᛈ",
-    x:-52,z:38,hp:34,atk:7,scale:2.15,cloth:0x697187,cloak:0x51586f,accent:0xc5cbe7,tempo:700,power:2,
+    x:-52,z:38,hp:115,atk:12,scale:2.15,cloth:0x697187,cloak:0x51586f,accent:0xc5cbe7,tempo:700,power:3,
     question:{q:"Как зовут трёх Норн у источника судьбы?",a:["Урд, Верданди и Скульд","Фригг, Фрейя и Сиф","Хель, Ран и Нотт"],c:0},
     intro:"Серебряные нити натягиваются между камнями. Страж просит назвать хранительниц судьбы.",correctReward:7,battleReward:14
   },
   threeThreads:{
     id:"threeThreads",location:"Колодец Трёх Норн",name:"Скальд",title:"Страж Трёх Нитей",sym:"ᛉ",
-    x:58,z:-28,hp:38,atk:8,scale:2.22,cloth:0x70566f,cloak:0x403445,accent:0xd7b1d0,tempo:670,power:2,
+    x:58,z:-28,hp:130,atk:13,scale:2.22,cloth:0x70566f,cloak:0x403445,accent:0xd7b1d0,tempo:670,power:3,
     question:{q:"Какая из трёх Норн связана с тем, чему ещё предстоит случиться?",a:["Урд","Верданди","Скульд"],c:2},
     intro:"Три нити сходятся над водой. Прежде чем выбрать одну из них, нужно выдержать вопрос стража.",correctReward:8,battleReward:16
   },
   whisperStone:{
     id:"whisperStone",location:"Камень Шёпота",name:"Хродвитнир",title:"Страж Камня шёпота",sym:"ᚦ",
-    x:-72,z:-48,hp:40,atk:8,scale:2.27,cloth:0x403736,cloak:0x211f21,accent:0xff8a32,tempo:650,power:3,
+    x:-72,z:-48,hp:145,atk:14,scale:2.27,cloth:0x403736,cloak:0x211f21,accent:0xff8a32,tempo:650,power:4,
     question:WHISPER_QUEST,
     intro:"Янтарный свет хранит память о сотворении мира людей. Из глубины раздаётся голос стража.",correctReward:8,battleReward:18
   },
   runefield:{
     id:"runefield",location:"Поле Рун",name:"Райдмар",title:"Страж Рунного Поля",sym:"ᚱ",
-    x:18,z:55,hp:42,atk:9,scale:2.24,cloth:0x395d72,cloak:0x263d4a,accent:0x76d8ef,tempo:620,power:3,
+    x:18,z:55,hp:165,atk:15,scale:2.24,cloth:0x395d72,cloak:0x263d4a,accent:0x76d8ef,tempo:620,power:4,
     question:{q:"Какая руна Старшего Футарка связана с дорогой, движением и путешествием?",a:["Райдо","Иса","Хагалаз"],c:0},
     intro:"Руны загораются одна за другой. Хранитель поля требует узнать знак пути.",correctReward:9,battleReward:18
   },
   mimir:{
     id:"mimir",location:"Колодец Мимира",name:"Хеймвард",title:"Хранитель Мудрости",sym:"ᚨ",
-    x:1,z:0,hp:48,atk:10,scale:2.34,cloth:0x344760,cloak:0x192538,accent:0xe2bd61,tempo:590,power:4,requiredPower:4,
+    x:1,z:0,hp:185,atk:17,scale:2.34,cloth:0x344760,cloak:0x192538,accent:0xe2bd61,tempo:590,power:5,requiredPower:4,
     question:{q:"Что отдал Один за право испить из источника Мимира?",a:["Своё копьё","Один глаз","Кольцо Драупнир"],c:1},
     intro:"Вода становится неподвижной, словно зеркало. Страж Мимира требует цену знания — верный ответ.",correctReward:10,battleReward:21
   },
   powerCircle:{
     id:"powerCircle",location:"Круг Силы",name:"Тюрвальд",title:"Страж Обета",sym:"ᛏ",
-    x:5,z:-70,hp:52,atk:11,scale:2.03,cloth:0x663431,cloak:0x2b191a,accent:0xf08a49,tempo:560,power:5,requiredPower:5,
+    x:5,z:-70,hp:210,atk:19,scale:2.03,cloth:0x663431,cloak:0x2b191a,accent:0xf08a49,tempo:560,power:5,requiredPower:5,
     question:{q:"Какой бог лишился руки, когда асы связали волка Фенрира?",a:["Тюр","Тор","Хеймдалль"],c:0},
     intro:"Монолит отвечает тяжёлым гулом. Здесь силу получают только те, кто помнит цену клятвы.",correctReward:11,battleReward:24
   },
   hoddmimir:{
     id:"hoddmimir",location:"Лес Ходдмимира",name:"Ливгард",title:"Страж Последнего Убежища",sym:"ᛋ",
-    x:62,z:78,hp:58,atk:12,scale:2.46,cloth:0x4d5b38,cloak:0x26311f,accent:0xd1b765,tempo:530,power:5,requiredPower:5,
+    x:62,z:78,hp:240,atk:21,scale:2.46,cloth:0x4d5b38,cloak:0x26311f,accent:0xd1b765,tempo:530,power:5,requiredPower:5,
     question:{q:"Кто, согласно эддической традиции, укроется в лесу Ходдмимира и переживёт гибель мира?",a:["Лив и Ливтрасир","Скёлль и Хати","Моди и Магни"],c:0},
     intro:"Глубокий лес словно отсекает шум мира. Последний страж Мидгарда задаёт вопрос о тех, кто переживёт Рагнарёк.",correctReward:12,battleReward:28
   }
@@ -498,7 +500,7 @@ export const HEROES: HeroDef[] = [
 
 
 export const MASTERS: Record<string, Master> = {
-  midgard: { name: "Хеймдалль", title: "Страж Радужного моста", hp: 30, atk: 5, sym: "ᚺ", greet: "Я слышу, как растёт трава и шерсть на овцах. Кто дерзнул подойти к моему мосту? Отвечай на загадки — или берись за оружие." },
+  midgard: { name: "Хеймдалль", title: "Страж Радужного моста", hp: 110, atk: 12, sym: "ᚺ", greet: "Я слышу, как растёт трава и шерсть на овцах. Кто дерзнул подойти к моему мосту? Отвечай на загадки — или берись за оружие." },
   muspelheim: { name: "Сурт", title: "Огненный великан", hp: 35, atk: 6, sym: "ᚲ", greet: "Моё пламя старше богов. Если твоя мудрость не вспыхнет ярче огня — судить тебя будет мой меч." },
   niflheim: { name: "Нидхёгг", title: "Дракон корней", hp: 35, atk: 6, sym: "ᚾ", greet: "Я точу корни Древа, и туман скрывает мои кольца. Отгадай мои загадки, смертный, или станешь добычей." },
   jotunheim: { name: "Вафтруднир", title: "Мудрейший из великанов", hp: 40, atk: 7, sym: "ᚺ", greet: "Я пил мудрость веков. Устроим состязание загадок, как в старину. Проигравший отдаёт голову." },

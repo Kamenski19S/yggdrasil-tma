@@ -1,3 +1,4 @@
+import { REPAIR_RESIDENTS, REPAIR_GOODS, REPAIR_PROJECTS, type RepairResident, nextRepairJob, residentRepairIntro, repaired, repairKey, workKey, canPrepareRepair, prepareRepair, canRestore, restoreLocation } from './locationRepairs';
 import { CHAOS_GATES, chaosKey, gateForLocation, runeCopies, runeStrength, canCleanseGate, cleanseGate } from './chaosProgression';
 import { rollBanditLoot, applyBanditLoot } from './banditLoot';
 import { CHAOS_GATE_KEY, CHAOS_GATE_COST, CHAOS_GATE_RUNES, cleanseChaosGate } from './chaosGate';
@@ -25,6 +26,7 @@ export function App() {
   const [pick, setPick] = useState("");
   const [pickName, setPickName] = useState("");
   const [toast, setToast] = useState("");
+  const [repairDialog,setRepairDialog]=useState<string|null>(null);
   const [chaosDialog,setChaosDialog]=useState<string|null>(null);
   const [chaosRecipe,setChaosRecipe]=useState(0);
   const currentChaosGate=CHAOS_GATES.find(g=>g.id===chaosDialog);
@@ -108,6 +110,10 @@ const [roadT, setRoadT] = useState(0.06);
   },[!!houseDialog]);
   const resident=VILLAGE_RESIDENTS.includes(houseDialogId as VillageResident)?houseDialogId as VillageResident:null;
   const residentOrder=resident?villageOrder(save,resident):null;
+  const repairResident=(houseDialogId==='house'?'elder':houseDialogId) as RepairResident;
+  const repairAssignment=repairResident in REPAIR_RESIDENTS?nextRepairJob(save,repairResident):null;
+  const repairProject=REPAIR_PROJECTS.find(p=>p.id===repairDialog);
+  const finishRepair=(id:string)=>{const p=REPAIR_PROJECTS.find(p=>p.id===id);if(!p||!canRestore(save,p))return;setSave(s=>restoreLocation(s,p));haptic('success');say(p.name+' восстановлена. +'+p.reward+' капель бессмертия. Испытание доступно.');};
   const submitVillageOrder=()=>{
     if(!resident||!canCompleteOrder(save,resident))return;
     const order=villageOrder(save,resident);
@@ -323,7 +329,7 @@ const [roadT, setRoadT] = useState(0.06);
     if (finale) { haptic("success"); say("Серия испытаний завершена. Артефакт мира выдаётся только после полного прохождения его игровой локации."); }
   };
   const finishWhisperCorrect = () => {
-    setSave(s=>s.done.includes("whisper:wisdom")?s:{...s,immortalityDrops:s.immortalityDrops+8,done:[...new Set([...s.done,"whisper:wisdom","guardian:whisperStone","guardian:stage:whisperStone"])],
+    setSave(s=>(!s.done.includes(chaosKey("whisperStone"))||!repaired(s,"whisperStone")||s.done.includes("whisper:wisdom"))?s:{...s,immortalityDrops:s.immortalityDrops+8,done:[...new Set([...s.done,"whisper:wisdom","guardian:whisperStone","guardian:stage:whisperStone"])],
       runes:[...new Set([...s.runes,'ansuzWisdom'])],potions:[...s.potions,'northernMoss'],
       lootCounts:lootCountAdd(s.lootCounts,['ansuzWisdom','northernMoss'])});
     haptic("success");
@@ -373,7 +379,7 @@ const [roadT, setRoadT] = useState(0.06);
   };
   const finishWhisperBattle=()=>{
     setSave(s=>{
-      if(s.done.includes("whisper:battle"))return s;
+      if(!s.done.includes(chaosKey("whisperStone"))||!repaired(s,"whisperStone")||s.done.includes("whisper:battle"))return s;
       return {...s,immortalityDrops:s.immortalityDrops+18,done:[...new Set([...s.done,"whisper:battle","guardian:whisperStone","guardian:stage:whisperStone"])],
         ownedWeapons:[...new Set([...s.ownedWeapons,'mace'])],
         potions:[...s.potions,'northernMoss'],
@@ -596,13 +602,15 @@ const [roadT, setRoadT] = useState(0.06);
 
     const interact = (id: string, position?:{x:number;z:number}) => {
       haptic();
+      if(id.startsWith('repair:')){setRepairDialog(id.slice(7));return;}
       if(id.startsWith('chaosGate:')){openChaosGate(id.slice(10));return;}
       const requiredGate=gateForLocation(id);
       if(requiredGate&&!save.done.includes(chaosKey(requiredGate.id))){openChaosGate(requiredGate.id);return;}
+      if(requiredGate&&!repaired(save,requiredGate.id)){setRepairDialog(requiredGate.id);return;}
       if(id.startsWith("guardian:repeat:")){
         const locationId=id.slice("guardian:repeat:".length);
         const spec=MIDGARD_GUARDIANS[locationId];
-        const gate=gateForLocation(locationId);if(gate&&!save.done.includes(chaosKey(gate.id)))return;
+        const gate=gateForLocation(locationId);if(gate&&(!save.done.includes(chaosKey(gate.id))||!repaired(save,gate.id)))return;
         if(!spec)return;
         const repeatDrops=2+spec.power;
         setSave(s=>({...s,immortalityDrops:s.immortalityDrops+repeatDrops}));
@@ -614,7 +622,7 @@ const [roadT, setRoadT] = useState(0.06);
         const battle=id.startsWith("guardian:battle:");
         const locationId=id.slice(battle?"guardian:battle:".length:"guardian:correct:".length);
         const spec=MIDGARD_GUARDIANS[locationId];
-        const gate=gateForLocation(locationId);if(gate&&!save.done.includes(chaosKey(gate.id)))return;
+        const gate=gateForLocation(locationId);if(gate&&(!save.done.includes(chaosKey(gate.id))||!repaired(save,gate.id)))return;
         if(!spec)return;
         const key="guardian:"+locationId;
         const stageKey="guardian:stage:"+locationId;
@@ -691,34 +699,11 @@ const [roadT, setRoadT] = useState(0.06);
         enterForge(position);
         return;
       }
-      if(id === "blacksmith"){
-        say("Вёлунд: «Выбери сталь у двери кузницы. Горн уже разожжён».");
-        return;
+      if(id==='house'||id==='elder'||id in REPAIR_RESIDENTS){
+        const who=(id==='house'?'elder':id) as RepairResident;houseDialogPending.current=id;
+        const assignment=nextRepairJob(save,who);
+        say(REPAIR_RESIDENTS[who]+': '+residentRepairIntro(who)+(assignment?' Сейчас нужна помощь: '+assignment.project.name+'.':' Сними печати хаоса — после этого появятся работы по восстановлению.'));return;
       }
-      if(VILLAGE_RESIDENTS.includes(id as VillageResident)){
-        const who=id as VillageResident,order=villageOrder(save,who);
-        const remaining=Math.max(0,Math.ceil(((save.locationCooldowns['village:'+who]||0)-Date.now())/60000));
-        say(!order.initial&&remaining>0?`Спасибо за помощь. Новый заказ будет доступен через ${remaining} мин.`:
-          `${order.initial?'Материалы для моста':'Заказ №'+((save.villageOrders[who]||0)+1)}: ${order.title}. ${orderMaterials(save,who)}. Награда: ${order.drops} капель бессмертия${order.potion?' и эликсир':''}.`);
-        return;
-      }
-      if(id==='house'||id==='elder'){
-        houseDialogPending.current='house';
-        say(save.done.includes('bridge:north:repaired')?'Северный мост восстановлен. Жители продолжают выдавать заказы — помогай им и готовься к следующему пути.':
-          'Северный мост повреждён. Сигрид поможет рабочим настоем, Бьёрн подготовит основание, Торвальд — крепления. Завершение ремонта стоит 300 капель бессмертия. Тёмную печать у прохода нужно снять отдельно.');return;
-      }
-      const homeMessages:Record<string,string>={
-        warriorHouse:"Дружинник: «Добро пожаловать. Перед вечерним дозором я проверяю клинок и щит».",
-        fisher2:"Халли: «Утром я вернулся с северной реки. На крыльце сохнут сети».",
-        carpenter:"Плотник Бьёрн: «Принеси древесину и ветки, затем почини Северный мост у переправы».",
-        hunter2:"Рандви: «Я знаю лесные тропы. Если соберёшься к дальней роще, возьми с собой запас воды».",
-        family:"Хозяйка дома: «Торстейн скоро вернётся. Проходи, у очага тепло».",
-        fisher:"Эйнар: «Река сегодня спокойна. Рыбу можно обменять в деревне на припасы».",
-        hunter:"Ульв: «В лесу видны новые следы. Будь внимателен на дороге за воротами».",
-        herbalist:"Сигрид: «Можжевельник и сушёные травы помогают мне готовить эликсиры».",
-        craftsman:"Торвальд: «Я чиню инструменты и выковываю крепления. Приноси материалы, если понадобится помощь»."
-      };
-      if(homeMessages[id]){say(homeMessages[id]);return;}
       if(id==='chaosGate'){openChaosGate('north');return;}
       if(id==='northBridge'){
         houseDialogPending.current='northBridge';
@@ -963,6 +948,8 @@ const [roadT, setRoadT] = useState(0.06);
       eventDone={save.done.includes("forest:choice")}
       start={midgardReturn.current}
       rememberPosition={rememberMidgardPosition}
+      repairStock={save.repairStock}
+      repairedLocations={REPAIR_PROJECTS.filter(p=>repaired(save,p.id)).map(p=>p.id)}
       chaosCleared={CHAOS_GATES.filter(g=>save.done.includes(chaosKey(g.id))).map(g=>g.id)}
       chaosGateCleared={save.done.includes(CHAOS_GATE_KEY)}
       northBridgeRepaired={save.done.includes("bridge:north:repaired")}
@@ -1358,9 +1345,15 @@ const [roadT, setRoadT] = useState(0.06);
         </div>
       )}
 
+      {repairProject&&screen.t==='realm'&&screen.id==='midgard'&&<div className="chaos-panel" role="dialog" aria-label="Восстановление локации" onPointerDown={e=>e.stopPropagation()}>
+        <div className="chaos-panel-title"><b>{repairProject.name}</b><button aria-label="Закрыть" onClick={()=>setRepairDialog(null)}>×</button></div>
+        <p>{repairProject.damage}</p><p>Печать снята. Подготовь ремонт с помощью жителей:</p>
+        {repairProject.jobs.map(j=><p key={j.resident}>{save.done.includes(workKey(repairProject.id,j.resident))?'✅':'○'} {REPAIR_RESIDENTS[j.resident]} — {REPAIR_GOODS[j.goods]} ×{j.quantity}</p>)}
+        {repaired(save,repairProject.id)?<p>✅ Локация восстановлена.</p>:<button disabled={!canRestore(save,repairProject)} onClick={()=>finishRepair(repairProject.id)}>Восстановить · награда {repairProject.reward} капель</button>}
+      </div>}
       {currentChaosGate&&screen.t==='realm'&&screen.id==='midgard'&&<div className="chaos-panel" onPointerDown={e=>e.stopPropagation()} role="dialog" aria-label="Врата хаоса">
         <div className="chaos-panel-title"><b>{currentChaosGate.name}</b><button aria-label="Закрыть" onClick={()=>setChaosDialog(null)}>×</button></div>
-        {save.done.includes(chaosKey(currentChaosGate.id))?<p>Печать снята. Проход свободен.</p>:<>
+        {save.done.includes(chaosKey(currentChaosGate.id))?<><p>Печать снята.{currentChaosGate.location?' Теперь нужно восстановить повреждённую локацию.':' Проход свободен.'}</p>{currentChaosGate.location&&<button onClick={()=>{setRepairDialog(currentChaosGate.id);setChaosDialog(null);}}>Осмотреть повреждения</button>}</>:<>
           <p>Тёмная печать {currentChaosGate.seal.join(' · ')}.<br/>Выбери один способ очищения.</p>
           <div className="chaos-recipes">{currentChaosGate.recipes.map((needs,index)=>{const available=needs.every(n=>runeCopies(save,n.id)>=n.quantity&&runeStrength(save,n.id)>=n.level);return <button key={index} className={chaosRecipe===index?'chosen':''} disabled={!available} onClick={()=>setChaosRecipe(index)}>{needs.map(n=>{const rune=RUNE_CATALOG.find(r=>r.id===n.id)!;return <span key={n.id}><strong>{rune.symbol}</strong> {rune.name} ×{n.quantity} · {['I','II','III'][n.level-1]}<small>В запасе: {runeCopies(save,n.id)} · уровень {['I','II','III'][runeStrength(save,n.id)-1]}</small></span>;})}</button>;})}</div>
           <p>Стоимость: {currentChaosGate.cost} капель.<br/>Баланс: {save.immortalityDrops}. Указанные руны расходуются.</p>
@@ -1371,7 +1364,9 @@ const [roadT, setRoadT] = useState(0.06);
       {toast && <div className="toast">{toast}</div>}
       {houseDialog&&screen.t==="realm"&&screen.id==="midgard"&&<div className="house-dialog-backdrop" onPointerDown={e=>e.stopPropagation()}>
         <div className="house-dialog-panel" role="dialog" aria-modal="true" aria-label="Разговор у дома">
-          <h3>{houseDialogId==="house"||houseDialogId==="elder"?"Старейшина":houseDialogId==="goldChest"?"Золотой сундук":houseDialogId==="northBridge"?"Северный мост":houseDialogId==="oldfarm"?"Старый хутор":houseDialogId==="carpenter"?"Плотник Бьёрн":houseDialogId==="herbalist"?"Травница Сигрид":houseDialogId==="craftsman"?"Ремесленник Торвальд":"Разговор у дома"}</h3><p>{houseDialog}</p>
+          <h3>{repairResident in REPAIR_RESIDENTS?REPAIR_RESIDENTS[repairResident]:houseDialogId==='northBridge'?'Северный мост':houseDialogId==='goldChest'?'Золотой сундук':houseDialogId==='oldfarm'?'Старый хутор':'Разговор у дома'}</h3><p>{houseDialog}</p>
+          {repairAssignment&&<div className="house-quest-status"><b>Восстановление: {repairAssignment.project.name}</b><span>{REPAIR_GOODS[repairAssignment.job.goods]} ×{repairAssignment.job.quantity}</span><span>{Object.entries(repairAssignment.job.cost).map(([k,n])=>`${({wood:'Древесина',twigs:'Ветки',herbs:'Травы',ashWood:'Ясеневая древесина'} as Record<string,string>)[k]} ${save.stock[k as GatherKind]}/${n}`).join(' · ')}</span><button disabled={!canPrepareRepair(save,repairAssignment.project,repairAssignment.job)} onClick={()=>{setSave(s=>prepareRepair(s,repairAssignment.project,repairAssignment.job));setHouseDialog('Припасы подготовлены и добавлены в рюкзак. Отнеси их к повреждённой локации или передай старейшине.');haptic('success');}}>Подготовить припасы</button></div>}
+          {repairResident==='elder'&&<div className="house-quest-status"><b>План восстановления Мидгарда</b>{REPAIR_PROJECTS.map(p=><div key={p.id}><b>{repaired(save,p.id)?'✅':save.done.includes(chaosKey(p.id))?'🔧':'🔒'} {p.name}</b><span>{repaired(save,p.id)?'Восстановлена':save.done.includes(chaosKey(p.id))?`Готово работ: ${p.jobs.filter(j=>save.done.includes(workKey(p.id,j.resident))).length}/${p.jobs.length}`:'Сначала сними печать хаоса'}</span>{canRestore(save,p)&&<button onClick={()=>finishRepair(p.id)}>Принять восстановление · +{p.reward}</button>}</div>)}</div>}
           {resident&&residentOrder&&<div className="house-quest-status">
             <b>{residentOrder.initial?'Материалы для моста':'Заказ №'+((save.villageOrders[resident]||0)+1)}: {residentOrder.title}</b>
             <span>{orderMaterials(save,resident)}</span>

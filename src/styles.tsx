@@ -131,8 +131,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .btn.ghost{background:transparent;border:1px solid #2a3a2e;color:#9ab0a2;margin-top:8px}.btn:disabled{opacity:.55}
 .toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:30;background:rgba(0,0,0,.85);border:1px solid rgba(255,215,106,.4);color:#ffd76a;padding:8px 14px;border-radius:12px;font-size:13px;animation:fade .3s}
 .house-dialog-backdrop{position:fixed;inset:0;z-index:80;background:rgba(4,9,7,.64);display:flex;align-items:center;justify-content:center;padding:20px}
-.house-dialog-panel{width:min(420px,100%);border:1px solid #af8248;border-radius:18px;background:linear-gradient(145deg,#243126,#111a16);color:#fff3d8;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
-.house-dialog-panel h3{margin:0 0 12px;color:#f3ca77;font-size:19px}.house-dialog-panel p{font-size:16px;line-height:1.5;margin:0 0 20px}.house-dialog-panel button{width:100%;padding:12px;border:1px solid #cfaa64;border-radius:11px;background:#765331;color:#fff7e5;font-weight:700}
+.house-dialog-panel{max-height:64dvh;overflow-y:auto;width:min(360px,100%);border:1px solid #af8248;border-radius:18px;background:linear-gradient(145deg,#243126,#111a16);color:#fff3d8;padding:14px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.house-dialog-panel h3{margin:0 0 12px;color:#f3ca77;font-size:19px}.house-dialog-panel p{font-size:13px;line-height:1.4;margin:0 0 12px}.house-dialog-panel button{width:100%;padding:12px;border:1px solid #cfaa64;border-radius:11px;background:#765331;color:#fff7e5;font-weight:700}
 .house-quest-status{margin:0 0 18px;padding:12px;border-radius:11px;background:rgba(190,151,82,.13);border:1px solid rgba(211,177,105,.36)}
 .house-quest-status b{display:block;color:#f3d99b;margin-bottom:6px}.house-quest-status span{display:block;font-size:13px;line-height:1.45;margin:4px 0}
 .days{display:flex;gap:6px;justify-content:center;margin:10px 0}
