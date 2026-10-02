@@ -432,7 +432,7 @@ const [roadT, setRoadT] = useState(0.06);
     const tally=(ids:string[])=>Object.entries(ids.reduce((counts:Record<string,number>,id)=>{counts[id]=(counts[id]||0)+1;return counts;},{})).map(([id,n])=>lootDisplayName(id)+(n>1?' ×'+n:'')).join(', ');
     const rewardText=[tally(loot.runes),tally(loot.potions),tally(loot.weapons)].filter(Boolean).join(' · ');
     setSave(s=>applyBanditLoot(s,loot));haptic('success');
-    say(`Победа: +${loot.drops} капель · ${rewardText}`);return rewardText;
+    say(`Победа: +${loot.drops} капель · ${rewardText}`);return `+${loot.drops} капель · ${rewardText}`;
   };
   const banditKnockout=()=>{
     setSave(s=>({...s,immortalityDrops:Math.max(0,s.immortalityDrops-5),fieldHp:(heroDef?.hp||100)+gearHp()}));

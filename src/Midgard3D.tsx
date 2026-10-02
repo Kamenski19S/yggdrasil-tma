@@ -5228,7 +5228,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     </div>}
     {banditVictory&&whisperPhase==="closed"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
       <div className="whisper-reward-icon">⚔</div><div className="whisper-reward-rarity">{banditVictory.name} повержен</div>
-      <div className="whisper-reward-name">+{banditVictory.sparks} Капель бессмертия</div><p>Добыча: {banditVictoryLoot||banditVictory.reward}. Награда уже добавлена к твоим вещам.</p>
+      <div className="whisper-reward-name">Награда за победу</div><p>Добыча: {banditVictoryLoot||banditVictory.reward}. Награда уже добавлена к твоим вещам.</p>
       <button className="whisper-close" onClick={()=>{banditVictoryRef.current=null;setBanditVictory(null);setBanditVictoryLoot("");setBanditOpponent(null);}}>Продолжить путь</button>
     </div>}
     {banditHit>0&&whisperPhase==="closed"&&<i key={banditHit} className="mid3d-ui whisper-battle-fx guard"/>}
