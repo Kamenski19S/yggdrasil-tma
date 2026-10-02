@@ -177,7 +177,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     if(answer===spec.question.c){
       if(spec.id==="whisperStone"){
         onWhisperCorrect();
-        setWhisperReward("8 Капель бессмертия и малый молот");
+        setWhisperReward(spec.correctReward+" Капель бессмертия, руна Ансуз и эликсир северного мха");
       }else{
         onRef.current("guardian:correct:"+spec.id);
         setWhisperReward(spec.correctReward+" Капель бессмертия"+(guardianLootText(spec.id,false)?" + "+guardianLootText(spec.id,false):""));
@@ -259,12 +259,12 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       if(next<=0){
         guardDefeatedRef.current=true;guardDeathActionRef.current?.();
         if(whisperReplayRef.current){
-          const repeatDrops=2+spec.power;
+          const repeatDrops=spec.repeatReward;
           onRef.current("guardian:repeat:"+spec.id);
           setWhisperReward(repeatDrops+" Капель бессмертия");
           setWhisperLog(spec.name+" снова повержен. Редкий трофей выдаётся один раз, но за тренировочную победу получено "+repeatDrops+" Капель бессмертия.");
         }else if(spec.id==="whisperStone"){
-          const reward=onWhisperWin();setWhisperReward("18 Капель бессмертия и «"+reward+"»");setWhisperLog("Хродвитнир повержен. Камень открывает награду.");
+          const reward=onWhisperWin();setWhisperReward(spec.battleReward+" Капель бессмертия и «"+reward+"»");setWhisperLog("Хродвитнир повержен. Камень открывает награду.");
         }else{
           onRef.current("guardian:battle:"+spec.id);
           setWhisperReward(spec.battleReward+" Капель бессмертия"+(guardianLootText(spec.id,true)?" + "+guardianLootText(spec.id,true):""));setWhisperLog(spec.name+" повержен. "+spec.location+" признаёт твою победу.");
@@ -4325,10 +4325,6 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         }
         const guardianActor={actor,model,mixer,actions,current:''} as LocationGuardianActor;
         locationGuardians.set(spec.id,guardianActor);
-        if(spec.id==='rune')loadGlbWithFolderFallback('cape.glb',capeAsset=>{
-          if(!glbTreesAlive)return;
-          guardianActor.cape=attachGuardianCape(actor,model,capeAsset.scene,spec.scale,0x742934);
-        },'CAPE OF FEHU GUARDIAN');
         mixer.addEventListener('finished',(event:any)=>{
           if(event.action===actions.Death)return;
           if(guardianActor.current==='Sword_Slash'||guardianActor.current==='HitRecieve'){
@@ -4336,6 +4332,13 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
           }
         });
       }
+      loadGlbWithFolderFallback('cape.glb',capeAsset=>{
+        if(!glbTreesAlive)return;
+        for(const [id,g] of locationGuardians){
+          const spec=MIDGARD_GUARDIANS[id];
+          g.cape=attachGuardianCape(g.actor,g.model,capeAsset.scene,spec.scale,id==='rune'?0x742934:spec.cloak??spec.cloth);
+        }
+      },'MIDGARD GUARDIAN CAPES');
       console.log('[MIDGARD GUARDIANS] ready',Array.from(locationGuardians.keys()));
     },'MIDGARD LOCATION GUARDIANS');
 
@@ -5431,7 +5434,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
           }
           return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Этап {idx+1} из {MIDGARD_GUARDIAN_ORDER.length}. {guardianSpec.intro}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginLocationEncounter(id)}>Ответить стражу</button></div>;
         }
-        const repeatDrops=2+guardianSpec.power;
+        const repeatDrops=guardianSpec.repeatReward;
         return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Испытание пройдено. Повторный бой даёт {repeatDrops} Капель бессмертия; редкий трофей повторно не выпадает.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>beginGuardianRematch(id)}>⚔ Сразиться ещё раз</button></div>;
       }
       if(id==="deepGrove")return <div className="mid3d-ui mid3d-interact"><b>Глубокая роща</b><span>В тени растут редкие лечебные травы. Роща восстанавливает запас раз в 15 минут.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>Собрать редкие травы</button></div>;

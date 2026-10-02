@@ -329,7 +329,7 @@ const [roadT, setRoadT] = useState(0.06);
     if (finale) { haptic("success"); say("Серия испытаний завершена. Артефакт мира выдаётся только после полного прохождения его игровой локации."); }
   };
   const finishWhisperCorrect = () => {
-    setSave(s=>(!s.done.includes(chaosKey("whisperStone"))||!repaired(s,"whisperStone")||s.done.includes("whisper:wisdom"))?s:{...s,immortalityDrops:s.immortalityDrops+8,done:[...new Set([...s.done,"whisper:wisdom","guardian:whisperStone","guardian:stage:whisperStone"])],
+    setSave(s=>(!s.done.includes(chaosKey("whisperStone"))||!repaired(s,"whisperStone")||s.done.includes("whisper:wisdom"))?s:{...s,immortalityDrops:s.immortalityDrops+MIDGARD_GUARDIANS.whisperStone.correctReward,done:[...new Set([...s.done,"whisper:wisdom","guardian:whisperStone","guardian:stage:whisperStone"])],
       runes:[...new Set([...s.runes,'ansuzWisdom'])],potions:[...s.potions,'northernMoss'],
       lootCounts:lootCountAdd(s.lootCounts,['ansuzWisdom','northernMoss'])});
     haptic("success");
@@ -346,7 +346,7 @@ const [roadT, setRoadT] = useState(0.06);
     if (save.powers.includes("mimirEye")) {
       setRes(q.c);
       setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "mimirEye") }));
-      const add = 8 + idx * 2;
+      const add = (8 + idx * 2) * (id==="midgard"?3:1);
       haptic("success"); say("Око Мимира раскрыло истину. Ответ исправлен. +" + add + " ✨");
       finishTrial(id, idx, add);
       return;
@@ -380,7 +380,7 @@ const [roadT, setRoadT] = useState(0.06);
   const finishWhisperBattle=()=>{
     setSave(s=>{
       if(!s.done.includes(chaosKey("whisperStone"))||!repaired(s,"whisperStone")||s.done.includes("whisper:battle"))return s;
-      return {...s,immortalityDrops:s.immortalityDrops+18,done:[...new Set([...s.done,"whisper:battle","guardian:whisperStone","guardian:stage:whisperStone"])],
+      return {...s,immortalityDrops:s.immortalityDrops+MIDGARD_GUARDIANS.whisperStone.battleReward,done:[...new Set([...s.done,"whisper:battle","guardian:whisperStone","guardian:stage:whisperStone"])],
         ownedWeapons:[...new Set([...s.ownedWeapons,'mace'])],
         potions:[...s.potions,'northernMoss'],
         runes:[...new Set([...s.runes,'kenazShard'])],
@@ -470,7 +470,7 @@ const [roadT, setRoadT] = useState(0.06);
     const nm = mhp - dmg;
     if (nm <= 0) {
       setMhp(0); setHen(nhen); setMen(nmen); setOver("win");
-      const add = 8 + idx * 2;
+      const add = (8 + idx * 2) * (id==="midgard"?3:1);
       setFlog("Хозяин повержен! Награда: +" + add + " Капель бессмертия");
       finishTrial(id, idx, add);
       return;
@@ -612,7 +612,7 @@ const [roadT, setRoadT] = useState(0.06);
         const spec=MIDGARD_GUARDIANS[locationId];
         const gate=gateForLocation(locationId);if(gate&&(!save.done.includes(chaosKey(gate.id))||!repaired(save,gate.id)))return;
         if(!spec)return;
-        const repeatDrops=2+spec.power;
+        const repeatDrops=spec.repeatReward;
         setSave(s=>({...s,immortalityDrops:s.immortalityDrops+repeatDrops}));
         haptic("success");
         say(`Повторная победа над ${spec.name}: +${repeatDrops} Капель бессмертия.`);
