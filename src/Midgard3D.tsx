@@ -952,7 +952,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       }
       // The northern crossing stays blocked from either bank until its repair quest is complete.
       if(!northBridgeRepaired&&hits(x,z,{kind:"rect",x:NORTH_BRIDGE_X,z:NORTH_BRIDGE_Z,w:BRIDGE_SPAN+.6,d:BRIDGE_WIDTH+.5,rot:0}))return true;
-      if(!chaosClearedRef.current&&hits(x,z,{kind:"segment",x1:NORTH_BRIDGE_X+BRIDGE_SPAN/2-1.5,z1:NORTH_BRIDGE_Z-2.5,x2:NORTH_BRIDGE_X+BRIDGE_SPAN/2-1.5,z2:NORTH_BRIDGE_Z+2.5,r:.16}))return true;
+      if(!chaosClearedRef.current&&hits(x,z,{kind:"rect",x:NORTH_BRIDGE_X,z:NORTH_BRIDGE_Z,w:BRIDGE_SPAN+.6,d:BRIDGE_WIDTH+.5,rot:0}))return true;
       // A ward protects the cache itself until the northern bridge is repaired.
       if(!northBridgeRepaired&&Math.hypot(x+72,z-48)<3.25+HERO_RADIUS)return true;
       // Water can be crossed only on an open bridge deck.
@@ -2468,18 +2468,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     };
     const riverBridge=makeStoneBridgeBase(BRIDGE_X,BRIDGE_Z,BRIDGE_Y,"port","Речной мост");
     const northBridge=makeStoneBridgeBase(NORTH_BRIDGE_X,NORTH_BRIDGE_Z,NORTH_BRIDGE_Y,"northBridge",northBridgeRepaired?"Северный мост":"Северный мост — проход закрыт");
-    const chaosGate=createChaosGate(scene,NORTH_BRIDGE_X+BRIDGE_SPAN/2-1.5,NORTH_BRIDGE_Y+.12,NORTH_BRIDGE_Z,callback=>loadGlbWithFolderFallback('ancient-gateway-chaos.glb',callback,'Врата хаоса'));
-    const wardStone=new THREE.Mesh(new THREE.DodecahedronGeometry(.75,0),new THREE.MeshStandardMaterial({color:0x777b82,roughness:.9}));
-    wardStone.position.set(NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.2,NORTH_BRIDGE_Y+.62,NORTH_BRIDGE_Z+BRIDGE_WIDTH/2+.8);scene.add(wardStone);
-    const wardHalo=new THREE.Mesh(new THREE.TorusGeometry(.66,.045,6,24),new THREE.MeshBasicMaterial({color:northBridgeRepaired?0xffd36a:0x925bad}));
-    wardHalo.position.copy(wardStone.position);wardHalo.position.y+=.75;wardHalo.rotation.x=-Math.PI/2;scene.add(wardHalo);
-    const runeGeometry=new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0,-.4,0),new THREE.Vector3(0,.4,0),
-      new THREE.Vector3(0,.05,0),new THREE.Vector3(-.3,.35,0),
-      new THREE.Vector3(0,.05,0),new THREE.Vector3(.3,.35,0)
-    ]);
-    const wardRune=new THREE.LineSegments(runeGeometry,new THREE.LineBasicMaterial({color:northBridgeRepaired?0xffd36a:0xad83cf}));
-    wardRune.position.copy(wardStone.position);wardRune.position.y+=1.2;scene.add(wardRune);
+    const chaosGate=createChaosGate(scene,NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.6,NORTH_BRIDGE_Y+.12,NORTH_BRIDGE_Z,callback=>loadGlbWithFolderFallback('ancient-gateway-chaos.glb',callback,'Врата хаоса'));
     if(!northBridgeRepaired){
       // Visible barriers on BOTH banks agree with the closed-crossing collision.
       for(const side of [-1,1]){
@@ -4707,7 +4696,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     homeActionRef.current=setHomeMode;
 
     const destinations=[
-      {id:"chaosGate",label:"Врата хаоса",x:NORTH_BRIDGE_X+BRIDGE_SPAN/2-1.5,z:NORTH_BRIDGE_Z,r:5},
+      {id:"chaosGate",label:"Врата хаоса",x:NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.6,z:NORTH_BRIDGE_Z,r:8.5},
       // Door points sit on the front side of each house rather than at its
       // centre, so the white interaction cloud appears only by the entrance.
       ...homeDestinations,
@@ -5098,7 +5087,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         for(const node of gatherNodes){
           if(node.used)continue;
           const distance=Math.hypot(q.x-node.spot.x,q.z-node.spot.z);
-          if(distance<nearest){nearest=distance;found=node.spot.kind==='wood'?'Молодая ель':node.spot.kind==='twigs'?'Лесной куст':'Лечебные травы';foundId='gather:'+node.spot.id;}
+          if(foundId!=="chaosGate"&&distance<nearest){nearest=distance;found=node.spot.kind==='wood'?'Молодая ель':node.spot.kind==='twigs'?'Лесной куст':'Лечебные травы';foundId='gather:'+node.spot.id;}
         }
       }
       setNear(!doorVisit&&found?`${found}|${foundId}`:"");
