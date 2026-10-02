@@ -6,9 +6,9 @@ const ORDER_COOLDOWN=15*60*1000;
 export const resourceName=(kind:GatherKind)=>({wood:'древесина',twigs:'ветки',herbs:'травы',ashWood:'ясеневая древесина'})[kind];
 type Order={title:string;cost:Partial<Record<GatherKind,number>>;drops:number;potion?:string;legacy?:string};
 const FIRST:Record<VillageResident,Order>={
- herbalist:{title:'Защитный настой для руны',cost:{herbs:4},drops:30,potion:'northernMoss',legacy:'gather:herbalist'},
- carpenter:{title:'Основание защитной руны и ремонт моста',cost:{wood:3,twigs:3},drops:30,legacy:'gather:carpenter'},
- craftsman:{title:'Крепления защитной руны',cost:{wood:2,twigs:2},drops:30,legacy:'bridge:fittings'}
+ herbalist:{title:'Настой для рабочих моста',cost:{herbs:4},drops:30,potion:'northernMoss',legacy:'gather:herbalist'},
+ carpenter:{title:'Основание и доски для моста',cost:{wood:3,twigs:3},drops:30,legacy:'gather:carpenter'},
+ craftsman:{title:'Крепления Северного моста',cost:{wood:2,twigs:2},drops:30,legacy:'bridge:fittings'}
 };
 const REPEAT:Record<VillageResident,Order[]>={
  herbalist:[{title:'Пополнить запас лечебных трав',cost:{herbs:4},drops:20,potion:'northernMoss'},{title:'Материалы для сушки трав',cost:{herbs:3,twigs:2},drops:25,potion:'northernMoss'}],

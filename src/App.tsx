@@ -118,7 +118,7 @@ const [roadT, setRoadT] = useState(0.06);
   const activateVillageWard=()=>{
     if(!wardPrepared(save)||save.immortalityDrops<VILLAGE_WARD_COST||save.done.includes('bridge:north:repaired'))return;
     setSave(restoreVillageWard);
-    setHouseDialog('Защитная руна зажглась. Хаос отступил, Северный мост восстановлен. Путь к золотому сундуку открыт.');haptic('success');
+    setHouseDialog('Северный мост отремонтирован. Тёмное заклинание у прохода снимается отдельно во Вратах хаоса.');haptic('success');
   };
   const go = (s: Screen) => { millScreenActiveRef.current=s.t==="mill"; setScreen(s); };
   const produceMillDrops=useCallback((amount:number)=>{
@@ -683,7 +683,7 @@ const [roadT, setRoadT] = useState(0.06);
           ownedShields:[...new Set([...s.ownedShields,'Shield_Heater.glb'])],
           lootCounts:lootCountAdd(s.lootCounts,['knife','Shield_Heater.glb','uruzStrength','perthroFate','lifeElixir','northernMoss'])
         });
-        haptic('success');say('Красный сундук Норн открыт! +30 Капель бессмертия, Боевой кинжал, Щит, руны Уруз ᚢ и Перт ᛈ, Эликсир жизни и Эликсир северного мха. Подсказка Норн ведёт к защитной руне Северного моста.');
+        haptic('success');say('Красный сундук Норн открыт! +30 Капель бессмертия, Боевой кинжал, Щит, руны Уруз ᚢ и Перт ᛈ, Эликсир жизни и Эликсир северного мха. Подсказка Норн ведёт к Северному мосту и золотому сундуку.');
         return;
       }
       if (id === "forge") {
@@ -699,13 +699,13 @@ const [roadT, setRoadT] = useState(0.06);
         const who=id as VillageResident,order=villageOrder(save,who);
         const remaining=Math.max(0,Math.ceil(((save.locationCooldowns['village:'+who]||0)-Date.now())/60000));
         say(!order.initial&&remaining>0?`Спасибо за помощь. Новый заказ будет доступен через ${remaining} мин.`:
-          `${order.initial?'Подготовка защиты':'Заказ №'+((save.villageOrders[who]||0)+1)}: ${order.title}. ${orderMaterials(save,who)}. Награда: ${order.drops} капель бессмертия${order.potion?' и эликсир':''}.`);
+          `${order.initial?'Материалы для моста':'Заказ №'+((save.villageOrders[who]||0)+1)}: ${order.title}. ${orderMaterials(save,who)}. Награда: ${order.drops} капель бессмертия${order.potion?' и эликсир':''}.`);
         return;
       }
       if(id==='house'||id==='elder'){
         houseDialogPending.current='house';
-        say(save.done.includes('bridge:north:repaired')?'Защита деревни восстановлена. Жители продолжают выдавать заказы — помогай им и готовься к следующему пути.':
-          'У Северного моста ослабла защитная руна. Сигрид подготовит настой, Бьёрн — основание, Торвальд — крепления. Затем принеси к мосту 300 капель бессмертия, чтобы восстановить защиту.');return;
+        say(save.done.includes('bridge:north:repaired')?'Северный мост восстановлен. Жители продолжают выдавать заказы — помогай им и готовься к следующему пути.':
+          'Северный мост повреждён. Сигрид поможет рабочим настоем, Бьёрн подготовит основание, Торвальд — крепления. Завершение ремонта стоит 300 капель бессмертия. Тёмную печать у прохода нужно снять отдельно.');return;
       }
       const homeMessages:Record<string,string>={
         warriorHouse:"Дружинник: «Добро пожаловать. Перед вечерним дозором я проверяю клинок и щит».",
@@ -722,8 +722,8 @@ const [roadT, setRoadT] = useState(0.06);
       if(id==='chaosGate'){openChaosGate('north');return;}
       if(id==='northBridge'){
         houseDialogPending.current='northBridge';
-        say(save.done.includes('bridge:north:repaired')?'Защитная руна горит. Северный мост открыт.':
-          'Чтобы отступил хаос, подготовь защитную руну с помощью Сигрид, Бьёрна и Торвальда. Активация у моста стоит 300 капель бессмертия.');return;
+        say(save.done.includes('bridge:north:repaired')?'Северный мост отремонтирован. Если проход закрыт тёмной завесой, сними её во Вратах хаоса.':
+          'Для ремонта моста подготовь материалы с помощью Сигрид, Бьёрна и Торвальда. Ремонт стоит 300 капель бессмертия.');return;
       }
       if (id === "port") {
         const maxHp=(heroDef?.hp||100)+gearHp(),currentHp=Math.min(maxHp,save.fieldHp??maxHp);
@@ -1373,18 +1373,18 @@ const [roadT, setRoadT] = useState(0.06);
         <div className="house-dialog-panel" role="dialog" aria-modal="true" aria-label="Разговор у дома">
           <h3>{houseDialogId==="house"||houseDialogId==="elder"?"Старейшина":houseDialogId==="goldChest"?"Золотой сундук":houseDialogId==="northBridge"?"Северный мост":houseDialogId==="oldfarm"?"Старый хутор":houseDialogId==="carpenter"?"Плотник Бьёрн":houseDialogId==="herbalist"?"Травница Сигрид":houseDialogId==="craftsman"?"Ремесленник Торвальд":"Разговор у дома"}</h3><p>{houseDialog}</p>
           {resident&&residentOrder&&<div className="house-quest-status">
-            <b>{residentOrder.initial?'Подготовка защиты':'Заказ №'+((save.villageOrders[resident]||0)+1)}: {residentOrder.title}</b>
+            <b>{residentOrder.initial?'Материалы для моста':'Заказ №'+((save.villageOrders[resident]||0)+1)}: {residentOrder.title}</b>
             <span>{orderMaterials(save,resident)}</span>
             <span>Награда: {residentOrder.drops} капель бессмертия{residentOrder.potion?' и эликсир':''}.</span>
             {!residentOrder.initial&&(save.locationCooldowns['village:'+resident]||0)>Date.now()&&<span>Следующий заказ через {Math.max(1,Math.ceil(((save.locationCooldowns['village:'+resident]||0)-Date.now())/60000))} мин.</span>}
             <button type="button" disabled={!canCompleteOrder(save,resident)} onClick={submitVillageOrder}>Сдать материалы</button>
           </div>}
-          {['house','elder','northBridge'].includes(houseDialogId)&&<div className="house-quest-status"><b>Защита деревни</b>
+          {['house','elder','northBridge'].includes(houseDialogId)&&<div className="house-quest-status"><b>Ремонт Северного моста</b>
             <span>{preparationDone(save,'herbalist')?'✅':'○'} Настой Сигрид</span>
             <span>{preparationDone(save,'carpenter')?'✅':'○'} Основание Бьёрна</span>
             <span>{preparationDone(save,'craftsman')?'✅':'○'} Крепления Торвальда</span>
             <span>Капли бессмертия: {save.immortalityDrops} / {VILLAGE_WARD_COST}</span>
-            {houseDialogId==='northBridge'&&!save.done.includes('bridge:north:repaired')&&<button type="button" disabled={!wardPrepared(save)||save.immortalityDrops<VILLAGE_WARD_COST} onClick={activateVillageWard}>Восстановить защиту · {VILLAGE_WARD_COST} капель</button>}
+            {houseDialogId==='northBridge'&&!save.done.includes('bridge:north:repaired')&&<button type="button" disabled={!wardPrepared(save)||save.immortalityDrops<VILLAGE_WARD_COST} onClick={activateVillageWard}>Отремонтировать мост · {VILLAGE_WARD_COST} капель</button>}
           </div>}
           {houseDialogId==="oldfarm"&&<div className="house-quest-status"><b>Старый хутор</b>
             <span>{save.done.includes('bridge:boards')?'✅ Крепкие доски для моста найдены.':'○ Доски для моста ещё не найдены.'}</span>
