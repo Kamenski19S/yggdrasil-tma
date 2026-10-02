@@ -2372,6 +2372,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       const leftPart=baked.model.getObjectByName("LeftDoor") as THREE.Mesh|undefined;
       const rightPart=baked.model.getObjectByName("RightDoor") as THREE.Mesh|undefined;
       if(!leftPart||!rightPart)return;
+      leftPart.geometry.computeBoundingBox();rightPart.geometry.computeBoundingBox();
       const leftHinge=leftPart.geometry.boundingBox!.min.x,rightHinge=rightPart.geometry.boundingBox!.max.x;
       leftPart.geometry.translate(-leftHinge,0,0);rightPart.geometry.translate(-rightHinge,0,0);
       for(const gate of fortGates){
