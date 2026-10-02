@@ -1,3 +1,4 @@
+import {attachGuardianCape} from './guardianCape';
 import {REPAIR_GOODS} from './locationRepairs';
 import { CHAOS_GATES, chaosKey, gateForLocation } from './chaosProgression';
 import { createChaosGate } from './chaosGate';
@@ -4260,7 +4261,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     };
 
     // One rigged base model becomes a different guardian at each sacred Midgard location.
-    type LocationGuardianActor={actor:THREE.Group;model:THREE.Object3D;mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>;current:string};
+    type LocationGuardianActor={actor:THREE.Group;model:THREE.Object3D;mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>;current:string;cape?:ReturnType<typeof attachGuardianCape>};
     const locationGuardians=new Map<string,LocationGuardianActor>();
     const canonicalGuardianClip=(raw:string)=>{
       const tail=String(raw||'').split('|').pop()||String(raw||'');
@@ -4323,6 +4324,10 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         }
         const guardianActor={actor,model,mixer,actions,current:''} as LocationGuardianActor;
         locationGuardians.set(spec.id,guardianActor);
+        if(spec.id==='rune')loadGlbWithFolderFallback('cape.glb',capeAsset=>{
+          if(!glbTreesAlive)return;
+          guardianActor.cape=attachGuardianCape(actor,model,capeAsset.scene,spec.scale,0x742934);
+        },'CAPE OF FEHU GUARDIAN');
         mixer.addEventListener('finished',(event:any)=>{
           if(event.action===actions.Death)return;
           if(guardianActor.current==='Sword_Slash'||guardianActor.current==='HitRecieve'){
@@ -5088,7 +5093,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         g.actor.position.set(spec.x,groundY(spec.x,gz),gz);
         g.actor.rotation.y=Math.atan2(q.x-spec.x,q.z-gz);
         if(!guardDefeatedRef.current&&g.current==='')playLocationGuardian(g,'Idle_Neutral');
-        g.mixer.update(dt);
+        g.mixer.update(dt);g.cape?.update(now,g.current==='Death');
       }
       // Keep the camera direction stable when the thumb is released. The old camera
       // used dx/dz directly, so stopping movement instantly changed its target and
@@ -5326,6 +5331,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       <p>Изменения для Yggdrasil Runes: изменён масштаб модели, цвет древесины изменён на красный; остальные цвета модели сохранены. Выполнена адаптация для размещения у колодца Норн в игровой сцене.</p>
       <p><b>Angelic Alliance Chest</b> — <a href="https://skfb.ly/6WRTY" target="_blank" rel="noopener noreferrer">Arcnay</a>. <a href="https://skfb.ly/6WRTY" target="_blank" rel="noopener noreferrer">Оригинальная модель</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
       <p>Изменения для Yggdrasil Runes: размер модели уменьшен примерно до 5 метров и выполнена адаптация для размещения в Лесу Ходдмимира.</p>
+      <p><b>Cape</b> — <a href="https://sketchfab.com/Ring1" target="_blank" rel="noopener noreferrer">Karnage</a>. <a href="https://sketchfab.com/3d-models/cape-61e185ae00b640258071c581ab40f749" target="_blank" rel="noopener noreferrer">Оригинальная модель</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения: масштаб, бордовый материал ткани, крепление к стражу и движение костей плаща.</p>
       <p><b>Ancient-Gateway-X-'West'</b> — <a href="https://sketchfab.com/XX-XX" target="_blank" rel="noopener noreferrer">-X-ScornGames</a>. <a href="https://sketchfab.com/3d-models/ancient-gateway-x-west-ed165870a29349babb0567ae92ae5c87" target="_blank" rel="noopener noreferrer">Оригинальная модель</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения: уменьшение детализации и текстур, масштабирование, прозрачная завеса и рунические знаки.</p>
       <p><b>Medieval Water Wheel</b> — <a href="https://sketchfab.com/ameri0n" target="_blank" rel="noopener noreferrer">Milica (ameri0n)</a>. <a href="https://sketchfab.com/3d-models/medieval-water-wheel-0f0c77426a7f434aa8d9440c76b31ded" target="_blank" rel="noopener noreferrer">Оригинальная модель</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
       <p>Изменения для Yggdrasil Runes: настроены масштаб, ориентация и положение модели в сцене мельницы; добавлено вращение колеса в зависимости от работы механизма.</p>
