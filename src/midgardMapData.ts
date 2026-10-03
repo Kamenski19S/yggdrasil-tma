@@ -41,6 +41,7 @@ export const MAP_WALLS:Array<[number,number,number,number]>=[[-30,-31,-6,-31],[6
 export const MAP_LOCATIONS:MapLocation[]=[
  ...MIDGARD_GUARDIAN_ORDER.map(id=>{const g=MIDGARD_GUARDIANS[id];return {id,name:g.location,category:'trials' as const,x:g.x,z:g.z,description:g.title+' — '+g.name+'. Испытание мудрости или бой.'};}),
  {id:'forge',name:'Кузница Вёлунда',category:'village',x:-10,z:-2.55,description:'Оружие, щиты и закалка снаряжения.'},
+ {id:'welund',name:'Дом Велунда',category:'village',x:17,z:34,description:'Дом кузнеца возле ворот. Открой дверь, чтобы поговорить с Велундом.'},
  {id:'herbalist',name:'Дом Сигрид',category:'village',x:-8,z:-21,description:'Травница: задания, эликсиры и восстановление локаций.'},
  {id:'carpenter',name:'Дом Бьёрна',category:'village',x:-20,z:22,description:'Плотник: материалы для моста и ремонта.'},
  {id:'craftsman',name:'Дом Торвальда',category:'village',x:-22,z:-6,description:'Ремесленник: крепления и ремонт локаций.'},

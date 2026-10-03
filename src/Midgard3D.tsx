@@ -1206,7 +1206,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       {asset:fisherHouseAsset,id:"fisher",label:"Дом рыбака Эйнара",x:21,z:-7,rot:-Math.PI/2,sx:.95,sy:.94,sz:.65,w:8.85,d:6.85},
       {asset:hunterHouseAsset,id:"hunter",label:"Дом охотника Ульва",x:17,z:6,rot:-Math.PI/2,sx:.94,sy:.90,sz:.64,w:8.85,d:6.85},
       {asset:herbalistHouseAsset,id:"herbalist",label:"Дом травницы Сигрид",x:-8,z:-21,rot:0,sx:.91,sy:.88,sz:.62,w:8.85,d:6.85},
-      {asset:craftsmanHouseAsset,id:"craftsman",label:"Дом ремесленника Торвальда",x:-22,z:-6,rot:Math.PI/2,sx:.86,sy:.82,sz:.64,w:8.85,d:6.85}
+      {asset:craftsmanHouseAsset,id:"craftsman",label:"Дом ремесленника Торвальда",x:-22,z:-6,rot:Math.PI/2,sx:.86,sy:.82,sz:.64,w:8.85,d:6.85},
+      {asset:shedAsset,id:"welund",label:"Дом кузнеца Велунда",x:17,z:34,rot:-.20,sx:1,sy:.92,sz:.70,w:7.45,d:5.20}
     ];
     // Front doors face local +Z. Rotate their approach points with the houses.
     const homeDestinations=villageHomes.map(p=>{
@@ -1221,7 +1222,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       carpenter:"NPC_Carpenter_Rigged.glb",hunter2:"NPC_Ranger_Female_Rigged.glb",
       family:"NPC_Ranger_Female_Rigged.glb",house:"NPC_Hunter_Rigged.glb",
       fisher:"NPC_Carpenter_Rigged.glb",hunter:"NPC_Hunter_Rigged.glb",
-      herbalist:"NPC_Herbalist_Rigged.glb",craftsman:"NPC_Carpenter_Rigged.glb"
+      herbalist:"NPC_Herbalist_Rigged.glb",craftsman:"NPC_Carpenter_Rigged.glb",welund:"NPC_Carpenter_Rigged.glb"
     };
     type HomeHost={home:typeof villageHomes[number];pivot?:THREE.Group;doorPoint?:THREE.Vector3;
       handle?:THREE.Object3D;handleBase?:number;groundOffset?:number;
@@ -1560,6 +1561,14 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         model.scale.set(p.sx*HOME_SCALE,p.sy*HOME_SCALE*BUILDING_HEIGHT,p.sz*HOME_SCALE);
         model.rotation.y=p.rot;model.position.set(p.x,groundY(p.x,p.z),p.z);
         addMesh(model,p.id,p.label);objects.push(model);applyHomeTextures(model,p.id==="house"?"elder":"wall");
+        if(p.id==="welund"){
+          const plaque=box(2.8,.52,.10,0x4e3523,1);
+          textureBuildingPart(plaque,buildingTextures.wood,true);
+          plaque.position.set(0,3.20,2.56);model.add(plaque);
+          const inscription=new THREE.Mesh(new THREE.PlaneGeometry(2.65,.44),
+            new THREE.MeshBasicMaterial({map:signTexture("Дом Велунда"),transparent:true,depthWrite:false}));
+          inscription.position.set(0,3.20,2.62);model.add(inscription);
+        }
         const host=hosts.get(p.id)!;
         model.updateWorldMatrix(true,true);
         const toModel=model.matrixWorld.clone().invert();
@@ -1851,27 +1860,6 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       console.log('[BARN] loaded', `${BASE}img/models/${barnAsset}`);
     }, 'BARN');
     addRectCollider(-19,35,8.55*HOME_SCALE,5.25*HOME_SCALE,Math.PI/2,.04);
-
-    loadGlbWithFolderFallback(shedAsset, (gltf:any) => {
-      if (!glbTreesAlive) return;
-      const shedModel = gltf.scene.clone(true);
-      markMeshes(shedModel);
-      shedModel.traverse((o:any) => {
-        if (!o.isMesh) return;
-        o.visible = true;
-        o.castShadow = true;
-        o.receiveShadow = true;
-        o.frustumCulled = true;
-      });
-      shedModel.scale.set(HOME_SCALE,.92*HOME_SCALE*BUILDING_HEIGHT,.70*HOME_SCALE);
-      shedModel.rotation.set(0,-.20,0);
-      shedModel.position.set(17,groundY(17,34),34);
-      shedModel.userData={id:"shed",label:"Сарай"};
-      addMesh(shedModel,"shed","Сарай");applyHomeTextures(shedModel);
-      objects.push(shedModel);
-      console.log('[SHED] loaded', `${BASE}img/models/${shedAsset}`);
-    }, 'SHED');
-    addRectCollider(17,34,7.45*HOME_SCALE,5.20*HOME_SCALE,-.20,.04);
 
     // The animal GLBs have skeletons and vertex colors, but no UV coordinates.
     // Project the supplied coat photos onto their local body axes once per model;
@@ -5423,7 +5411,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       if(selectedGate&&!clearedGatesRef.current.has(selectedGate.id))return <div className="mid3d-ui mid3d-interact"><b>Врата хаоса · {selectedGate.name}</b><span>Путь запечатан. Нужны руны и {selectedGate.cost} капель бессмертия.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on('chaosGate:'+selectedGate.id,{x:state.current.x,z:state.current.z})}>Снять заклинание</button></div>;
       if(selectedGate&&!repairedRef.current.has(selectedGate.id))return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>Печать снята, но локация повреждена. Жители помогут её восстановить.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on('repair:'+selectedGate.id,{x:state.current.x,z:state.current.z})}>Осмотреть повреждения</button></div>;
       if(id==="northBridge")return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{northBridgeRepaired?'Проход открыт. Золотой сундук находится на другом берегу.':northBridgeReady?'Материалы подготовлены. Заверши ремонт за 300 капель бессмертия.':'Подготовь материалы у Сигрид, Бьёрна и Торвальда. Ремонт стоит 300 капель бессмертия.'}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on(id,{x:state.current.x,z:state.current.z})}>{northBridgeRepaired?'Осмотреть мост':'Ремонт моста'}</button></div>;
-      const villageDoor=["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman","oldfarm"].includes(id);
+      const villageDoor=["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman","welund","oldfarm"].includes(id);
       if(villageDoor)return <div className="mid3d-ui mid3d-door-prompt"><b>{label}</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>id==="oldfarm"?on(id,{x:state.current.x,z:state.current.z}):villageDoorActionRef.current?.(id)}>{outsideHouse===id?"Поговорить":"Открыть ручку"}</button></div>;
       if(id==="heroHome")return <div className="mid3d-ui mid3d-door-prompt"><b>Дом героя</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>homeActionRef.current?.(true)}>Открыть ручку</button></div>;
       if(id==="heroRest")return <div className="mid3d-ui mid3d-interact"><b>Кровать героя</b><span>Безопасный отдых после похода полностью восстанавливает здоровье.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{

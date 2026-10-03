@@ -661,7 +661,10 @@ const [roadT, setRoadT] = useState(0.06);
         haptic("success");
         return;
       }
-      if(["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman","oldfarm"].includes(id))houseDialogPending.current=id;
+      if(["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman","welund","oldfarm"].includes(id))houseDialogPending.current=id;
+      if(id==="welund"){
+        say('Велунд: «Добро пожаловать. Это мой дом, а работаю я в кузнице у площади. Там можно выбрать оружие, щит и закалить снаряжение перед новым испытанием.»');return;
+      }
       if (id === "mimir") {
         if (save.done.includes("forest:present")) {
           if (!save.done.includes("forest:present:reward")) {
@@ -1375,7 +1378,7 @@ const [roadT, setRoadT] = useState(0.06);
       {toast && <div className="toast">{toast}</div>}
       {houseDialog&&screen.t==="realm"&&screen.id==="midgard"&&<div className="house-dialog-backdrop" onPointerDown={e=>e.stopPropagation()}>
         <div className="house-dialog-panel" role="dialog" aria-modal="true" aria-label="Разговор у дома">
-          <h3>{repairResident in REPAIR_RESIDENTS?REPAIR_RESIDENTS[repairResident]:houseDialogId==='northBridge'?'Северный мост':houseDialogId==='goldChest'?'Золотой сундук':houseDialogId==='oldfarm'?'Старый хутор':'Разговор у дома'}</h3><p>{houseDialog}</p>
+          <h3>{repairResident in REPAIR_RESIDENTS?REPAIR_RESIDENTS[repairResident]:houseDialogId==='welund'?'Кузнец Велунд':houseDialogId==='northBridge'?'Северный мост':houseDialogId==='goldChest'?'Золотой сундук':houseDialogId==='oldfarm'?'Старый хутор':'Разговор у дома'}</h3><p>{houseDialog}</p>
           {repairAssignment&&<div className="house-quest-status"><b>Восстановление: {repairAssignment.project.name}</b><span>{REPAIR_GOODS[repairAssignment.job.goods]} ×{repairAssignment.job.quantity}</span><span>{Object.entries(repairAssignment.job.cost).map(([k,n])=>`${({wood:'Древесина',twigs:'Ветки',herbs:'Травы',ashWood:'Ясеневая древесина'} as Record<string,string>)[k]} ${save.stock[k as GatherKind]}/${n}`).join(' · ')}</span><button disabled={!canPrepareRepair(save,repairAssignment.project,repairAssignment.job)} onClick={()=>{setSave(s=>prepareRepair(s,repairAssignment.project,repairAssignment.job));setHouseDialog('Припасы подготовлены и добавлены в рюкзак. Отнеси их к повреждённой локации или передай старейшине.');haptic('success');}}>Подготовить припасы</button></div>}
           {repairResident==='elder'&&<div className="house-quest-status"><b>План восстановления Мидгарда</b>{REPAIR_PROJECTS.map(p=><div key={p.id}><b>{repaired(save,p.id)?'✅':save.done.includes(chaosKey(p.id))?'🔧':'🔒'} {p.name}</b><span>{repaired(save,p.id)?'Восстановлена':save.done.includes(chaosKey(p.id))?`Готово работ: ${p.jobs.filter(j=>save.done.includes(workKey(p.id,j.resident))).length}/${p.jobs.length}`:'Сначала сними печать хаоса'}</span>{canRestore(save,p)&&<button onClick={()=>finishRepair(p.id)}>Принять восстановление · +{p.reward}</button>}</div>)}</div>}
           {resident&&residentOrder&&<div className="house-quest-status">
