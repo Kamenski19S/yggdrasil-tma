@@ -5288,7 +5288,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         <img className="mid3d-top-button-art" src={`${BASE}img/models/ui_mill.png`} alt="" draggable={false}/>
       </button>
     </div>}
-    {banditOpponent&&whisperPhase==="closed"&&<div className="mid3d-ui" style={{top:"21%",left:"50%",transform:"translateX(-50%)",width:"min(88vw,290px)",padding:"8px 12px",borderRadius:12,background:"#fff",border:"1px solid #d9d9d9",color:"#111",pointerEvents:"none",zIndex:12}}>
+    {banditOpponent&&whisperPhase==="closed"&&<div className="mid3d-ui" style={{top:80,left:"50%",transform:"translateX(-50%)",width:"min(calc(100% - 120px),290px)",padding:"8px 12px",borderRadius:12,background:"#fff",border:"1px solid #d9d9d9",color:"#111",pointerEvents:"none",zIndex:12}}>
       <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}><span>Вика</span><span>{banditHeroHp}/{whisperStats.maxHp}</span></div>
       <div style={{height:5,background:"#382b29",borderRadius:6,overflow:"hidden",marginBottom:6}}><div style={{height:"100%",width:`${Math.max(0,banditHeroHp/whisperStats.maxHp*100)}%`,background:"#72c46e",transition:"width .25s"}}/></div>
       <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}><span>{banditOpponent.name}</span><span>{banditOpponent.hp}/{banditOpponent.maxHp}</span></div>

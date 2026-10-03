@@ -141,7 +141,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .btn{width:100%;padding:12px;border-radius:12px;background:linear-gradient(135deg,#2ea6ff,#1f7fd6);color:#fff;font-size:15px;font-weight:600}
 .btn.gold{background:linear-gradient(135deg,#ffd76a,#e0a53f);color:#231a05}.btn.ok{background:#17301d;color:#7ee787;border:1px solid rgba(126,231,135,.33)}
 .btn.ghost{background:transparent;border:1px solid #2a3a2e;color:#9ab0a2;margin-top:8px}.btn:disabled{opacity:.55}
-.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:30;background:rgba(0,0,0,.85);border:1px solid rgba(255,215,106,.4);color:#ffd76a;padding:8px 14px;border-radius:12px;font-size:13px;animation:fade .3s}
+.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:30;background:#fff;border:1px solid #d9d9d9;color:#111;padding:8px 14px;border-radius:12px;font-size:13px;animation:fade .3s}
 .house-dialog-backdrop{position:fixed;inset:0;z-index:80;background:rgba(4,9,7,.64);display:flex;align-items:center;justify-content:center;padding:20px}
 .house-dialog-panel{max-height:64dvh;overflow-y:auto;width:min(360px,100%);border:1px solid #af8248;border-radius:18px;background:linear-gradient(145deg,#243126,#111a16);color:#fff3d8;padding:14px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
 .house-dialog-panel h3{margin:0 0 12px;color:#f3ca77;font-size:19px}.house-dialog-panel p{font-size:13px;line-height:1.4;margin:0 0 12px}.house-dialog-panel button{width:100%;padding:12px;border:1px solid #cfaa64;border-radius:11px;background:#765331;color:#fff7e5;font-weight:700}
@@ -315,13 +315,13 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .battle-potion-panel .inventory-item button{font-size:10px;padding:9px 6px;min-height:36px}
 .battle-potion-panel .whisper-close{flex-shrink:0;font-size:12px;margin-top:6px;padding:9px}
 /* Scene messages share a light surface; controls have a separate lower lane. */
-.mid3d-interact,.mid3d-door-prompt,.mid3d-hint{left:50%;right:auto;top:auto;bottom:10px;transform:translateX(-50%);width:min(calc(100% - 24px),340px);max-height:120px;box-sizing:border-box;padding:8px 10px;border:1px solid #d9d9d9;border-radius:12px;background:#fff;color:#111;box-shadow:0 4px 16px rgba(0,0,0,.22);text-align:center;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;z-index:31}
+.mid3d-interact,.mid3d-door-prompt,.mid3d-hint{left:50%;right:auto;top:auto;bottom:10px;transform:translateX(-50%);width:min(calc(100% - 24px),340px);max-height:90px;box-sizing:border-box;padding:8px 10px;border:1px solid #d9d9d9;border-radius:12px;background:#fff;color:#111;box-shadow:0 4px 16px rgba(0,0,0,.22);text-align:center;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;z-index:31}
 .mid3d-interact b,.mid3d-door-prompt b{color:#111;font-size:12px;line-height:1.2;margin:0 0 4px}
 .mid3d-interact span{color:#111;font-size:10px;line-height:1.25;margin:3px 0 6px}
 .mid3d-interact button,.mid3d-door-prompt button{padding:7px 8px;min-height:32px;font-size:11px;line-height:1.2;background:#f2f2f2;color:#111;border:1px solid #bdbdbd;box-shadow:none}
 .mid3d-door-prompt:before{display:none}
 .mid3d-hint{font-size:10px;line-height:1.3;white-space:normal;pointer-events:auto;cursor:pointer}
-.mid3d-joy{bottom:140px}
+.mid3d-joy{bottom:110px}
 .mid3d-strike{bottom:140px}
 .mid3d-block{bottom:206px}
 .mid3d-choice-panel{max-height:min(62%,360px)}
@@ -335,7 +335,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .whisper-cloud h3,.whisper-cloud p,.whisper-log,.whisper-reward-name{color:#111}
 .mid3d-rematch{background:#fff;color:#111;border-color:#d9d9d9;text-shadow:none}
 .mid3d-rematch small{color:#111}
-@media(max-height:480px){.mid3d-interact,.mid3d-door-prompt,.mid3d-hint{max-height:86px;bottom:6px;padding:6px 8px}.mid3d-joy,.mid3d-strike{bottom:102px}.mid3d-block{bottom:168px}.mid3d-choice-panel{max-height:calc(100% - 12px)}.whisper-combat-hud{bottom:47px}}
+@media(max-height:480px){.mid3d-interact,.mid3d-door-prompt,.mid3d-hint{max-height:56px;bottom:6px;padding:6px 8px}.mid3d-joy{bottom:72px}.mid3d-strike{bottom:102px}.mid3d-block{bottom:168px}.mid3d-choice-panel{max-height:calc(100% - 12px)}.whisper-combat-hud{bottom:47px}}
 
+.whisper-reward-rarity{background:#fff;color:#111;border:1px solid #d9d9d9}
 `;
 
