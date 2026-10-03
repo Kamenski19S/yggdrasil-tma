@@ -4064,10 +4064,10 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .mid3d-joy:before,.mid3d-joy:after{content:"";position:absolute;left:50%;top:50%;background:rgba(255,255,255,.08);transform:translate(-50%,-50%);pointer-events:none}
 .mid3d-joy:before{width:82px;height:1px}.mid3d-joy:after{height:82px;width:1px}
 .mid3d-knob{position:absolute;left:41px;top:41px;width:50px;height:50px;border-radius:50%;background:rgba(219,231,221,.28);border:1px solid rgba(255,255,255,.42);box-shadow:0 5px 15px rgba(0,0,0,.35);touch-action:none}
-.mid3d-action{right:16px;top:74px;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,247,191,.8);background:rgba(255,215,106,.92);color:#241b06;font-size:18px;font-weight:900;box-shadow:0 5px 16px rgba(0,0,0,.35);touch-action:none}
-.mid3d-strike{right:22px;bottom:112px;width:52px;height:52px;border-radius:50%;border:1px solid rgba(255,225,174,.66);background:radial-gradient(circle at 38% 30%,rgba(255,155,75,.98),rgba(126,38,20,.96));color:#fff4df;font-size:22px;font-weight:900;text-shadow:0 1px 4px rgba(0,0,0,.85);box-shadow:0 5px 15px rgba(0,0,0,.42),0 0 12px rgba(255,99,43,.25);touch-action:none}
+.mid3d-action{right:10px;top:74px;width:54px;height:54px;border-radius:50%;border:1px solid rgba(255,247,191,.8);background:rgba(255,215,106,.92);color:#241b06;font-size:18px;font-weight:900;box-shadow:0 5px 16px rgba(0,0,0,.35);touch-action:none}
+.mid3d-strike{right:18px;bottom:108px;width:60px;height:60px;border-radius:50%;border:1px solid rgba(255,225,174,.66);background:radial-gradient(circle at 38% 30%,rgba(255,155,75,.98),rgba(126,38,20,.96));color:#fff4df;font-size:22px;font-weight:900;text-shadow:0 1px 4px rgba(0,0,0,.85);box-shadow:0 5px 15px rgba(0,0,0,.42),0 0 12px rgba(255,99,43,.25);touch-action:none}
 .mid3d-strike:active{transform:scale(.88);box-shadow:0 2px 8px rgba(0,0,0,.45),0 0 18px rgba(255,114,54,.55)}
-.mid3d-block{right:22px;bottom:178px;width:52px;height:52px;border-radius:50%;border:1px solid rgba(178,230,255,.83);background:radial-gradient(circle at 38% 30%,#89c2da,#284966);color:#fff;font-size:23px;box-shadow:0 5px 15px rgba(0,0,0,.42);touch-action:none}.mid3d-block:active{transform:scale(.91);filter:brightness(1.25)}.mid3d-block:disabled{opacity:.46}
+.mid3d-block{right:18px;bottom:174px;width:60px;height:60px;border-radius:50%;border:1px solid rgba(178,230,255,.83);background:radial-gradient(circle at 38% 30%,#89c2da,#284966);color:#fff;font-size:23px;box-shadow:0 5px 15px rgba(0,0,0,.42);touch-action:none}.mid3d-block:active{transform:scale(.91);filter:brightness(1.25)}.mid3d-block:disabled{opacity:.46}
 /* Transparent artwork supplies the gold frame and button face. */
 .mid3d-control-art{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none}
 .mid3d-action,.mid3d-strike,.mid3d-block{padding:0;border:0;background:transparent;box-shadow:none;text-shadow:none;filter:drop-shadow(0 4px 6px rgba(0,0,0,.45))}
@@ -4201,8 +4201,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .mid3d-door-prompt:before{display:none}
 .mid3d-hint{font-size:10px;line-height:1.3;white-space:normal;pointer-events:auto;cursor:pointer}
 .mid3d-joy{bottom:110px}
-.mid3d-strike{bottom:140px}
-.mid3d-block{bottom:206px}
+.mid3d-strike{bottom:136px}
+.mid3d-block{bottom:202px}
 .mid3d-choice-panel{max-height:min(62%,360px)}
 .mid3d-choice-panel button+button{margin-top:5px}
 .mid3d-scene:has(.mid3d-choice-panel) .mid3d-joy,.mid3d-scene:has(.mid3d-choice-panel) .mid3d-strike,.mid3d-scene:has(.mid3d-choice-panel) .mid3d-block{display:none}
@@ -4214,7 +4214,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .whisper-cloud h3,.whisper-cloud p,.whisper-log,.whisper-reward-name{color:#111}
 .mid3d-rematch{background:#fff;color:#111;border-color:#d9d9d9;text-shadow:none}
 .mid3d-rematch small{color:#111}
-@media(max-height:480px){.mid3d-interact,.mid3d-door-prompt,.mid3d-hint{max-height:56px;bottom:6px;padding:6px 8px}.mid3d-joy{bottom:72px}.mid3d-strike{bottom:102px}.mid3d-block{bottom:168px}.mid3d-choice-panel{max-height:calc(100% - 12px)}.whisper-combat-hud{bottom:47px}}
+@media(max-height:480px){.mid3d-interact,.mid3d-door-prompt,.mid3d-hint{max-height:56px;bottom:6px;padding:6px 8px}.mid3d-joy{bottom:72px}.mid3d-strike{bottom:98px}.mid3d-block{bottom:164px}.mid3d-choice-panel{max-height:calc(100% - 12px)}.whisper-combat-hud{bottom:47px}}
 
 .whisper-reward-rarity{background:#fff;color:#111;border:1px solid #d9d9d9}
 /* Detailed vector atlas: no extra texture or model downloads. */
