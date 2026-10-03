@@ -420,5 +420,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
  .mill-scene .mill-rate-pill{left:auto;right:12px;transform:none;bottom:139px}
  .mill-scene .mill-river-hint{bottom:165px}
 }
+
+/* Silver bevel around the white river readouts, without extra image downloads. */
+.mill-scene .mill-flow-readout,.mill-scene .mill-rate-pill{border:3px solid transparent;background:linear-gradient(180deg,#fffefa,#f3f3ef) padding-box,linear-gradient(135deg,#66707b 0%,#fbfdff 18%,#a3adb9 38%,#e8edf3 56%,#697480 76%,#f8fbff 91%,#89939e 100%) border-box;box-shadow:inset 0 0 0 1px #ffffff,0 0 0 1px #747e88,0 2px 5px rgba(22,32,43,.25)}
 `;
 
