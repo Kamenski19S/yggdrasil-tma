@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { createBuildingTextures, textureBuildingPart, applyBuildingDetails } from './buildingTextures';
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
@@ -125,6 +126,7 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
     const millFbxLoader=new FBXLoader();
     const textureLoader=new THREE.TextureLoader();
     const millTextures:THREE.Texture[]=[];
+    const buildingTextures=createBuildingTextures(Math.min(4,renderer.capabilities.getMaxAnisotropy()));
     const loadMillTexture=(name:string,repeatX=1,repeatY=1,srgb=true)=>{
       const texture=textureLoader.load(`${BASE}img/models/${name}`,undefined,undefined,error=>console.warn(`[MILL TEXTURE] ${name} unavailable`,error));
       if(srgb)texture.colorSpace=THREE.SRGBColorSpace;
@@ -221,7 +223,7 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
     net.position.set(-1.3,.22,5.8);net.visible=false;scene.add(net);
 
     // Working sluice upstream: the player raises or lowers this gate to match river pressure.
-    const gateWood=new THREE.MeshStandardMaterial({color:0x4a2f1b,roughness:.92});
+    const gateWood=new THREE.MeshStandardMaterial({map:buildingTextures.wood,color:0xffffff,roughness:.92});
     const gateMetal=new THREE.MeshStandardMaterial({color:0x6c5c42,roughness:.72,metalness:.22});
     for(const x of [-5.75,-.25]){
       const post=new THREE.Mesh(new THREE.BoxGeometry(.32,3.3,.42),gateWood);
@@ -230,6 +232,7 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
     const crossbar=new THREE.Mesh(new THREE.BoxGeometry(5.9,.34,.42),gateWood);
     crossbar.position.set(-3,2.55,-9.2);crossbar.castShadow=true;scene.add(crossbar);
     const gate=new THREE.Mesh(new THREE.BoxGeometry(5.05,1.35,.28),new THREE.MeshStandardMaterial({color:0x604022,roughness:.9}));
+    textureBuildingPart(gate,buildingTextures.wood,true);
     gate.position.set(-3,.82,-9.2);gate.castShadow=gate.receiveShadow=true;scene.add(gate);gateRef.current=gate;
     const gateBand1=new THREE.Mesh(new THREE.BoxGeometry(5.12,.11,.34),gateMetal);gateBand1.position.set(-3,.48,-9.2);scene.add(gateBand1);
     const gateBand2=new THREE.Mesh(new THREE.BoxGeometry(5.12,.11,.34),gateMetal);gateBand2.position.set(-3,1.16,-9.2);scene.add(gateBand2);
@@ -241,6 +244,7 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
     const roof=new THREE.Mesh(new THREE.ConeGeometry(5.2,2.5,4),new THREE.MeshStandardMaterial({map:houseRoofTexture,color:0xffffff,roughness:.95}));
     roof.position.set(3.4,5.8,-3.3);roof.rotation.y=Math.PI/4;roof.castShadow=true;scene.add(roof);
     const door=new THREE.Mesh(new THREE.BoxGeometry(1.5,2.8,.12),new THREE.MeshStandardMaterial({color:0x382417,roughness:.9}));
+    textureBuildingPart(door,buildingTextures.wood,true);
     door.position.set(4.5,1.45,-.35);door.castShadow=true;scene.add(door);
     const windowGlow=new THREE.MeshStandardMaterial({color:0xffd88c,emissive:0xb46c22,emissiveIntensity:1.1,roughness:.42});
     const millWindow=new THREE.Mesh(new THREE.BoxGeometry(1.18,1.02,.12),windowGlow);
@@ -297,7 +301,7 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
       const absolute=new URL(millHouseUrl,window.location.href).href,basePath=absolute.slice(0,absolute.lastIndexOf('/')+1);
       loader.parse(buffer,basePath,gltf=>{
         if(!alive)return;
-        const model=gltf.scene;fitAndPlace(model,{x:3.4,y:0,z:-3.3},{x:7.6,y:6.7,z:6.2});applyMillHouseTextures(model);
+        const model=gltf.scene;fitAndPlace(model,{x:3.4,y:0,z:-3.3},{x:7.6,y:6.7,z:6.2});applyMillHouseTextures(model);applyBuildingDetails(model,buildingTextures);
         scene.add(model);hut.visible=roof.visible=door.visible=millWindow.visible=false;
       },error=>console.warn('[MILL HOUSE] GLB parse failed; keeping textured fallback',error));
     }).catch(error=>console.warn('[MILL HOUSE] GLB unavailable; keeping textured fallback',error));
@@ -453,7 +457,7 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
     return()=>{
       alive=false;cancelAnimationFrame(frame);window.removeEventListener("resize",resize);
       wheelRef.current=null;gateRef.current=null;
-      millTextures.forEach(texture=>texture.dispose());
+      millTextures.forEach(texture=>texture.dispose());buildingTextures.dispose();
       scene.traverse(o=>{
         const mesh=o as THREE.Mesh;
         if(mesh.isMesh){mesh.geometry?.dispose?.();const mats=Array.isArray(mesh.material)?mesh.material:[mesh.material];mats.forEach((m:any)=>m?.dispose?.());}
