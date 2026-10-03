@@ -1582,9 +1582,9 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
             const bounds=localBox(glazing),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
             const canvas=document.createElement("canvas");canvas.width=canvas.height=64;
             const ctx=canvas.getContext("2d")!,gradient=ctx.createLinearGradient(0,0,64,64);
-            gradient.addColorStop(0,"#b5dfed");gradient.addColorStop(.45,"#54859d");gradient.addColorStop(1,"#1c3b51");
+            gradient.addColorStop(0,"#fff8dc");gradient.addColorStop(.45,"#f4e6b3");gradient.addColorStop(1,"#d9c384");
             ctx.fillStyle=gradient;ctx.fillRect(0,0,64,64);
-            ctx.strokeStyle="rgba(235,250,255,.48)";ctx.lineWidth=7;
+            ctx.strokeStyle="rgba(255,255,245,.64)";ctx.lineWidth=7;
             ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(64,56);ctx.stroke();
             const glassTexture=new THREE.CanvasTexture(canvas);glassTexture.colorSpace=THREE.SRGBColorSpace;
             const glassGeometry=glazing.geometry.clone(),positions=glassGeometry.attributes.position,uv=new Float32Array(positions.count*2);
@@ -1594,7 +1594,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
               uv[i*2]=(v.x-bounds.min.x)/size.x;uv[i*2+1]=(v.y-bounds.min.y)/size.y;
             }
             glassGeometry.setAttribute("uv",new THREE.BufferAttribute(uv,2));glazing.geometry=glassGeometry;
-            glazing.material=new THREE.MeshStandardMaterial({map:glassTexture,color:0xffffff,roughness:.18,metalness:.12,emissive:0x163046,emissiveIntensity:.22});
+            // Keep the lit pane visible even when the porch and wall cast shadows.
+            glazing.material=new THREE.MeshBasicMaterial({map:glassTexture,color:0xffffff,toneMapped:false,side:THREE.DoubleSide});
             for(const [name,w,h,x,y] of [
               ["left",.08,size.y+.16,bounds.min.x-.04,center.y],
               ["right",.08,size.y+.16,bounds.max.x+.04,center.y],
