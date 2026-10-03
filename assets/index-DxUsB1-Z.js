@@ -4022,10 +4022,10 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .btn.ghost{background:transparent;border:1px solid #2a3a2e;color:#9ab0a2;margin-top:8px}.btn:disabled{opacity:.55}
 .toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:30;background:#fff;border:1px solid #d9d9d9;color:#111;padding:8px 14px;border-radius:12px;font-size:13px;animation:fade .3s}
 .house-dialog-backdrop{position:fixed;inset:0;z-index:80;background:rgba(4,9,7,.64);display:flex;align-items:center;justify-content:center;padding:20px}
-.house-dialog-panel{max-height:64dvh;overflow-y:auto;width:min(360px,100%);border:1px solid #af8248;border-radius:18px;background:linear-gradient(145deg,#243126,#111a16);color:#fff3d8;padding:14px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
-.house-dialog-panel h3{margin:0 0 12px;color:#f3ca77;font-size:19px}.house-dialog-panel p{font-size:13px;line-height:1.4;margin:0 0 12px}.house-dialog-panel button{width:100%;padding:12px;border:1px solid #cfaa64;border-radius:11px;background:#765331;color:#fff7e5;font-weight:700}
-.house-quest-status{margin:0 0 18px;padding:12px;border-radius:11px;background:rgba(190,151,82,.13);border:1px solid rgba(211,177,105,.36)}
-.house-quest-status b{display:block;color:#f3d99b;margin-bottom:6px}.house-quest-status span{display:block;font-size:13px;line-height:1.45;margin:4px 0}
+.house-dialog-panel{max-height:64dvh;overflow-y:auto;width:min(360px,100%);border:3px solid transparent;border-radius:18px;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#f4f5f7,#9199a3,#fff,#89919b) border-box;color:#191c20;padding:14px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.house-dialog-panel h3{margin:0 0 12px;color:#191c20;font-size:19px}.house-dialog-panel p{font-size:13px;line-height:1.4;margin:0 0 12px}.house-dialog-panel button{width:100%;padding:12px;border:1px solid #aeb5be;border-radius:11px;background:linear-gradient(180deg,#fff,#eceef1);color:#191c20;font-weight:700;box-shadow:inset 0 1px 0 #fff,0 1px 2px rgba(35,42,50,.12)}.house-dialog-panel button:disabled{opacity:1;background:#e9ecef;color:#707780;border-color:#c8cdd3;cursor:default}
+.house-quest-status{margin:0 0 18px;padding:12px;border-radius:11px;background:#f5f6f8;border:1px solid #c4c9d0;color:#252a30}
+.house-quest-status b{display:block;color:#191c20;margin-bottom:6px}.house-quest-status span{display:block;font-size:13px;line-height:1.45;margin:4px 0}
 .days{display:flex;gap:6px;justify-content:center;margin:10px 0}
 .day{flex:1;padding:8px 2px;border-radius:10px;background:#0d130f;border:1px solid #223028;font-size:10px;color:#8fa39a;display:flex;flex-direction:column;gap:4px;align-items:center}
 .day b{font-size:12px;color:#e8f0e8}
