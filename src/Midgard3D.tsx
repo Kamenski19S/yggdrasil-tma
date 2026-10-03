@@ -5288,7 +5288,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         <img className="mid3d-top-button-art" src={`${BASE}img/models/ui_mill.png`} alt="" draggable={false}/>
       </button>
     </div>}
-    {banditOpponent&&whisperPhase==="closed"&&<div className="mid3d-ui" style={{top:"21%",left:"50%",transform:"translateX(-50%)",width:"min(88vw,290px)",padding:"8px 12px",borderRadius:12,background:"rgba(16,12,11,.87)",border:"1px solid rgba(227,67,50,.55)",color:"#fff",pointerEvents:"none",zIndex:12}}>
+    {banditOpponent&&whisperPhase==="closed"&&<div className="mid3d-ui" style={{top:"21%",left:"50%",transform:"translateX(-50%)",width:"min(88vw,290px)",padding:"8px 12px",borderRadius:12,background:"#fff",border:"1px solid #d9d9d9",color:"#111",pointerEvents:"none",zIndex:12}}>
       <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}><span>Вика</span><span>{banditHeroHp}/{whisperStats.maxHp}</span></div>
       <div style={{height:5,background:"#382b29",borderRadius:6,overflow:"hidden",marginBottom:6}}><div style={{height:"100%",width:`${Math.max(0,banditHeroHp/whisperStats.maxHp*100)}%`,background:"#72c46e",transition:"width .25s"}}/></div>
       <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}><span>{banditOpponent.name}</span><span>{banditOpponent.hp}/{banditOpponent.maxHp}</span></div>
@@ -5372,18 +5372,18 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       <p>Изменения для Yggdrasil Runes: настроены масштаб, ориентация и положение модели в сцене мельницы; добавлено вращение колеса в зависимости от работы механизма.</p>
       <button className="mid3d-map-close" onClick={()=>setCreditsOpen(false)}>Вернуться в игру</button>
     </div></div>}
-    {forestEventOpen&&!eventDone&&<div className="mid3d-ui mid3d-interact" style={{bottom:"14%",left:"50%",transform:"translateX(-50%)",width:"min(92vw,390px)",zIndex:31}}>
+    {forestEventOpen&&!eventDone&&<div className="mid3d-ui mid3d-interact mid3d-choice-panel">
       <b>ᛟ Колодец Трёх Норн</b>
       <span>В глубине колодца горит тёплое сияние. Серебряная, золотая и алая нити сходятся над водой, связывая прошлое, настоящее и будущее.</span>
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setForestEventOpen(false);on("forestEvent:past")}}>ᛁ Прошлое — узнать, что здесь произошло</button>
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setForestEventOpen(false);on("forestEvent:present")}}>ᛏ Настоящее — принять знак таким, какой он есть</button>
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setForestEventOpen(false);on("forestEvent:future")}}>ᛉ Будущее — последовать за нитью, которую ещё не видно</button>
     </div>}
-    {forestEventOpen&&eventDone&&<div className="mid3d-ui mid3d-interact" style={{bottom:"18%",left:"50%",transform:"translateX(-50%)",width:"min(92vw,360px)",zIndex:30}}>
+    {forestEventOpen&&eventDone&&<div className="mid3d-ui mid3d-interact mid3d-choice-panel">
       <b>Колодец Трёх Норн</b><span>Ты уже выбрал свою нить. Вода и три нити помнят этот выбор.</span>
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>setForestEventOpen(false)}>Продолжить путь</button>
     </div>}
-    {ritualOpen&&<div className="mid3d-ui mid3d-interact" style={{bottom:"18%",left:"50%",transform:"translateX(-50%)",width:"min(92vw,360px)",zIndex:30}}>
+    {ritualOpen&&<div className="mid3d-ui mid3d-interact mid3d-choice-panel">
       <b>🜂 Круг Силы</b>
       <span>Древние камни отвечают на твоё присутствие. Выбери один путь.</span>
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:mimir")}}>🧠 Око Мимира — открыть скрытое</button>
@@ -5435,7 +5435,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       <div className="whisper-reward-icon">ᚾ</div><div className="whisper-reward-name">Испытание не пройдено</div><p>{whisperLog}</p>
       <button className="whisper-close" onClick={whisperReplay?()=>beginGuardianRematch(activeGuardian.id):()=>beginLocationEncounter(activeGuardian.id)}>Попробовать ещё раз</button>
     </div>}
-    {near&&!ritualOpen&&!forestEventOpen&&whisperPhase==="closed"&&(()=>{
+    {near&&!doorNotice&&!ritualOpen&&!forestEventOpen&&whisperPhase==="closed"&&(()=>{
       const [label,id]=near.split("|");
       if(id.startsWith('gather:')){
         const kind=GATHER_SPOTS.find(spot=>spot.id===id.slice(7))?.kind;
@@ -5484,7 +5484,6 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" title="Удар оружием" onPointerDown={e=>e.stopPropagation()} onClick={()=>{attackActionRef.current?.();if("vibrate" in navigator)navigator.vibrate(12);}}><img className="mid3d-control-art" src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></button>
     <button className="mid3d-ui mid3d-action" style={{top:125}} aria-label="Запас рун и эликсиров" title="Запас" onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setMapOpen(false);setInventoryOpen(true);}}><img className="mid3d-control-art" src={`${BASE}img/models/ui_inventory.png`} alt="" draggable={false}/></button>
 </>}
-    {doorNotice&&<div className="mid3d-ui mid3d-hint" role="status" onClick={()=>setDoorNotice("")}>{doorNotice}</div>}
-    {whisperPhase==="closed"&&!doorNotice&&<div className="mid3d-ui mid3d-hint">{insideHome?(moving?"Ты внутри дома":"Дом героя • отдых • сундук • выход"):moving?"Исследуй Мидгард":"Ворота • площадь • кузница • Мимир • норны • лес"}</div>}
+    {doorNotice&&whisperPhase==="closed"&&<div className="mid3d-ui mid3d-hint" role="status" onPointerDown={e=>e.stopPropagation()} onClick={()=>setDoorNotice("")}>{doorNotice}</div>}
   </div>;
 }
