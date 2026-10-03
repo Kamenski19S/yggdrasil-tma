@@ -588,14 +588,6 @@ const [roadT, setRoadT] = useState(0.06);
         </div>
       )}
 
-      {screen.t === "tree" && heroDef && save.hero && (
-        <button className="herobar" onClick={() => go({ t: "hero" })}>
-          <span className="hbface" style={{ borderColor: heroDef.color, color: heroDef.color }}><BgImg name={heroDef.img} className="hbimg" />{heroDef.sym}</span>
-          <span className="hbname">{save.hero.name}<i>{heroDef.race}</i></span>
-          <span className="hbst">⚔ {heroDef.str} ✨ {heroDef.en} ⏳ {watchGain()}</span>
-          <span className="hbwpn">🗡</span>
-        </button>
-      )}
 
       {screen.t === "mill" && (
         <MillScene
