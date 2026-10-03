@@ -1,5 +1,5 @@
 import { MIDGARD_GUARDIANS, MIDGARD_GUARDIAN_ORDER } from './core';
-import { CHAOS_GATES } from './chaosProgression';
+import { CHAOS_GATES, routeBlocker, routePhase, nextRouteGate } from './chaosProgression';
 export type MapCategory='village'|'trials'|'treasures'|'resources'|'roads';
 export type MapLocation={id:string;name:string;category:MapCategory;x:number;z:number;description:string};
 export type MapProgress={completed:string[];cleared:string[];restored:string[];openedChests:string[];northBridgeRepaired:boolean;northBridgeReady:boolean;eventDone:boolean};
@@ -39,6 +39,7 @@ export const MAP_ROADS:Array<Array<[number,number]>>=[
 ];
 export const MAP_WALLS:Array<[number,number,number,number]>=[[-30,-31,-6,-31],[6,-31,30,-31],[-30,-31,-30,44],[30,-31,30,44],[-30,44,-6,44],[6,44,30,44]];
 export const MAP_LOCATIONS:MapLocation[]=[
+ {id:'northSeal',name:'Врата хаоса · Северный мост',category:'roads',x:0,z:52,description:'Первый этап: снять печать и восстановить Северный мост с помощью жителей.'},
  ...MIDGARD_GUARDIAN_ORDER.map(id=>{const g=MIDGARD_GUARDIANS[id];return {id,name:g.location,category:'trials' as const,x:g.x,z:g.z,description:g.title+' — '+g.name+'. Испытание мудрости или бой.'};}),
  {id:'forge',name:'Кузница Вёлунда',category:'village',x:-10,z:-2.55,description:'Оружие, щиты и закалка снаряжения.'},
  {id:'welund',name:'Дом Велунда',category:'village',x:17,z:34,description:'Дом кузнеца возле ворот. Открой дверь, чтобы поговорить с Велундом.'},
@@ -65,10 +66,12 @@ export function locationState(location:MapLocation,p:MapProgress):LocationState{
  if(location.category==='trials'){
   const g=CHAOS_GATES.find(x=>x.location===id);
   if(p.completed.includes(id))return {label:'Испытание пройдено',kind:'done',detail:'Можно вернуться для повторного боя.'};
+  const blocker=g&&!p.cleared.includes(g.id)?routeBlocker(p,g.id):undefined;
+  if(blocker)return {label:'Предыдущий этап',kind:'locked',detail:'Сначала: '+blocker.name+' — '+routePhase(p,blocker).label.toLowerCase()+'.'};
   if(g&&!p.cleared.includes(g.id))return {label:'Печать хаоса',kind:'locked',detail:'Врата хаоса: '+g.cost+' Капель бессмертия и руны. Подойди к вратам, чтобы увидеть рецепты.'};
   if(g&&!p.restored.includes(g.id))return {label:'Нужен ремонт',kind:'locked',detail:'Печать снята. Жители поселения помогут восстановить локацию.'};
   const i=MIDGARD_GUARDIAN_ORDER.findIndex(x=>x===id);
-  const prev=MIDGARD_GUARDIAN_ORDER[i-1];
+  const prev=MIDGARD_GUARDIAN_ORDER.slice(0,i).find(x=>!p.completed.includes(x));
   if(prev&&!p.completed.includes(prev))return {label:'Предыдущее испытание',kind:'locked',detail:'Сначала пройди: '+MIDGARD_GUARDIANS[prev].location+'.'};
   return {label:'Доступно',kind:'open',detail:'Подойди к стражу, чтобы начать испытание.'};
  }
@@ -79,12 +82,13 @@ export function locationState(location:MapLocation,p:MapProgress):LocationState{
   if(id==='angelicChest'&&!p.completed.includes('hoddmimir'))return {label:'Серебряная печать',kind:'locked',detail:'Сначала пройди последнее испытание в Лесу Ходдмимира.'};
   return {label:'Награда ждёт',kind:'open',detail:location.description};
  }
+ if(id==='northSeal')return p.cleared.includes('north')?{label:'Печать снята',kind:'done',detail:'Следующий шаг — восстановить Северный мост у реки.'}:{label:'Первый этап',kind:'open',detail:'Сними печать за 300 Капель бессмертия и одну подходящую руну. Затем подготовь ремонт моста с жителями.'};
  if(id==='northBridge')return p.northBridgeRepaired?{label:'Проход открыт',kind:'done',detail:'Можно перейти на западный берег.'}:{label:p.northBridgeReady?'Готов к ремонту':'Проход закрыт',kind:'locked',detail:p.northBridgeReady?'Заверши ремонт у моста за 300 Капель бессмертия.':'Подготовь материалы у Сигрид, Бьёрна и Торвальда.'};
  return {label:'Место на карте',kind:'open',detail:location.description};
 }
 export function nextMapGoal(p:MapProgress):string|undefined{
- const trial=MIDGARD_GUARDIAN_ORDER.find(id=>!p.completed.includes(id));
- if(trial)return trial;
+ const step=nextRouteGate(p);
+ if(step)return step.id==='north'?(p.cleared.includes('north')?'northBridge':'northSeal'):step.id;
  if(!p.openedChests.includes('forestCache'))return p.northBridgeRepaired?'forestCache':'northBridge';
  if(!p.openedChests.includes('nornsChest'))return p.eventDone?'nornsChest':'threeThreads';
  if(!p.openedChests.includes('angelicChest'))return 'angelicChest';

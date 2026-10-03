@@ -17,10 +17,30 @@ export const CHAOS_GATES:ChaosGateDef[]=[
 // The model’s steps face local +Z: orient them away from the sealed location.
 export const chaosKey=(id:string)=>'chaos:'+id+':cleared';
 export const gateForLocation=(location:string)=>CHAOS_GATES.find(g=>g.location===location);
+export type RouteProgress={cleared:string[];restored:string[];completed:string[];northBridgeRepaired:boolean};
+export const routeProgress=(s:Save):RouteProgress=>({
+ cleared:CHAOS_GATES.filter(g=>s.done.includes(chaosKey(g.id))).map(g=>g.id),
+ restored:CHAOS_GATES.filter(g=>s.done.includes('repair:'+g.id+':restored')).map(g=>g.id),
+ completed:CHAOS_GATES.filter(g=>s.done.includes('guardian:'+g.id)||s.done.includes('guardian:stage:'+g.id)||(g.id==='whisperStone'&&(s.done.includes('whisper:wisdom')||s.done.includes('whisper:battle')))).map(g=>g.id),
+ northBridgeRepaired:s.done.includes('bridge:north:repaired')
+});
+export function routePhase(p:RouteProgress,g:ChaosGateDef){
+ // Completed legacy trials remain completed, even if old saves lack repair keys.
+ if(g.location&&p.completed.includes(g.id))return {done:true,label:'Пройдено'};
+ if(!p.cleared.includes(g.id))return {done:false,label:'Снять печать'};
+ if(!g.location)return p.northBridgeRepaired?{done:true,label:'Пройдено'}:{done:false,label:'Отремонтировать мост'};
+ if(!p.restored.includes(g.id))return {done:false,label:'Восстановить с жителями'};
+ return {done:false,label:'Пройти испытание'};
+}
+export const nextRouteGate=(p:RouteProgress)=>CHAOS_GATES.find(g=>!routePhase(p,g).done);
+export function routeBlocker(p:RouteProgress,gateId:string){
+ const index=CHAOS_GATES.findIndex(g=>g.id===gateId);
+ return index<0?undefined:CHAOS_GATES.slice(0,index).find(g=>!routePhase(p,g).done);
+}
 export const runeCopies=(s:Save,id:string)=>s.runes.includes(id)?Math.max(1,Number(s.lootCounts[id])||1):0;
 export const runeStrength=(s:Save,id:string)=>Math.min(3,1+Math.max(0,Number(s.forgeLevels['rune:'+id])||0));
 export function canCleanseGate(s:Save,gate:ChaosGateDef,recipe:number){
- const needs=gate.recipes[recipe];return !!needs&&!s.done.includes(chaosKey(gate.id))&&s.immortalityDrops>=gate.cost&&needs.every(n=>runeCopies(s,n.id)>=n.quantity&&runeStrength(s,n.id)>=n.level);
+ const needs=gate.recipes[recipe];return !!needs&&!s.done.includes(chaosKey(gate.id))&&!routeBlocker(routeProgress(s),gate.id)&&s.immortalityDrops>=gate.cost&&needs.every(n=>runeCopies(s,n.id)>=n.quantity&&runeStrength(s,n.id)>=n.level);
 }
 export function cleanseGate(s:Save,gateId:string,recipe:number):Save {
  const gate=CHAOS_GATES.find(g=>g.id===gateId);if(!gate||!canCleanseGate(s,gate,recipe))return s;

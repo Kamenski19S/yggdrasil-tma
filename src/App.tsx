@@ -1,6 +1,6 @@
 import {WOOD_TRADES,exchangeWood,forgeAshCost} from './woodEconomy';
 import { REPAIR_RESIDENTS, REPAIR_GOODS, REPAIR_PROJECTS, type RepairResident, nextRepairJob, residentRepairIntro, repaired, repairKey, workKey, canPrepareRepair, prepareRepair, canRestore, restoreLocation } from './locationRepairs';
-import { CHAOS_GATES, chaosKey, gateForLocation, runeCopies, runeStrength, canCleanseGate, cleanseGate } from './chaosProgression';
+import { CHAOS_GATES, chaosKey, gateForLocation, runeCopies, runeStrength, canCleanseGate, cleanseGate, routeProgress, routeBlocker, routePhase } from './chaosProgression';
 import { rollBanditLoot, applyBanditLoot } from './banditLoot';
 import { CHAOS_GATE_KEY, CHAOS_GATE_COST, CHAOS_GATE_RUNES, cleanseChaosGate } from './chaosGate';
 import { potionBoostKind, boostedPotionDamage, potionDodges, type PotionBoostKind } from "./potionEffects";
@@ -32,6 +32,7 @@ export function App() {
   const [chaosDialog,setChaosDialog]=useState<string|null>(null);
   const [chaosRecipe,setChaosRecipe]=useState(0);
   const currentChaosGate=CHAOS_GATES.find(g=>g.id===chaosDialog);
+  const currentChaosBlocker=currentChaosGate?routeBlocker(routeProgress(save),currentChaosGate.id):undefined;
   const openChaosGate=(gateId:string)=>{const gate=CHAOS_GATES.find(g=>g.id===gateId);if(!gate)return;const choice=gate.recipes.findIndex(needs=>needs.every(n=>runeCopies(save,n.id)>=n.quantity&&runeStrength(save,n.id)>=n.level));setChaosRecipe(Math.max(0,choice));setChaosDialog(gateId);};
   const [houseDialog,setHouseDialog]=useState("");
   const [houseDialogId,setHouseDialogId]=useState("");
@@ -965,7 +966,7 @@ const [roadT, setRoadT] = useState(0.06);
       goldChestOpened={save.done.includes('chest:gold')}
       openedChests={[save.done.includes('chest:gold')?'forestCache':'',save.done.includes('chest:norns')?'nornsChest':'',save.done.includes('chest:angelic')?'angelicChest':''].filter(Boolean)}
       whisperResolved={save.done.includes("whisper:battle")||save.done.includes("whisper:wisdom")}
-      guardianResolved={MIDGARD_GUARDIAN_ORDER.filter(id=>save.done.includes("guardian:stage:"+id)||save.done.includes("guardian:"+id)) as unknown as string[]}
+      guardianResolved={routeProgress(save).completed}
       whisperStats={{
         maxHp:heroDef.hp+gearHp(),
         attack:heroDef.str+WEAPON_POWER[save.heroWeapon]+forgeLevel(save.heroWeapon)+activeRuneBonus('attack')+(activeArtifactDef()?.attack||0),
@@ -1364,7 +1365,8 @@ const [roadT, setRoadT] = useState(0.06);
       </div>}
       {currentChaosGate&&screen.t==='realm'&&screen.id==='midgard'&&<div className="chaos-panel" onPointerDown={e=>e.stopPropagation()} role="dialog" aria-label="Врата хаоса">
         <div className="chaos-panel-title"><b>{currentChaosGate.name}</b><button aria-label="Закрыть" onClick={()=>setChaosDialog(null)}>×</button></div>
-        {save.done.includes(chaosKey(currentChaosGate.id))?<><p>Печать снята.{currentChaosGate.location?' Теперь нужно восстановить повреждённую локацию.':' Проход свободен.'}</p>{currentChaosGate.location&&<button onClick={()=>{setRepairDialog(currentChaosGate.id);setChaosDialog(null);}}>Осмотреть повреждения</button>}</>:<>
+        {save.done.includes(chaosKey(currentChaosGate.id))?<><p>Печать снята.{currentChaosGate.location?' Теперь нужно восстановить повреждённую локацию.':save.done.includes('bridge:north:repaired')?' Проход свободен.':' Подготовь материалы у Сигрид, Бьёрна и Торвальда, затем восстанови Северный мост у реки.'}</p>{currentChaosGate.location&&<button onClick={()=>{setRepairDialog(currentChaosGate.id);setChaosDialog(null);}}>Осмотреть повреждения</button>}</>:<>
+          {currentChaosBlocker&&<p><b>Этот этап пока закрыт.</b><br/>Сначала: {currentChaosBlocker.name} — {routePhase(routeProgress(save),currentChaosBlocker).label.toLowerCase()}. Уже открытые локации сохраняются.</p>}
           <p>Тёмная печать {currentChaosGate.seal.join(' · ')}.<br/>Выбери один способ очищения.</p>
           <div className="chaos-recipes">{currentChaosGate.recipes.map((needs,index)=>{const available=needs.every(n=>runeCopies(save,n.id)>=n.quantity&&runeStrength(save,n.id)>=n.level);return <button key={index} className={chaosRecipe===index?'chosen':''} disabled={!available} onClick={()=>setChaosRecipe(index)}>{needs.map(n=>{const rune=RUNE_CATALOG.find(r=>r.id===n.id)!;return <span key={n.id}><strong>{rune.symbol}</strong> {rune.name} ×{n.quantity} · {['I','II','III'][n.level-1]}<small>В запасе: {runeCopies(save,n.id)} · уровень {['I','II','III'][runeStrength(save,n.id)-1]}</small></span>;})}</button>;})}</div>
           <p>Стоимость: {currentChaosGate.cost} капель.<br/>Баланс: {save.immortalityDrops}. Указанные руны расходуются.</p>

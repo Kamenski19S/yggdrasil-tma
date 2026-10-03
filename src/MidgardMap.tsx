@@ -1,4 +1,5 @@
 import React, {useEffect,useRef,useState} from 'react';
+import {CHAOS_GATES,routePhase,nextRouteGate} from './chaosProgression';
 import {MAP_LOCATIONS,MAP_ROADS,MAP_WALLS,mapPosition,riverCenterX,locationState,nextMapGoal,type MapCategory,type MapProgress} from './midgardMapData';
 
 type Props=MapProgress&{hero:{x:number;z:number};onClose:()=>void;onCredits:()=>void};
@@ -13,6 +14,7 @@ const roadPoints=(points:Array<[number,number]>)=>points.map(([x,z])=>point(x,z)
 const riverPoints=Array.from({length:49},(_,i)=>{const z=90-i*3.75;return point(riverCenterX(z),z).join(',');}).join(' ');
 export function MidgardMap(props:Props){
  const goal=nextMapGoal(props);
+ const routeGate=nextRouteGate(props);
  const [selectedId,setSelectedId]=useState(goal||'forge');
  const [category,setCategory]=useState<'all'|MapCategory>('all');
  const [zoom,setZoom]=useState(1);
@@ -27,7 +29,7 @@ export function MidgardMap(props:Props){
  useEffect(()=>{const p=mapPosition(selected.x,selected.z);centerAt(p.x,p.y);},[selectedId,zoom]);
  const choose=(id:string)=>{setSelectedId(id);};
  return <div className="mid3d-map-panel midgard-atlas-panel">
-  <header className="atlas-header"><div><h2>Карта Мидгарда</h2><p>26 локаций · выбери метку или место из списка</p></div><button type="button" aria-label="Закрыть карту" onClick={props.onClose}>×</button></header>
+  <header className="atlas-header"><div><h2>Карта Мидгарда</h2><p>{MAP_LOCATIONS.length} локаций · выбери метку или место из списка</p></div><button type="button" aria-label="Закрыть карту" onClick={props.onClose}>×</button></header>
   <div className="atlas-body">
    <div className="atlas-tools"><div role="group" aria-label="Масштаб карты"><button aria-label="Уменьшить карту" disabled={zoom===1} onClick={()=>setZoom(z=>z-1)}>−</button><span>{zoom}×</span><button aria-label="Увеличить карту" disabled={zoom===3} onClick={()=>setZoom(z=>z+1)}>+</button></div><button onClick={()=>centerAt(hero.x,hero.y)}>◆ Герой</button><span>Север ↑</span></div>
    <div className="atlas-viewport" ref={viewport} aria-label="Карта: выбери номер локации">
@@ -56,7 +58,14 @@ export function MidgardMap(props:Props){
    </div>
    <div className="atlas-legend"><span className="atlas-you">◆ Ты здесь</span><span><i className="done"/>Пройдено</span><span><i className="locked"/>Закрыто</span><span><i className="goal"/>Следующая цель</span></div>
    <section className="atlas-location-detail" aria-live="polite"><div><b>{MAP_LOCATIONS.indexOf(selected)+1}. {selected.name}</b><span className={selectedState.kind}>{selectedState.label}</span></div><p>{selectedState.detail}</p><small>От героя: {bearing}</small></section>
-   {goal&&<button className="atlas-next" onClick={()=>{setCategory('all');choose(goal);}}>Следующая цель: {MAP_LOCATIONS.find(p=>p.id===goal)?.name} →</button>}
+   {goal&&<button className="atlas-next" onClick={()=>{setCategory('all');choose(goal);}}>Следующая цель: {MAP_LOCATIONS.find(p=>p.id===goal)?.name}{routeGate?' · '+routePhase(props,routeGate).label:''} →</button>}
+   <details className="atlas-location-detail"><summary><b>Порядок прохождения · {CHAOS_GATES.filter(g=>routePhase(props,g).done).length} / {CHAOS_GATES.length}</b></summary>
+    <p>Печать → ремонт с жителями → испытание → следующий этап.</p>
+    <div className="atlas-location-list">{CHAOS_GATES.map((g,i)=>{const phase=routePhase(props,g),next=g.id===routeGate?.id;
+     const target=g.id==='north'?(props.cleared.includes('north')?'northBridge':'northSeal'):g.id;
+     return <button key={g.id} className={next?'selected':''} onClick={()=>{setCategory('all');choose(target);}}><span className={'atlas-number '+(phase.done?'done':next?'open':'locked')}>{i+1}</span><span><b>{g.name}</b><small>{phase.done?'✓ Пройдено':next?'Следующий шаг: '+phase.label:props.cleared.includes(g.id)?phase.label:'После предыдущих этапов'}</small></span></button>;
+    })}</div>
+   </details>
    <div className="atlas-categories" role="group" aria-label="Типы локаций">{GROUPS.map(g=><button key={g.id} aria-pressed={category===g.id} className={category===g.id?'active':''} onClick={()=>setCategory(g.id)}>{g.name}</button>)}</div>
    <div className="atlas-location-list" aria-label="Все локации">{visible.map(l=>{const st=locationState(l,props);return <button key={l.id} onClick={()=>{choose(l.id);viewport.current?.scrollIntoView({block:'nearest'});}} className={selectedId===l.id?'selected':''} aria-pressed={selectedId===l.id}><span className={'atlas-number '+st.kind}>{MAP_LOCATIONS.indexOf(l)+1}</span><span><b>{l.name}</b><small>{st.label}</small></span></button>;})}</div>
    <p className="atlas-progress">Испытания: {props.completed.length} / 9 · Печати сняты: {props.cleared.length} / 10</p>
