@@ -384,5 +384,41 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 
 .atlas-pin.label-below small{bottom:auto;top:33px}.atlas-pin.label-right small{left:auto;right:0;transform:none}.atlas-pin.label-left small{left:0;transform:none}
 .atlas-you{color:#095772;font-weight:800}.atlas-stage.zoomed .atlas-pin:not(.selected) small{font-size:9px;max-width:76px;background:#fff9e9e8}
+
+/* Silver and gold mill artwork supplies its own icons and transparent frame. */
+.mill-scene .mill-title::before,.mill-scene .mill-frame-card::before,.mill-scene .mill-controls .mill-icon-btn::before,.mill-scene .mill-sluice::before{display:none}
+.mill-scene .mill-title{width:min(88vw,340px);height:auto;aspect-ratio:640/145;padding:0}
+.mill-scene .mill-title b{max-width:62%;color:#241b13;font-size:11px;line-height:1.15;letter-spacing:.2px;text-shadow:0 1px 1px #fff9}
+.mill-scene .mill-top-stats{top:92px;height:auto;align-items:start}
+.mill-scene .mill-frame-card{aspect-ratio:384/129;padding:0;display:block}
+.mill-scene .mill-frame-card b{position:absolute;left:42%;right:20%;top:50%;transform:translateY(-50%);text-align:center;color:#241b13;font-size:clamp(12px,4.2vw,18px);line-height:1;letter-spacing:-.4px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.mill-scene .mill-sluice{bottom:82px;width:min(82vw,315px);height:auto;aspect-ratio:640/179;display:block;padding:0}
+.mill-scene .mill-sluice button{position:absolute;top:15%;left:14%;width:21%;height:72%;margin:0;border:0;border-radius:50%;background:transparent;color:transparent;z-index:2;touch-action:manipulation}
+.mill-scene .mill-sluice button:last-child{left:65%}
+.mill-scene .mill-sluice button:disabled{opacity:1;background:rgba(56,43,21,.24);cursor:default}
+.mill-scene .mill-sluice button:focus-visible{outline:2px solid #243950;outline-offset:1px}
+.mill-scene .mill-sluice button:not(:disabled):active{background:rgba(255,255,255,.2)}
+.mill-scene .mill-flow-readout{position:absolute;left:6%;right:6%;top:-49px;height:44px;padding:4px 6px;border-radius:9px;background:rgba(255,252,245,.94);border:1px solid #ba985a;box-sizing:border-box}
+.mill-scene .mill-flow-readout small{color:#453a2a;font-size:8px;letter-spacing:.2px}
+.mill-scene .mill-flow-readout b{font-size:10px;color:#5a2817;text-shadow:none}
+.mill-scene .mill-flow-readout b.good{color:#35532c}
+.mill-scene .mill-rate-pill{bottom:228px;background:rgba(255,252,245,.94);color:#453a2a;border-color:#ba985a}
+.mill-scene .mill-rate-pill b{color:#241b13}
+.mill-scene .mill-river-hint{bottom:256px}
+.mill-scene .mill-net-btn{bottom:230px}
+.mill-scene .mill-controls{bottom:12px;gap:16px}
+.mill-scene .mill-controls .mill-icon-btn{width:60px;height:60px;border-radius:50%}
+.mill-scene .mill-controls .mill-frame-img{object-fit:contain}
+.mill-scene .mill-controls .mill-icon-btn:disabled .mill-frame-img{opacity:.45;filter:saturate(.45)}
+.mill-scene .mill-controls .stop .mill-frame-img{filter:drop-shadow(0 0 4px #ffe199)}
+@media(max-height:480px) and (min-width:500px){
+ .mill-scene .mill-title{left:8px;top:6px;transform:none;width:240px}
+ .mill-scene .mill-top-stats{left:auto;right:8px;top:9px;width:250px}
+ .mill-scene .mill-controls{left:12px;transform:none;gap:10px}
+ .mill-scene .mill-controls .mill-icon-btn{width:52px;height:52px}
+ .mill-scene .mill-sluice{left:auto;right:12px;transform:none;bottom:12px;width:260px}
+ .mill-scene .mill-rate-pill{left:auto;right:12px;transform:none;bottom:139px}
+ .mill-scene .mill-river-hint{bottom:165px}
+}
 `;
 

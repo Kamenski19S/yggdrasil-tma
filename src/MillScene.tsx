@@ -477,32 +477,18 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
   return <div className="mill-scene" ref={mount}>
     <div className="mill-vignette"/>
     <div className="mill-title">
-      <img className="mill-frame-img" src={`${BASE}img/models/frame_top_mid_512w.png`} alt=""/>
+      <img className="mill-frame-img" src={`${BASE}img/models/mill_title_panel.png`} alt=""/>
       <b>МЕЛЬНИЦА БЕССМЕРТИЯ</b>
     </div>
 
     <div className="mill-top-stats">
       <div className="mill-frame-card" title="В накопителе мельницы">
-        <img className="mill-frame-img" src={`${BASE}img/models/frame_top_mid_512w.png`} alt=""/>
-        <svg className="mill-stat-icon" viewBox="0 0 64 48" aria-hidden="true">
-          <path d="M12 20h40l-4 22H16Z" fill="#6b431f" stroke="#e2b451" strokeWidth="2"/>
-          <path d="M18 19 23 8h18l5 11" fill="none" stroke="#d9a644" strokeWidth="3" strokeLinecap="round"/>
-          <path d="M18 27h28M20 34h24" stroke="#bb7b2d" strokeWidth="2"/>
-          <circle cx="25" cy="17" r="5" fill="#e1b74f" stroke="#ffda74" strokeWidth="1.4"/>
-          <circle cx="36" cy="14" r="5" fill="#c99432" stroke="#f2cb63" strokeWidth="1.4"/>
-          <circle cx="43" cy="20" r="4.5" fill="#e9c05a" stroke="#ffdc7b" strokeWidth="1.2"/>
-        </svg>
-        <b>{stored}</b>
+        <img className="mill-frame-img" src={`${BASE}img/models/mill_storage_panel.png`} alt=""/>
+        <b style={String(stored).length>6?{fontSize:`clamp(9px,${26/String(stored).length}vw,14px)`}:undefined} aria-label={`В накопителе: ${stored}`}>{stored}</b>
       </div>
       <div className="mill-frame-card" title="Твой баланс бессмертия">
-        <img className="mill-frame-img" src={`${BASE}img/models/frame_top_mid_512w.png`} alt=""/>
-        <svg className="mill-stat-icon" viewBox="0 0 58 48" aria-hidden="true">
-          <path d="M20 12c2-5 16-5 18 0l-3 6c8 6 12 14 10 21-2 7-30 7-32 0-2-7 2-15 10-21Z" fill="#b87a23" stroke="#f1c85e" strokeWidth="2"/>
-          <path d="M22 12c4 3 10 3 14 0M21 18h16" fill="none" stroke="#ffd77a" strokeWidth="1.8" strokeLinecap="round"/>
-          <circle cx="29" cy="31" r="6" fill="#e0ad40" stroke="#ffe08b" strokeWidth="1.5"/>
-          <path d="M29 26v10M25 31h8" stroke="#8b5a1b" strokeWidth="1.4"/>
-        </svg>
-        <b>{balance}</b>
+        <img className="mill-frame-img" src={`${BASE}img/models/mill_balance_panel.png`} alt=""/>
+        <b style={String(balance).length>6?{fontSize:`clamp(9px,${26/String(balance).length}vw,14px)`}:undefined} aria-label={`Баланс: ${balance}`}>{balance}</b>
       </div>
     </div>
 
@@ -519,45 +505,27 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
     <div className="mill-rate-pill"><span>Напор меняется</span><b>{running?("+"+(liveRate||1)+" / сек"):"0 / сек"}</b></div>
 
     <div className="mill-sluice">
-      <img className="mill-frame-img" src={`${BASE}img/models/frame_top_long_768w.png`} alt=""/>
-      <button disabled={flow<=1} onClick={()=>setFlow(v=>Math.max(1,v-1))} aria-label="Уменьшить поток">−</button>
+      <img className="mill-frame-img" src={`${BASE}img/models/mill_pressure_plus_minus.png`} alt=""/>
+      <button disabled={flow<=1} onClick={()=>setFlow(v=>Math.max(1,v-1))} aria-label="Уменьшить поток"/>
       <div className="mill-flow-readout">
         <small>Напор реки {["","I","II","III"][pressure]} · шлюз {["","I","II","III"][flow]}</small>
         <b className={flow===pressure?"good":"warn"}>{flow===pressure?(combo>=5?"РАВНОВЕСИЕ · серия "+combo+" сек":"РАВНОВЕСИЕ"):"ПОДСТРОЙ ШЛЮЗ"}</b>
         <span className="mill-flow-bars">{[1,2,3].map(level=><i key={level} className={level<=flow?"on":""}/>)}</span>
       </div>
-      <button disabled={flow>=3} onClick={()=>setFlow(v=>Math.min(3,v+1))} aria-label="Увеличить поток">＋</button>
+      <button disabled={flow>=3} onClick={()=>setFlow(v=>Math.min(3,v+1))} aria-label="Увеличить поток"/>
     </div>
 
     <div className="mill-controls">
       <button className={"mill-icon-btn "+(running?"stop":"start")} aria-label={running?"Остановить мельницу":"Запустить мельницу"} title={running?"Остановить мельницу":"Запустить мельницу"} onClick={()=>setRunning(v=>{const next=!v;if(!next){comboRef.current=0;setCombo(0);setLiveRate(0);}return next;})}>
-        <img className="mill-frame-img" src={`${BASE}img/models/frame_top_side_360w.png`} alt=""/>
-        <svg viewBox="0 0 52 52" aria-hidden="true">
-          <circle cx="26" cy="26" r="17" fill="#3a250f" stroke="#f0c65e" strokeWidth="2.5"/>
-          <circle cx="26" cy="26" r="4" fill="#d49a32"/>
-          <path d="M26 9v34M9 26h34M14 14l24 24M38 14 14 38" stroke="#d9a23e" strokeWidth="3" strokeLinecap="round"/>
-          <circle cx="26" cy="26" r="12" fill="none" stroke="#9b671f" strokeWidth="1.5"/>
-        </svg>
+        <img className="mill-frame-img" src={`${BASE}img/models/mill_button.png`} alt=""/>
       </button>
 
       <button className="mill-icon-btn collect" aria-label="Забрать капли" title="Забрать капли" disabled={!stored} onClick={collect}>
-        <img className="mill-frame-img" src={`${BASE}img/models/frame_top_side_360w.png`} alt=""/>
-        <svg viewBox="0 0 58 52" aria-hidden="true">
-          <path d="M14 19h30l-3 25H17Z" fill="#704520" stroke="#e1ae4e" strokeWidth="2"/>
-          <path d="M17 25h24M16 34h26" stroke="#b5792a" strokeWidth="2"/>
-          <path d="M22 19c0-5 14-5 14 0" fill="none" stroke="#d9a647" strokeWidth="2"/>
-          <path d="M29 5c4 6 6 9 6 12a6 6 0 1 1-12 0c0-3 2-6 6-12Z" fill="#f2b43e" stroke="#ffe090" strokeWidth="1.3"/>
-        </svg>
+        <img className="mill-frame-img" src={`${BASE}img/models/storage_round_button.png`} alt=""/>
       </button>
 
       <button className="mill-icon-btn home" aria-label="Вернуться в Мидгард" title="Вернуться в Мидгард" onClick={()=>{runningRef.current=false;setRunning(false);onBack();}}>
-        <img className="mill-frame-img" src={`${BASE}img/models/frame_top_side_360w.png`} alt=""/>
-        <svg viewBox="0 0 62 48" aria-hidden="true">
-          <path d="M28 18 41 8l13 10v20H28Z" fill="#6b431f" stroke="#e1ae4d" strokeWidth="2"/>
-          <path d="M25 19 41 5l16 14" fill="none" stroke="#f1c65e" strokeWidth="2.4" strokeLinecap="round"/>
-          <path d="M41 27h7v11h-7Z" fill="#20160d" stroke="#9d6827" strokeWidth="1"/>
-          <path d="M23 31H8m0 0 7-7m-7 7 7 7" fill="none" stroke="#f1c65e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
+        <img className="mill-frame-img" src={`${BASE}img/models/home_button.png`} alt=""/>
       </button>
     </div>
   </div>;
