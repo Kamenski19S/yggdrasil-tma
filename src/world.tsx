@@ -731,7 +731,10 @@ export const POTION_CATALOG=[
   {id:'lifeElixir',name:'Эликсир жизни',effect:'Полностью восстанавливает здоровье Вики',symbol:'❤️'},
   {id:'northernMoss',name:'Эликсир северного мха',effect:'Восстанавливает 30 здоровья',symbol:'🌿'},
   {id:'frostDraught',name:'Морозный настой',effect:'Два следующих удара без щита слабее вдвое',symbol:'❄️'},
-  {id:'hoddmimirElixir',name:'Эликсир Ходдмимира',effect:'Полностью восстанавливает здоровье и даёт защиту от двух следующих ударов',symbol:'✨'}
+  {id:'hoddmimirElixir',name:'Эликсир Ходдмимира',effect:'Полностью восстанавливает здоровье и даёт защиту от двух следующих ударов',symbol:'✨'},
+  {id:'manaElixir',name:'Эликсир маны',effect:'Три следующих рунических удара сильнее на 30%',symbol:'💧'},
+  {id:'strengthElixir',name:'Эликсир силы',effect:'Три следующих удара оружием сильнее на 30%',symbol:'🔥'},
+  {id:'luckElixir',name:'Эликсир удачи',effect:'50% шанс избежать каждой из трёх следующих атак',symbol:'🍀'}
 ] as const;
 
 

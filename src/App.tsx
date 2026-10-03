@@ -3,6 +3,7 @@ import { REPAIR_RESIDENTS, REPAIR_GOODS, REPAIR_PROJECTS, type RepairResident, n
 import { CHAOS_GATES, chaosKey, gateForLocation, runeCopies, runeStrength, canCleanseGate, cleanseGate } from './chaosProgression';
 import { rollBanditLoot, applyBanditLoot } from './banditLoot';
 import { CHAOS_GATE_KEY, CHAOS_GATE_COST, CHAOS_GATE_RUNES, cleanseChaosGate } from './chaosGate';
+import { potionBoostKind, boostedPotionDamage, potionDodges, type PotionBoostKind } from "./potionEffects";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -397,18 +398,21 @@ const [roadT, setRoadT] = useState(0.06);
     if(!item||!save.potions.includes(id)){say('Этого эликсира пока нет в запасе.');return false;}
     const maxHp=(heroDef?.hp||100)+gearHp(),currentHp=Math.min(maxHp,currentHpOverride??save.fieldHp??maxHp);
     if(id==='hoddmimirElixir'&&currentHp>=maxHp&&save.frostGuard>=2){say('Здоровье и защита Ходдмимира уже восстановлены.');return false;}
-    if(id!=='frostDraught'&&id!=='hoddmimirElixir'&&currentHp>=maxHp){say('Здоровье уже восстановлено.');return false;}
+    const boost=potionBoostKind(id);
+    if(boost&&save.potionBoosts[boost]>=3){say('Этот эффект уже действует на три действия.');return false;}
+    if((id==='lifeElixir'||id==='northernMoss')&&currentHp>=maxHp){say('Здоровье уже восстановлено.');return false;}
     if(id==='frostDraught'&&save.frostGuard>=2){say('Ледяная защита уже действует на два удара.');return false;}
     setSave(s=>{
       const index=s.potions.indexOf(id);
       if(index<0)return s;
       const nextPotions=[...s.potions];nextPotions.splice(index,1);
       return {...s,potions:nextPotions,
-        fieldHp:id==='lifeElixir'||id==='hoddmimirElixir'?maxHp:id==='northernMoss'?Math.min(maxHp,(s.fieldHp??maxHp)+30):s.fieldHp,
+        fieldHp:id==='lifeElixir'||id==='hoddmimirElixir'?maxHp:id==='northernMoss'?Math.min(maxHp,currentHp+30):s.fieldHp,
+        potionBoosts:boost?{...s.potionBoosts,[boost]:3}:s.potionBoosts,
         frostGuard:id==='frostDraught'||id==='hoddmimirElixir'?2:s.frostGuard};
     });
     haptic('success');say(
-      id==='frostDraught'
+      boost ? `${item.name}: ${item.effect}.` : id==='frostDraught'
         ? 'Ледяной настой ослабит два следующих удара.'
         : id==='hoddmimirElixir'
           ? 'Эликсир Ходдмимира полностью восстановил здоровье и дал защиту от двух следующих ударов.'
@@ -416,6 +420,7 @@ const [roadT, setRoadT] = useState(0.06);
     );
     return true;
   };
+  const consumePotionBoost=(kind:PotionBoostKind)=>setSave(s=>({...s,potionBoosts:{...s.potionBoosts,[kind]:Math.max(0,s.potionBoosts[kind]-1)}}));
   const equipInventoryRune=(id:string)=>{
     const rune=RUNE_CATALOG.find(r=>r.id===id);
     if(!rune||!save.runes.includes(id))return;
@@ -471,6 +476,8 @@ const [roadT, setRoadT] = useState(0.06);
     }
     if (kind === "shield") { if(hen<1){say("Нет энергии, чтобы удержать щит.");return;} nhen=hen-1;nshield = true; log = "Ты поднимаешь щит — удар ослабнет."; }
     if (kind === "restore") { const restored=2+(equipped('boots')?1:0)+(gearLevel('boots')>=3?1:0);nhen=Math.min(COMBAT_ENERGY,hen+restored);log="Ты переводишь дыхание и восстанавливаешь "+restored+" деления энергии."; }
+    const boost=kind==='hit'?'attack':kind==='rune'?'rune':undefined;
+    if(boost&&save.potionBoosts[boost]>0){dmg=boostedPotionDamage(dmg,save.potionBoosts[boost]);consumePotionBoost(boost);log+=' Эликсир усилил удар до '+dmg+'.';}
     const nm = mhp - dmg;
     if (nm <= 0) {
       setMhp(0); setHen(nhen); setMen(nmen); setOver("win");
@@ -480,10 +487,13 @@ const [roadT, setRoadT] = useState(0.06);
       return;
     }
     let md = m.atk + rnd(3); let mlog = "";
+    const enemyAttacks=nmen>0;
     if(nmen<=0){md=0;nmen=2;mlog=" "+m.name+" вынужден перевести дыхание и восстанавливает энергию.";}else nmen=Math.max(0,nmen-1);
     const forgedDefense=gearDefense();
     md=Math.max(1,md-forgedDefense-activeRuneBonus('defense')-(activeArtifactDef()?.defense||0));
     if (nshield) { md = Math.max(0,Math.ceil(md * (equipped('shield')?.3:.6))-gearLevel('shield')-(equipped('shield')?1:0)); mlog += " Щит принял большую часть удара."; }
+    if(!enemyAttacks)md=0;
+    if(md>0&&save.potionBoosts.luck>0){if(potionDodges(save.potionBoosts.luck,Math.random())){md=0;mlog+=' Эликсир удачи помог уклониться.';}consumePotionBoost('luck');}
     if(!nshield&&md>0&&save.frostGuard>0){md=Math.max(1,Math.ceil(md*.5));setSave(s=>({...s,frostGuard:Math.max(0,s.frostGuard-1)}));mlog+=" Морозный настой ослабил удар.";}
     if (save.powers.includes("iceOath")) { md = Math.ceil(md * 0.65); setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "iceOath") })); mlog += " Ледяной обет сковал удар врага."; }
     if (heroDef!.id === "dwarf") md = Math.ceil(md * 0.75);
@@ -983,6 +993,8 @@ const [roadT, setRoadT] = useState(0.06);
       runeLevels={save.forgeLevels}
       fieldHp={save.fieldHp}
       frostGuard={save.frostGuard}
+      potionBoosts={save.potionBoosts}
+      onPotionBoostUsed={consumePotionBoost}
       onUsePotion={useInventoryPotion}
       onEquipRune={equipInventoryRune}
       onFieldHpChange={hp=>setSave(s=>({...s,fieldHp:hp}))}
@@ -1244,8 +1256,8 @@ const [roadT, setRoadT] = useState(0.06);
               <div className="artifact-slots">{save.artifacts.length?save.artifacts.map(id=>{const item=ARTIFACT_INFO[id];if(!item)return null;return <button key={id} className={'artifact-slot'+(save.equippedArtifact===id?' on':'')} onClick={()=>{setSelectedArtifact(id);haptic();}} title={item.name}>{item.symbol}{save.equippedArtifact===id&&<small>АКТИВЕН</small>}</button>}):<span className="dim">Первый артефакт появится после полного завершения мира.</span>}</div>
               {selectedArtifact&&ARTIFACT_INFO[selectedArtifact]&&(()=>{const item=ARTIFACT_INFO[selectedArtifact],active=save.equippedArtifact===selectedArtifact;return <div className="artifact-detail"><b>{item.symbol} {item.name}</b><small>{item.world}. {item.description}</small><small><b>Эффект:</b> {item.effect}</small><button className={active?'active':''} onClick={()=>{setSave(s=>({...s,equippedArtifact:active?'':selectedArtifact}));haptic('success');say(active?item.name+' снят.':item.name+' применён. '+item.effect);}}>{active?'Снять артефакт':'Применить'}</button></div>})()}
             </div>
-            <div className="hall-section inventory-hall"><InventorySection kind="potions" potions={save.potions} runes={save.runes} equippedRune={save.equippedRune} hp={Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp())} maxHp={(heroDef?.hp??100)+gearHp()} frostGuard={save.frostGuard} onUsePotion={useInventoryPotion} onEquipRune={equipInventoryRune}/></div>
-            <div className="hall-section inventory-hall"><InventorySection kind="runes" potions={save.potions} runes={save.runes} equippedRune={save.equippedRune} lootCounts={save.lootCounts} runeLevels={save.forgeLevels} hp={Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp())} maxHp={(heroDef?.hp??100)+gearHp()} frostGuard={save.frostGuard} onUsePotion={useInventoryPotion} onEquipRune={equipInventoryRune} onFuseRune={fuseInventoryRune}/></div>
+            <div className="hall-section inventory-hall"><InventorySection kind="potions" potions={save.potions} runes={save.runes} equippedRune={save.equippedRune} hp={Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp())} maxHp={(heroDef?.hp??100)+gearHp()} frostGuard={save.frostGuard} potionBoosts={save.potionBoosts} onUsePotion={useInventoryPotion} onEquipRune={equipInventoryRune}/></div>
+            <div className="hall-section inventory-hall"><InventorySection kind="runes" potions={save.potions} runes={save.runes} equippedRune={save.equippedRune} lootCounts={save.lootCounts} runeLevels={save.forgeLevels} hp={Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp())} maxHp={(heroDef?.hp??100)+gearHp()} frostGuard={save.frostGuard} potionBoosts={save.potionBoosts} onUsePotion={useInventoryPotion} onEquipRune={equipInventoryRune} onFuseRune={fuseInventoryRune}/></div>
           </div>
           <button className="craft-entry" onClick={()=>{haptic();go({t:"craft"});}}><b>🔥 Перейти в локацию крафта</b><span>Соединяй оружие, материалы и Капли бессмертия в новые предметы.</span></button>
         </div>

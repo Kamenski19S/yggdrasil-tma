@@ -302,4 +302,17 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 @keyframes millCollected{0%{opacity:0;transform:translate(-50%,-40%) scale(.8)}25%{opacity:1;transform:translate(-50%,-50%) scale(1.06)}100%{opacity:0;transform:translate(-50%,-72%) scale(1)}}
 @media(max-width:380px){.mill-title{top:7px;width:min(80vw,270px);height:36px;padding:7px 12px}.mill-top-stats{left:8px;right:8px;top:49px;height:48px}.mill-frame-card b{font-size:16px}.mill-stat-icon{width:34px;height:29px}.mill-sluice{bottom:67px;width:min(86vw,300px);height:62px}.mill-rate-pill{bottom:132px}.mill-icon-btn{width:54px;height:45px}.mill-controls{bottom:9px;gap:7px}}
 
+.battle-potion-panel{bottom:12px;width:min(94vw,390px);max-height:calc(100% - 24px);height:min(62dvh,460px);padding:10px;z-index:45;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box}
+.battle-potion-panel:before{display:none}
+.battle-potion-panel h3{font-size:16px;margin:0 0 5px;flex-shrink:0}
+.battle-potion-panel>p{font-size:11px;line-height:1.3;margin:0 0 7px;flex-shrink:0}
+.battle-potion-panel .inventory-list{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;gap:5px;padding:0 2px 4px}
+.battle-potion-panel .inventory-item{grid-template-columns:24px minmax(0,1fr) auto;gap:5px;padding:6px;border-radius:9px;text-align:left}
+.battle-potion-panel .inventory-symbol{font-size:20px}
+.battle-potion-panel .inventory-detail{min-width:0}
+.battle-potion-panel .inventory-detail b{font-size:11px;line-height:1.2}
+.battle-potion-panel .inventory-detail small{font-size:10px;line-height:1.25}
+.battle-potion-panel .inventory-item button{font-size:10px;padding:9px 6px;min-height:36px}
+.battle-potion-panel .whisper-close{flex-shrink:0;font-size:12px;margin-top:6px;padding:9px}
 `;
+

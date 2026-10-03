@@ -11,7 +11,7 @@ const FIRST:Record<VillageResident,Order>={
  craftsman:{title:'Крепления Северного моста',cost:{wood:2,twigs:2},drops:30,legacy:'bridge:fittings'}
 };
 const REPEAT:Record<VillageResident,Order[]>={
- herbalist:[{title:'Пополнить запас лечебных трав',cost:{herbs:4},drops:20,potion:'northernMoss'},{title:'Материалы для сушки трав',cost:{herbs:3,twigs:2},drops:25,potion:'northernMoss'}],
+ herbalist:[{title:'Пополнить запас лечебных трав',cost:{herbs:4},drops:20,potion:'northernMoss'},{title:'Материалы для сушки трав',cost:{herbs:3,twigs:2},drops:25,potion:'northernMoss'},{title:'Травы для рунического настоя',cost:{herbs:4},drops:20,potion:'manaElixir'},{title:'Настой силы для защитников',cost:{herbs:3,twigs:2},drops:25,potion:'strengthElixir'},{title:'Сбор для настоя удачи',cost:{herbs:4},drops:20,potion:'luckElixir'}],
  carpenter:[{title:'Ремонт деревенских домов',cost:{wood:6,twigs:2},drops:35},{title:'Доски для деревенских построек',cost:{wood:4},drops:25},{title:'Починка ограды',cost:{wood:2,twigs:4},drops:30}],
  craftsman:[{title:'Заготовки для щитов',cost:{wood:5,twigs:2},drops:35},{title:'Рукояти для инструментов',cost:{wood:2,twigs:3},drops:25},{title:'Материалы для новых креплений',cost:{wood:3,twigs:2},drops:30}]
 };

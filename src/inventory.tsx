@@ -1,3 +1,4 @@
+import { potionBoostKind, type PotionBoosts } from "./potionEffects";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -11,12 +12,13 @@ import { POTION_CATALOG, RUNE_CATALOG } from './world';
 export function SparkDrop(){return <img className="spark-drop" src={`${BASE}img/BackgroundEraser_20260930_010245371.png`} alt="" aria-label="Капля бессмертия"/>;}
 
 
-export function InventorySection({kind,potions,runes,equippedRune,lootCounts,runeLevels,hp,maxHp,frostGuard,onUsePotion,onEquipRune,onFuseRune}:{kind:'potions'|'runes';potions:string[];runes:string[];equippedRune:string;lootCounts?:Record<string,number>;runeLevels?:Record<string,number>;hp:number;maxHp:number;frostGuard:number;onUsePotion:(id:string)=>void;onEquipRune:(id:string)=>void;onFuseRune?:(id:string)=>void}){
+export function InventorySection({kind,potions,runes,equippedRune,lootCounts,runeLevels,hp,maxHp,frostGuard,potionBoosts,onUsePotion,onEquipRune,onFuseRune}:{kind:'potions'|'runes';potions:string[];runes:string[];equippedRune:string;lootCounts?:Record<string,number>;runeLevels?:Record<string,number>;hp:number;maxHp:number;frostGuard:number;potionBoosts?:PotionBoosts;onUsePotion:(id:string)=>void;onEquipRune:(id:string)=>void;onFuseRune?:(id:string)=>void}){
   const roman=(level:number)=>level>=3?'III':level===2?'II':'I';
   return <section className="inventory-section"><h3>{kind==='potions'?'🧪 Эликсиры':'ᛉ Руны'}</h3><div className="inventory-list">
     {kind==='potions'?POTION_CATALOG.map(item=>{
       const count=potions.filter(id=>id===item.id).length;
-      const unusable=item.id==='frostDraught'
+      const boost=potionBoostKind(item.id);
+      const unusable=boost?(potionBoosts?.[boost]??0)>=3:item.id==='frostDraught'
         ? frostGuard>=2
         : item.id==='hoddmimirElixir'
           ? hp>=maxHp&&frostGuard>=2

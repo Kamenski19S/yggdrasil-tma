@@ -11,6 +11,7 @@ import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { type HeroDef, type HeroSkin, type HeroWeapon, type GearId, type GatherStock, type GatherKind, MIDGARD_GUARDIANS, WHISPER_GUARD, MIDGARD_GUARDIAN_ORDER, BASE, cachedGlbBuffer, textureSteelOnWeapon, GATHER_SPOTS, WEAPON_ASSET, COMBAT_ENERGY, combatEnergyColor } from './core';
 import { type WhisperCombatStats, type BanditSpec, type WhisperPhase, guardianLootText, POTION_CATALOG, midHash, markMeshes, midMat, organicBlobGeometry, BANDIT_SPECS, MIDGARD_MAP_ICON, MIDGARD_MILL_ICON, RUNE_CATALOG } from './world';
+import { potionBoostKind, boostedPotionDamage, potionDodges, type PotionBoosts, type PotionBoostKind } from "./potionEffects";
 import { InventorySection, SparkDrop } from './inventory';
 
 const RUNE_BUTTON_ART:Record<string,string>={
@@ -19,14 +20,14 @@ const RUNE_BUTTON_ART:Record<string,string>={
   tiwazValor:"rune_tiwaz.png",berkanoHeal:"rune_berkana.png",ehwazMotion:"rune_ehwaz.png",mannazMind:"rune_mannaz.png",laguzFlow:"rune_laguz.png",ingwazReserve:"rune_ingwaz.png",dagazDawn:"rune_dagaz.png",othalaLegacy:"rune_othala.png"
 };
 const POTION_BUTTON_ART:Record<string,string>={
-  lifeElixir:"elixir_life.png",northernMoss:"elixir_heal.png",frostDraught:"elixir_frost.png",hoddmimirElixir:"elixir_defense.png"
+  lifeElixir:"elixir_life.png",northernMoss:"elixir_heal.png",frostDraught:"elixir_frost.png",hoddmimirElixir:"elixir_defense.png",manaElixir:"elixir_mana.png",strengthElixir:"elixir_damage.png",luckElixir:"elixir_luck.png"
 };
 const runeButtonSrc=(id:string)=>`${BASE}img/models/${RUNE_BUTTON_ART[id]||"rune_kenaz.png"}`;
-const potionButtonSrc=(id:string)=>`${BASE}img/models/${POTION_BUTTON_ART[id]||"elixir_life.png"}`;
+const potionButtonSrc=(id:string)=>`${BASE}img/models/${POTION_BUTTON_ART[id]||"elixir_life.png"}?v=complete-frame-2`;
 
 
 
-export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, onOpenMill, eventDone, start, rememberPosition, northBridgeRepaired, chaosGateCleared, chaosCleared, repairedLocations, repairStock, northBridgeReady, goldChestOpened, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, banditRespawnAt, onBanditDefeated, onBanditReward, onBanditKnockout, potions, runes, equippedRune, runeCounts, runeLevels, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; onOpenMill:()=>void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; chaosGateCleared:boolean; chaosCleared:string[]; repairedLocations:string[]; repairStock:Record<string,number>; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; banditRespawnAt:Record<string,number>; onBanditDefeated:(id:string)=>void; onBanditReward:(id:string)=>string; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; runeCounts?:Record<string,number>; runeLevels?:Record<string,number>; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string,currentHp?:number)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
+export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, onOpenMill, eventDone, start, rememberPosition, northBridgeRepaired, chaosGateCleared, chaosCleared, repairedLocations, repairStock, northBridgeReady, goldChestOpened, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, banditRespawnAt, onBanditDefeated, onBanditReward, onBanditKnockout, potions, runes, equippedRune, runeCounts, runeLevels, fieldHp, frostGuard, potionBoosts, onPotionBoostUsed, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; onOpenMill:()=>void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; chaosGateCleared:boolean; chaosCleared:string[]; repairedLocations:string[]; repairStock:Record<string,number>; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; banditRespawnAt:Record<string,number>; onBanditDefeated:(id:string)=>void; onBanditReward:(id:string)=>string; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; runeCounts?:Record<string,number>; runeLevels?:Record<string,number>; fieldHp:number|null; frostGuard:number; potionBoosts:PotionBoosts; onPotionBoostUsed:(kind:PotionBoostKind)=>void; onUsePotion:(id:string,currentHp?:number)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -100,11 +101,17 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   gatheredRef.current=new Set(gathered);
   const onGatherRef=useRef(onGather);
   onGatherRef.current=onGather;
+  const potionBoostsRef=useRef({...potionBoosts});
+  potionBoostsRef.current={...potionBoosts};
+  const consumeBoostRef=useRef<(kind:PotionBoostKind)=>void>(()=>{});
+  consumeBoostRef.current=kind=>{potionBoostsRef.current[kind]=Math.max(0,potionBoostsRef.current[kind]-1);onPotionBoostUsed(kind);};
+  const activateBoost=(id:string)=>{const kind=potionBoostKind(id);if(kind)potionBoostsRef.current[kind]=3;};
   frostGuardRef.current=frostGuard;
   equippedRuneRef.current=equippedRune;
   banditDefenseRef.current=whisperStats.defense;
   banditRespawnAtRef.current=banditRespawnAt;
   banditDamageRef.current=(amount:number,guarding:boolean)=>{
+    if(potionBoostsRef.current.luck>0){const dodge=potionDodges(potionBoostsRef.current.luck,Math.random());consumeBoostRef.current('luck');if(dodge)return;}
     if(!guarding&&frostGuardRef.current>0){amount=Math.max(1,Math.ceil(amount*.5));frostGuardRef.current--;onFrostGuardHit();}
     const next=banditHpRef.current-amount;
     setBanditHit(Date.now());
@@ -113,6 +120,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   };
   const useMidgardPotion=(id:string)=>{
     if(!onUsePotion(id,banditHpRef.current))return;
+    activateBoost(id);
     if(id==='lifeElixir'||id==='northernMoss'||id==='hoddmimirElixir'){
       const next=id==='northernMoss'
         ? Math.min(whisperStats.maxHp,banditHpRef.current+30)
@@ -211,18 +219,19 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       whisperTimers.current.push(window.setTimeout(()=>{guardIdleActionRef.current?.();setWhisperPhaseSafe("fight");},520));
     }
   };
-  const whisperGuardTurn=(shielded:boolean)=>{
+  const whisperGuardTurn=(shielded:boolean,currentHp=whisperHeroHp)=>{
     const spec=currentGuardian();
     whisperTimers.current.push(window.setTimeout(()=>{
       guardAttackAtRef.current=performance.now();guardAttackActionRef.current?.();setWhisperFx({kind:"guard",key:Date.now()});
       whisperTimers.current.push(window.setTimeout(()=>{
         const raw=spec.atk+Math.floor(Math.random()*3);
         let damage=Math.max(1,Math.ceil((raw-whisperStats.defense)*(shielded?(gear.includes('shield')?.3:.6):1)));
-        if(!shielded&&frostGuardRef.current>0){damage=Math.max(1,Math.ceil(damage*.5));frostGuardRef.current--;onFrostGuardHit();}
-        const next=Math.max(0,whisperHeroHp-damage);
+        if(potionBoostsRef.current.luck>0){if(potionDodges(potionBoostsRef.current.luck,Math.random()))damage=0;consumeBoostRef.current('luck');}
+        if(damage>0&&!shielded&&frostGuardRef.current>0){damage=Math.max(1,Math.ceil(damage*.5));frostGuardRef.current--;onFrostGuardHit();}
+        const next=Math.max(0,currentHp-damage);
         setWhisperHeroHp(next);setWhisperShield(false);setWhisperBusy(false);
         if(next<=0){setWhisperLog(spec.name+" оказался сильнее. Испытание можно повторить.");setWhisperPhaseSafe("defeat");}
-        else setWhisperLog(shielded?"Щит принял удар. Получено урона: "+damage+".":spec.name+" отвечает ударом: −"+damage+" здоровья.");
+        else setWhisperLog(damage===0?'Эликсир удачи помог избежать удара.':shielded?"Щит принял удар. Получено урона: "+damage+".":spec.name+" отвечает ударом: −"+damage+" здоровья.");
       },390));
     },spec.tempo));
   };
@@ -230,6 +239,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     if(whisperBusy||whisperPhaseRef.current!=="fight")return;
     if(!onUsePotion(id,whisperHeroHp))return;
     setLastBattlePotion(id);
+    activateBoost(id);
     let nextHp=whisperHeroHp;
     if(id==='lifeElixir'||id==='hoddmimirElixir')nextHp=whisperStats.maxHp;
     else if(id==='northernMoss')nextHp=Math.min(whisperStats.maxHp,whisperHeroHp+30);
@@ -239,7 +249,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     setBattlePotionOpen(false);
     setWhisperBusy(true);
     setWhisperLog((item?.name||"Эликсир")+" использован. Это действие занимает ход — страж отвечает.");
-    whisperGuardTurn(false);
+    whisperGuardTurn(false,nextHp);
   };
   const whisperFightAction=(kind:"hit"|"rune"|"shield"|"restore")=>{
     const spec=currentGuardian();
@@ -260,8 +270,10 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     }else{
       const healed=Math.min(whisperStats.maxHp,whisperHeroHp+14);
       setWhisperHeroHp(healed);setWhisperLog("Герой переводит дыхание и восстанавливает "+(healed-whisperHeroHp)+" здоровья.");
-      whisperGuardTurn(false);return;
+      whisperGuardTurn(false,healed);return;
     }
+    const boost=kind==='hit'?'attack':'rune';
+    if(potionBoostsRef.current[boost]>0){damage=boostedPotionDamage(damage,potionBoostsRef.current[boost]);consumeBoostRef.current(boost);}
     whisperTimers.current.push(window.setTimeout(()=>{
       if(spec.id==="hoddmimir"&&weapon!=="swordGolden"){
         damage=0;
@@ -4427,7 +4439,9 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       attackStartedAt=now;
       const target=bandits.filter(b=>b.alerted&&b.hp>0&&Math.hypot(hero.position.x-b.actor.position.x,hero.position.z-b.actor.position.z)<4.0).sort((a,b)=>Math.hypot(hero.position.x-a.actor.position.x,hero.position.z-a.actor.position.z)-Math.hypot(hero.position.x-b.actor.position.x,hero.position.z-b.actor.position.z))[0];
       if(target&&!banditVictoryRef.current){
-        target.hp=Math.max(0,target.hp-(equippedRuneRef.current==='uruzStrength'?2:1));
+        const damage=boostedPotionDamage(equippedRuneRef.current==='uruzStrength'?2:1,potionBoostsRef.current.attack);
+        if(potionBoostsRef.current.attack>0)consumeBoostRef.current('attack');
+        target.hp=Math.max(0,target.hp-damage);
         target.enemyHitAt=0;
         setBanditOpponent({id:target.spec.id,name:target.spec.name,hp:target.hp,maxHp:target.spec.hp});
         if(target.hp===0){
@@ -5328,8 +5342,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       <div className="mid3d-map-sub" style={{color:"#c3b7a2"}}>Здоровье: {banditHeroHp}/{whisperStats.maxHp} · Ледяная защита: {frostGuard} уд.</div>
       {Object.values(repairStock).some(n=>n>0)&&<div className="inventory-section"><h3>🔧 Припасы для восстановления</h3><div className="inventory-list">{Object.entries(repairStock).filter(([,n])=>n>0).map(([id,n])=><div key={id} className="inventory-item"><span className="inventory-symbol">📦</span><span className="inventory-detail"><b>{REPAIR_GOODS[id as keyof typeof REPAIR_GOODS]||id} · {n}</b><small>Для ремонта локаций после снятия печатей хаоса</small></span></div>)}</div></div>}
       <div className="inventory-section"><h3>🌿 Материалы</h3><div className="inventory-list"><div className="inventory-item"><span className="inventory-symbol">🪵</span><span className="inventory-detail"><b>Древесина · {stock.wood}</b><small>Плотнику Бьёрну нужно 3</small></span></div><div className="inventory-item"><span className="inventory-symbol">🌱</span><span className="inventory-detail"><b>Ветки · {stock.twigs}</b><small>Плотнику Бьёрну нужно 3</small></span></div><div className="inventory-item"><span className="inventory-symbol">🌿</span><span className="inventory-detail"><b>Травы · {stock.herbs}</b><small>Травнице Сигрид нужно 4</small></span></div><div className="inventory-item"><span className="inventory-symbol">🪵✨</span><span className="inventory-detail"><b>Ясеневая древесина · {stock.ashWood}</b><small>У Поверженного ясеня каждые 15 минут и в наградах стража Рощи Ясеня</small></span></div></div></div>
-      <InventorySection kind="potions" potions={potions} runes={runes} equippedRune={equippedRune} hp={banditHeroHp} maxHp={whisperStats.maxHp} frostGuard={frostGuard} onUsePotion={useMidgardPotion} onEquipRune={onEquipRune}/>
-      <InventorySection kind="runes" potions={potions} runes={runes} equippedRune={equippedRune} lootCounts={runeCounts} runeLevels={runeLevels} hp={banditHeroHp} maxHp={whisperStats.maxHp} frostGuard={frostGuard} onUsePotion={useMidgardPotion} onEquipRune={onEquipRune}/>
+      <InventorySection kind="potions" potions={potions} runes={runes} equippedRune={equippedRune} hp={banditHeroHp} maxHp={whisperStats.maxHp} frostGuard={frostGuard} potionBoosts={potionBoosts} onUsePotion={useMidgardPotion} onEquipRune={onEquipRune}/>
+      <InventorySection kind="runes" potions={potions} runes={runes} equippedRune={equippedRune} lootCounts={runeCounts} runeLevels={runeLevels} hp={banditHeroHp} maxHp={whisperStats.maxHp} frostGuard={frostGuard} potionBoosts={potionBoosts} onUsePotion={useMidgardPotion} onEquipRune={onEquipRune}/>
       <button className="mid3d-map-close" onClick={()=>setInventoryOpen(false)}>Вернуться в игру</button>
     </div></div>}
     {creditsOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}><div className="mid3d-map-panel">
@@ -5389,25 +5403,26 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       <div className="whisper-question">{activeGuardian.question.q}</div>
       {activeGuardian.question.a.map((answer,i)=><button key={answer} className={"whisper-answer"+(whisperAnswer!==null?(i===activeGuardian.question.c?" good":i===whisperAnswer?" bad":" off"):"")} onClick={()=>answerWhisperInWorld(i)}>{answer}</button>)}
     </div>}
-    {whisperPhase==="fight"&&<div className="mid3d-ui whisper-combat-hud" onPointerDown={e=>e.stopPropagation()}>
+    {whisperPhase==="fight"&&!battlePotionOpen&&<div className="mid3d-ui whisper-combat-hud" onPointerDown={e=>e.stopPropagation()}>
       <div className="whisper-combat-log" role="status" aria-live="polite">{whisperLog}</div>
       <div className="whisper-combat-energy">
         <span className="whisper-pips" aria-label={`Сила героя: ${whisperStats.power} из 5`} title={`Сила героя ${whisperStats.power}/5`}>{whisperPips(whisperStats.power)}</span>
         <span className="whisper-pips" aria-label={`Сила ${activeGuardian.name}: ${activeGuardian.power} из 5`} title={`Сила ${activeGuardian.name} ${activeGuardian.power}/5`}>{whisperPips(activeGuardian.power)}</span>
       </div>
       <div className="whisper-combat-actions">
-        <button className="whisper-combat-action" disabled={whisperBusy} onClick={()=>whisperFightAction("hit")}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></span><b>Удар оружием</b><small>сила оружия</small></button>
+        <button className="whisper-combat-action" disabled={whisperBusy} onClick={()=>whisperFightAction("hit")}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></span><b>Удар оружием</b><small>{potionBoosts.attack?`+30% · ещё ${potionBoosts.attack}`:"сила оружия"}</small></button>
         <button className="whisper-combat-action shield" disabled={whisperBusy} onClick={()=>whisperFightAction("shield")}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={`${BASE}img/models/ui_shield.png`} alt="" draggable={false}/></span><b>Поднять щит</b><small>защита</small></button>
-        <button className="whisper-combat-action rune" disabled={whisperBusy} onClick={()=>whisperFightAction("rune")}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={runeButtonSrc(equippedRune)} alt="" draggable={false}/></span><b>Руна {RUNE_CATALOG.find(r=>r.id===equippedRune)?.name||"Кеназ"}</b><small>рунический удар</small></button>
+        <button className="whisper-combat-action rune" disabled={whisperBusy} onClick={()=>whisperFightAction("rune")}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={runeButtonSrc(equippedRune)} alt="" draggable={false}/></span><b>Руна {RUNE_CATALOG.find(r=>r.id===equippedRune)?.name||"Кеназ"}</b><small>{potionBoosts.rune?`+30% · ещё ${potionBoosts.rune}`:"рунический удар"}</small></button>
         <button className="whisper-combat-action rest" disabled={whisperBusy||potions.length===0} onClick={()=>setBattlePotionOpen(true)}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={potionButtonSrc(lastBattlePotion||potions.find(id=>POTION_BUTTON_ART[id])||"lifeElixir")} alt="" draggable={false}/></span><b>Эликсир</b><small>{potions.length?potions.length+" в запасе":"нет"}</small></button>
       </div>
     </div>}
-    {battlePotionOpen&&whisperPhase==="fight"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
-      <h3>🧪 Боевой пояс</h3><p>Выбери эликсир. Открытие пояса не тратит ход, но применение эликсира считается действием — после него страж атакует.</p>
+    {battlePotionOpen&&whisperPhase==="fight"&&<div className="mid3d-ui whisper-cloud battle-potion-panel" onPointerDown={e=>e.stopPropagation()}>
+      <h3>🧪 Боевой пояс</h3><p>Выбор не тратит ход. После применения страж атакует.</p>
       <div className="inventory-list">{POTION_CATALOG.map(item=>{
         const count=potions.filter(id=>id===item.id).length;
-        const unusable=item.id==='frostDraught'?frostGuardRef.current>=2:item.id==='hoddmimirElixir'?whisperHeroHp>=whisperStats.maxHp&&frostGuardRef.current>=2:whisperHeroHp>=whisperStats.maxHp;
-        return <div key={item.id} className={'inventory-item'+(count?'':' empty')}><span className="inventory-symbol">{item.symbol}</span><span className="inventory-detail"><b>{item.name} · {count} шт.</b><small>{item.effect}</small></span><button disabled={!count||unusable} onClick={()=>useWhisperBattlePotion(item.id)}>{unusable&&count?'Не требуется':'Использовать'}</button></div>;
+        const boost=potionBoostKind(item.id);
+        const unusable=boost?potionBoostsRef.current[boost]>=3:item.id==='frostDraught'?frostGuardRef.current>=2:item.id==='hoddmimirElixir'?whisperHeroHp>=whisperStats.maxHp&&frostGuardRef.current>=2:whisperHeroHp>=whisperStats.maxHp;
+        return <div key={item.id} className={'inventory-item'+(count?'':' empty')}><span className="inventory-symbol">{item.symbol}</span><span className="inventory-detail"><b>{item.name} · {count} шт.</b><small>{item.effect}{boost&&potionBoosts[boost]>0?` · осталось ${potionBoosts[boost]}`:""}</small></span><button disabled={!count||unusable} onClick={()=>useWhisperBattlePotion(item.id)}>{unusable&&count?'Не требуется':'Использовать'}</button></div>;
       })}</div>
       <button className="whisper-close" onClick={()=>setBattlePotionOpen(false)}>Вернуться к бою</button>
     </div>}
