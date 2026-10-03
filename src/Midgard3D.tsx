@@ -45,6 +45,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   const [banditHeroHp,setBanditHeroHp]=useState(fieldHp===null?whisperStats.maxHp:Math.min(whisperStats.maxHp,fieldHp));
   const [inventoryOpen,setInventoryOpen]=useState(false);
   const [battlePotionOpen,setBattlePotionOpen]=useState(false);
+  const [lastBattlePotion,setLastBattlePotion]=useState("");
   const inventoryPauseRef=useRef(false);
   const [banditOpponent,setBanditOpponent]=useState<{id:string;name:string;hp:number;maxHp:number}|null>(null);
   const [banditVictory,setBanditVictory]=useState<BanditSpec|null>(null);
@@ -228,6 +229,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   const useWhisperBattlePotion=(id:string)=>{
     if(whisperBusy||whisperPhaseRef.current!=="fight")return;
     if(!onUsePotion(id,whisperHeroHp))return;
+    setLastBattlePotion(id);
     let nextHp=whisperHeroHp;
     if(id==='lifeElixir'||id==='hoddmimirElixir')nextHp=whisperStats.maxHp;
     else if(id==='northernMoss')nextHp=Math.min(whisperStats.maxHp,whisperHeroHp+30);
@@ -5397,7 +5399,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         <button className="whisper-combat-action" disabled={whisperBusy} onClick={()=>whisperFightAction("hit")}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></span><b>Удар оружием</b><small>сила оружия</small></button>
         <button className="whisper-combat-action shield" disabled={whisperBusy} onClick={()=>whisperFightAction("shield")}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={`${BASE}img/models/ui_shield.png`} alt="" draggable={false}/></span><b>Поднять щит</b><small>защита</small></button>
         <button className="whisper-combat-action rune" disabled={whisperBusy} onClick={()=>whisperFightAction("rune")}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={runeButtonSrc(equippedRune)} alt="" draggable={false}/></span><b>Руна {RUNE_CATALOG.find(r=>r.id===equippedRune)?.name||"Кеназ"}</b><small>рунический удар</small></button>
-        <button className="whisper-combat-action rest" disabled={whisperBusy||potions.length===0} onClick={()=>setBattlePotionOpen(true)}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={potionButtonSrc(potions.find(id=>POTION_BUTTON_ART[id])||"lifeElixir")} alt="" draggable={false}/></span><b>Эликсир</b><small>{potions.length?potions.length+" в запасе":"нет"}</small></button>
+        <button className="whisper-combat-action rest" disabled={whisperBusy||potions.length===0} onClick={()=>setBattlePotionOpen(true)}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={potionButtonSrc(lastBattlePotion||potions.find(id=>POTION_BUTTON_ART[id])||"lifeElixir")} alt="" draggable={false}/></span><b>Эликсир</b><small>{potions.length?potions.length+" в запасе":"нет"}</small></button>
       </div>
     </div>}
     {battlePotionOpen&&whisperPhase==="fight"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
