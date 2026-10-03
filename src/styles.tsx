@@ -200,8 +200,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .whisper-combat-icon.custom-art img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none;transform:translateY(4%) scale(1.28)}
 .whisper-combat-action.rune .whisper-combat-icon.custom-art img{transform:translateY(-1%) scale(1.025)}
 .whisper-combat-action.rest .whisper-combat-icon.custom-art{overflow:visible;border-radius:50%}
-.whisper-combat-action.rest .whisper-combat-icon.custom-art img{transform:translateY(-6%) scale(.985)}
-.whisper-combat-action.rest b{margin-top:4px}
+.whisper-combat-action.rest .whisper-combat-icon.custom-art img{transform:translateY(-1%) scale(1.025)}
+.whisper-combat-action.rest b{margin-top:0}
 .mid3d-hero-load{left:50%;top:58%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;color:#f4d36d;text-shadow:0 2px 8px rgba(0,0,0,.85)}
 .mid3d-hero-load b{font-size:34px;line-height:1;animation:heroRunePulse 1.05s ease-in-out infinite}.mid3d-hero-load span{font-size:9px;letter-spacing:.8px;padding:3px 7px;border-radius:8px;background:rgba(4,9,6,.55)}
 .mid3d-hint{left:50%;bottom:9px;transform:translateX(-50%);padding:6px 10px;border-radius:9px;background:rgba(5,10,7,.68);border:1px solid rgba(126,231,135,.18);color:#d0dfd3;font-size:10px;line-height:1.2;white-space:nowrap;pointer-events:none}
