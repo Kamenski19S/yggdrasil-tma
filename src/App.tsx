@@ -1347,7 +1347,7 @@ const [roadT, setRoadT] = useState(0.06);
 
       {save.hero && screen.t!=="forge" && screen.t!=="mill" && (
         <div className="nav">
-          {NAV.map(n => (<button key={n.id} className={"navbtn" + (isNav(n.id) ? " on" : "")} onClick={() => go(navScreen(n.id))}><span className="ic">{n.ic}</span>{n.t}</button>))}
+          {NAV.map(n => (<button key={n.id} className={"navbtn" + (isNav(n.id) ? " on" : "")} aria-current={isNav(n.id) ? "page" : undefined} onClick={() => go(navScreen(n.id))}><span className="ic" aria-hidden="true"><img className="nav-art" src={`${BASE}img/models/ui_nav_${n.id === "tree" ? "path" : n.id}.png`} alt="" draggable={false} onError={e=>{e.currentTarget.hidden=true;const fallback=e.currentTarget.nextElementSibling;if(fallback instanceof HTMLElement)fallback.hidden=false;}}/><span hidden>{n.ic}</span></span>{n.t}</button>))}
         </div>
       )}
 
