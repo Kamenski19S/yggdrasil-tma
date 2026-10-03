@@ -112,7 +112,7 @@ const [roadT, setRoadT] = useState(0.06);
   },[!!houseDialog]);
   const resident=VILLAGE_RESIDENTS.includes(houseDialogId as VillageResident)?houseDialogId as VillageResident:null;
   const residentOrder=resident?villageOrder(save,resident):null;
-  const repairResident=(houseDialogId==='house'?'elder':houseDialogId) as RepairResident;
+  const repairResident=(houseDialogId==='house'?'elder':houseDialogId==='welund'?'blacksmith':houseDialogId) as RepairResident;
   const repairAssignment=repairResident in REPAIR_RESIDENTS?nextRepairJob(save,repairResident):null;
   const repairProject=REPAIR_PROJECTS.find(p=>p.id===repairDialog);
   const finishRepair=(id:string)=>{const p=REPAIR_PROJECTS.find(p=>p.id===id);if(!p||!canRestore(save,p))return;setSave(s=>restoreLocation(s,p));haptic('success');say(p.name+' восстановлена. +'+p.reward+' капель бессмертия. Испытание доступно.');};
@@ -662,9 +662,6 @@ const [roadT, setRoadT] = useState(0.06);
         return;
       }
       if(["warriorHouse","fisher2","carpenter","hunter2","family","house","fisher","hunter","herbalist","craftsman","welund","oldfarm"].includes(id))houseDialogPending.current=id;
-      if(id==="welund"){
-        say('Велунд: «Добро пожаловать. Это мой дом, а работаю я в кузнице у площади. Там можно выбрать оружие, щит и закалить снаряжение перед новым испытанием.»');return;
-      }
       if (id === "mimir") {
         if (save.done.includes("forest:present")) {
           if (!save.done.includes("forest:present:reward")) {
@@ -710,8 +707,8 @@ const [roadT, setRoadT] = useState(0.06);
         enterForge(position);
         return;
       }
-      if(id==='house'||id==='elder'||id in REPAIR_RESIDENTS){
-        const who=(id==='house'?'elder':id) as RepairResident;houseDialogPending.current=id;
+      if(id==='house'||id==='elder'||id==='welund'||id in REPAIR_RESIDENTS){
+        const who=(id==='house'?'elder':id==='welund'?'blacksmith':id) as RepairResident;houseDialogPending.current=id;
         const assignment=nextRepairJob(save,who);
         say(REPAIR_RESIDENTS[who]+': '+residentRepairIntro(who)+(assignment?' Сейчас нужна помощь: '+assignment.project.name+'.':' Сними печати хаоса — после этого появятся работы по восстановлению.'));return;
       }

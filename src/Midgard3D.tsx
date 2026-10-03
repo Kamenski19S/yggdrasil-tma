@@ -1576,6 +1576,40 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
           mesh.geometry.computeBoundingBox();
           return mesh.geometry.boundingBox!.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(toModel,mesh.matrixWorld));
         };
+        if(p.id==="welund"){
+          const glazing=model.getObjectByName("Shed_Window") as THREE.Mesh|undefined;
+          if(glazing){
+            const bounds=localBox(glazing),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
+            const canvas=document.createElement("canvas");canvas.width=canvas.height=64;
+            const ctx=canvas.getContext("2d")!,gradient=ctx.createLinearGradient(0,0,64,64);
+            gradient.addColorStop(0,"#b5dfed");gradient.addColorStop(.45,"#54859d");gradient.addColorStop(1,"#1c3b51");
+            ctx.fillStyle=gradient;ctx.fillRect(0,0,64,64);
+            ctx.strokeStyle="rgba(235,250,255,.48)";ctx.lineWidth=7;
+            ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(64,56);ctx.stroke();
+            const glassTexture=new THREE.CanvasTexture(canvas);glassTexture.colorSpace=THREE.SRGBColorSpace;
+            const glassGeometry=glazing.geometry.clone(),positions=glassGeometry.attributes.position,uv=new Float32Array(positions.count*2);
+            const toLocal=new THREE.Matrix4().multiplyMatrices(toModel,glazing.matrixWorld),v=new THREE.Vector3();
+            for(let i=0;i<positions.count;i++){
+              v.fromBufferAttribute(positions,i).applyMatrix4(toLocal);
+              uv[i*2]=(v.x-bounds.min.x)/size.x;uv[i*2+1]=(v.y-bounds.min.y)/size.y;
+            }
+            glassGeometry.setAttribute("uv",new THREE.BufferAttribute(uv,2));glazing.geometry=glassGeometry;
+            glazing.material=new THREE.MeshStandardMaterial({map:glassTexture,color:0xffffff,roughness:.18,metalness:.12,emissive:0x163046,emissiveIntensity:.22});
+            for(const [name,w,h,x,y] of [
+              ["left",.08,size.y+.16,bounds.min.x-.04,center.y],
+              ["right",.08,size.y+.16,bounds.max.x+.04,center.y],
+              ["top",size.x,.08,center.x,bounds.max.y+.04],
+              ["bottom",size.x,.08,center.x,bounds.min.y-.04]
+            ] as Array<[string,number,number,number,number]>){
+              const frame=box(w,h,.08,0x48311f,1);frame.name=`Welund_WindowFrame_${name}`;
+              textureBuildingPart(frame,buildingTextures.wood,true);frame.position.set(x,y,bounds.max.z+.015);model.add(frame);
+            }
+            for(const name of ["Shed_WindowV","Shed_WindowH"]){
+              const bar=model.getObjectByName(name) as THREE.Mesh|undefined;
+              if(bar)textureBuildingPart(bar,buildingTextures.wood,true);
+            }
+          }
+        }
         const doors:THREE.Mesh[]=[];
         model.traverse((o:any)=>{if(o.isMesh&&/(^|_)Door$/i.test(o.name)&&!/^Side_Door$/i.test(o.name))doors.push(o);});
         doors.sort((a,b)=>(/Main_Door/i.test(b.name)?1:0)-(/Main_Door/i.test(a.name)?1:0)||localBox(b).getCenter(new THREE.Vector3()).z-localBox(a).getCenter(new THREE.Vector3()).z);
