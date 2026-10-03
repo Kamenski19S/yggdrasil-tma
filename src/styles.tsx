@@ -321,9 +321,9 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .mid3d-interact button,.mid3d-door-prompt button{padding:7px 8px;min-height:32px;font-size:11px;line-height:1.2;background:#f2f2f2;color:#111;border:1px solid #bdbdbd;box-shadow:none}
 .mid3d-door-prompt:before{display:none}
 .mid3d-hint{font-size:10px;line-height:1.3;white-space:normal;pointer-events:auto;cursor:pointer}
-.mid3d-scene:has(.mid3d-interact,.mid3d-door-prompt,.mid3d-hint) .mid3d-joy{bottom:140px}
-.mid3d-scene:has(.mid3d-interact,.mid3d-door-prompt,.mid3d-hint) .mid3d-strike{bottom:140px}
-.mid3d-scene:has(.mid3d-interact,.mid3d-door-prompt,.mid3d-hint) .mid3d-block{bottom:206px}
+.mid3d-joy{bottom:140px}
+.mid3d-strike{bottom:140px}
+.mid3d-block{bottom:206px}
 .mid3d-choice-panel{max-height:min(62%,360px)}
 .mid3d-choice-panel button+button{margin-top:5px}
 .mid3d-scene:has(.mid3d-choice-panel) .mid3d-joy,.mid3d-scene:has(.mid3d-choice-panel) .mid3d-strike,.mid3d-scene:has(.mid3d-choice-panel) .mid3d-block{display:none}
@@ -335,7 +335,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .whisper-cloud h3,.whisper-cloud p,.whisper-log,.whisper-reward-name{color:#111}
 .mid3d-rematch{background:#fff;color:#111;border-color:#d9d9d9;text-shadow:none}
 .mid3d-rematch small{color:#111}
-@media(max-height:480px){.mid3d-interact,.mid3d-door-prompt,.mid3d-hint{max-height:86px;bottom:6px;padding:6px 8px}.mid3d-scene:has(.mid3d-interact,.mid3d-door-prompt,.mid3d-hint) .mid3d-joy,.mid3d-scene:has(.mid3d-interact,.mid3d-door-prompt,.mid3d-hint) .mid3d-strike{bottom:102px}.mid3d-scene:has(.mid3d-interact,.mid3d-door-prompt,.mid3d-hint) .mid3d-block{bottom:168px}.mid3d-choice-panel{max-height:calc(100% - 12px)}.whisper-combat-hud{bottom:47px}}
+@media(max-height:480px){.mid3d-interact,.mid3d-door-prompt,.mid3d-hint{max-height:86px;bottom:6px;padding:6px 8px}.mid3d-joy,.mid3d-strike{bottom:102px}.mid3d-block{bottom:168px}.mid3d-choice-panel{max-height:calc(100% - 12px)}.whisper-combat-hud{bottom:47px}}
 
 `;
 
