@@ -13,6 +13,17 @@ import { type HeroDef, type HeroSkin, type HeroWeapon, type GearId, type GatherS
 import { type WhisperCombatStats, type BanditSpec, type WhisperPhase, guardianLootText, POTION_CATALOG, midHash, markMeshes, midMat, organicBlobGeometry, BANDIT_SPECS, MIDGARD_MAP_ICON, MIDGARD_MILL_ICON, RUNE_CATALOG } from './world';
 import { InventorySection, SparkDrop } from './inventory';
 
+const RUNE_BUTTON_ART:Record<string,string>={
+  fehuWealth:"rune_fehu.png",uruzStrength:"rune_uruz.png",thurisazStrike:"rune_thurisaz.png",ansuzWisdom:"rune_ansuz.png",raidoPath:"rune_raidho.png",kenazShard:"rune_kenaz.png",geboGift:"rune_gebo.png",wunjoLuck:"rune_wunjo.png",
+  hagalazBreak:"rune_hagalaz.png",nauthizEndurance:"rune_nauthiz.png",isaGuard:"rune_isa.png",jeraHarvest:"rune_jera.png",eihwazResilience:"rune_eihwaz.png",perthroFate:"rune_perthro.png",algizGuard:"rune_algiz.png",sowiloLight:"rune_sowilo.png",
+  tiwazValor:"rune_tiwaz.png",berkanoHeal:"rune_berkana.png",ehwazMotion:"rune_ehwaz.png",mannazMind:"rune_mannaz.png",laguzFlow:"rune_laguz.png",ingwazReserve:"rune_ingwaz.png",dagazDawn:"rune_dagaz.png",othalaLegacy:"rune_othala.png"
+};
+const POTION_BUTTON_ART:Record<string,string>={
+  lifeElixir:"elixir_life.png",northernMoss:"elixir_heal.png",frostDraught:"elixir_frost.png",hoddmimirElixir:"elixir_defense.png"
+};
+const runeButtonSrc=(id:string)=>`${BASE}img/models/${RUNE_BUTTON_ART[id]||"rune_kenaz.png"}`;
+const potionButtonSrc=(id:string)=>`${BASE}img/models/${POTION_BUTTON_ART[id]||"elixir_life.png"}`;
+
 
 
 export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, onOpenMill, eventDone, start, rememberPosition, northBridgeRepaired, chaosGateCleared, chaosCleared, repairedLocations, repairStock, northBridgeReady, goldChestOpened, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, banditRespawnAt, onBanditDefeated, onBanditReward, onBanditKnockout, potions, runes, equippedRune, runeCounts, runeLevels, fieldHp, frostGuard, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; onOpenMill:()=>void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; chaosGateCleared:boolean; chaosCleared:string[]; repairedLocations:string[]; repairStock:Record<string,number>; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; banditRespawnAt:Record<string,number>; onBanditDefeated:(id:string)=>void; onBanditReward:(id:string)=>string; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; runeCounts?:Record<string,number>; runeLevels?:Record<string,number>; fieldHp:number|null; frostGuard:number; onUsePotion:(id:string,currentHp?:number)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
@@ -5385,8 +5396,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       <div className="whisper-combat-actions">
         <button className="whisper-combat-action" disabled={whisperBusy} onClick={()=>whisperFightAction("hit")}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></span><b>Удар оружием</b><small>сила оружия</small></button>
         <button className="whisper-combat-action shield" disabled={whisperBusy} onClick={()=>whisperFightAction("shield")}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={`${BASE}img/models/ui_shield.png`} alt="" draggable={false}/></span><b>Поднять щит</b><small>защита</small></button>
-        <button className="whisper-combat-action rune" disabled={whisperBusy} onClick={()=>whisperFightAction("rune")}><span className="whisper-combat-icon" aria-hidden="true">{RUNE_CATALOG.find(r=>r.id===equippedRune)?.symbol||"ᚲ"}</span><b>Руна {RUNE_CATALOG.find(r=>r.id===equippedRune)?.name||"Кеназ"}</b><small>рунический удар</small></button>
-        <button className="whisper-combat-action rest" disabled={whisperBusy||potions.length===0} onClick={()=>setBattlePotionOpen(true)}><span className="whisper-combat-icon" aria-hidden="true">🧪</span><b>Эликсир</b><small>{potions.length?potions.length+" в запасе":"нет"}</small></button>
+        <button className="whisper-combat-action rune" disabled={whisperBusy} onClick={()=>whisperFightAction("rune")}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={runeButtonSrc(equippedRune)} alt="" draggable={false}/></span><b>Руна {RUNE_CATALOG.find(r=>r.id===equippedRune)?.name||"Кеназ"}</b><small>рунический удар</small></button>
+        <button className="whisper-combat-action rest" disabled={whisperBusy||potions.length===0} onClick={()=>setBattlePotionOpen(true)}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={potionButtonSrc(potions.find(id=>POTION_BUTTON_ART[id])||"lifeElixir")} alt="" draggable={false}/></span><b>Эликсир</b><small>{potions.length?potions.length+" в запасе":"нет"}</small></button>
       </div>
     </div>}
     {battlePotionOpen&&whisperPhase==="fight"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
