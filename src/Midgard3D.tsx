@@ -12,6 +12,7 @@ import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js
 import { type HeroDef, type HeroSkin, type HeroWeapon, type GearId, type GatherStock, type GatherKind, MIDGARD_GUARDIANS, WHISPER_GUARD, MIDGARD_GUARDIAN_ORDER, BASE, cachedGlbBuffer, textureSteelOnWeapon, GATHER_SPOTS, WEAPON_ASSET, COMBAT_ENERGY, combatEnergyColor } from './core';
 import { type WhisperCombatStats, type BanditSpec, type WhisperPhase, guardianLootText, POTION_CATALOG, midHash, markMeshes, midMat, organicBlobGeometry, BANDIT_SPECS, MIDGARD_MAP_ICON, MIDGARD_MILL_ICON, RUNE_CATALOG } from './world';
 import { potionBoostKind, boostedPotionDamage, potionDodges, type PotionBoosts, type PotionBoostKind } from "./potionEffects";
+import { MidgardMap } from './MidgardMap';
 import { InventorySection, SparkDrop } from './inventory';
 
 const RUNE_BUTTON_ART:Record<string,string>={
@@ -27,7 +28,7 @@ const potionButtonSrc=(id:string)=>`${BASE}img/models/${POTION_BUTTON_ART[id]||"
 
 
 
-export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, onOpenMill, eventDone, start, rememberPosition, northBridgeRepaired, chaosGateCleared, chaosCleared, repairedLocations, repairStock, northBridgeReady, goldChestOpened, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, banditRespawnAt, onBanditDefeated, onBanditReward, onBanditKnockout, potions, runes, equippedRune, runeCounts, runeLevels, fieldHp, frostGuard, potionBoosts, onPotionBoostUsed, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; onOpenMill:()=>void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; chaosGateCleared:boolean; chaosCleared:string[]; repairedLocations:string[]; repairStock:Record<string,number>; northBridgeReady:boolean; goldChestOpened:boolean; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; banditRespawnAt:Record<string,number>; onBanditDefeated:(id:string)=>void; onBanditReward:(id:string)=>string; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; runeCounts?:Record<string,number>; runeLevels?:Record<string,number>; fieldHp:number|null; frostGuard:number; potionBoosts:PotionBoosts; onPotionBoostUsed:(kind:PotionBoostKind)=>void; onUsePotion:(id:string,currentHp?:number)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
+export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, onOpenMill, eventDone, start, rememberPosition, northBridgeRepaired, chaosGateCleared, chaosCleared, repairedLocations, repairStock, northBridgeReady, goldChestOpened, openedChests, whisperResolved, guardianResolved, whisperStats, onWhisperCorrect, onWhisperWin, banditRespawnAt, onBanditDefeated, onBanditReward, onBanditKnockout, potions, runes, equippedRune, runeCounts, runeLevels, fieldHp, frostGuard, potionBoosts, onPotionBoostUsed, onUsePotion, onEquipRune, onFieldHpChange, onFrostGuardHit, gathered, stock, onGather }: { h: HeroDef; skin: HeroSkin; weapon: HeroWeapon; gear:GearId[]; gearLevels:Record<string,number>; shieldAsset:string; on: (id: string, position?:{x:number;z:number}) => void; onOpenMill:()=>void; eventDone: boolean; start:{x:number;z:number}; rememberPosition:(position:{x:number;z:number})=>void; northBridgeRepaired:boolean; chaosGateCleared:boolean; chaosCleared:string[]; repairedLocations:string[]; repairStock:Record<string,number>; northBridgeReady:boolean; goldChestOpened:boolean; openedChests:string[]; whisperResolved:boolean; guardianResolved:string[]; whisperStats:WhisperCombatStats; onWhisperCorrect:()=>void; onWhisperWin:()=>string; banditRespawnAt:Record<string,number>; onBanditDefeated:(id:string)=>void; onBanditReward:(id:string)=>string; onBanditKnockout:()=>void; potions:string[]; runes:string[]; equippedRune:string; runeCounts?:Record<string,number>; runeLevels?:Record<string,number>; fieldHp:number|null; frostGuard:number; potionBoosts:PotionBoosts; onPotionBoostUsed:(kind:PotionBoostKind)=>void; onUsePotion:(id:string,currentHp?:number)=>boolean; onEquipRune:(id:string)=>void; onFieldHpChange:(hp:number)=>void; onFrostGuardHit:()=>void; gathered:string[]; stock:GatherStock; onGather:(id:string,kind:GatherKind)=>void }) {
   const mount = useRef<HTMLDivElement>(null);
   const joy = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
@@ -5304,38 +5305,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     <style>{MIDGARD_GUIDE_CSS}</style>
     {guideOpen&&<MidgardGuide onClose={()=>setGuideOpen(false)} completed={guardianResolved} cleared={chaosCleared} restored={repairedLocations}/>}
     {mapOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}>
-      <div className="mid3d-map-panel">
-        <div className="mid3d-map-title">ᚠ Карта Мидгарда</div>
-        <div className="mid3d-map-sub">Руна Феху указывает известные дороги и следующую цель</div>
-        <div className="mid3d-map-canvas">
-          <svg viewBox="0 0 100 100" aria-hidden="true">
-            <path d="M18 100 C15 82 25 72 20 58 C16 43 24 31 21 0" fill="none" stroke="#73a9b1" strokeWidth="9" opacity=".72"/>
-            <path d="M50 92 C49 73 47 61 44 53 C42 43 48 35 50 22" fill="none" stroke="#8b6440" strokeWidth="2.2" strokeDasharray="3 2" opacity=".75"/>
-            <path d="M18 77 C30 69 37 59 44 53 M44 53 C33 44 25 35 20 29 M44 53 C62 48 78 40 92 32" fill="none" stroke="#8b6440" strokeWidth="1.5" strokeDasharray="2.5 2" opacity=".65"/>
-            <circle cx="49" cy="53" r="13" fill="none" stroke="#a58a56" strokeWidth=".8" opacity=".7"/>
-          </svg>
-          <span className="map-landmark" style={{left:"49%",top:"53%"}}>⌂<small>Кузница</small></span>
-          <span className="map-landmark" style={{left:"57%",top:"35%"}}>🐄<small>Сарай</small></span>
-          <span className="map-landmark" style={{left:"39%",top:"30%"}}>🐎<small>Навес</small></span>
-          <span className="map-landmark" style={{left:"62%",top:"20%"}}>🐎<small>Луг</small></span>
-          <span className="map-landmark" style={{left:"74%",top:"30%"}}>🦊<small>Лиса</small></span>
-          <span className="map-landmark" style={{left:"76%",top:"59%"}}>🐺<small>Волк</small></span>
-          <span className="map-landmark" style={{left:"18%",top:"68%"}}>⛵<small>Лодка</small></span>
-          <span className="map-landmark" style={{left:"51%",top:"50%"}}>◉<small>Мимир</small></span>
-          <span className="map-landmark" style={{left:"18%",top:"77%"}}>═<small>Речной мост</small></span>
-          <span className="map-landmark" style={{left:"16%",top:"21%",color:northBridgeRepaired?"#456249":"#a33b1f"}}>═<small>{northBridgeRepaired?"Северный мост":"Мост закрыт"}</small></span>
-          <span className="map-landmark" style={{left:"20%",top:"29%"}}>ᛟ<small>Норны</small></span>
-          <span className="map-landmark" style={{left:"49%",top:"25%"}}>⌗<small>Ворота</small></span>
-          <span className="map-landmark" style={{left:"93%",top:"32%"}}>⌂<small>Дом</small></span>
-          <span className="map-landmark" style={{left:"47%",top:"8%"}}>♠<small>Роща</small></span>
-          <span className="map-landmark" style={{left:"25%",top:"24%"}}>⚔<small>Разбойник</small></span>
-          <span className="map-landmark goal" style={{left:"49%",top:"53%"}}>ᚠ<small>Цель</small></span>
-          <span className="map-landmark hero" style={{left:`${((mapHero.x+88)/176)*100}%`,top:`${100-((mapHero.z+89)/178)*100}%`}}>◆<small>Ты здесь</small></span>
-        </div>
-        <div className="mid3d-map-goal"><small>Печати хаоса сняты: {chaosCleared.length} / {CHAOS_GATES.length}</small><br/><b>{goldChestOpened?'Золотой сундук открыт':northBridgeRepaired?'Северный мост открыт':northBridgeReady?'Мост готов к ремонту':'Путь к золотому сундуку'}</b><br/>{goldChestOpened?'Награды получены. Следующий известный сундук ждёт в Лесу Ходдмимира.':northBridgeRepaired?'Перейди мост и открой золотой сундук напротив него.':northBridgeReady?'Подойди к Северному мосту и заверши ремонт за 300 капель бессмертия.':'Подготовь материалы у Сигрид, Бьёрна и Торвальда. Ремонт стоит 300 капель бессмертия.'}</div>
-        <button className="mid3d-map-close" onClick={()=>{setMapOpen(false);setCreditsOpen(true);}}>Авторы и лицензии</button>
-        <button className="mid3d-map-close" onClick={()=>setMapOpen(false)}>Закрыть карту и продолжить путь</button>
-      </div>
+      <MidgardMap hero={mapHero} completed={guardianResolved} cleared={chaosCleared} restored={repairedLocations} openedChests={openedChests} northBridgeRepaired={northBridgeRepaired} northBridgeReady={northBridgeReady} eventDone={eventDone}
+        onClose={()=>setMapOpen(false)} onCredits={()=>{setMapOpen(false);setCreditsOpen(true);}}/>
     </div>}
     {inventoryOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}><div className="mid3d-map-panel" style={{background:"linear-gradient(145deg,#1b271c,#0e1712)",color:"#fff2d8",borderColor:"#987346"}}>
       <div className="mid3d-map-title" style={{color:"#f5d28a"}}>🎒 Запас Вики</div>

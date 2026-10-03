@@ -971,6 +971,7 @@ const [roadT, setRoadT] = useState(0.06);
       northBridgeRepaired={save.done.includes("bridge:north:repaired")}
       northBridgeReady={wardPrepared(save)&&save.immortalityDrops>=VILLAGE_WARD_COST}
       goldChestOpened={save.done.includes('chest:gold')}
+      openedChests={[save.done.includes('chest:gold')?'forestCache':'',save.done.includes('chest:norns')?'nornsChest':'',save.done.includes('chest:angelic')?'angelicChest':''].filter(Boolean)}
       whisperResolved={save.done.includes("whisper:battle")||save.done.includes("whisper:wisdom")}
       guardianResolved={MIDGARD_GUARDIAN_ORDER.filter(id=>save.done.includes("guardian:stage:"+id)||save.done.includes("guardian:"+id)) as unknown as string[]}
       whisperStats={{
