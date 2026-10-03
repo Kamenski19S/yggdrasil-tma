@@ -197,7 +197,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .mid3d-knob{background:rgba(245,202,96,.18);border-color:rgba(255,222,145,.55);pointer-events:none}
 .whisper-combat-icon.custom-art{border:0;background:transparent;box-shadow:none;text-shadow:none}
 .whisper-combat-icon.custom-art:after{display:none}
-.whisper-combat-icon.custom-art img{width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none}
+.whisper-combat-icon.custom-art img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none;transform:translateY(4%) scale(1.28)}
 .mid3d-hero-load{left:50%;top:58%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;color:#f4d36d;text-shadow:0 2px 8px rgba(0,0,0,.85)}
 .mid3d-hero-load b{font-size:34px;line-height:1;animation:heroRunePulse 1.05s ease-in-out infinite}.mid3d-hero-load span{font-size:9px;letter-spacing:.8px;padding:3px 7px;border-radius:8px;background:rgba(4,9,6,.55)}
 .mid3d-hint{left:50%;bottom:9px;transform:translateX(-50%);padding:6px 10px;border-radius:9px;background:rgba(5,10,7,.68);border:1px solid rgba(126,231,135,.18);color:#d0dfd3;font-size:10px;line-height:1.2;white-space:nowrap;pointer-events:none}
@@ -218,8 +218,8 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .whisper-combat-energy .whisper-pip{display:block;width:10px;height:10px;border-color:rgba(195,245,208,.55);box-shadow:inset 0 1px 2px rgba(0,0,0,.5)}
 .whisper-combat-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;align-items:start}
 .whisper-combat-action{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;padding:0;border:0;background:none;color:#fff6e5;text-align:center;font:inherit;touch-action:manipulation;cursor:pointer}
-.whisper-combat-icon{position:relative;display:grid;place-items:center;width:min(100%,64px);aspect-ratio:1;border:3px ridge #d6a352;border-radius:7px;background:radial-gradient(circle at 48% 40%,#55402a 0%,#241d17 65%,#100e0d 100%);box-shadow:inset 0 0 0 2px #5d3b20,inset 0 0 16px rgba(0,0,0,.75),0 4px 9px rgba(0,0,0,.6),0 0 0 1px #281709;color:#ffd06d;font-size:34px;line-height:1;text-shadow:0 0 11px #ffb341,0 2px 3px #211008}
-.whisper-combat-icon:after{content:"";position:absolute;inset:4px;border:1px solid rgba(252,204,112,.25);border-radius:2px;pointer-events:none}
+.whisper-combat-icon{position:relative;display:grid;place-items:center;width:min(100%,64px);aspect-ratio:1;border:3px ridge #d6a352;border-radius:50%;background:radial-gradient(circle at 48% 40%,#55402a 0%,#241d17 65%,#100e0d 100%);box-shadow:inset 0 0 0 2px #5d3b20,inset 0 0 16px rgba(0,0,0,.75),0 4px 9px rgba(0,0,0,.6),0 0 0 1px #281709;color:#ffd06d;font-size:34px;line-height:1;text-shadow:0 0 11px #ffb341,0 2px 3px #211008}
+.whisper-combat-icon:after{content:"";position:absolute;inset:4px;border:1px solid rgba(252,204,112,.25);border-radius:50%;pointer-events:none}
 .whisper-combat-action.rune .whisper-combat-icon{font-family:serif;font-size:48px;color:#ffd071}
 .whisper-combat-action.rest .whisper-combat-icon{font-size:31px}
 .whisper-combat-action b{font-size:clamp(9px,2.6vw,12px);line-height:1.12;white-space:nowrap;text-shadow:0 2px 3px #060807,0 0 6px #060807}
