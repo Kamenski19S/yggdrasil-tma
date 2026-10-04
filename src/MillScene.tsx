@@ -5,6 +5,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { BASE, cachedGlbBuffer } from './core';
+import {millControlActive,tickMillGiftClock} from './millRewards';
 
 
 
@@ -18,6 +19,8 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
   const flowRef=useRef(2);
   const pressureRef=useRef(2);
   const comboRef=useRef(0);
+  const lastAdjustedAtRef=useRef<number|null>(null);
+  const [recentControl,setRecentControl]=useState(false);
   const [running,setRunning]=useState(false);
   const [loaded,setLoaded]=useState(false);
   const [loadFailed,setLoadFailed]=useState(false);
@@ -38,9 +41,16 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
     hintTimerRef.current=window.setTimeout(()=>setHint(''),2400);
   };
   useEffect(()=>()=>window.clearTimeout(hintTimerRef.current),[]);
+  const adjustFlow=(delta:number)=>{
+    const next=Math.max(1,Math.min(3,flowRef.current+delta));
+    if(next===flowRef.current)return;
+    flowRef.current=next;setFlow(next);
+    if(runningRef.current){lastAdjustedAtRef.current=performance.now();setRecentControl(true);}
+  };
   const catchParcel=()=>{
     const found=parcelRef.current;
-    if(!runningRef.current||!found||performance.now()>found.end)return;
+    const now=performance.now();
+    if(!millControlActive(runningRef.current,now,lastAdjustedAtRef.current)||!found||now>=found.end)return;
     parcelRef.current=null;setParcel(null);netUntilRef.current=performance.now()+1100;
     showHint(onFind(found.kind));
     try{navigator.vibrate?.(20);}catch{}
@@ -72,7 +82,7 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
   },[running,onProduce]);
 
   useEffect(()=>{
-    if(!running){warningRef.current=0;parcelRef.current=null;setParcel(null);return;}
+    if(!running){warningRef.current=0;parcelRef.current=null;setParcel(null);lastAdjustedAtRef.current=null;setRecentControl(false);return;}
     let alive=true,warningTimer=0,changeTimer=0;
     const schedule=()=>{
       warningTimer=window.setTimeout(()=>{
@@ -89,12 +99,16 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
       },5500);
     };
     schedule();
-    let nextFind=performance.now()+35000+Math.random()*20000;
+    let giftWaitMs=35000+Math.random()*20000,lastGiftTick=performance.now();
     const parcelTimer=window.setInterval(()=>{
       const now=performance.now();
-      if(parcelRef.current&&now>=parcelRef.current.end){parcelRef.current=null;setParcel(null);}
-      if(now<nextFind)return;
-      nextFind=now+70000+Math.random()*40000;
+      const active=millControlActive(runningRef.current,now,lastAdjustedAtRef.current);
+      setRecentControl(active);
+      if(parcelRef.current&&(!active||now>=parcelRef.current.end)){parcelRef.current=null;setParcel(null);}
+      const tick=tickMillGiftClock(giftWaitMs,now-lastGiftTick,active,flowRef.current===pressureRef.current);
+      lastGiftTick=now;giftWaitMs=tick.remainingMs;
+      if(!tick.ready)return;
+      giftWaitMs=70000+Math.random()*40000;
       const roll=Math.random(),kind:MillFind=roll<.65?'drops':roll<.9?'potion':'rune';
       const found={kind,start:now,end:now+9000};parcelRef.current=found;setParcel(found);
       showHint('Находка в потоке');
@@ -502,17 +516,17 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
       <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M9 16h30L32 38H16Z" fill="#352a15" stroke="#f0c866" strokeWidth="2"/><path d="m15 17 4 20m5-20v20m9-20-4 20M12 24h24M14 31h20" stroke="#c69a44" strokeWidth="1.4"/><path d="M24 4c-5 7-5 11 0 11s5-4 0-11" fill="#f0c866"/></svg>
     </button>}
 
-    <div className="mill-rate-pill"><span>Напор меняется</span><b>{running?("+"+(liveRate||1)+" / сек"):"0 / сек"}</b></div>
+    <div className="mill-rate-pill"><span>{running?(recentControl?(flow===pressure?"Регулировка · капли и подарки":"Подстрой шлюз для подарков"):"Без регулировки · только капли"):"Напор меняется"}</span><b>{running?("+"+(liveRate||1)+" / сек"):"0 / сек"}</b></div>
 
     <div className="mill-sluice">
       <img className="mill-frame-img" src={`${BASE}img/models/mill_pressure_plus_minus.png`} alt=""/>
-      <button disabled={flow<=1} onClick={()=>setFlow(v=>Math.max(1,v-1))} aria-label="Уменьшить поток"/>
+      <button disabled={flow<=1} onClick={()=>adjustFlow(-1)} aria-label="Уменьшить поток"/>
       <div className="mill-flow-readout">
         <small>Напор реки {["","I","II","III"][pressure]} · шлюз {["","I","II","III"][flow]}</small>
         <b className={flow===pressure?"good":"warn"}>{flow===pressure?(combo>=5?"РАВНОВЕСИЕ · серия "+combo+" сек":"РАВНОВЕСИЕ"):"ПОДСТРОЙ ШЛЮЗ"}</b>
         <span className="mill-flow-bars">{[1,2,3].map(level=><i key={level} className={level<=flow?"on":""}/>)}</span>
       </div>
-      <button disabled={flow>=3} onClick={()=>setFlow(v=>Math.min(3,v+1))} aria-label="Увеличить поток"/>
+      <button disabled={flow>=3} onClick={()=>adjustFlow(1)} aria-label="Увеличить поток"/>
     </div>
 
     <div className="mill-controls">

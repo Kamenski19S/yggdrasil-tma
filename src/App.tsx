@@ -14,6 +14,7 @@ import { type CraftMaterial, CRAFT_RECIPES, craftMaterialName, RUNE_STEEL_YIELD,
 import { lootCountAdd, RUNE_CATALOG, lootDisplayName, POTION_CATALOG, BANDIT_SPECS, MIDGARD_GUARDIAN_LOOT, weaponDisplayIcon } from './world';
 import { CSS } from './styles';
 import { MillScene, type MillFind } from './MillScene';
+import {MILL_BONUS_DROPS_MIN,MILL_BONUS_DROPS_RANGE,MILL_POTION_QUANTITY,MILL_RUNE_QUANTITY} from './millRewards';
 import { Midgard3D } from './Midgard3D';
 
 
@@ -139,15 +140,16 @@ const [roadT, setRoadT] = useState(0.06);
   const findMillReward=useCallback((kind:MillFind)=>{
     if(!millScreenActiveRef.current)return '';
     if(kind==='drops'){
-      const amount=20+Math.floor(Math.random()*21);
+      const amount=MILL_BONUS_DROPS_MIN+Math.floor(Math.random()*MILL_BONUS_DROPS_RANGE);
       setSave(s=>({...s,millStored:s.millStored+amount}));return `+${amount} капель в накопитель`;
     }
     const item=kind==='potion'?POTION_CATALOG[Math.floor(Math.random()*Math.min(3,POTION_CATALOG.length))]:RUNE_CATALOG[Math.floor(Math.random()*RUNE_CATALOG.length)];
+    const quantity=kind==='potion'?MILL_POTION_QUANTITY:MILL_RUNE_QUANTITY;
     setSave(s=>({...s,
-      potions:kind==='potion'?[...s.potions,item.id]:s.potions,
+      potions:kind==='potion'?[...s.potions,...Array.from({length:quantity},()=>item.id)]:s.potions,
       runes:kind==='rune'?[...new Set([...s.runes,item.id])]:s.runes,
-      lootCounts:lootCountAdd(s.lootCounts,[item.id])}));
-    return kind==='potion'?`Пойман: ${item.name}`:`Руна ${item.name}`;
+      lootCounts:lootCountAdd(s.lootCounts,Array.from({length:quantity},()=>item.id))}));
+    return kind==='potion'?`Пойман: ${item.name} ×${quantity}`:`Руна ${item.name} ×${quantity}`;
   },[]);
   const collectMillDrops=useCallback(()=>{
     setSave(s=>s.millStored<=0?s:{...s,immortalityDrops:s.immortalityDrops+s.millStored,millStored:0});
