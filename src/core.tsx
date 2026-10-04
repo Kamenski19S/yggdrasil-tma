@@ -280,7 +280,7 @@ export function refreshGathering<T extends {gathered:string[];gatherRespawnAt:Re
   return {...state,gathered,gatherRespawnAt};
 }
 
-export const DEF: Save = { sparks: 0, immortalityDrops:25, millStored:0, done: [], gift: "", hero: null, trials: [], artifacts: [], equippedArtifact:"", watch: 0, streak: 0, powers: [], heroSkin: "viking", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], lootCounts:{default:1,[SHIELD_ASSETS[0]]:1}, equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,potionBoosts:{...EMPTY_POTION_BOOSTS},forgeLevels: {}, forgeFreeUsed: false,gathered:[],gatherRespawnAt:{},stock:{...EMPTY_GATHER_STOCK},locationCooldowns:{},villageOrders:{},repairStock:{},runeSteel:0 };
+export const DEF: Save = { sparks: 0, immortalityDrops:25, millStored:0, done: [], gift: "", hero: null, trials: [], artifacts: [], equippedArtifact:"", watch: 0, streak: 0, powers: [], heroSkin: "valkyrie", heroWeapon: "default", shieldAsset:SHIELD_ASSETS[0], ownedShields:[SHIELD_ASSETS[0]], ownedWeapons: ["default"], lootCounts:{default:1,[SHIELD_ASSETS[0]]:1}, equippedGear:[], potions: [], runes: [], equippedRune:'',fieldHp:null,frostGuard:0,potionBoosts:{...EMPTY_POTION_BOOSTS},forgeLevels: {}, forgeFreeUsed: false,gathered:[],gatherRespawnAt:{},stock:{...EMPTY_GATHER_STOCK},locationCooldowns:{},villageOrders:{},repairStock:{},runeSteel:0 };
 
 
 export const loadSave = (): Save => {
@@ -359,10 +359,9 @@ export const loadSave = (): Save => {
     for(const id of s.potions)potionCounts[id]=(potionCounts[id]||0)+1;
     for(const [id,count] of Object.entries(potionCounts))ensureLootCount(id,count);
     if (typeof s.forgeFreeUsed !== "boolean") s.forgeFreeUsed = false;
-    if (s.heroSkin !== "viking" && s.heroSkin !== "valkyrie") {
-      const hd = s.hero ? HEROES.find((x:any)=>x.id===s.hero.id) : null;
-      s.heroSkin = hd?.gender === "f" ? "valkyrie" : "viking";
-    }
+    // Keep legacy class IDs for their earned stats and abilities; only identity changes.
+    s.heroSkin = "valkyrie";
+    if(s.hero)s.hero={...s.hero,name:"Вика"};
     if (!Object.prototype.hasOwnProperty.call(WEAPON_POWER,s.heroWeapon)|| (s.heroWeapon!=="default"&&!s.ownedWeapons.includes(s.heroWeapon))) s.heroWeapon = "default";
     // Artifacts represent worlds truly completed in the current progression.
     // Old prototype quiz runs could leave stale realm IDs in saves, so rebuild
@@ -497,7 +496,7 @@ export const HEROES: HeroDef[] = [
   { id: "viking", race: "Викинг", gender: "m", sym: "ᛉ", color: "#ffd76a", str: 9, en: 7, hp: 110, weapon: "Копьё Молний", ability: "Крылья бури", abilityDesc: "1 раз за бой щитом поглощает удар врага.", img: "hero_viking.png" },
   { id: "dwarf", race: "Гном", gender: "m", sym: "ᚲ", color: "#ff9d5c", str: 10, en: 5, hp: 130, weapon: "Молот Глубин", ability: "Каменная кожа", abilityDesc: "Получает на 25% меньше урона; сундуки дают +50% Капель бессмертия.", img: "hero_dwarf.png" },
   { id: "berserk", race: "Берсерк", gender: "m", sym: "ᚦ", color: "#ff6b4a", str: 12, en: 4, hp: 100, weapon: "Секира «Клык Зверя»", ability: "Медвежья ярость", abilityDesc: "Когда здоровье ниже половины — урон удваивается.", img: "hero_berserk.png" },
-];
+].map(h=>({...h,race:"Валькирия",gender:"f" as const,img:"hero_valkyrie.jpg"}));
 
 
 
@@ -616,3 +615,4 @@ export function BgImg({ name, className }: { name: string; className: string }) 
     />
   );
 }
+

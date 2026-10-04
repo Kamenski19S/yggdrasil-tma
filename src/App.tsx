@@ -1,3 +1,4 @@
+import { VIKA_STORY, HERO_PROFILE_CSS } from './vikaStory';
 import {WOOD_TRADES,exchangeWood,forgeAshCost} from './woodEconomy';
 import { REPAIR_RESIDENTS, REPAIR_GOODS, REPAIR_PROJECTS, type RepairResident, nextRepairJob, residentRepairIntro, repaired, repairKey, workKey, canPrepareRepair, prepareRepair, canRestore, restoreLocation } from './locationRepairs';
 import { CHAOS_GATES, chaosKey, gateForLocation, runeCopies, runeStrength, canCleanseGate, cleanseGate, routeProgress, routeBlocker, routePhase } from './chaosProgression';
@@ -26,8 +27,9 @@ export function App() {
   const millScreenActiveRef=useRef(false);
   const [save, setSave] = useState<Save>(loadSave);
   const [selectedArtifact,setSelectedArtifact]=useState("");
-  const [pick, setPick] = useState("");
-  const [pickName, setPickName] = useState("");
+  const [pick, setPick] = useState("viking");
+  const [heroTab,setHeroTab]=useState<"equipment"|"story">("equipment");
+  const [pickName, setPickName] = useState("Вика");
   const [toast, setToast] = useState("");
   const [repairDialog,setRepairDialog]=useState<string|null>(null);
   const [chaosDialog,setChaosDialog]=useState<string|null>(null);
@@ -76,11 +78,7 @@ const [roadT, setRoadT] = useState(0.06);
   useEffect(()=>{millScreenActiveRef.current=screen.t==="mill";},[screen.t]);
   useEffect(() => { tg?.ready?.(); tg?.expand?.(); tg?.setHeaderColor?.("#0b0f0c"); tg?.setBackgroundColor?.("#0b0f0c"); }, []);
   useEffect(() => {
-    // Warm only the selected hero. The second character is loaded later when
-    // actually chosen, which keeps the first launch lighter on a slow route.
-    const asset=save.heroSkin==="valkyrie"
-      ? "Vika-3d-animated-optimized.glb"
-      : "Yggdrasil_Viking_Jarl.glb";
+    const asset="Vika-3d-animated-optimized.glb";
     cachedGlbBuffer(`${BASE}img/models/${asset}`).catch(()=>{});
   }, [save.heroSkin]);
   useEffect(() => {
@@ -175,10 +173,10 @@ const [roadT, setRoadT] = useState(0.06);
   const watchGain = () => Math.floor(Math.min(12, (Date.now() - save.watch) / 3600000) * 3);
   const collectWatch = () => { const g = watchGain(); if (g <= 0) { say("Дозор только начался — Капли бессмертия ещё собираются."); return; } setSave(s => ({ ...s, immortalityDrops: s.immortalityDrops + g, watch: Date.now() })); haptic("success"); say("Дозор завершён: +" + g + " Капель бессмертия"); };
   const claimGift = () => { if (save.gift === today()) return; const d = save.gift ? Math.round((Date.parse(today()) - Date.parse(save.gift)) / 86400000) : 99; const next = d <= 2 ? (save.streak % 7) + 1 : 1; const rew = LADDER[next - 1]; setSave(s => ({ ...s, immortalityDrops: s.immortalityDrops + rew, gift: today(), streak: next })); haptic("success"); say("Дар Древа, день " + next + ": +" + rew + " ✨"); };
-  const confirmHero = () => { if (!pick || !pickName) return; setSave(s => ({ ...s, hero: { id: pick, name: pickName } })); haptic("success"); say("Путь начинается, " + pickName + "!"); setScreen({ t: "tree" }); };
+  const confirmHero = () => { if (!pick || !pickName) return; setSave(s => ({ ...s, hero: { id: pick, name: "Вика" },heroSkin:"valkyrie" })); haptic("success"); say("Путь начинается, " + pickName + "!"); setScreen({ t: "tree" }); };
   const heroDef = save.hero ? HEROES.find(h => h.id === save.hero!.id)! : null;
   const forgeItems = [
-    {id:"default",icon:save.heroSkin==="valkyrie"?"⚔️":"◢━",name:save.heroSkin==="valkyrie"?"Меч валькирии":"Секира викинга",kind:"weapon",owned:true},
+    {id:"default",icon:"⚔️",name:"Меч валькирии",kind:"weapon",owned:true},
     {id:"sword2",icon:"⚔️",name:"Меч II",kind:"weapon",owned:save.ownedWeapons.includes("sword2")},
     {id:"swordBig",icon:"⚔️",name:"Большой меч",kind:"weapon",owned:save.ownedWeapons.includes("swordBig")},
     {id:"swordGolden",icon:"⚔️",name:"Золотой меч",kind:"weapon",owned:save.ownedWeapons.includes("swordGolden")},
@@ -539,30 +537,7 @@ const [roadT, setRoadT] = useState(0.06);
 
       {screen.t === "choose" && (
         <div className="scroll choose-screen">
-          <div className="card center choose-intro"><div className="big">ᛉ</div><div className="qhead2">Выбери героя</div><p className="dim">Норны прядут нить. Выбери, кто пройдёт путь девяти миров.</p></div>
-          {HEROES.map(h => (
-            <button key={h.id} className={"hcard" + (pick === h.id ? " on" : "")} onClick={() => { setPick(h.id); setPickName(""); haptic(); }}>
-              <span className="hface" style={{ borderColor: h.color, color: h.color, background: "linear-gradient(160deg,#101613,#0a0a0a)" }}>
-                <BgImg name={h.img} className="himg" />
-              </span>
-              <span className="hinfo">
-                <span className="hname" style={{ color: h.color }}>{h.race}</span>
-                <span className="hab">🌀 {h.ability}: {h.abilityDesc}</span>
-                <span className="hst">⚔ {h.str} • ✨ {h.en} • ❤ {h.hp}</span>
-                <span className="hw">🗡 {h.weapon}</span>
-              </span>
-            </button>
-          ))}
-          {pick && (
-            <div className="card">
-              <div className="qhead2">Имя героя</div>
-              <div className="chips">
-                {(HEROES.find(h => h.id === pick)!.gender === "f" ? NAMES_F : NAMES_M).map(n => (
-                  <button key={n} className={"chip" + (pickName === n ? " on" : "")} onClick={() => { setPickName(n); haptic(); }}>{n}</button>
-                ))}
-              </div>
-            </div>
-          )}
+          <div className="card center choose-intro"><BgImg name="hero_valkyrie.jpg" className="hface"/><div className="qhead2">Вика · Валькирия</div><p className="dim">Мидгард нуждается в твоей помощи. Освободи свой дом от тёмных печатей и найди источник хаоса.</p></div>
           <button className="btn gold" disabled={!pick || !pickName} onClick={confirmHero}>Вступить на путь</button>
         </div>
       )}
@@ -1121,37 +1096,28 @@ const [roadT, setRoadT] = useState(0.06);
 
       {screen.t === "hero" && heroDef && save.hero && (
         <div className="scroll">
-          <div className="card center">
-            <span className="hface bigface" style={{ borderColor: heroDef.color, color: heroDef.color, background: "linear-gradient(160deg,#101613,#0a0a0a)" }}><BgImg name={heroDef.img} className="himg" /></span>
-            <div className="qhead2" style={{ color: heroDef.color }}>{save.hero.name} • {heroDef.race}</div>
+          <style>{HERO_PROFILE_CSS}</style>
+          <div className="card hero-profile">
+            <header className="hero-profile-header"><span className="hface"><BgImg name="hero_valkyrie.jpg" className="himg"/></span><div><h2>Вика</h2><p>Валькирия · защитница Мидгарда</p></div></header>
+            <div className="hero-profile-tabs" role="tablist" aria-label="Разделы героя"><button role="tab" aria-selected={heroTab==='equipment'} onClick={()=>setHeroTab('equipment')}>Снаряжение и навыки</button><button role="tab" aria-selected={heroTab==='story'} onClick={()=>setHeroTab('story')}>История Вики</button></div>
+            {heroTab==='story'?<section className="hero-story" role="tabpanel">{VIKA_STORY.map((chapter,index)=>index===0||save.done.includes('world:complete:midgard')?<details key={chapter.id} open={index===0}><summary>{chapter.title}</summary>{chapter.text.split('\n\n').map((p,i)=><p key={i}>{p}</p>)}</details>:<p key={chapter.id} className="story-locked">Продолжение «За вратами Мидгарда» откроется после завершения Мидгарда.</p>)}</section>:<section role="tabpanel">
             <div className="stats">
               <div className="stat"><b>⚔ {heroDef.str}</b><span>сила</span></div>
               <div className="stat"><b>✨ {heroDef.en}</b><span>энергия</span></div>
               <div className="stat"><b>❤ {heroDef.hp+gearHp()}</b><span>здоровье</span></div>
             </div>
-            <div className="hrow">🎭 Облик героя</div>
-            <div className="chips">
-              <button
-                className={"chip"+(save.heroSkin==="viking"?" on":"")}
-                onClick={()=>{setSave(s=>({...s,heroSkin:"viking"}));haptic();}}
-              >Викинг</button>
-              <button
-                className={"chip"+(save.heroSkin==="valkyrie"?" on":"")}
-                onClick={()=>{setSave(s=>({...s,heroSkin:"valkyrie"}));haptic();}}
-              >Валькирия</button>
-            </div>
             <div className="hrow">🗡 Оружие в руке</div>
             <div className="chips">
-              {(['default','knife','axe','mace','spear'] as HeroWeapon[]).filter(id=>id==='default'||save.ownedWeapons.includes(id)).map(id=>{
+              {(['default',...FORGE_WEAPON_MODELS.filter(item=>item[2]&&Object.prototype.hasOwnProperty.call(WEAPON_POWER,item[2])).map(item=>item[2])] as HeroWeapon[]).filter((id,index,all)=>all.indexOf(id)===index).filter(id=>id==='default'||save.ownedWeapons.includes(id)).map(id=>{
                 const total=id==='default'?1:Math.max(1,Number(save.lootCounts[id])||1);
                 return <button key={id}
                   className={"chip"+(save.heroWeapon===id?" on":"")}
                   onClick={()=>{setSave(s=>({...s,heroWeapon:id}));haptic();}}
-                >{id==='default'?(save.heroSkin==='valkyrie'?'Меч валькирии':'Секира викинга'):FORGE_WEAPON_MODELS.find(item=>item[2]===id)?.[1]} · сила +{WEAPON_POWER[id]}{id!=='default'?" · "+total+" шт.":""}</button>;
+                >{id==='default'?('Меч валькирии'):FORGE_WEAPON_MODELS.find(item=>item[2]===id)?.[1]} · сила +{WEAPON_POWER[id]}{id!=='default'?" · "+total+" шт.":""}</button>;
               })}
             </div>
             <div className="dim" style={{marginTop:8}}>
-              «Сила +N» — это бонус оружия, не количество. Количество экземпляров указано отдельно как «N шт.». Для обычного крафта нужно минимум 2 одинаковых экземпляра.
+              Сила — бонус оружия. «Шт.» — количество. Для крафта нужны 2 одинаковых экземпляра.
             </div>
             <div className="hrow">🛡 Экипировка</div>
             <div className="chips">{GEAR_IDS.map(id=><button key={id} className={'chip'+(equipped(id)?' on':'')} onClick={()=>toggleGear(id)}>{id==='armor'?'Броня':id==='helmet'?'Шлем':id==='shield'?'Щит':'Сапоги'} · {equipped(id)?'надето':'надеть'}</button>)}</div>
@@ -1159,6 +1125,7 @@ const [roadT, setRoadT] = useState(0.06);
             <div className="hrow"><SparkDrop/> Капель бессмертия: <b>{save.immortalityDrops}</b> • 🏺 Артефактов: <b>{save.artifacts.length}/9</b></div>
             {save.artifacts.length > 0 && <div className="hrow">🏺 {save.artifacts.map(a => ARTIFACTS[a]).join(", ")}</div>}
             {save.equippedArtifact&&ARTIFACT_INFO[save.equippedArtifact]&&<div className="hrow">✨ Активный артефакт: <b>{ARTIFACT_INFO[save.equippedArtifact].name}</b> · {ARTIFACT_INFO[save.equippedArtifact].effect}</div>}
+            </section>}
           </div>
         </div>
       )}
@@ -1209,7 +1176,7 @@ const [roadT, setRoadT] = useState(0.06);
             : "Дар кузнеца: первое улучшение любого доступного предмета бесплатно."}</div>
           <div className="forge-group-title">Стена оружия Вёлунда</div>
           <ForgeWeaponWall owned={save.ownedWeapons} ownedShields={save.ownedShields} selected={save.heroWeapon} selectedShield={equipped('shield')?save.shieldAsset:null} onChoose={chooseForgeWeapon}/>
-          <div className="forge-equipped"><span>В руке: {save.heroWeapon==='default'?(save.heroSkin==='valkyrie'?'Меч валькирии':'Секира викинга'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} · сила +{WEAPON_POWER[save.heroWeapon]} · закалка +{forgeLevel(save.heroWeapon)}</span>
+          <div className="forge-equipped"><span>В руке: {save.heroWeapon==='default'?('Меч валькирии'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} · сила +{WEAPON_POWER[save.heroWeapon]} · закалка +{forgeLevel(save.heroWeapon)}</span>
             <button disabled={forgeLevel(save.heroWeapon)>=10} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=10?'Максимум +10':<>Закалить {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/>{forgeAshCost(true,forgeLevel(save.heroWeapon),!save.forgeFreeUsed)>0?" + ясень ×1":""}</>:'бесплатно'}</>}</button></div>
           <div className="forge-group-title">Экипировка</div>
           <div className="forge-grid">{gear.map(forgeButton)}</div>
@@ -1233,7 +1200,7 @@ const [roadT, setRoadT] = useState(0.06);
           <div className="hall-grid">
             <div className="hall-section">
               <span className="hall-icon">⚔️</span><h3>Оружейный склад</h3>
-              <p>{save.heroWeapon==='default'?(save.heroSkin==='valkyrie'?'Меч валькирии':'Секира викинга'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} сейчас в руке. Все найденные копии остаются на складе Чертога и позже используются для крафта.</p>
+              <p>{save.heroWeapon==='default'?('Меч валькирии'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} сейчас в руке. Все найденные копии остаются на складе Чертога и позже используются для крафта.</p>
               <div className="hall-slots">{FORGE_WEAPON_MODELS.filter(([, ,id])=>id&&save.ownedWeapons.includes(id as HeroWeapon)).map(([,name,id])=>{
                 const weaponId=id as HeroWeapon,count=Math.max(1,Number(save.lootCounts[weaponId])||1);
                 return <button key={weaponId} title={name+(count>1?' · всего '+count:'')} className={'hall-slot'+(save.heroWeapon===weaponId?' on':'')} onClick={()=>{setSave(s=>({...s,heroWeapon:weaponId}));haptic();}}><span>{weaponDisplayIcon(weaponId)}</span>{count>1&&<small>×{count}</small>}</button>;
