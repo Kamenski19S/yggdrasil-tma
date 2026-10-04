@@ -2,7 +2,7 @@ import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {BASE,cachedGlbBuffer} from './core';
-import {NIFL_LOCATIONS,NIFL_RIVERS,NIFL_LAKES,NIFL_ROUTES,niflGroundY,clampNiflPosition} from './niflheimMapData';
+import {NIFL_SCALE,NIFL_SOURCE,NIFL_LOCATIONS,NIFL_RIVERS,NIFL_LAKES,NIFL_ROUTES,niflGroundY,clampNiflPosition} from './niflheimMapData';
 
 const hash=(x:number,z:number)=>{const n=Math.sin(x*127.1+z*311.7)*43758.5453;return n-Math.floor(n);};
 const CSS=`
@@ -39,7 +39,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     const snowCanvas=document.createElement('canvas');snowCanvas.width=snowCanvas.height=128;
     const ctx=snowCanvas.getContext('2d')!;ctx.fillStyle='#d6e5ed';ctx.fillRect(0,0,128,128);
     for(let i=0;i<1900;i++){ctx.fillStyle=i%3===0?'#c0d4e1':'#edf7fb';ctx.fillRect(hash(i,1)*128,hash(i,2)*128,1+hash(i,3)*3,1);}
-    const snowTex=new THREE.CanvasTexture(snowCanvas);snowTex.colorSpace=THREE.SRGBColorSpace;snowTex.wrapS=snowTex.wrapT=THREE.RepeatWrapping;snowTex.repeat.set(16,20);textures.add(snowTex);
+    const snowTex=new THREE.CanvasTexture(snowCanvas);snowTex.colorSpace=THREE.SRGBColorSpace;snowTex.wrapS=snowTex.wrapT=THREE.RepeatWrapping;snowTex.repeat.set(16*NIFL_SCALE,20*NIFL_SCALE);textures.add(snowTex);
     const snow=new THREE.MeshStandardMaterial({map:snowTex,roughness:1});
     const stone=new THREE.MeshStandardMaterial({color:'#8b9eac',roughness:.95});
     const dark=new THREE.MeshStandardMaterial({color:'#172c3d',roughness:1});
@@ -48,14 +48,15 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     const water=new THREE.MeshStandardMaterial({color:'#367b9e',roughness:.3,metalness:.18});
     const glow=new THREE.MeshBasicMaterial({color:'#8edafb',transparent:true,opacity:.55});
     new THREE.TextureLoader().load(`${BASE}img/models/Stone_Sacred_1.jpg`,texture=>{if(!alive){texture.dispose();return;}texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;textures.add(texture);stone.map=texture;stone.needsUpdate=true;});
-    const groundGeo=new THREE.PlaneGeometry(120,156,48,60);groundGeo.rotateX(-Math.PI/2);
+    const groundGeo=new THREE.PlaneGeometry(120*NIFL_SCALE,156*NIFL_SCALE,72,90);groundGeo.rotateX(-Math.PI/2);
     const p=groundGeo.getAttribute('position');for(let i=0;i<p.count;i++)p.setY(i,niflGroundY(p.getX(i),p.getZ(i)));groundGeo.computeVertexNormals();scene.add(new THREE.Mesh(groundGeo,snow));
     const mesh=(geo:THREE.BufferGeometry,mat:THREE.Material,x:number,y:number,z:number,sx=1,sy=1,sz=1)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.scale.set(sx,sy,sz);scene.add(m);return m;};
     const rockGeo=new THREE.DodecahedronGeometry(1,1);
     const rocks=new THREE.InstancedMesh(rockGeo,stone,180),dummy=new THREE.Object3D();
     for(let i=0;i<180;i++){
-      const side=i%4,t=-72+hash(i,11)*144;
-      const x=side<2?(side===0?-58:58):t*.76,z=side<2?t:(side===2?-75:75);
+      const side=i%4,t=(-72+hash(i,11)*144)*NIFL_SCALE;
+      const x=side<2?(side===0?-58:58)*NIFL_SCALE:t*.76,z=side<2?t:(side===2?-75:75)*NIFL_SCALE;
+      if(side===3&&Math.abs(x)<12){dummy.position.set(x,-30,z);dummy.scale.set(0,0,0);dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix);continue;}
       const r=2+hash(i,12)*4,h=3+hash(i,13)*8;
       dummy.position.set(x,niflGroundY(x,z)+h*.5,z);dummy.scale.set(r,h,r);dummy.rotation.set(.1,hash(i,14)*6.28,0);dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix);
     }
@@ -73,13 +74,13 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     NIFL_RIVERS.forEach((river,index)=>ribbon(river,index===0?4.3:3.2,ice));
     const disc=(x:number,z:number,rx:number,rz:number,mat:THREE.Material)=>{const m=mesh(new THREE.CircleGeometry(1,48),mat,x,niflGroundY(x,z)+.08,z,rx,rz,1);m.rotation.x=-Math.PI/2;return m;};
     NIFL_LAKES.forEach(l=>{disc(l.x,l.z,l.rx,l.rz,ice);for(let i=0;i<7;i++){const a=i/7*6.28;mesh(rockGeo,stone,l.x+Math.cos(a)*(l.rx+1),.6,l.z+Math.sin(a)*(l.rz+1),1,.8,1);}});
-    disc(0,-49,8,7,water);
-    const sourceRing=mesh(new THREE.TorusGeometry(6,.09,5,64),glow,0,niflGroundY(0,-49)+.17,-49);sourceRing.rotation.x=-Math.PI/2;
+    disc(NIFL_SOURCE.x,NIFL_SOURCE.z,NIFL_SOURCE.rx,NIFL_SOURCE.rz,water);
+    const sourceRing=mesh(new THREE.TorusGeometry(6*NIFL_SCALE,.09,5,64),glow,0,niflGroundY(0,NIFL_SOURCE.z)+.17,NIFL_SOURCE.z);sourceRing.rotation.x=-Math.PI/2;
     const poleGeo=new THREE.BoxGeometry(1,1,1);
     const pillar=(x:number,z:number,height:number,mat=stone)=>mesh(poleGeo,mat,x,niflGroundY(x,z)+height/2,z,1.15,height,1.3);
     const cave=(x:number,z:number)=>{mesh(rockGeo,stone,x-3,2,z,2,3,2);mesh(rockGeo,stone,x+3,2,z,2,3,2);mesh(rockGeo,stone,x,5,z,4,1.7,2);const opening=mesh(new THREE.CircleGeometry(2.6,24),dark,x,2.6,z+.25,1,1,1);return opening;};
     const gate=(x:number,z:number)=>{pillar(x-2.7,z,6);pillar(x+2.7,z,6);mesh(poleGeo,stone,x,6,z,6.6,.8,1.5);const portal=mesh(new THREE.PlaneGeometry(4,5),new THREE.MeshBasicMaterial({color:'#24253a',transparent:true,opacity:.85,side:THREE.DoubleSide}),x,3,z);return portal;};
-    const gates=[gate(0,65),gate(-10,16),gate(5,-17),gate(25,-57)];
+    const gates=[gate(0,65*NIFL_SCALE),gate(-10*NIFL_SCALE,16*NIFL_SCALE),gate(5*NIFL_SCALE,-17*NIFL_SCALE),gate(25*NIFL_SCALE,-57*NIFL_SCALE)];
     NIFL_LOCATIONS.forEach((l,index)=>{
       if(l.kind==='cave'||l.kind==='lair')cave(l.x,l.z-3);
       if(l.kind==='hall'||l.kind==='shelter'){
@@ -94,20 +95,20 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     });
     // Large roots frame the source and cave; the walking corridors stay open.
     for(let i=0;i<6;i++){
-      const x=-24+i*9,z=-55-(i%2)*6;
+      const x=(-24+i*9)*NIFL_SCALE,z=(-55-(i%2)*6)*NIFL_SCALE;
       const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(x,0,z),new THREE.Vector3(x+2,5,z-5),new THREE.Vector3(x-4,15,z-10),new THREE.Vector3(x+5,24,z-16)]);
       scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve,18,1.3+(i%2)*.6,7,false),stone));
     }
     // Lightweight snow drifts instead of a full-screen effect.
     const snowPoints=new THREE.BufferGeometry(),snowCoords=new Float32Array(160*3);
-    for(let i=0;i<160;i++){snowCoords[i*3]=hash(i,51)*110-55;snowCoords[i*3+1]=hash(i,52)*18+2;snowCoords[i*3+2]=hash(i,53)*140-70;}
+    for(let i=0;i<160;i++){snowCoords[i*3]=(hash(i,51)*110-55)*NIFL_SCALE;snowCoords[i*3+1]=hash(i,52)*18+2;snowCoords[i*3+2]=(hash(i,53)*140-70)*NIFL_SCALE;}
     snowPoints.setAttribute('position',new THREE.BufferAttribute(snowCoords,3));scene.add(new THREE.Points(snowPoints,new THREE.PointsMaterial({color:'#edf8ff',size:.11,transparent:true,opacity:.7})));
     const hero=new THREE.Group();scene.add(hero);
     let mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,moving=false;
     const disposeObject=(root:THREE.Object3D)=>{root.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}});};
     cachedGlbBuffer(`${BASE}img/models/Vika-3d-animated-optimized.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,gltf=>{
       if(!alive){disposeObject(gltf.scene);textures.forEach(t=>t.dispose());return;}
-      const model=gltf.scene,bounds=new THREE.Box3().setFromObject(model);const height=Math.max(.01,bounds.max.y-bounds.min.y);model.scale.setScalar(3.4/height);model.position.y=-bounds.min.y*(3.4/height);hero.add(model);
+      const model=gltf.scene,bounds=new THREE.Box3().setFromObject(model);const height=Math.max(.01,bounds.max.y-bounds.min.y);model.scale.setScalar(5.5/height);model.position.y=-bounds.min.y*(5.5/height);hero.add(model);
       mixer=new THREE.AnimationMixer(model);const idleClip=gltf.animations.find(c=>/idle/i.test(c.name)),walkClip=gltf.animations.find(c=>/walk|run/i.test(c.name));
       if(idleClip)idle=mixer.clipAction(idleClip);if(walkClip)walk=mixer.clipAction(walkClip);idle?.play();setStatus('');
     },()=>{if(alive)setStatus('Не удалось загрузить Вику. Выйди на Древо и войди снова.');})).catch(()=>{if(alive)setStatus('Не удалось загрузить Вику. Выйди на Древо и войди снова.');});
@@ -116,12 +117,15 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     const down=(event:KeyboardEvent)=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(event.key)){event.preventDefault();input.current.add(event.key);}};
     const up=(event:KeyboardEvent)=>input.current.delete(event.key);
     const clear=()=>input.current.clear();window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',clear);document.addEventListener('visibilitychange',clear);
-    let previous=performance.now(),checkAt=0,currentNear='';camera.position.set(position.current.x,20,position.current.z+23);
+    let previous=performance.now(),checkAt=0,currentNear='',velocityX=0,velocityZ=0;camera.position.set(position.current.x,20,position.current.z+23);
     const frame=(now:number)=>{
       if(!alive)return;const dt=Math.min((now-previous)/1000,.05);previous=now;
       const keys=input.current;let dx=0,dz=0;if(!paused.current&&!document.hidden){dx=(keys.has('ArrowRight')||keys.has('d')?1:0)-(keys.has('ArrowLeft')||keys.has('a')?1:0);dz=(keys.has('ArrowDown')||keys.has('s')?1:0)-(keys.has('ArrowUp')||keys.has('w')?1:0);}
       const length=Math.hypot(dx,dz),isMoving=length>0;
-      if(isMoving){position.current=clampNiflPosition(position.current.x+dx/length*9*dt,position.current.z+dz/length*9*dt);hero.rotation.y=Math.atan2(dx,dz);}
+      const steer=1-Math.exp(-dt*10);
+      velocityX=THREE.MathUtils.lerp(velocityX,isMoving?dx/length:0,steer);velocityZ=THREE.MathUtils.lerp(velocityZ,isMoving?dz/length:0,steer);
+      if(!paused.current&&!document.hidden){position.current=clampNiflPosition(position.current.x+velocityX*12*dt,position.current.z+velocityZ*12*dt);}
+      if(isMoving){const target=Math.atan2(velocityX,velocityZ),difference=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y));hero.rotation.y+=difference*(1-Math.exp(-dt*9));}
       if(isMoving!==moving){moving=isMoving;if(moving&&walk){idle?.fadeOut(.2);walk.reset().fadeIn(.2).play();}else{walk?.fadeOut(.2);idle?.reset().fadeIn(.2).play();}}
       const pos=position.current;hero.position.set(pos.x,niflGroundY(pos.x,pos.z),pos.z);mixer?.update(dt);
       camera.position.lerp(new THREE.Vector3(pos.x,20,pos.z+23),1-Math.exp(-dt*4));camera.lookAt(pos.x,1,pos.z-5);
@@ -133,7 +137,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
   },[]);
   const press=(key:string)=>(event:React.PointerEvent<HTMLButtonElement>)=>{event.preventDefault();event.currentTarget.setPointerCapture(event.pointerId);input.current.add(key);};
   const release=(key:string)=>()=>input.current.delete(key);
-  const mapPoint=(x:number,z:number)=>({x:x+65,y:z+80});
+  const mapPoint=(x:number,z:number)=>({x:x/NIFL_SCALE+65,y:z/NIFL_SCALE+80});
   return <div className="nifl-world"><style>{CSS}</style><div className="nifl-mount" ref={mount}/>
     <div className="nifl-top"><div><h2>Нифльхейм</h2><p>По следу чёрных вод</p></div><button onClick={()=>{input.current.clear();setMapOpen(true);}}>Карта</button></div>
     {status&&<div className="nifl-status">{status}</div>}
@@ -141,10 +145,10 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     {nearest&&<div className="nifl-near"><b>{nearest.name}</b><button onClick={()=>{input.current.clear();setSelected(nearest.id);}}>Осмотреть</button></div>}
     {mapOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Карта Нифльхейма"><button className="nifl-close" onClick={()=>setMapOpen(false)}>Закрыть</button><h3>Карта Нифльхейма</h3><p className="nifl-map-legend">Три реки · два озера · источник Хвергельмир. Нажми на номер или название локации.</p>
       <svg viewBox="0 0 130 160" aria-label="Реки и локации Нифльхейма">
-        {NIFL_ROUTES.map((route,i)=>{const a=NIFL_LOCATIONS.find(l=>l.id===route[0])!,b=NIFL_LOCATIONS.find(l=>l.id===route[1])!;return <line key={i} x1={a.x+65} y1={a.z+80} x2={b.x+65} y2={b.z+80} stroke="#8a9eab" strokeWidth="1" strokeDasharray="2 2"/>;})}
-        {NIFL_RIVERS.map((river,i)=><polyline key={i} points={river.map(p=>`${p.x+65},${p.z+80}`).join(' ')} fill="none" stroke="#78b2cf" strokeWidth={i===0?4:3}/>)}
-        {NIFL_LAKES.map((l,i)=><ellipse key={i} cx={l.x+65} cy={l.z+80} rx={l.rx} ry={l.rz} fill="#9ecbdf"/>)}<ellipse cx="65" cy="31" rx="8" ry="7" fill="#347c9d"/>
-        {NIFL_LOCATIONS.map((l,i)=><g key={l.id} role="button" tabIndex={0} aria-label={l.name} onClick={()=>setSelected(l.id)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelected(l.id);}}} style={{cursor:'pointer'}}><circle cx={l.x+65} cy={l.z+80} r="5.5" fill="#fff" stroke="#526f82" strokeWidth=".6"/><text x={l.x+65} y={l.z+81.5} textAnchor="middle" fontSize="4" fill="#203e52">{i+1}</text></g>)}
+        {NIFL_ROUTES.map((route,i)=>{const a=NIFL_LOCATIONS.find(l=>l.id===route[0])!,b=NIFL_LOCATIONS.find(l=>l.id===route[1])!;return <line key={i} x1={a.x/NIFL_SCALE+65} y1={a.z/NIFL_SCALE+80} x2={b.x/NIFL_SCALE+65} y2={b.z/NIFL_SCALE+80} stroke="#8a9eab" strokeWidth="1" strokeDasharray="2 2"/>;})}
+        {NIFL_RIVERS.map((river,i)=><polyline key={i} points={river.map(p=>`${p.x/NIFL_SCALE+65},${p.z/NIFL_SCALE+80}`).join(' ')} fill="none" stroke="#78b2cf" strokeWidth={i===0?4:3}/>)}
+        {NIFL_LAKES.map((l,i)=><ellipse key={i} cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} rx={l.rx/NIFL_SCALE} ry={l.rz/NIFL_SCALE} fill="#9ecbdf"/>)}<ellipse cx="65" cy="31" rx="8" ry="7" fill="#347c9d"/>
+        {NIFL_LOCATIONS.map((l,i)=><g key={l.id} role="button" tabIndex={0} aria-label={l.name} onClick={()=>setSelected(l.id)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelected(l.id);}}} style={{cursor:'pointer'}}><circle cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} r="5.5" fill="#fff" stroke="#526f82" strokeWidth=".6"/><text x={l.x/NIFL_SCALE+65} y={l.z/NIFL_SCALE+81.5} textAnchor="middle" fontSize="4" fill="#203e52">{i+1}</text></g>)}
         <circle cx={mapPoint(position.current.x,position.current.z).x} cy={mapPoint(position.current.x,position.current.z).y} r="2.5" fill="#d29d30" stroke="#fff" strokeWidth=".8"/>
       </svg><div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><button key={l.id} onClick={()=>setSelected(l.id)}>{i+1}. {l.name}</button>)}</div><p className="nifl-map-legend">Золотая точка — Вика. Русла покрыты льдом: по ним пока можно пройти.</p>
     </section></div>}
