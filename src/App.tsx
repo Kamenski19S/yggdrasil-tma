@@ -17,6 +17,7 @@ import { CSS } from './styles';
 import { MillScene, type MillFind } from './MillScene';
 import {MILL_BONUS_DROPS_MIN,MILL_BONUS_DROPS_RANGE,MILL_POTION_QUANTITY,MILL_RUNE_QUANTITY} from './millRewards';
 import { Midgard3D } from './Midgard3D';
+const Niflheim3D=React.lazy(()=>import('./Niflheim3D'));
 
 
 
@@ -60,6 +61,8 @@ export function App() {
   const [craftPicker,setCraftPicker]=useState<'weapon'|'material'|null>(null);
   const forgeTimer = useRef<number>(0);
   const midgardReturn = useRef({x:0,z:28});
+  const niflheimReturn=useRef({x:0,z:59});
+  const rememberNiflheimPosition=useCallback((position:{x:number;z:number})=>{niflheimReturn.current=position;},[]);
   const [banditRespawnAt,setBanditRespawnAt]=useState<Record<string,number>>({});
   const scheduleBanditRespawn=useCallback((id:string)=>{
     setBanditRespawnAt(prev=>({...prev,[id]:Date.now()+15*60*1000}));
@@ -580,6 +583,8 @@ const [roadT, setRoadT] = useState(0.06);
 
       {screen.t === "realm" && (() => {
   const realm = REALMS.find(r => r.id === screen.id)!;
+
+  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition}/></React.Suspense>;
 
   if (realm.id === "midgard") {
     if (!heroDef) return null;
