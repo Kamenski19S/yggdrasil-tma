@@ -32,18 +32,26 @@ export const clampNiflPosition=(x:number,z:number)=>({x:Math.max(-53*NIFL_SCALE,
 
 export const NIFL_ENTRANCE_Z=65*NIFL_SCALE;
 export const NIFL_ENTRANCE_HALF_WIDTH=4.2;
+// Two short quarter-circle wards link the frame to its adjacent stones.
+export const NIFL_ENTRANCE_ARCS=[-1,1].map(side=>Array.from({length:13},(_,i)=>{
+  const angle=i/12*Math.PI/2;
+  return {x:side*(NIFL_ENTRANCE_HALF_WIDTH+4.9*Math.sin(angle)),z:NIFL_ENTRANCE_Z-4.5+4.5*Math.cos(angle)};
+}));
+const wardDistance=(p:{x:number;z:number},a:{x:number;z:number},b:{x:number;z:number})=>{
+  const dx=b.x-a.x,dz=b.z-a.z,t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.z-a.z)*dz)/(dx*dx+dz*dz)));
+  return Math.hypot(p.x-a.x-t*dx,p.z-a.z-t*dz);
+};
+const inEntranceWard=(p:{x:number;z:number})=>NIFL_ENTRANCE_ARCS.some(arc=>arc.slice(1).some((b,i)=>wardDistance(p,arc[i],b)<.55));
 export const moveThroughNiflEntrance=(from:{x:number;z:number},x:number,z:number)=>{
-  const next=clampNiflPosition(x,z),front=NIFL_ENTRANCE_Z+3,back=NIFL_ENTRANCE_Z-3;
-  const crossingX=(at:number)=>from.x+(next.x-from.x)*(at-from.z)/(next.z-from.z);
-  if(from.z>=front&&next.z<front&&Math.abs(crossingX(front))>NIFL_ENTRANCE_HALF_WIDTH)next.z=front;
-  else if(from.z<=back&&next.z>back&&Math.abs(crossingX(back))>NIFL_ENTRANCE_HALF_WIDTH)next.z=back;
-  if(from.z>back&&from.z<front&&Math.abs(from.x)<=NIFL_ENTRANCE_HALF_WIDTH&&Math.abs(next.x)>NIFL_ENTRANCE_HALF_WIDTH){
-    const edge=Math.sign(next.x)*NIFL_ENTRANCE_HALF_WIDTH,atZ=from.z+(next.z-from.z)*(edge-from.x)/(next.x-from.x);
-    if(atZ>back&&atZ<front)next.x=edge;
+  const target=clampNiflPosition(x,z),steps=Math.max(1,Math.ceil(Math.hypot(target.x-from.x,target.z-from.z)/.18));
+  let current={...from};const dx=(target.x-from.x)/steps,dz=(target.z-from.z)/steps;
+  for(let i=0;i<steps;i++){
+    const next={x:current.x+dx,z:current.z+dz};
+    // Let an old saved position inside a ward escape rather than trapping it.
+    if(!inEntranceWard(next)||inEntranceWard(current)){current=next;continue;}
+    const slideX={x:next.x,z:current.z},slideZ={x:current.x,z:next.z};
+    if(!inEntranceWard(slideX))current=slideX;
+    else if(!inEntranceWard(slideZ))current=slideZ;
   }
-  if(next.z>back&&next.z<front&&Math.abs(next.x)>NIFL_ENTRANCE_HALF_WIDTH){
-    if(from.z>back&&from.z<front&&Math.abs(from.x)<=NIFL_ENTRANCE_HALF_WIDTH)next.x=Math.sign(next.x)*NIFL_ENTRANCE_HALF_WIDTH;
-    else next.z=from.z>=NIFL_ENTRANCE_Z?front:back;
-  }
-  return next;
+  return clampNiflPosition(current.x,current.z);
 };
