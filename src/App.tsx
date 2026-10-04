@@ -61,7 +61,7 @@ export function App() {
   const [craftPicker,setCraftPicker]=useState<'weapon'|'material'|null>(null);
   const forgeTimer = useRef<number>(0);
   const midgardReturn = useRef({x:0,z:28});
-  const niflheimReturn=useRef({x:0,z:118});
+  const niflheimReturn=useRef({x:0,z:138});
   const rememberNiflheimPosition=useCallback((position:{x:number;z:number})=>{niflheimReturn.current=position;},[]);
   const [banditRespawnAt,setBanditRespawnAt]=useState<Record<string,number>>({});
   const scheduleBanditRespawn=useCallback((id:string)=>{

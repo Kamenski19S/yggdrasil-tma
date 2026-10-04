@@ -108,7 +108,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     const snowPoints=new THREE.BufferGeometry(),snowCoords=new Float32Array(160*3);
     for(let i=0;i<160;i++){snowCoords[i*3]=(hash(i,51)*110-55)*NIFL_SCALE;snowCoords[i*3+1]=hash(i,52)*18+2;snowCoords[i*3+2]=(hash(i,53)*140-70)*NIFL_SCALE;}
     snowPoints.setAttribute('position',new THREE.BufferAttribute(snowCoords,3));scene.add(new THREE.Points(snowPoints,new THREE.PointsMaterial({color:'#edf8ff',size:.11,transparent:true,opacity:.7})));
-    const hero=new THREE.Group();scene.add(hero);
+    const hero=new THREE.Group();hero.rotation.y=Math.PI;scene.add(hero);
     let mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,moving=false,currentAction:THREE.AnimationAction|undefined;
     const disposeObject=(root:THREE.Object3D)=>{root.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}});};
     cachedGlbBuffer(`${BASE}img/models/Vika-3d-animated-optimized.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,gltf=>{
@@ -123,8 +123,8 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     const down=(event:KeyboardEvent)=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(event.key)){event.preventDefault();input.current.add(event.key);}};
     const up=(event:KeyboardEvent)=>input.current.delete(event.key);
     const clear=clearInput;window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',clear);document.addEventListener('visibilitychange',clear);
-    let previous=performance.now(),checkAt=0,currentNear='',velocityX=0,velocityZ=0;const cameraDir={x:0,z:1};
-    camera.position.set(position.current.x,9,position.current.z+15);
+    let previous=performance.now(),checkAt=0,currentNear='',velocityX=0,velocityZ=0;const cameraDir={x:0,z:-1};
+    camera.position.set(position.current.x,9,position.current.z+19);
     const frame=(now:number)=>{
       if(!alive)return;const dt=Math.min((now-previous)/1000,.05);previous=now;
       const keys=input.current;let dx=0,dz=0;if(!paused.current&&!document.hidden){dx=(keys.has('ArrowRight')||keys.has('d')?1:0)-(keys.has('ArrowLeft')||keys.has('a')?1:0);dz=(keys.has('ArrowDown')||keys.has('s')?1:0)-(keys.has('ArrowUp')||keys.has('w')?1:0);}
