@@ -85,7 +85,13 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     const pillar=(x:number,z:number,height:number,mat=stone)=>mesh(poleGeo,mat,x,niflGroundY(x,z)+height/2,z,1.15,height,1.3);
     const cave=(x:number,z:number)=>{mesh(rockGeo,stone,x-3,2,z,2,3,2);mesh(rockGeo,stone,x+3,2,z,2,3,2);mesh(rockGeo,stone,x,5,z,4,1.7,2);const opening=mesh(new THREE.CircleGeometry(2.6,24),dark,x,2.6,z+.25,1,1,1);return opening;};
     const gate=(x:number,z:number)=>{pillar(x-2.7,z,6);pillar(x+2.7,z,6);mesh(poleGeo,stone,x,6,z,6.6,.8,1.5);const portal=mesh(new THREE.PlaneGeometry(4,5),new THREE.MeshBasicMaterial({color:'#24253a',transparent:true,opacity:.85,side:THREE.DoubleSide}),x,3,z);return portal;};
-    const gates=[gate(0,65*NIFL_SCALE),gate(-10*NIFL_SCALE,16*NIFL_SCALE),gate(5*NIFL_SCALE,-17*NIFL_SCALE),gate(25*NIFL_SCALE,-57*NIFL_SCALE)];
+    const gates=[gate(-10*NIFL_SCALE,16*NIFL_SCALE),gate(5*NIFL_SCALE,-17*NIFL_SCALE),gate(25*NIFL_SCALE,-57*NIFL_SCALE)];
+    const entrancePlaceholder=new THREE.Group();
+    const entranceGate=gate(0,65*NIFL_SCALE);
+    // Keep the lightweight entrance only until the downloaded model is ready.
+    for(const part of scene.children.slice(-4))entrancePlaceholder.add(part);
+    scene.add(entrancePlaceholder);
+    gates.push(entranceGate);
     NIFL_LOCATIONS.forEach((l,index)=>{
       if(l.kind==='cave'||l.kind==='lair')cave(l.x,l.z-3);
       if(l.kind==='hall'||l.kind==='shelter'){
@@ -118,6 +124,20 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       const idleClip=findClip('idle','sword_idle')||gltf.animations[0],walkClip=findClip('walk_loop','walk')||idleClip;
       if(idleClip)idle=mixer.clipAction(idleClip);if(walkClip)walk=mixer.clipAction(walkClip);idle?.play();currentAction=idle;setStatus('');
     },()=>{if(alive)setStatus('Не удалось загрузить Вику. Выйди на Древо и войди снова.');})).catch(()=>{if(alive)setStatus('Не удалось загрузить Вику. Выйди на Древо и войди снова.');});
+    // Stone Portal by hirairmak, CC BY 4.0. The original GLB stays unchanged.
+    cachedGlbBuffer(`${BASE}img/models/stone_portal.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,gltf=>{
+      if(!alive){disposeObject(gltf.scene);textures.forEach(t=>t.dispose());return;}
+      const model=gltf.scene;
+      const bounds=new THREE.Box3().setFromObject(model),size=bounds.getSize(new THREE.Vector3());
+      model.scale.setScalar(20/Math.max(.01,size.y));model.updateMatrixWorld(true);
+      // Use the circular stone base as the anchor rather than the long approach slab.
+      const base=model.getObjectByName('Cylinder001')||model.getObjectByName('Cylinder.001');
+      const baseBounds=new THREE.Box3().setFromObject(base||model);
+      const center=baseBounds.getCenter(new THREE.Vector3());
+      model.position.set(-center.x,niflGroundY(0,65*NIFL_SCALE)-baseBounds.max.y+.04,65*NIFL_SCALE-center.z);
+      scene.add(model);
+      entrancePlaceholder.visible=false;
+    },()=>{})).catch(()=>{});
     const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();};
     const observer=new ResizeObserver(resize);observer.observe(host);resize();
     const down=(event:KeyboardEvent)=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(event.key)){event.preventDefault();input.current.add(event.key);}};
@@ -170,7 +190,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
         {NIFL_LAKES.map((l,i)=><ellipse key={i} cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} rx={l.rx/NIFL_SCALE} ry={l.rz/NIFL_SCALE} fill="#9ecbdf"/>)}<ellipse cx="65" cy="31" rx="8" ry="7" fill="#347c9d"/>
         {NIFL_LOCATIONS.map((l,i)=><g key={l.id} role="button" tabIndex={0} aria-label={l.name} onClick={()=>setSelected(l.id)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelected(l.id);}}} style={{cursor:'pointer'}}><circle cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} r="5.5" fill="#fff" stroke="#526f82" strokeWidth=".6"/><text x={l.x/NIFL_SCALE+65} y={l.z/NIFL_SCALE+81.5} textAnchor="middle" fontSize="4" fill="#203e52">{i+1}</text></g>)}
         <circle cx={mapPoint(position.current.x,position.current.z).x} cy={mapPoint(position.current.x,position.current.z).y} r="2.5" fill="#d29d30" stroke="#fff" strokeWidth=".8"/>
-      </svg><div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><button key={l.id} onClick={()=>setSelected(l.id)}>{i+1}. {l.name}</button>)}</div><p className="nifl-map-legend">Золотая точка — Вика. Русла покрыты льдом: по ним пока можно пройти.</p>
+      </svg><div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><button key={l.id} onClick={()=>setSelected(l.id)}>{i+1}. {l.name}</button>)}</div><p className="nifl-map-legend">Золотая точка — Вика. Русла покрыты льдом: по ним пока можно пройти.</p><p className="nifl-map-legend">Входные врата: <a href="https://sketchfab.com/3d-models/stone-portal-bfaf2e45dd7242579f5a37b810eca423" target="_blank" rel="noopener noreferrer">Stone Portal — hirairmak</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения в игре: масштаб и размещение основания в снегу.</p>
     </section></div>}
     {info&&<div className="nifl-overlay" style={{zIndex:11}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label={info.name}><h3>{info.name}</h3><p>{info.text}</p><button onClick={()=>setSelected('')}>Продолжить путь</button></section></div>}
   </div>;
