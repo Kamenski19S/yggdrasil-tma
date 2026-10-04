@@ -192,10 +192,10 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
           const pieces:THREE.Mesh[]=[];snowAsset.scene.traverse((o:any)=>{if(o.isMesh)pieces.push(o);});
           for(let i=0;i<selected.length&&pieces.length;i++){
             const source=pieces[i%pieces.length],face=selected[i],size=new THREE.Box3().setFromObject(source).getSize(new THREE.Vector3());
-            const piece=new THREE.Mesh(source.geometry,source.material),width=Math.min(.95,Math.sqrt(face.area)*.85);
-            piece.scale.set(width,.16/Math.max(size.y,.01),width);
+            const piece=new THREE.Mesh(source.geometry,source.material),width=Math.min(2.8,Math.max(1.9,Math.sqrt(face.area)*2.5));
+            piece.scale.set(width,(.5+(i%3)*.08)/Math.max(size.y,.01),width);
             piece.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),face.normal);
-            piece.rotateY(i*2.4);piece.position.copy(face.point).addScaledVector(face.normal,-.045);
+            piece.rotateY(i*2.4);piece.position.copy(face.point).addScaledVector(face.normal,-.10);
             scene.add(piece);
           }
           snowAsset.scene.traverse((o:any)=>{if(o.isMesh)for(const material of (Array.isArray(o.material)?o.material:[o.material]))for(const value of Object.values(material))if(value instanceof THREE.Texture)textures.add(value);});
