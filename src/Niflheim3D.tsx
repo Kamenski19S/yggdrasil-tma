@@ -7,7 +7,8 @@ import {NIFL_SCALE,NIFL_SOURCE,NIFL_LOCATIONS,NIFL_RIVERS,NIFL_LAKES,NIFL_ROUTES
 const hash=(x:number,z:number)=>{const n=Math.sin(x*127.1+z*311.7)*43758.5453;return n-Math.floor(n);};
 const CSS=`
 .nifl-world{position:relative;flex:1;min-height:0;overflow:hidden;background:#9ab3c4;touch-action:none}.nifl-mount{position:absolute;inset:0}.nifl-mount canvas{display:block;width:100%;height:100%}.nifl-top{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;pointer-events:none}.nifl-top h2{margin:0;color:#eaf7ff;font-size:20px;text-shadow:0 2px 4px #143449}.nifl-top p{margin:4px 0;color:#eaf7ff;font-size:11px;text-shadow:0 1px 3px #143449}.nifl-top button{pointer-events:auto;background:#f9fcff;color:#253847;border:2px solid #b7c9d2;border-radius:10px;padding:10px;font:inherit;font-size:13px}.nifl-status{position:absolute;top:70px;left:50%;transform:translateX(-50%);padding:7px 12px;border-radius:9px;background:#fff;color:#253847;font-size:12px;text-align:center;max-width:85%}
-.nifl-pad{position:absolute;bottom:24px;left:18px;display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);gap:3px}.nifl-pad button{background:linear-gradient(#eff7fb,#b1cbd9);border:2px solid #dbe9ef;border-radius:13px;color:#244d63;font-size:24px;touch-action:none;user-select:none}.nifl-pad button:active{background:#8cbbd0}.nifl-pad .up{grid-column:2}.nifl-pad .left{grid-column:1;grid-row:2}.nifl-pad .right{grid-column:3;grid-row:2}.nifl-pad .down{grid-column:2;grid-row:3}
+.nifl-joystick{position:absolute;bottom:24px;left:18px;width:124px;height:124px;border:0;padding:0;background:transparent;touch-action:none;user-select:none}.nifl-joystick img{width:100%;height:100%;pointer-events:none}.nifl-stick{position:absolute;width:32px;height:32px;left:46px;top:46px;border-radius:50%;background:#efd58566;border:2px solid #fff7c866;pointer-events:none}
+
 .nifl-near{position:absolute;bottom:24px;right:14px;width:min(44%,210px);background:#fffffff2;color:#23313b;border:2px solid #b5c7d1;border-radius:13px;padding:10px}.nifl-near b{font-size:13px;display:block;line-height:1.4}.nifl-near button{width:100%;padding:9px 4px;margin-top:7px;border:1px solid #acbec9;border-radius:8px;background:#edf3f6;color:#23313b;font:inherit;font-size:12px}
 .nifl-overlay{position:absolute;inset:0;z-index:10;background:#142b3acc;display:flex;align-items:center;justify-content:center;padding:12px;touch-action:auto}.nifl-panel{background:#fff;color:#22323d;border:2px solid #bac8d0;border-radius:16px;padding:16px;width:100%;max-width:620px;max-height:94%;overflow:auto}.nifl-panel h3{margin:0 0 8px;font-size:20px}.nifl-panel p{font-size:14px;line-height:1.6}.nifl-panel button{background:#eef3f6;color:#22323d;border:1px solid #b3c4ce;border-radius:9px;padding:10px;font:inherit;font-size:13px}.nifl-close{float:right}.nifl-panel svg{display:block;width:100%;height:42vh;min-height:240px;background:#e7eff4;border-radius:12px;margin-top:12px}.nifl-map-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:12px 0}.nifl-map-list button{text-align:left;font-size:12px}.nifl-map-legend{font-size:12px!important;color:#536875}
 `;
@@ -17,6 +18,10 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
   const position=useRef(clampNiflPosition(initialPosition.x,initialPosition.z));
   const remember=useRef(onRemember);remember.current=onRemember;
   const input=useRef(new Set<string>());
+  const analog=useRef({x:0,z:0});
+  const stick=useRef<HTMLSpanElement>(null);
+  const pointerId=useRef<number|null>(null);
+  const clearInput=()=>{input.current.clear();analog.current={x:0,z:0};pointerId.current=null;if(stick.current)stick.current.style.transform="translate(0px,0px)";};
   const [near,setNear]=useState('threshold');
   const [mapOpen,setMapOpen]=useState(false);
   const [selected,setSelected]=useState('');
@@ -32,7 +37,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));renderer.outputColorSpace=THREE.SRGBColorSpace;
     host.appendChild(renderer.domElement);
     const scene=new THREE.Scene();scene.background=new THREE.Color('#a9c1d1');scene.fog=new THREE.Fog('#a9c1d1',35,125);
-    const camera=new THREE.PerspectiveCamera(48,1,.1,210);
+    const camera=new THREE.PerspectiveCamera(54,1,.1,280);
     scene.add(new THREE.HemisphereLight('#e8f7ff','#536d80',2.1));
     const sun=new THREE.DirectionalLight('#ecf5ff',2);sun.position.set(-22,45,8);scene.add(sun);
     const textures=new Set<THREE.Texture>();
@@ -104,45 +109,60 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     for(let i=0;i<160;i++){snowCoords[i*3]=(hash(i,51)*110-55)*NIFL_SCALE;snowCoords[i*3+1]=hash(i,52)*18+2;snowCoords[i*3+2]=(hash(i,53)*140-70)*NIFL_SCALE;}
     snowPoints.setAttribute('position',new THREE.BufferAttribute(snowCoords,3));scene.add(new THREE.Points(snowPoints,new THREE.PointsMaterial({color:'#edf8ff',size:.11,transparent:true,opacity:.7})));
     const hero=new THREE.Group();scene.add(hero);
-    let mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,moving=false;
+    let mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,moving=false,currentAction:THREE.AnimationAction|undefined;
     const disposeObject=(root:THREE.Object3D)=>{root.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}});};
     cachedGlbBuffer(`${BASE}img/models/Vika-3d-animated-optimized.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,gltf=>{
       if(!alive){disposeObject(gltf.scene);textures.forEach(t=>t.dispose());return;}
       const model=gltf.scene,bounds=new THREE.Box3().setFromObject(model);const height=Math.max(.01,bounds.max.y-bounds.min.y);model.scale.setScalar(5.5/height);model.position.y=-bounds.min.y*(5.5/height);hero.add(model);
-      mixer=new THREE.AnimationMixer(model);const idleClip=gltf.animations.find(c=>/idle/i.test(c.name)),walkClip=gltf.animations.find(c=>/walk|run/i.test(c.name));
-      if(idleClip)idle=mixer.clipAction(idleClip);if(walkClip)walk=mixer.clipAction(walkClip);idle?.play();setStatus('');
+      mixer=new THREE.AnimationMixer(model);const findClip=(...names:string[])=>names.map(name=>THREE.AnimationClip.findByName(gltf.animations,name)).find(Boolean);
+      const idleClip=findClip('idle','sword_idle')||gltf.animations[0],walkClip=findClip('walk_loop','walk')||idleClip;
+      if(idleClip)idle=mixer.clipAction(idleClip);if(walkClip)walk=mixer.clipAction(walkClip);idle?.play();currentAction=idle;setStatus('');
     },()=>{if(alive)setStatus('Не удалось загрузить Вику. Выйди на Древо и войди снова.');})).catch(()=>{if(alive)setStatus('Не удалось загрузить Вику. Выйди на Древо и войди снова.');});
     const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();};
     const observer=new ResizeObserver(resize);observer.observe(host);resize();
     const down=(event:KeyboardEvent)=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(event.key)){event.preventDefault();input.current.add(event.key);}};
     const up=(event:KeyboardEvent)=>input.current.delete(event.key);
-    const clear=()=>input.current.clear();window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',clear);document.addEventListener('visibilitychange',clear);
-    let previous=performance.now(),checkAt=0,currentNear='',velocityX=0,velocityZ=0;camera.position.set(position.current.x,20,position.current.z+23);
+    const clear=clearInput;window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',clear);document.addEventListener('visibilitychange',clear);
+    let previous=performance.now(),checkAt=0,currentNear='',velocityX=0,velocityZ=0;const cameraDir={x:0,z:1};
+    camera.position.set(position.current.x,10,position.current.z+17);
     const frame=(now:number)=>{
       if(!alive)return;const dt=Math.min((now-previous)/1000,.05);previous=now;
       const keys=input.current;let dx=0,dz=0;if(!paused.current&&!document.hidden){dx=(keys.has('ArrowRight')||keys.has('d')?1:0)-(keys.has('ArrowLeft')||keys.has('a')?1:0);dz=(keys.has('ArrowDown')||keys.has('s')?1:0)-(keys.has('ArrowUp')||keys.has('w')?1:0);}
-      const length=Math.hypot(dx,dz),isMoving=length>0;
-      const steer=1-Math.exp(-dt*10);
+      if(!paused.current&&!document.hidden&&Math.hypot(analog.current.x,analog.current.z)>.05){dx=analog.current.x;dz=analog.current.z;}
+      const length=Math.hypot(dx,dz),isMoving=length>.05;
+      const steer=1-Math.exp(-dt*14);
       velocityX=THREE.MathUtils.lerp(velocityX,isMoving?dx/length:0,steer);velocityZ=THREE.MathUtils.lerp(velocityZ,isMoving?dz/length:0,steer);
-      if(!paused.current&&!document.hidden){position.current=clampNiflPosition(position.current.x+velocityX*12*dt,position.current.z+velocityZ*12*dt);}
-      if(isMoving){const target=Math.atan2(velocityX,velocityZ),difference=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y));hero.rotation.y+=difference*(1-Math.exp(-dt*9));}
-      if(isMoving!==moving){moving=isMoving;if(moving&&walk){idle?.fadeOut(.2);walk.reset().fadeIn(.2).play();}else{walk?.fadeOut(.2);idle?.reset().fadeIn(.2).play();}}
+      if(!paused.current&&!document.hidden){position.current=clampNiflPosition(position.current.x+velocityX*8.5*dt,position.current.z+velocityZ*8.5*dt);}
+      if(isMoving){const target=Math.atan2(velocityX,velocityZ),difference=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y));hero.rotation.y+=difference*(1-Math.exp(-dt*14));cameraDir.x=Math.sin(hero.rotation.y);cameraDir.z=Math.cos(hero.rotation.y);}
+      const walking=!paused.current&&!document.hidden&&Math.hypot(velocityX,velocityZ)>.08;
+      moving=walking;
+      const next=moving?walk:idle;
+      if(next&&next!==currentAction){currentAction?.fadeOut(.16);next.reset();next.enabled=true;next.setEffectiveWeight(1);next.setEffectiveTimeScale(1);next.fadeIn(.16).play();currentAction=next;}
       const pos=position.current;hero.position.set(pos.x,niflGroundY(pos.x,pos.z),pos.z);mixer?.update(dt);
-      camera.position.lerp(new THREE.Vector3(pos.x,20,pos.z+23),1-Math.exp(-dt*4));camera.lookAt(pos.x,1,pos.z-5);
+      const hy=niflGroundY(pos.x,pos.z);
+      camera.position.lerp(new THREE.Vector3(pos.x-cameraDir.x*2,hy+10,pos.z-cameraDir.z*2+17),1-Math.exp(-dt*3.4));camera.lookAt(pos.x+cameraDir.x*1.9,hy+1.9,pos.z+cameraDir.z*1.9);
       sourceRing.rotation.z+=dt*.12;gates.forEach(g=>{(g.material as THREE.MeshBasicMaterial).opacity=.78+Math.sin(now*.001)*.06;});
       if(now-checkAt>180){checkAt=now;const l=NIFL_LOCATIONS.reduce((a,b)=>Math.hypot(pos.x-a.x,pos.z-a.z)<Math.hypot(pos.x-b.x,pos.z-b.z)?a:b);const id=Math.hypot(pos.x-l.x,pos.z-l.z)<9?l.id:'';if(id!==currentNear){currentNear=id;setNear(id);}}
       renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
     return()=>{alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();};
   },[]);
-  const press=(key:string)=>(event:React.PointerEvent<HTMLButtonElement>)=>{event.preventDefault();event.currentTarget.setPointerCapture(event.pointerId);input.current.add(key);};
-  const release=(key:string)=>()=>input.current.delete(key);
+  const steerStick=(event:React.PointerEvent<HTMLButtonElement>)=>{
+    if(pointerId.current!==event.pointerId)return;
+    const rect=event.currentTarget.getBoundingClientRect(),radius=rect.width*.36;
+    let x=(event.clientX-rect.left-rect.width/2)/radius,z=(event.clientY-rect.top-rect.height/2)/radius;
+    const length=Math.hypot(x,z);if(length>1){x/=length;z/=length;}
+    analog.current=length>.12?{x,z}:{x:0,z:0};
+    if(stick.current)stick.current.style.transform=`translate(${x*radius}px,${z*radius}px)`;
+  };
+  const startStick=(event:React.PointerEvent<HTMLButtonElement>)=>{event.preventDefault();pointerId.current=event.pointerId;event.currentTarget.setPointerCapture(event.pointerId);steerStick(event);};
+  const stopStick=(event:React.PointerEvent<HTMLButtonElement>)=>{if(pointerId.current===event.pointerId)clearInput();};
   const mapPoint=(x:number,z:number)=>({x:x/NIFL_SCALE+65,y:z/NIFL_SCALE+80});
   return <div className="nifl-world"><style>{CSS}</style><div className="nifl-mount" ref={mount}/>
-    <div className="nifl-top"><div><h2>Нифльхейм</h2><p>По следу чёрных вод</p></div><button onClick={()=>{input.current.clear();setMapOpen(true);}}>Карта</button></div>
+    <div className="nifl-top"><div><h2>Нифльхейм</h2><p>По следу чёрных вод</p></div><button onClick={()=>{clearInput();setMapOpen(true);}}>Карта</button></div>
     {status&&<div className="nifl-status">{status}</div>}
-    <div className="nifl-pad" aria-label="Управление Викой">{[['up','ArrowUp','↑','Вперёд'],['left','ArrowLeft','←','Влево'],['right','ArrowRight','→','Вправо'],['down','ArrowDown','↓','Назад']].map(([cls,key,text,label])=><button key={key} className={cls} aria-label={label} onPointerDown={press(key)} onPointerUp={release(key)} onPointerCancel={release(key)} onLostPointerCapture={release(key)}>{text}</button>)}</div>
-    {nearest&&<div className="nifl-near"><b>{nearest.name}</b><button onClick={()=>{input.current.clear();setSelected(nearest.id);}}>Осмотреть</button></div>}
+    <button className="nifl-joystick" aria-label="Управление Викой: тяни в нужном направлении" onPointerDown={startStick} onPointerMove={steerStick} onPointerUp={stopStick} onPointerCancel={stopStick} onLostPointerCapture={stopStick}><img src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/><span className="nifl-stick" ref={stick}/></button>
+    {nearest&&<div className="nifl-near"><b>{nearest.name}</b><button onClick={()=>{clearInput();setSelected(nearest.id);}}>Осмотреть</button></div>}
     {mapOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Карта Нифльхейма"><button className="nifl-close" onClick={()=>setMapOpen(false)}>Закрыть</button><h3>Карта Нифльхейма</h3><p className="nifl-map-legend">Три реки · два озера · источник Хвергельмир. Нажми на номер или название локации.</p>
       <svg viewBox="0 0 130 160" aria-label="Реки и локации Нифльхейма">
         {NIFL_ROUTES.map((route,i)=>{const a=NIFL_LOCATIONS.find(l=>l.id===route[0])!,b=NIFL_LOCATIONS.find(l=>l.id===route[1])!;return <line key={i} x1={a.x/NIFL_SCALE+65} y1={a.z/NIFL_SCALE+80} x2={b.x/NIFL_SCALE+65} y2={b.z/NIFL_SCALE+80} stroke="#8a9eab" strokeWidth="1" strokeDasharray="2 2"/>;})}
