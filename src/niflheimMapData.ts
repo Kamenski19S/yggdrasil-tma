@@ -29,3 +29,21 @@ export const niflGroundY=(x:number,z:number)=>{
   return height*Math.max(0,Math.min(1,(edge-1)/.35));
 };
 export const clampNiflPosition=(x:number,z:number)=>({x:Math.max(-53*NIFL_SCALE,Math.min(53*NIFL_SCALE,x)),z:Math.max(-70*NIFL_SCALE,Math.min(70*NIFL_SCALE,z))});
+
+export const NIFL_ENTRANCE_Z=65*NIFL_SCALE;
+export const NIFL_ENTRANCE_HALF_WIDTH=4.2;
+export const moveThroughNiflEntrance=(from:{x:number;z:number},x:number,z:number)=>{
+  const next=clampNiflPosition(x,z),front=NIFL_ENTRANCE_Z+3,back=NIFL_ENTRANCE_Z-3;
+  const crossingX=(at:number)=>from.x+(next.x-from.x)*(at-from.z)/(next.z-from.z);
+  if(from.z>=front&&next.z<front&&Math.abs(crossingX(front))>NIFL_ENTRANCE_HALF_WIDTH)next.z=front;
+  else if(from.z<=back&&next.z>back&&Math.abs(crossingX(back))>NIFL_ENTRANCE_HALF_WIDTH)next.z=back;
+  if(from.z>back&&from.z<front&&Math.abs(from.x)<=NIFL_ENTRANCE_HALF_WIDTH&&Math.abs(next.x)>NIFL_ENTRANCE_HALF_WIDTH){
+    const edge=Math.sign(next.x)*NIFL_ENTRANCE_HALF_WIDTH,atZ=from.z+(next.z-from.z)*(edge-from.x)/(next.x-from.x);
+    if(atZ>back&&atZ<front)next.x=edge;
+  }
+  if(next.z>back&&next.z<front&&Math.abs(next.x)>NIFL_ENTRANCE_HALF_WIDTH){
+    if(from.z>back&&from.z<front&&Math.abs(from.x)<=NIFL_ENTRANCE_HALF_WIDTH)next.x=Math.sign(next.x)*NIFL_ENTRANCE_HALF_WIDTH;
+    else next.z=from.z>=NIFL_ENTRANCE_Z?front:back;
+  }
+  return next;
+};

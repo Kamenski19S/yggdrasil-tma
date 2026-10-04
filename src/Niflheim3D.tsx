@@ -2,7 +2,7 @@ import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {BASE,cachedGlbBuffer} from './core';
-import {NIFL_SCALE,NIFL_SOURCE,NIFL_LOCATIONS,NIFL_RIVERS,NIFL_LAKES,NIFL_ROUTES,niflGroundY,clampNiflPosition} from './niflheimMapData';
+import {NIFL_SCALE,NIFL_SOURCE,NIFL_LOCATIONS,NIFL_RIVERS,NIFL_LAKES,NIFL_ROUTES,niflGroundY,clampNiflPosition,moveThroughNiflEntrance} from './niflheimMapData';
 
 const hash=(x:number,z:number)=>{const n=Math.sin(x*127.1+z*311.7)*43758.5453;return n-Math.floor(n);};
 const CSS=`
@@ -41,6 +41,8 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     scene.add(new THREE.HemisphereLight('#e8f7ff','#536d80',2.1));
     const sun=new THREE.DirectionalLight('#ecf5ff',2);sun.position.set(-22,45,8);scene.add(sun);
     const textures=new Set<THREE.Texture>();
+    const crystalMaterials:THREE.MeshStandardMaterial[]=[];
+    const crystalHalos:THREE.Sprite[]=[];
     const snowCanvas=document.createElement('canvas');snowCanvas.width=snowCanvas.height=128;
     const ctx=snowCanvas.getContext('2d')!;ctx.fillStyle='#d6e5ed';ctx.fillRect(0,0,128,128);
     for(let i=0;i<1900;i++){ctx.fillStyle=i%3===0?'#c0d4e1':'#edf7fb';ctx.fillRect(hash(i,1)*128,hash(i,2)*128,1+hash(i,3)*3,1);}
@@ -66,6 +68,15 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       dummy.position.set(x,niflGroundY(x,z)+h*.5,z);dummy.scale.set(r,h,r);dummy.rotation.set(.1,hash(i,14)*6.28,0);dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix);
     }
     rocks.instanceMatrix.needsUpdate=true;rocks.computeBoundingSphere();scene.add(rocks);
+    // Side barriers meet the gate frame and extend to both map boundaries.
+    const entranceWalls=new THREE.InstancedMesh(rockGeo,stone,70);
+    const entranceSnow=new THREE.InstancedMesh(rockGeo,snow,70);
+    for(let i=0;i<70;i++){
+      const side=i<35?-1:1,j=i%35,x=side*(8+j*2.8),z=65*NIFL_SCALE;
+      dummy.rotation.set(0,hash(i,89)*.2,0);dummy.position.set(x,3.7,z);dummy.scale.set(1.8,4.4,2.6);dummy.updateMatrix();entranceWalls.setMatrixAt(i,dummy.matrix);
+      dummy.position.y=7.5;dummy.scale.set(1.8,.45,2.6);dummy.updateMatrix();entranceSnow.setMatrixAt(i,dummy.matrix);
+    }
+    entranceWalls.instanceMatrix.needsUpdate=true;entranceSnow.instanceMatrix.needsUpdate=true;entranceWalls.computeBoundingSphere();entranceSnow.computeBoundingSphere();scene.add(entranceWalls,entranceSnow);
     const ribbon=(points:{x:number;z:number}[],width:number,mat:THREE.Material)=>{
       const verts:number[]=[],uv:number[]=[];
       for(let i=0;i<points.length-1;i++){
@@ -135,7 +146,55 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       const baseBounds=new THREE.Box3().setFromObject(base||model);
       const center=baseBounds.getCenter(new THREE.Vector3());
       model.position.set(-center.x,niflGroundY(0,65*NIFL_SCALE)-baseBounds.max.y+.04,65*NIFL_SCALE-center.z);
-      scene.add(model);
+      scene.add(model);model.updateMatrixWorld(true);
+      const haloCanvas=document.createElement('canvas');haloCanvas.width=haloCanvas.height=64;
+      const haloContext=haloCanvas.getContext('2d')!,gradient=haloContext.createRadialGradient(32,32,1,32,32,32);
+      gradient.addColorStop(0,'rgba(195,255,250,.8)');gradient.addColorStop(.22,'rgba(92,255,236,.45)');gradient.addColorStop(1,'rgba(50,205,235,0)');
+      haloContext.fillStyle=gradient;haloContext.fillRect(0,0,64,64);
+      const haloTexture=new THREE.CanvasTexture(haloCanvas);textures.add(haloTexture);
+      const haloMaterial=new THREE.SpriteMaterial({map:haloTexture,color:'#91fff3',transparent:true,opacity:.5,depthWrite:false,blending:THREE.AdditiveBlending});
+      model.traverse((object:any)=>{
+        if(!object.isMesh)return;
+        const tune=(material:THREE.Material)=>{
+          if(material.name!=='Diamond'||!(material instanceof THREE.MeshStandardMaterial))return material;
+          const bright=material.clone();bright.emissive.set('#5dffe4');bright.emissiveIntensity=1.35;bright.emissiveMap=bright.map;bright.roughness=.22;bright.toneMapped=false;crystalMaterials.push(bright);return bright;
+        };
+        object.material=Array.isArray(object.material)?object.material.map(tune):tune(object.material);
+        if(['Cylinder005','Cylinder011'].includes(object.parent?.name)){
+          const center=new THREE.Box3().setFromObject(object).getCenter(new THREE.Vector3());
+          const halo=new THREE.Sprite(haloMaterial);halo.position.copy(center);halo.scale.set(4.2,6,1);scene.add(halo);crystalHalos.push(halo);
+        }
+      });
+      // Thin caps follow upward-facing stone triangles, including the curved top.
+      // This avoids placing a second solid oval across the original frame's gaps.
+      const frame=model.getObjectByName('Cylinder002');
+      const surfaces:{point:THREE.Vector3;normal:THREE.Vector3;area:number}[]=[];
+      frame?.traverse((object:any)=>{
+        if(!object.isMesh||object.material.name!=='floor')return;
+        const geometry=object.geometry as THREE.BufferGeometry,points=geometry.getAttribute('position'),indices=geometry.getIndex();
+        const count=indices?indices.count:points.count;
+        for(let i=0;i<count;i+=3){
+          const a=new THREE.Vector3().fromBufferAttribute(points,indices?indices.getX(i):i).applyMatrix4(object.matrixWorld);
+          const b=new THREE.Vector3().fromBufferAttribute(points,indices?indices.getX(i+1):i+1).applyMatrix4(object.matrixWorld);
+          const c=new THREE.Vector3().fromBufferAttribute(points,indices?indices.getX(i+2):i+2).applyMatrix4(object.matrixWorld);
+          const cross=new THREE.Vector3().crossVectors(b.clone().sub(a),c.clone().sub(a)),area=cross.length()/2,normal=cross.normalize();
+          if(normal.y>.35&&area>.025&&a.y>.1)surfaces.push({point:a.add(b).add(c).multiplyScalar(1/3),normal,area});
+        }
+      });
+      if(surfaces.length){
+        const count=Math.min(28,surfaces.length),capGeometry=new THREE.DodecahedronGeometry(1,0);
+        const snowCaps=new THREE.InstancedMesh(capGeometry,snow,count);
+        const frozen=new THREE.MeshStandardMaterial({color:'#bceafb',roughness:.28,metalness:.12});
+        const iceCaps=new THREE.InstancedMesh(capGeometry,frozen,count),cap=new THREE.Object3D();
+        surfaces.sort((a,b)=>b.area-a.area);
+        for(let i=0;i<count;i++){
+          const face=surfaces[i],width=Math.min(.68,Math.sqrt(face.area)*.6);
+          cap.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),face.normal);
+          cap.position.copy(face.point).addScaledVector(face.normal,.025);cap.scale.set(width,.06,width*.8);cap.updateMatrix();iceCaps.setMatrixAt(i,cap.matrix);
+          cap.position.addScaledVector(face.normal,.06);cap.scale.set(width*.85,.10,width*.65);cap.updateMatrix();snowCaps.setMatrixAt(i,cap.matrix);
+        }
+        snowCaps.instanceMatrix.needsUpdate=true;iceCaps.instanceMatrix.needsUpdate=true;snowCaps.computeBoundingSphere();iceCaps.computeBoundingSphere();scene.add(iceCaps,snowCaps);
+      }
       entrancePlaceholder.visible=false;
     },()=>{})).catch(()=>{});
     const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();};
@@ -152,7 +211,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       const length=Math.hypot(dx,dz),isMoving=length>.05;
       const steer=1-Math.exp(-dt*14);
       velocityX=THREE.MathUtils.lerp(velocityX,isMoving?dx/length:0,steer);velocityZ=THREE.MathUtils.lerp(velocityZ,isMoving?dz/length:0,steer);
-      if(!paused.current&&!document.hidden){position.current=clampNiflPosition(position.current.x+velocityX*8.5*dt,position.current.z+velocityZ*8.5*dt);}
+      if(!paused.current&&!document.hidden){position.current=moveThroughNiflEntrance(position.current,position.current.x+velocityX*8.5*dt,position.current.z+velocityZ*8.5*dt);}
       if(isMoving){const target=Math.atan2(velocityX,velocityZ),difference=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y));hero.rotation.y+=difference*(1-Math.exp(-dt*14));cameraDir.x=Math.sin(hero.rotation.y);cameraDir.z=Math.cos(hero.rotation.y);}
       const walking=!paused.current&&!document.hidden&&Math.hypot(velocityX,velocityZ)>.08;
       moving=walking;
@@ -161,11 +220,12 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       const pos=position.current;hero.position.set(pos.x,niflGroundY(pos.x,pos.z),pos.z);mixer?.update(dt);
       const hy=niflGroundY(pos.x,pos.z);
       camera.position.lerp(new THREE.Vector3(pos.x-cameraDir.x*2,hy+9,pos.z-cameraDir.z*2+17),1-Math.exp(-dt*3.4));camera.lookAt(pos.x+cameraDir.x*1.9,hy+3,pos.z-10+cameraDir.z*1.9);
+      crystalMaterials.forEach(m=>{m.emissiveIntensity=1.35+Math.sin(now*.0017)*.12;});crystalHalos.forEach(h=>{(h.material as THREE.SpriteMaterial).opacity=.48+Math.sin(now*.0017)*.05;});
       sourceRing.rotation.z+=dt*.12;gates.forEach(g=>{(g.material as THREE.MeshBasicMaterial).opacity=.78+Math.sin(now*.001)*.06;});
       if(now-checkAt>180){checkAt=now;const l=NIFL_LOCATIONS.reduce((a,b)=>Math.hypot(pos.x-a.x,pos.z-a.z)<Math.hypot(pos.x-b.x,pos.z-b.z)?a:b);const id=Math.hypot(pos.x-l.x,pos.z-l.z)<9?l.id:'';if(id!==currentNear){currentNear=id;setNear(id);}}
       renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
-    return()=>{alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();};
+    return()=>{alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();};
   },[]);
   const steerStick=(event:React.PointerEvent<HTMLButtonElement>)=>{
     if(pointerId.current!==event.pointerId)return;
