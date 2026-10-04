@@ -68,15 +68,16 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       dummy.position.set(x,niflGroundY(x,z)+h*.5,z);dummy.scale.set(r,h,r);dummy.rotation.set(.1,hash(i,14)*6.28,0);dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix);
     }
     rocks.instanceMatrix.needsUpdate=true;rocks.computeBoundingSphere();scene.add(rocks);
-    // Side barriers meet the gate frame and extend to both map boundaries.
-    const entranceWalls=new THREE.InstancedMesh(rockGeo,stone,70);
-    const entranceSnow=new THREE.InstancedMesh(rockGeo,snow,70);
-    for(let i=0;i<70;i++){
-      const side=i<35?-1:1,j=i%35,x=side*(8+j*2.8),z=65*NIFL_SCALE;
-      dummy.rotation.set(0,hash(i,89)*.2,0);dummy.position.set(x,3.7,z);dummy.scale.set(1.8,4.4,2.6);dummy.updateMatrix();entranceWalls.setMatrixAt(i,dummy.matrix);
-      dummy.position.y=7.5;dummy.scale.set(1.8,.45,2.6);dummy.updateMatrix();entranceSnow.setMatrixAt(i,dummy.matrix);
+    // Translucent pale-blue wards begin at the opening; collision stays in map data.
+    // Like Midgard's wards, these allow the landscape to remain visible through them.
+    const wardMaterial=new THREE.MeshBasicMaterial({color:'#b8edff',transparent:true,opacity:.12,side:THREE.DoubleSide,depthWrite:false,toneMapped:false});
+    const wardWidth=120-4.2,wardHeight=12;
+    const wardGeometry=new THREE.PlaneGeometry(wardWidth,wardHeight);
+    for(const side of [-1,1]){
+      const ward=new THREE.Mesh(wardGeometry,wardMaterial);
+      ward.position.set(side*(4.2+wardWidth/2),wardHeight/2-.25,65*NIFL_SCALE);
+      scene.add(ward);
     }
-    entranceWalls.instanceMatrix.needsUpdate=true;entranceSnow.instanceMatrix.needsUpdate=true;entranceWalls.computeBoundingSphere();entranceSnow.computeBoundingSphere();scene.add(entranceWalls,entranceSnow);
     const ribbon=(points:{x:number;z:number}[],width:number,mat:THREE.Material)=>{
       const verts:number[]=[],uv:number[]=[];
       for(let i=0;i<points.length-1;i++){
@@ -165,36 +166,6 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
           const halo=new THREE.Sprite(haloMaterial);halo.position.copy(center);halo.scale.set(4.2,6,1);scene.add(halo);crystalHalos.push(halo);
         }
       });
-      // Thin caps follow upward-facing stone triangles, including the curved top.
-      // This avoids placing a second solid oval across the original frame's gaps.
-      const frame=model.getObjectByName('Cylinder002');
-      const surfaces:{point:THREE.Vector3;normal:THREE.Vector3;area:number}[]=[];
-      frame?.traverse((object:any)=>{
-        if(!object.isMesh||object.material.name!=='floor')return;
-        const geometry=object.geometry as THREE.BufferGeometry,points=geometry.getAttribute('position'),indices=geometry.getIndex();
-        const count=indices?indices.count:points.count;
-        for(let i=0;i<count;i+=3){
-          const a=new THREE.Vector3().fromBufferAttribute(points,indices?indices.getX(i):i).applyMatrix4(object.matrixWorld);
-          const b=new THREE.Vector3().fromBufferAttribute(points,indices?indices.getX(i+1):i+1).applyMatrix4(object.matrixWorld);
-          const c=new THREE.Vector3().fromBufferAttribute(points,indices?indices.getX(i+2):i+2).applyMatrix4(object.matrixWorld);
-          const cross=new THREE.Vector3().crossVectors(b.clone().sub(a),c.clone().sub(a)),area=cross.length()/2,normal=cross.normalize();
-          if(normal.y>.35&&area>.025&&a.y>.1)surfaces.push({point:a.add(b).add(c).multiplyScalar(1/3),normal,area});
-        }
-      });
-      if(surfaces.length){
-        const count=Math.min(28,surfaces.length),capGeometry=new THREE.DodecahedronGeometry(1,0);
-        const snowCaps=new THREE.InstancedMesh(capGeometry,snow,count);
-        const frozen=new THREE.MeshStandardMaterial({color:'#bceafb',roughness:.28,metalness:.12});
-        const iceCaps=new THREE.InstancedMesh(capGeometry,frozen,count),cap=new THREE.Object3D();
-        surfaces.sort((a,b)=>b.area-a.area);
-        for(let i=0;i<count;i++){
-          const face=surfaces[i],width=Math.min(.68,Math.sqrt(face.area)*.6);
-          cap.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),face.normal);
-          cap.position.copy(face.point).addScaledVector(face.normal,.025);cap.scale.set(width,.06,width*.8);cap.updateMatrix();iceCaps.setMatrixAt(i,cap.matrix);
-          cap.position.addScaledVector(face.normal,.06);cap.scale.set(width*.85,.10,width*.65);cap.updateMatrix();snowCaps.setMatrixAt(i,cap.matrix);
-        }
-        snowCaps.instanceMatrix.needsUpdate=true;iceCaps.instanceMatrix.needsUpdate=true;snowCaps.computeBoundingSphere();iceCaps.computeBoundingSphere();scene.add(iceCaps,snowCaps);
-      }
       entrancePlaceholder.visible=false;
     },()=>{})).catch(()=>{});
     const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();};
