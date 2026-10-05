@@ -2,6 +2,7 @@ import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {BASE,cachedGlbBuffer} from './core';
+import {addEntranceIce} from './niflheimEntranceIce';
 import {NIFL_SCALE,NIFL_SOURCE,NIFL_ENTRANCE_ARCS,NIFL_LOCATIONS,NIFL_RIVERS,NIFL_LAKES,NIFL_ROUTES,niflGroundY,clampNiflPosition,moveThroughNiflEntrance} from './niflheimMapData';
 
 const hash=(x:number,z:number)=>{const n=Math.sin(x*127.1+z*311.7)*43758.5453;return n-Math.floor(n);};
@@ -199,6 +200,13 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
             scene.add(piece);
           }
           snowAsset.scene.traverse((o:any)=>{if(o.isMesh)for(const material of (Array.isArray(o.material)?o.material:[o.material]))for(const value of Object.values(material))if(value instanceof THREE.Texture)textures.add(value);});
+          cachedGlbBuffer(`${BASE}img/models/Icicle_01_Optimized.glb`).then(buffer=>{
+            if(!alive)return;
+            new GLTFLoader().parse(buffer,'',icicle=>{
+              if(!alive){disposeObject(icicle.scene);textures.forEach(t=>t.dispose());return;}
+              addEntranceIce(scene,icicle.scene,snowAsset.scene,niflGroundY(0,65*NIFL_SCALE));
+            },()=>{});
+          }).catch(()=>{});
         },()=>{});
       }).catch(()=>{});
       entrancePlaceholder.visible=false;
@@ -257,6 +265,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
         {NIFL_LOCATIONS.map((l,i)=><g key={l.id} role="button" tabIndex={0} aria-label={l.name} onClick={()=>setSelected(l.id)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelected(l.id);}}} style={{cursor:'pointer'}}><circle cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} r="5.5" fill="#fff" stroke="#526f82" strokeWidth=".6"/><text x={l.x/NIFL_SCALE+65} y={l.z/NIFL_SCALE+81.5} textAnchor="middle" fontSize="4" fill="#203e52">{i+1}</text></g>)}
         <circle cx={mapPoint(position.current.x,position.current.z).x} cy={mapPoint(position.current.x,position.current.z).y} r="2.5" fill="#d29d30" stroke="#fff" strokeWidth=".8"/>
       </svg><div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><button key={l.id} onClick={()=>setSelected(l.id)}>{i+1}. {l.name}</button>)}</div><p className="nifl-map-legend">Золотая точка — Вика. Русла покрыты льдом: по ним пока можно пройти.</p><p className="nifl-map-legend">Входные врата: <a href="https://sketchfab.com/3d-models/stone-portal-bfaf2e45dd7242579f5a37b810eca423" target="_blank" rel="noopener noreferrer">Stone Portal — hirairmak</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения в игре: масштаб, размещение основания в снегу и сияние кристаллов.</p><p className="nifl-map-legend">Снег: <a href="https://sketchfab.com/3d-models/merry-christmas-in-the-forest-lowpoly-props-871b52cbcefa4f8a949fc7b43ff8a6af" target="_blank" rel="noopener noreferrer">Merry Christmas in the forest — halenpet</a>, CC BY 4.0. Извлечены отдельные кусочки, уменьшены текстуры, изменены размеры и размещение.</p>
+      <p className="nifl-map-legend">Сосульки: <a href="https://sketchfab.com/3d-models/icicle-01-2dc75ae22f1c4d11abbfd32819312a12" target="_blank" rel="noopener noreferrer">Icicle 01 — Elin</a>, CC BY 4.0. Текстуры уменьшены до 256 пикселей, изменены масштаб, оттенок и размещение; сверху добавлен снег.</p>
     </section></div>}
     {info&&<div className="nifl-overlay" style={{zIndex:11}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label={info.name}><h3>{info.name}</h3><p>{info.text}</p><button onClick={()=>setSelected('')}>Продолжить путь</button></section></div>}
   </div>;
