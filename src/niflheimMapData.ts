@@ -1,3 +1,4 @@
+import terrainHeights from './niflheimTerrainHeights.json';
 export type NiflLocation={id:string;name:string;x:number;z:number;kind:'gate'|'shelter'|'river'|'cave'|'root'|'source'|'lair'|'lake'|'bridge'|'hall'|'lookout';text:string};
 export const NIFL_SCALE=2;
 export const NIFL_SOURCE={x:0,z:-49*NIFL_SCALE,rx:8*NIFL_SCALE,rz:7*NIFL_SCALE};
@@ -22,11 +23,30 @@ export const NIFL_RIVERS=[
 ].map(r=>r.map(p=>({x:p.x*NIFL_SCALE,z:p.z*NIFL_SCALE})));
 export const NIFL_LAKES=[{x:-36,z:4,rx:11,rz:9},{x:26,z:51,rx:6,rz:4}].map(l=>({...l,x:l.x*NIFL_SCALE,z:l.z*NIFL_SCALE,rx:l.rx*NIFL_SCALE,rz:l.rz*NIFL_SCALE}));
 export const NIFL_ROUTES=[['threshold','shelter'],['threshold','frozenRiver'],['shelter','echoCave'],['shelter','memoryCave'],['frozenRiver','iceLake'],['iceLake','crossing'],['crossing','namesHall'],['frozenRiver','roots'],['memoryCave','roots'],['namesHall','lookout'],['lookout','hvergelmir'],['roots','hvergelmir'],['hvergelmir','nidhogg']];
+// GLB bounds mapped to the existing world; keep the entrance foundation level.
+export const niflTerrainY=(x:number,z:number)=>{
+  const gx=Math.max(0,Math.min(96,(x/240+.5)*96)),gz=Math.max(0,Math.min(96,(z/312+.5)*96));
+  const ix=Math.min(95,Math.floor(gx)),iz=Math.min(95,Math.floor(gz)),tx=gx-ix,tz=gz-iz;
+  const at=(dx:number,dz:number)=>terrainHeights[(iz+dz)*97+ix+dx];
+  const h=((at(0,0)*(1-tx)+at(1,0)*tx)*(1-tz)+(at(0,1)*(1-tx)+at(1,1)*tx)*tz)*24;
+  const entrance=Math.max(0,Math.min(1,(Math.hypot(x/1.4,z-130)-15)/12));
+  return h*entrance;
+};
+const riverDistance=(x:number,z:number,a:{x:number;z:number},b:{x:number;z:number})=>{
+  const dx=b.x-a.x,dz=b.z-a.z,t=Math.max(0,Math.min(1,((x-a.x)*dx+(z-a.z)*dz)/(dx*dx+dz*dz)));
+  return Math.hypot(x-a.x-t*dx,z-a.z-t*dz);
+};
 export const niflGroundY=(x:number,z:number)=>{
-  const height=Math.sin(x/NIFL_SCALE*.075)*.18+Math.cos(z/NIFL_SCALE*.06)*.18;
-  const waters=[...NIFL_LAKES,NIFL_SOURCE];
-  const edge=Math.min(...waters.map(l=>Math.hypot((x-l.x)/l.rx,(z-l.z)/l.rz)));
-  return height*Math.max(0,Math.min(1,(edge-1)/.35));
+  let channel=0;
+  NIFL_RIVERS.forEach((r,index)=>{const half=(index===0?4.3:3.2)/2;
+    for(let i=1;i<r.length;i++)channel=Math.max(channel,Math.max(0,Math.min(1,(half+2-riverDistance(x,z,r[i-1],r[i]))/2)));
+  });
+  for(const l of [...NIFL_LAKES,NIFL_SOURCE]){
+    const edge=Math.hypot((x-l.x)/l.rx,(z-l.z)/l.rz);
+    channel=Math.max(channel,Math.max(0,Math.min(1,(1.15-edge)/.15)));
+  }
+  // Frozen beds remain walkable; softened banks connect them to the snow.
+  return niflTerrainY(x,z)*(1-channel)-.3*channel;
 };
 export const clampNiflPosition=(x:number,z:number)=>({x:Math.max(-53*NIFL_SCALE,Math.min(53*NIFL_SCALE,x)),z:Math.max(-70*NIFL_SCALE,Math.min(70*NIFL_SCALE,z))});
 

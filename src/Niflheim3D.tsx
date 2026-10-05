@@ -58,7 +58,21 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     const glow=new THREE.MeshBasicMaterial({color:'#8edafb',transparent:true,opacity:.55});
     new THREE.TextureLoader().load(`${BASE}img/models/Stone_Sacred_1.jpg`,texture=>{if(!alive){texture.dispose();return;}texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;textures.add(texture);stone.map=texture;stone.needsUpdate=true;});
     const groundGeo=new THREE.PlaneGeometry(120*NIFL_SCALE,156*NIFL_SCALE,72,90);groundGeo.rotateX(-Math.PI/2);
-    const p=groundGeo.getAttribute('position');for(let i=0;i<p.count;i++)p.setY(i,niflGroundY(p.getX(i),p.getZ(i)));groundGeo.computeVertexNormals();scene.add(new THREE.Mesh(groundGeo,snow));
+    const p=groundGeo.getAttribute('position');for(let i=0;i<p.count;i++)p.setY(i,niflGroundY(p.getX(i),p.getZ(i)));groundGeo.computeVertexNormals();const fallbackGround=new THREE.Mesh(groundGeo,snow);scene.add(fallbackGround);
+    new GLTFLoader().load(`${BASE}img/models/Terrain_Optimized.glb`,asset=>{
+      if(!alive){asset.scene.traverse((o:any)=>{if(!o.isMesh)return;o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)v.dispose();m.dispose();}});return;}
+      // Bake the source node transform before mapping its unit square to the world.
+      asset.scene.updateMatrixWorld(true);
+      asset.scene.traverse((o:any)=>{if(!o.isMesh)return;
+        const geo=o.geometry as THREE.BufferGeometry;geo.applyMatrix4(o.matrixWorld);
+        const vertices=geo.getAttribute('position');
+        for(let i=0;i<vertices.count;i++){const x=(vertices.getX(i)-.5)*240,z=(vertices.getZ(i)+.5)*312;vertices.setXYZ(i,x,niflGroundY(x,z),z);}
+        geo.computeVertexNormals();geo.computeBoundingSphere();
+        const terrain=new THREE.Mesh(geo,snow);scene.add(terrain);
+        for(const material of Array.isArray(o.material)?o.material:[o.material]){for(const value of Object.values(material))if(value instanceof THREE.Texture)value.dispose();material.dispose();}
+      });
+      scene.remove(fallbackGround);groundGeo.dispose();
+    },undefined,()=>{});
     const mesh=(geo:THREE.BufferGeometry,mat:THREE.Material,x:number,y:number,z:number,sx=1,sy=1,sz=1)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.scale.set(sx,sy,sz);scene.add(m);return m;};
     const rockGeo=new THREE.DodecahedronGeometry(1,1);
     const rocks=new THREE.InstancedMesh(rockGeo,stone,180),dummy=new THREE.Object3D();
@@ -82,6 +96,9 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       geometry.computeVertexNormals();scene.add(new THREE.Mesh(geometry,wardMaterial));
     }
     const ribbon=(points:{x:number;z:number}[],width:number,mat:THREE.Material)=>{
+      const sampled:{x:number;z:number}[]=[];
+      for(let i=1;i<points.length;i++){const a=points[i-1],b=points[i],steps=Math.ceil(Math.hypot(b.x-a.x,b.z-a.z)/1);for(let j=0;j<steps;j++)sampled.push({x:a.x+(b.x-a.x)*j/steps,z:a.z+(b.z-a.z)*j/steps});}
+      sampled.push(points[points.length-1]);points=sampled;
       const verts:number[]=[],uv:number[]=[];
       for(let i=0;i<points.length-1;i++){
         const a=points[i],b=points[i+1],dx=b.x-a.x,dz=b.z-a.z,len=Math.hypot(dx,dz),ox=-dz/len*width/2,oz=dx/len*width/2;
@@ -98,8 +115,8 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     const sourceRing=mesh(new THREE.TorusGeometry(6*NIFL_SCALE,.09,5,64),glow,0,niflGroundY(0,NIFL_SOURCE.z)+.17,NIFL_SOURCE.z);sourceRing.rotation.x=-Math.PI/2;
     const poleGeo=new THREE.BoxGeometry(1,1,1);
     const pillar=(x:number,z:number,height:number,mat=stone)=>mesh(poleGeo,mat,x,niflGroundY(x,z)+height/2,z,1.15,height,1.3);
-    const cave=(x:number,z:number)=>{mesh(rockGeo,stone,x-3,2,z,2,3,2);mesh(rockGeo,stone,x+3,2,z,2,3,2);mesh(rockGeo,stone,x,5,z,4,1.7,2);const opening=mesh(new THREE.CircleGeometry(2.6,24),dark,x,2.6,z+.25,1,1,1);return opening;};
-    const gate=(x:number,z:number)=>{pillar(x-2.7,z,6);pillar(x+2.7,z,6);mesh(poleGeo,stone,x,6,z,6.6,.8,1.5);const portal=mesh(new THREE.PlaneGeometry(4,5),new THREE.MeshBasicMaterial({color:'#24253a',transparent:true,opacity:.85,side:THREE.DoubleSide}),x,3,z);return portal;};
+    const cave=(x:number,z:number)=>{const base=niflGroundY(x,z);mesh(rockGeo,stone,x-3,base+2,z,2,3,2);mesh(rockGeo,stone,x+3,base+2,z,2,3,2);mesh(rockGeo,stone,x,base+5,z,4,1.7,2);const opening=mesh(new THREE.CircleGeometry(2.6,24),dark,x,base+2.6,z+.25,1,1,1);return opening;};
+    const gate=(x:number,z:number)=>{pillar(x-2.7,z,6);pillar(x+2.7,z,6);mesh(poleGeo,stone,x,niflGroundY(x,z)+6,z,6.6,.8,1.5);const portal=mesh(new THREE.PlaneGeometry(4,5),new THREE.MeshBasicMaterial({color:'#24253a',transparent:true,opacity:.85,side:THREE.DoubleSide}),x,niflGroundY(x,z)+3,z);return portal;};
     const gates=[gate(-10*NIFL_SCALE,16*NIFL_SCALE),gate(5*NIFL_SCALE,-17*NIFL_SCALE),gate(25*NIFL_SCALE,-57*NIFL_SCALE)];
     const entrancePlaceholder=new THREE.Group();
     const entranceGate=gate(0,65*NIFL_SCALE);
@@ -111,18 +128,18 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       if(l.kind==='cave'||l.kind==='lair')cave(l.x,l.z-3);
       if(l.kind==='hall'||l.kind==='shelter'){
         pillar(l.x-3,l.z-2,4);pillar(l.x+3,l.z-2,4);pillar(l.x-3,l.z+2,4);pillar(l.x+3,l.z+2,4);
-        mesh(poleGeo,snow,l.x,4.5,l.z,8,.8,7);mesh(poleGeo,pathMat,l.x,.3,l.z,8,.6,7);
+        mesh(poleGeo,snow,l.x,niflGroundY(l.x,l.z)+4.5,l.z,8,.8,7);mesh(poleGeo,pathMat,l.x,niflGroundY(l.x,l.z)+.3,l.z,8,.6,7);
       }
-      if(l.kind==='bridge'){for(let j=0;j<6;j++)mesh(poleGeo,stone,l.x-6+j*2,.45,l.z,1.8,.7,3.6);}
-      if(l.kind==='lookout')mesh(poleGeo,stone,l.x,1,l.z,7,2,6);
+      if(l.kind==='bridge'){for(let j=0;j<6;j++)mesh(poleGeo,stone,l.x-6+j*2,niflGroundY(l.x-6+j*2,l.z)+.45,l.z,1.8,.7,3.6);}
+      if(l.kind==='lookout')mesh(poleGeo,stone,l.x,niflGroundY(l.x,l.z)+1,l.z,7,2,6);
       if(l.kind!=='source'){
-        const marker=mesh(new THREE.OctahedronGeometry(.5),glow,l.x+3,2.8,l.z+3);marker.name=`Location ${index+1}: ${l.name}`;
+        const marker=mesh(new THREE.OctahedronGeometry(.5),glow,l.x+3,niflGroundY(l.x+3,l.z+3)+2.8,l.z+3);marker.name=`Location ${index+1}: ${l.name}`;
       }
     });
     // Large roots frame the source and cave; the walking corridors stay open.
     for(let i=0;i<6;i++){
       const x=(-24+i*9)*NIFL_SCALE,z=(-55-(i%2)*6)*NIFL_SCALE;
-      const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(x,0,z),new THREE.Vector3(x+2,5,z-5),new THREE.Vector3(x-4,15,z-10),new THREE.Vector3(x+5,24,z-16)]);
+      const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(x,niflGroundY(x,z),z),new THREE.Vector3(x+2,niflGroundY(x,z)+5,z-5),new THREE.Vector3(x-4,niflGroundY(x,z)+15,z-10),new THREE.Vector3(x+5,niflGroundY(x,z)+24,z-16)]);
       scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve,18,1.3+(i%2)*.6,7,false),stone));
     }
     // Lightweight snow drifts instead of a full-screen effect.
