@@ -4,6 +4,8 @@ import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {BASE,cachedGlbBuffer} from './core';
 import {addEntranceIce} from './niflheimEntranceIce';
 import {addEntranceSnow} from './niflheimEntranceSnow';
+import {addEntranceVeil} from './niflheimEntranceVeil';
+import {addEntrancePowder} from './niflheimEntrancePowder';
 import {NIFL_SCALE,NIFL_SOURCE,NIFL_ENTRANCE_ARCS,NIFL_LOCATIONS,NIFL_RIVERS,NIFL_LAKES,NIFL_ROUTES,niflGroundY,clampNiflPosition,moveThroughNiflEntrance} from './niflheimMapData';
 
 const hash=(x:number,z:number)=>{const n=Math.sin(x*127.1+z*311.7)*43758.5453;return n-Math.floor(n);};
@@ -44,6 +46,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     scene.add(new THREE.HemisphereLight('#e8f7ff','#536d80',2.1));
     const sun=new THREE.DirectionalLight('#ecf5ff',2);sun.position.set(-22,45,8);scene.add(sun);
     const textures=new Set<THREE.Texture>();
+    let entranceVeil:ReturnType<typeof addEntranceVeil>|undefined;
     const crystalMaterials:THREE.MeshStandardMaterial[]=[];
     const crystalHalos:THREE.Sprite[]=[];
     const snowCanvas=document.createElement('canvas');snowCanvas.width=snowCanvas.height=128;
@@ -190,7 +193,8 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
         }
       });
       const frame=model.getObjectByName('Cylinder002');
-      if(frame)addEntranceSnow(frame,scene,niflGroundY(0,65*NIFL_SCALE));
+      if(frame){addEntranceSnow(frame,scene,niflGroundY(0,65*NIFL_SCALE));addEntrancePowder(frame);}
+      entranceVeil=addEntranceVeil(scene,niflGroundY(0,65*NIFL_SCALE),position.current);
       cachedGlbBuffer(`${BASE}img/models/Icicle_01_Optimized.glb`).then(buffer=>{
         if(!alive)return;
         new GLTFLoader().parse(buffer,'',icicle=>{
@@ -222,6 +226,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       if(next&&next!==currentAction){currentAction?.fadeOut(.16);next.reset();next.enabled=true;next.setEffectiveWeight(1);next.setEffectiveTimeScale(1);next.fadeIn(.16).play();currentAction=next;}
       const pos=position.current;hero.position.set(pos.x,niflGroundY(pos.x,pos.z),pos.z);mixer?.update(dt);
       const hy=niflGroundY(pos.x,pos.z);
+      entranceVeil?.update(now*.001,pos);
       camera.position.lerp(new THREE.Vector3(pos.x-cameraDir.x*2,hy+9,pos.z-cameraDir.z*2+17),1-Math.exp(-dt*3.4));camera.lookAt(pos.x+cameraDir.x*1.9,hy+3,pos.z-10+cameraDir.z*1.9);
       crystalMaterials.forEach(m=>{m.emissiveIntensity=1.35+Math.sin(now*.0017)*.12;});crystalHalos.forEach(h=>{(h.material as THREE.SpriteMaterial).opacity=.48+Math.sin(now*.0017)*.05;});
       sourceRing.rotation.z+=dt*.12;gates.forEach(g=>{(g.material as THREE.MeshBasicMaterial).opacity=.78+Math.sin(now*.001)*.06;});
