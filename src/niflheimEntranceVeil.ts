@@ -23,12 +23,12 @@ export function addEntranceVeil(scene:THREE.Scene,groundY:number,initialPosition
       void main(){
         vVeilPosition=position.xy;
         vec3 p=position;
-        p.z+=.018*sin(p.x*1.7+uTime*.8)*sin(p.y*1.3-uTime*.6);
+        p.z+=.04*sin(p.x*1.7+uTime*.8)*sin(p.y*1.3-uTime*.6);
         for(int i=0;i<3;i++){
           float age=uTime-uRipples[i].z;
-          if(uRipples[i].w>.5&&age>=0.0&&age<2.6){
-            float delta=distance(p.xy,uRipples[i].xy)-age*3.8;
-            p.z+=.1*sin(delta*8.0)*exp(-delta*delta*3.0)*exp(-age*1.1);
+          if(uRipples[i].w>.5&&age>=0.0&&age<3.4){
+            float delta=distance(p.xy,uRipples[i].xy)-age*3.2;
+            p.z+=.24*sin(delta*8.0)*exp(-delta*delta*3.0)*exp(-age*.7);
           }
         }
         vec4 mvPosition=modelViewMatrix*vec4(p,1.0);
@@ -51,15 +51,16 @@ export function addEntranceVeil(scene:THREE.Scene,groundY:number,initialPosition
         float ripple=0.0;
         for(int i=0;i<3;i++){
           float age=uTime-uRipples[i].z;
-          if(uRipples[i].w>.5&&age>=0.0&&age<2.6){
-            float d=distance(p,uRipples[i].xy),delta=d-age*3.8;
-            float trailing=delta+.75;
-            ripple+=(exp(-delta*delta*18.0)+.4*exp(-trailing*trailing*18.0))*exp(-age*1.1);
+          if(uRipples[i].w>.5&&age>=0.0&&age<3.4){
+            float d=distance(p,uRipples[i].xy),delta=d-age*3.2;
+            float trailing=delta+.9;
+            float third=delta+1.8;
+            ripple+=(exp(-delta*delta*10.0)+.55*exp(-trailing*trailing*10.0)+.2*exp(-third*third*10.0))*exp(-age*.7);
           }
         }
-        float breath=.008*sin(p.x*.7+p.y*.9+uTime*.75);
-        float alpha=(.065+breath+speck*.23+min(.24,ripple*.2))*edge;
-        vec3 color=mix(vec3(.65,.69,.72),vec3(.91,.97,1.0),clamp(speck+ripple*.6,0.0,1.0));
+        float breath=.016*sin(p.x*.7+p.y*.9+uTime*.75);
+        float alpha=(.16+breath+speck*.23+min(.45,ripple*.4))*edge;
+        vec3 color=mix(vec3(.22,.27,.32),vec3(.91,.97,1.0),clamp(speck+ripple*.6,0.0,1.0));
         gl_FragColor=vec4(color,alpha);
         #include <fog_fragment>
         #include <colorspace_fragment>

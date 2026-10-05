@@ -51,12 +51,14 @@ export function addEntranceSnow(frame:THREE.Object3D,scene:THREE.Scene,groundY:n
   for(let j=0;j<depthSteps;j++){close(j,j+1);close(count*row+j,count*row+j+1);}
   const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geometry.setIndex(indices);geometry.computeVertexNormals();
   const mantle=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color:'#e5f1f7',roughness:1,side:THREE.DoubleSide}));
+  mantle.castShadow=true;mantle.receiveShadow=true;
   mantle.name='Continuous rounded entrance snow';scene.add(mantle);
   // Separate round drifts cover the side ice bases. Ray hits on the broken side
   // stones can jump to the inner face and form a triangular hanging sheet.
   const capGeometry=new THREE.SphereGeometry(1,40,24);
   for(const joint of [ENTRANCE_ICE_JOINTS[0],ENTRANCE_ICE_JOINTS[2]]){
     const cap=new THREE.Mesh(capGeometry,mantle.material);
+    cap.castShadow=true;cap.receiveShadow=true;
     cap.name='Rounded snow over side ice';
     cap.scale.set((joint.width+1.9)/2,.48,1.66);
     cap.position.set(joint.x,joint.y+groundY+.04,130);

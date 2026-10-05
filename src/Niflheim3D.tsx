@@ -39,12 +39,20 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     let renderer:THREE.WebGLRenderer;
     try{renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});}catch{setStatus('3D недоступно. Открой карту Нифльхейма.');return;}
     let alive=true,raf=0;
+    // The world and sunlight are static: refresh one soft shadow map only on load.
+    renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;
+    const refreshShadows=()=>{renderer.shadowMap.needsUpdate=true;};
     renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));renderer.outputColorSpace=THREE.SRGBColorSpace;
     host.appendChild(renderer.domElement);
     const scene=new THREE.Scene();scene.background=new THREE.Color('#a9c1d1');scene.fog=new THREE.Fog('#a9c1d1',45,165);
     const camera=new THREE.PerspectiveCamera(58,1,.1,280);
-    scene.add(new THREE.HemisphereLight('#e8f7ff','#536d80',2.1));
-    const sun=new THREE.DirectionalLight('#ecf5ff',2);sun.position.set(-22,45,8);scene.add(sun);
+    scene.add(new THREE.HemisphereLight('#e8f7ff','#536d80',1.35));
+    const sun=new THREE.DirectionalLight('#ecf5ff',2.2);sun.position.set(-135,90,85);
+    sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);
+    Object.assign(sun.shadow.camera,{left:-190,right:190,top:190,bottom:-190,near:1,far:500});
+    sun.shadow.camera.updateProjectionMatrix();sun.shadow.bias=-.00015;sun.shadow.normalBias=.08;
+    scene.add(sun);scene.add(sun.target);
     const textures=new Set<THREE.Texture>();
     let entranceVeil:ReturnType<typeof addEntranceVeil>|undefined;
     const crystalMaterials:THREE.MeshStandardMaterial[]=[];
@@ -53,7 +61,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     const ctx=snowCanvas.getContext('2d')!;ctx.fillStyle='#d6e5ed';ctx.fillRect(0,0,128,128);
     for(let i=0;i<1900;i++){ctx.fillStyle=i%3===0?'#c0d4e1':'#edf7fb';ctx.fillRect(hash(i,1)*128,hash(i,2)*128,1+hash(i,3)*3,1);}
     const snowTex=new THREE.CanvasTexture(snowCanvas);snowTex.colorSpace=THREE.SRGBColorSpace;snowTex.wrapS=snowTex.wrapT=THREE.RepeatWrapping;snowTex.repeat.set(16*NIFL_SCALE,20*NIFL_SCALE);textures.add(snowTex);
-    const snow=new THREE.MeshStandardMaterial({map:snowTex,roughness:1});
+    const snow=new THREE.MeshStandardMaterial({map:snowTex,roughness:1});snow.shadowSide=THREE.DoubleSide;
     const stone=new THREE.MeshStandardMaterial({color:'#8b9eac',roughness:.95});
     const dark=new THREE.MeshStandardMaterial({color:'#172c3d',roughness:1});
     const ice=new THREE.MeshStandardMaterial({color:'#83bed8',roughness:.4,metalness:.12});
@@ -62,7 +70,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     const glow=new THREE.MeshBasicMaterial({color:'#8edafb',transparent:true,opacity:.55});
     new THREE.TextureLoader().load(`${BASE}img/models/Stone_Sacred_1.jpg`,texture=>{if(!alive){texture.dispose();return;}texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;textures.add(texture);stone.map=texture;stone.needsUpdate=true;});
     const groundGeo=new THREE.PlaneGeometry(120*NIFL_SCALE,156*NIFL_SCALE,72,90);groundGeo.rotateX(-Math.PI/2);
-    const p=groundGeo.getAttribute('position');for(let i=0;i<p.count;i++)p.setY(i,niflGroundY(p.getX(i),p.getZ(i)));groundGeo.computeVertexNormals();const fallbackGround=new THREE.Mesh(groundGeo,snow);scene.add(fallbackGround);
+    const p=groundGeo.getAttribute('position');for(let i=0;i<p.count;i++)p.setY(i,niflGroundY(p.getX(i),p.getZ(i)));groundGeo.computeVertexNormals();const fallbackGround=new THREE.Mesh(groundGeo,snow);fallbackGround.castShadow=true;fallbackGround.receiveShadow=true;scene.add(fallbackGround);
     new GLTFLoader().load(`${BASE}img/models/Terrain_Optimized.glb`,asset=>{
       if(!alive){asset.scene.traverse((o:any)=>{if(!o.isMesh)return;o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)v.dispose();m.dispose();}});return;}
       // Bake the source node transform before mapping its unit square to the world.
@@ -72,12 +80,12 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
         const vertices=geo.getAttribute('position');
         for(let i=0;i<vertices.count;i++){const x=(vertices.getX(i)-.5)*240,z=(vertices.getZ(i)+.5)*312;vertices.setXYZ(i,x,niflGroundY(x,z),z);}
         geo.computeVertexNormals();geo.computeBoundingSphere();
-        const terrain=new THREE.Mesh(geo,snow);scene.add(terrain);
+        const terrain=new THREE.Mesh(geo,snow);terrain.castShadow=true;terrain.receiveShadow=true;scene.add(terrain);
         for(const material of Array.isArray(o.material)?o.material:[o.material]){for(const value of Object.values(material))if(value instanceof THREE.Texture)value.dispose();material.dispose();}
       });
-      scene.remove(fallbackGround);groundGeo.dispose();
+      scene.remove(fallbackGround);groundGeo.dispose();refreshShadows();
     },undefined,()=>{});
-    const mesh=(geo:THREE.BufferGeometry,mat:THREE.Material,x:number,y:number,z:number,sx=1,sy=1,sz=1)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.scale.set(sx,sy,sz);scene.add(m);return m;};
+    const mesh=(geo:THREE.BufferGeometry,mat:THREE.Material,x:number,y:number,z:number,sx=1,sy=1,sz=1)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=mat instanceof THREE.MeshStandardMaterial&&!mat.transparent;m.receiveShadow=true;scene.add(m);return m;};
     const rockGeo=new THREE.DodecahedronGeometry(1,1);
     const rocks=new THREE.InstancedMesh(rockGeo,stone,180),dummy=new THREE.Object3D();
     for(let i=0;i<180;i++){
@@ -87,7 +95,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       const r=2+hash(i,12)*4,h=3+hash(i,13)*8;
       dummy.position.set(x,niflGroundY(x,z)+h*.5,z);dummy.scale.set(r,h,r);dummy.rotation.set(.1,hash(i,14)*6.28,0);dummy.updateMatrix();rocks.setMatrixAt(i,dummy.matrix);
     }
-    rocks.instanceMatrix.needsUpdate=true;rocks.computeBoundingSphere();scene.add(rocks);
+    rocks.instanceMatrix.needsUpdate=true;rocks.computeBoundingSphere();rocks.castShadow=true;rocks.receiveShadow=true;scene.add(rocks);
     // Curved entrance walls connect the gate to the rear stone boundary.
     const wardMaterial=new THREE.MeshBasicMaterial({color:'#a4e6ff',transparent:true,opacity:.32,side:THREE.DoubleSide,depthWrite:false,toneMapped:false});
     for(const arc of NIFL_ENTRANCE_ARCS){
@@ -111,7 +119,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
         const corners=[[a.x+ox,a.z+oz],[a.x-ox,a.z-oz],[b.x+ox,b.z+oz],[b.x-ox,b.z-oz]];
         for(const j of [0,2,1,1,2,3]){const [x,z]=corners[j];verts.push(x,niflGroundY(x,z)+.045,z);uv.push(j%2,i+(j>1?1:0));}
       }
-      const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.computeVertexNormals();scene.add(new THREE.Mesh(geo,mat));
+      const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.computeVertexNormals();const strip=new THREE.Mesh(geo,mat);strip.receiveShadow=true;scene.add(strip);
     };
     NIFL_ROUTES.forEach(route=>{const a=NIFL_LOCATIONS.find(l=>l.id===route[0])!,b=NIFL_LOCATIONS.find(l=>l.id===route[1])!;ribbon([a,b],2.4,pathMat);});
     NIFL_RIVERS.forEach((river,index)=>ribbon(river,index===0?4.3:3.2,ice));
@@ -146,7 +154,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     for(let i=0;i<6;i++){
       const x=(-24+i*9)*NIFL_SCALE,z=(-55-(i%2)*6)*NIFL_SCALE;
       const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(x,niflGroundY(x,z),z),new THREE.Vector3(x+2,niflGroundY(x,z)+5,z-5),new THREE.Vector3(x-4,niflGroundY(x,z)+15,z-10),new THREE.Vector3(x+5,niflGroundY(x,z)+24,z-16)]);
-      scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve,18,1.3+(i%2)*.6,7,false),stone));
+      const root=new THREE.Mesh(new THREE.TubeGeometry(curve,18,1.3+(i%2)*.6,7,false),stone);root.castShadow=true;root.receiveShadow=true;scene.add(root);
     }
     // Lightweight snow drifts instead of a full-screen effect.
     const snowPoints=new THREE.BufferGeometry(),snowCoords=new Float32Array(160*3);
@@ -157,7 +165,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     const disposeObject=(root:THREE.Object3D)=>{root.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}});};
     cachedGlbBuffer(`${BASE}img/models/Vika-3d-animated-optimized.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,gltf=>{
       if(!alive){disposeObject(gltf.scene);textures.forEach(t=>t.dispose());return;}
-      const model=gltf.scene,bounds=new THREE.Box3().setFromObject(model);const height=Math.max(.01,bounds.max.y-bounds.min.y);model.scale.setScalar(6.1/height);model.position.y=-bounds.min.y*(6.1/height);hero.add(model);
+      const model=gltf.scene,bounds=new THREE.Box3().setFromObject(model);const height=Math.max(.01,bounds.max.y-bounds.min.y);model.scale.setScalar(6.1/height);model.position.y=-bounds.min.y*(6.1/height);hero.add(model);model.traverse((o:any)=>{if(o.isMesh)o.receiveShadow=true;});
       mixer=new THREE.AnimationMixer(model);const findClip=(...names:string[])=>names.map(name=>THREE.AnimationClip.findByName(gltf.animations,name)).find(Boolean);
       const idleClip=findClip('idle','sword_idle')||gltf.animations[0],walkClip=findClip('walk_loop','walk')||idleClip;
       if(idleClip)idle=mixer.clipAction(idleClip);if(walkClip)walk=mixer.clipAction(walkClip);idle?.play();currentAction=idle;setStatus('');
@@ -182,6 +190,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       const haloMaterial=new THREE.SpriteMaterial({map:haloTexture,color:'#91fff3',transparent:true,opacity:.5,depthWrite:false,blending:THREE.AdditiveBlending});
       model.traverse((object:any)=>{
         if(!object.isMesh)return;
+        object.castShadow=true;object.receiveShadow=true;
         const tune=(material:THREE.Material)=>{
           if(material.name!=='Diamond'||!(material instanceof THREE.MeshStandardMaterial))return material;
           const bright=material.clone();bright.emissive.set('#5dffe4');bright.emissiveIntensity=1.35;bright.emissiveMap=bright.map;bright.roughness=.22;bright.toneMapped=false;crystalMaterials.push(bright);return bright;
@@ -199,10 +208,10 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
         if(!alive)return;
         new GLTFLoader().parse(buffer,'',icicle=>{
           if(!alive){disposeObject(icicle.scene);textures.forEach(t=>t.dispose());return;}
-          addEntranceIce(scene,icicle.scene,niflGroundY(0,65*NIFL_SCALE));
+          addEntranceIce(scene,icicle.scene,niflGroundY(0,65*NIFL_SCALE));refreshShadows();
         },()=>{});
       }).catch(()=>{});
-      entrancePlaceholder.visible=false;
+      entrancePlaceholder.visible=false;refreshShadows();
     },()=>{})).catch(()=>{});
     const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();};
     const observer=new ResizeObserver(resize);observer.observe(host);resize();
@@ -233,7 +242,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       if(now-checkAt>180){checkAt=now;const l=NIFL_LOCATIONS.reduce((a,b)=>Math.hypot(pos.x-a.x,pos.z-a.z)<Math.hypot(pos.x-b.x,pos.z-b.z)?a:b);const id=Math.hypot(pos.x-l.x,pos.z-l.z)<9?l.id:'';if(id!==currentNear){currentNear=id;setNear(id);}}
       renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
-    return()=>{alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();};
+    return()=>{alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());sun.shadow.dispose();renderer.dispose();renderer.domElement.remove();};
   },[]);
   const steerStick=(event:React.PointerEvent<HTMLButtonElement>)=>{
     if(pointerId.current!==event.pointerId)return;
