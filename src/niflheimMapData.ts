@@ -39,14 +39,14 @@ const riverDistance=(x:number,z:number,a:{x:number;z:number},b:{x:number;z:numbe
 export const niflGroundY=(x:number,z:number)=>{
   let channel=0;
   NIFL_RIVERS.forEach((r,index)=>{const half=(index===0?4.3:3.2)/2;
-    for(let i=1;i<r.length;i++)channel=Math.max(channel,Math.max(0,Math.min(1,(half+2-riverDistance(x,z,r[i-1],r[i]))/2)));
+    for(let i=1;i<r.length;i++)channel=Math.max(channel,Math.max(0,Math.min(1,(half+4-riverDistance(x,z,r[i-1],r[i]))/3)));
   });
   for(const l of [...NIFL_LAKES,NIFL_SOURCE]){
     const edge=Math.hypot((x-l.x)/l.rx,(z-l.z)/l.rz);
     channel=Math.max(channel,Math.max(0,Math.min(1,(1.15-edge)/.15)));
   }
   // Frozen beds remain walkable; softened banks connect them to the snow.
-  return niflTerrainY(x,z)*(1-channel)-.3*channel;
+  return niflTerrainY(x,z)*(1-channel)-1.05*channel;
 };
 export const clampNiflPosition=(x:number,z:number)=>({x:Math.max(-53*NIFL_SCALE,Math.min(53*NIFL_SCALE,x)),z:Math.max(-70*NIFL_SCALE,Math.min(70*NIFL_SCALE,z))});
 
@@ -61,14 +61,18 @@ const wardDistance=(p:{x:number;z:number},a:{x:number;z:number},b:{x:number;z:nu
   const dx=b.x-a.x,dz=b.z-a.z,t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.z-a.z)*dz)/(dx*dx+dz*dz)));
   return Math.hypot(p.x-a.x-t*dx,p.z-a.z-t*dz);
 };
-const inEntranceWard=(p:{x:number;z:number})=>NIFL_ENTRANCE_ARCS.some(arc=>arc.slice(1).some((b,i)=>wardDistance(p,arc[i],b)<.55));
+// Include the adjacent stone footings so the ends of a ward cannot be slipped through.
+const inEntranceWard=(p:{x:number;z:number})=>
+  NIFL_ENTRANCE_ARCS.some(arc=>arc.slice(1).some((b,i)=>wardDistance(p,arc[i],b)<.85))||
+  [-1,1].some(side=>Math.abs(p.x-side*8.1)<1.65&&Math.abs(p.z-125.5)<1.35);
 export const moveThroughNiflEntrance=(from:{x:number;z:number},x:number,z:number)=>{
   const target=clampNiflPosition(x,z),steps=Math.max(1,Math.ceil(Math.hypot(target.x-from.x,target.z-from.z)/.18));
   let current={...from};const dx=(target.x-from.x)/steps,dz=(target.z-from.z)/steps;
   for(let i=0;i<steps;i++){
     const next={x:current.x+dx,z:current.z+dz};
     // Let an old saved position inside a ward escape rather than trapping it.
-    if(!inEntranceWard(next)||inEntranceWard(current)){current=next;continue;}
+    if(!inEntranceWard(next)){current=next;continue;}
+    if(inEntranceWard(current)){current=next;continue;}
     const slideX={x:next.x,z:current.z},slideZ={x:current.x,z:next.z};
     if(!inEntranceWard(slideX))current=slideX;
     else if(!inEntranceWard(slideZ))current=slideZ;

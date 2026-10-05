@@ -85,7 +85,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     }
     rocks.instanceMatrix.needsUpdate=true;rocks.computeBoundingSphere();scene.add(rocks);
     // Short curved wards join the frame and its neighbouring stones.
-    const wardMaterial=new THREE.MeshBasicMaterial({color:'#b8edff',transparent:true,opacity:.14,side:THREE.DoubleSide,depthWrite:false,toneMapped:false});
+    const wardMaterial=new THREE.MeshBasicMaterial({color:'#a4e6ff',transparent:true,opacity:.32,side:THREE.DoubleSide,depthWrite:false,toneMapped:false});
     for(const arc of NIFL_ENTRANCE_ARCS){
       const vertices:number[]=[];
       for(let i=0;i<arc.length-1;i++){
@@ -94,6 +94,8 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       }
       const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
       geometry.computeVertexNormals();scene.add(new THREE.Mesh(geometry,wardMaterial));
+      const rim=arc.map(p=>new THREE.Vector3(p.x,niflGroundY(p.x,p.z)+3.9,p.z));
+      scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rim),new THREE.LineBasicMaterial({color:'#cef4ff',transparent:true,opacity:.8,depthWrite:false})));
     }
     const ribbon=(points:{x:number;z:number}[],width:number,mat:THREE.Material)=>{
       const sampled:{x:number;z:number}[]=[];
@@ -186,22 +188,13 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
           const halo=new THREE.Sprite(haloMaterial);halo.position.copy(center);halo.scale.set(4.2,6,1);scene.add(halo);crystalHalos.push(halo);
         }
       });
-      // A single detached roof snow patch is reused around the stone oval.
-      cachedGlbBuffer(`${BASE}img/models/Portal_Snow_Patch.glb`).then(buffer=>{
+      const frame=model.getObjectByName('Cylinder002');
+      if(frame)addEntranceSnow(frame,scene,niflGroundY(0,65*NIFL_SCALE));
+      cachedGlbBuffer(`${BASE}img/models/Icicle_01_Optimized.glb`).then(buffer=>{
         if(!alive)return;
-        new GLTFLoader().parse(buffer,'',(snowAsset:any)=>{
-          if(!alive){snowAsset.scene.traverse((o:any)=>{o.geometry?.dispose();if(o.material)for(const m of (Array.isArray(o.material)?o.material:[o.material]))m.dispose();});return;}
-          const pieces:THREE.Mesh[]=[];snowAsset.scene.traverse((o:any)=>{if(o.isMesh)pieces.push(o);});
-          const frame=model.getObjectByName('Cylinder002');
-          if(frame)addEntranceSnow(frame,snowAsset.scene,scene,niflGroundY(0,65*NIFL_SCALE));
-          snowAsset.scene.traverse((o:any)=>{if(o.isMesh)for(const material of (Array.isArray(o.material)?o.material:[o.material]))for(const value of Object.values(material))if(value instanceof THREE.Texture)textures.add(value);});
-          cachedGlbBuffer(`${BASE}img/models/Icicle_01_Optimized.glb`).then(buffer=>{
-            if(!alive)return;
-            new GLTFLoader().parse(buffer,'',icicle=>{
-              if(!alive){disposeObject(icicle.scene);textures.forEach(t=>t.dispose());return;}
-              addEntranceIce(scene,icicle.scene,snowAsset.scene,niflGroundY(0,65*NIFL_SCALE));
-            },()=>{});
-          }).catch(()=>{});
+        new GLTFLoader().parse(buffer,'',icicle=>{
+          if(!alive){disposeObject(icicle.scene);textures.forEach(t=>t.dispose());return;}
+          addEntranceIce(scene,icicle.scene,niflGroundY(0,65*NIFL_SCALE));
         },()=>{});
       }).catch(()=>{});
       entrancePlaceholder.visible=false;
@@ -234,7 +227,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       if(now-checkAt>180){checkAt=now;const l=NIFL_LOCATIONS.reduce((a,b)=>Math.hypot(pos.x-a.x,pos.z-a.z)<Math.hypot(pos.x-b.x,pos.z-b.z)?a:b);const id=Math.hypot(pos.x-l.x,pos.z-l.z)<9?l.id:'';if(id!==currentNear){currentNear=id;setNear(id);}}
       renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
-    return()=>{alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();};
+    return()=>{alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();};
   },[]);
   const steerStick=(event:React.PointerEvent<HTMLButtonElement>)=>{
     if(pointerId.current!==event.pointerId)return;
@@ -259,7 +252,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
         {NIFL_LAKES.map((l,i)=><ellipse key={i} cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} rx={l.rx/NIFL_SCALE} ry={l.rz/NIFL_SCALE} fill="#9ecbdf"/>)}<ellipse cx="65" cy="31" rx="8" ry="7" fill="#347c9d"/>
         {NIFL_LOCATIONS.map((l,i)=><g key={l.id} role="button" tabIndex={0} aria-label={l.name} onClick={()=>setSelected(l.id)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelected(l.id);}}} style={{cursor:'pointer'}}><circle cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} r="5.5" fill="#fff" stroke="#526f82" strokeWidth=".6"/><text x={l.x/NIFL_SCALE+65} y={l.z/NIFL_SCALE+81.5} textAnchor="middle" fontSize="4" fill="#203e52">{i+1}</text></g>)}
         <circle cx={mapPoint(position.current.x,position.current.z).x} cy={mapPoint(position.current.x,position.current.z).y} r="2.5" fill="#d29d30" stroke="#fff" strokeWidth=".8"/>
-      </svg><div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><button key={l.id} onClick={()=>setSelected(l.id)}>{i+1}. {l.name}</button>)}</div><p className="nifl-map-legend">Золотая точка — Вика. Русла покрыты льдом: по ним пока можно пройти.</p><p className="nifl-map-legend">Входные врата: <a href="https://sketchfab.com/3d-models/stone-portal-bfaf2e45dd7242579f5a37b810eca423" target="_blank" rel="noopener noreferrer">Stone Portal — hirairmak</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения в игре: масштаб, размещение основания в снегу и сияние кристаллов.</p><p className="nifl-map-legend">Снег на вратах: <a href="https://sketchfab.com/3d-models/snowy-doghouse-ca6e3b954c7840208182a60e8c19c79f" target="_blank" rel="noopener noreferrer">Snowy Doghouse — Becca3D</a>, CC BY 4.0. Извлечена одна снежная накладка; удалены остальные объекты и текстуры, изменены материал, масштаб и размещение.</p>
+      </svg><div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><button key={l.id} onClick={()=>setSelected(l.id)}>{i+1}. {l.name}</button>)}</div><p className="nifl-map-legend">Золотая точка — Вика. Русла покрыты льдом: по ним пока можно пройти.</p><p className="nifl-map-legend">Входные врата: <a href="https://sketchfab.com/3d-models/stone-portal-bfaf2e45dd7242579f5a37b810eca423" target="_blank" rel="noopener noreferrer">Stone Portal — hirairmak</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения в игре: масштаб, размещение основания в снегу и сияние кристаллов.</p>
       <p className="nifl-map-legend">Сосульки: <a href="https://sketchfab.com/3d-models/icicle-01-2dc75ae22f1c4d11abbfd32819312a12" target="_blank" rel="noopener noreferrer">Icicle 01 — Elin</a>, CC BY 4.0. Текстуры уменьшены до 256 пикселей, изменены масштаб, оттенок и размещение; сверху добавлен снег.</p>
     </section></div>}
     {info&&<div className="nifl-overlay" style={{zIndex:11}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label={info.name}><h3>{info.name}</h3><p>{info.text}</p><button onClick={()=>setSelected('')}>Продолжить путь</button></section></div>}

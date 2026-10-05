@@ -8,10 +8,8 @@ export const ENTRANCE_ICE_JOINTS=[
   {x:3.95,y:7.05,width:2.65,height:1.8,angle:-Math.PI*.29},
 ];
 
-export function addEntranceIce(scene:THREE.Scene,iceAsset:THREE.Object3D,snowAsset:THREE.Object3D,groundY:number){
+export function addEntranceIce(scene:THREE.Scene,iceAsset:THREE.Object3D,groundY:number){
   const bounds=new THREE.Box3().setFromObject(iceAsset),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
-  const snowPieces:THREE.Mesh[]=[];snowAsset.traverse((o:any)=>{if(o.isMesh)snowPieces.push(o);});
-  if(!snowPieces.length)return;
   const sharedIce=new Map<THREE.Material,THREE.Material>();
   for(let i=0;i<ENTRANCE_ICE_JOINTS.length;i++){
     const joint=ENTRANCE_ICE_JOINTS[i],group=new THREE.Group();group.name=`Entrance ice joint ${i+1}`;
@@ -29,12 +27,7 @@ export function addEntranceIce(scene:THREE.Scene,iceAsset:THREE.Object3D,snowAss
       o.material=Array.isArray(o.material)?o.material.map(tune):tune(o.material);
     });
     group.add(curtain);
-    // A deeper snow cap covers the ice base up to the full depth of the stone frame.
-    const source=snowPieces[(i*3)%snowPieces.length],snowBounds=new THREE.Box3().setFromObject(source),snowSize=snowBounds.getSize(new THREE.Vector3());
-    const snow=new THREE.Mesh(source.geometry,source.material);snow.name='Snow above ice';
-    snow.scale.set((joint.width+.9)/snowSize.x,.55/snowSize.y,3.5/snowSize.z);
-    const snowCenter=snowBounds.getCenter(new THREE.Vector3());
-    snow.position.set(-snowCenter.x*snow.scale.x,-snowBounds.min.y*snow.scale.y-.12,-snowCenter.z*snow.scale.z);
-    group.add(snow);scene.add(group);
+    // The continuous mantle in addEntranceSnow covers these ice bases too.
+    scene.add(group);
   }
 }
