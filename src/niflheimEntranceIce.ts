@@ -3,9 +3,9 @@ import * as THREE from 'three';
 // Short ice curtains fill only the three gaps in the broken oval frame.
 // Coordinates follow the fitted Stone Portal; the central walking opening stays clear.
 export const ENTRANCE_ICE_JOINTS=[
-  {x:-4.95,y:6.2,width:2.6,height:1.05,angle:Math.PI*.28},
-  {x:0,y:9.3,width:2.5,height:1.15,angle:0},
-  {x:3.95,y:7.05,width:2.65,height:1.1,angle:-Math.PI*.29},
+  {x:-4.95,y:6.2,width:2.6,height:1.75,angle:Math.PI*.28},
+  {x:0,y:9.3,width:2.5,height:1.9,angle:0},
+  {x:3.95,y:7.05,width:2.65,height:1.8,angle:-Math.PI*.29},
 ];
 
 export function addEntranceIce(scene:THREE.Scene,iceAsset:THREE.Object3D,snowAsset:THREE.Object3D,groundY:number){
@@ -29,12 +29,12 @@ export function addEntranceIce(scene:THREE.Scene,iceAsset:THREE.Object3D,snowAss
       o.material=Array.isArray(o.material)?o.material.map(tune):tune(o.material);
     });
     group.add(curtain);
-    // Snow meets the flat top of each curtain and slightly overlaps its neighbours.
+    // A deeper snow cap covers the ice base up to the full depth of the stone frame.
     const source=snowPieces[(i*3)%snowPieces.length],snowBounds=new THREE.Box3().setFromObject(source),snowSize=snowBounds.getSize(new THREE.Vector3());
     const snow=new THREE.Mesh(source.geometry,source.material);snow.name='Snow above ice';
-    snow.scale.set((joint.width+.45)/snowSize.x,.3/snowSize.y,1.65/snowSize.z);
+    snow.scale.set((joint.width+.9)/snowSize.x,.55/snowSize.y,3.5/snowSize.z);
     const snowCenter=snowBounds.getCenter(new THREE.Vector3());
-    snow.position.set(-snowCenter.x*snow.scale.x,-snowBounds.min.y*snow.scale.y-.08,-snowCenter.z*snow.scale.z);
+    snow.position.set(-snowCenter.x*snow.scale.x,-snowBounds.min.y*snow.scale.y-.12,-snowCenter.z*snow.scale.z);
     group.add(snow);scene.add(group);
   }
 }
