@@ -52,19 +52,18 @@ export const clampNiflPosition=(x:number,z:number)=>({x:Math.max(-53*NIFL_SCALE,
 
 export const NIFL_ENTRANCE_Z=65*NIFL_SCALE;
 export const NIFL_ENTRANCE_HALF_WIDTH=4.2;
-// Two short quarter-circle wards link the frame to its adjacent stones.
-export const NIFL_ENTRANCE_ARCS=[-1,1].map(side=>Array.from({length:13},(_,i)=>{
-  const angle=i/12*Math.PI/2;
-  return {x:side*(NIFL_ENTRANCE_HALF_WIDTH+4.9*Math.sin(angle)),z:NIFL_ENTRANCE_Z-4.5+4.5*Math.cos(angle)};
+// The entrance funnel runs back to the stone boundary at the start of the map.
+// Its far ends sit beyond the walkable Z limit, so there is no route around them.
+export const NIFL_ENTRANCE_ARCS=[-1,1].map(side=>Array.from({length:33},(_,i)=>{
+  const angle=i/32*Math.PI/2;
+  return {x:side*(5.4+6.6*Math.sin(angle)),z:NIFL_ENTRANCE_Z+20*(1-Math.cos(angle))};
 }));
 const wardDistance=(p:{x:number;z:number},a:{x:number;z:number},b:{x:number;z:number})=>{
   const dx=b.x-a.x,dz=b.z-a.z,t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.z-a.z)*dz)/(dx*dx+dz*dz)));
   return Math.hypot(p.x-a.x-t*dx,p.z-a.z-t*dz);
 };
-// Include the adjacent stone footings so the ends of a ward cannot be slipped through.
 const inEntranceWard=(p:{x:number;z:number})=>
-  NIFL_ENTRANCE_ARCS.some(arc=>arc.slice(1).some((b,i)=>wardDistance(p,arc[i],b)<.85))||
-  [-1,1].some(side=>Math.abs(p.x-side*8.1)<1.65&&Math.abs(p.z-125.5)<1.35);
+  NIFL_ENTRANCE_ARCS.some(arc=>arc.slice(1).some((b,i)=>wardDistance(p,arc[i],b)<.85));
 export const moveThroughNiflEntrance=(from:{x:number;z:number},x:number,z:number)=>{
   const target=clampNiflPosition(x,z),steps=Math.max(1,Math.ceil(Math.hypot(target.x-from.x,target.z-from.z)/.18));
   let current={...from};const dx=(target.x-from.x)/steps,dz=(target.z-from.z)/steps;
