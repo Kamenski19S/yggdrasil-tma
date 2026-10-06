@@ -7,7 +7,7 @@ import {addEntranceSnow} from './niflheimEntranceSnow';
 import {addEntranceVeil} from './niflheimEntranceVeil';
 import {addEntrancePowder} from './niflheimEntrancePowder';
 import {addNiflheimRivers} from './niflheimRivers';
-import {reshapeCaveEntrance,CAVE_FRONT_Z} from './niflheimCaveEntrance';
+import {reshapeCaveEntrance,CAVE_FRONT_Z,CAVE_MOUTH_X,CAVE_FLOOR_Y} from './niflheimCaveEntrance';
 import {NIFL_SCALE,NIFL_SOURCE,NIFL_ENTRANCE_ARCS,NIFL_LOCATIONS,NIFL_RIVERS,NIFL_LAKES,NIFL_ROUTES,niflGroundY,clampNiflPosition,moveThroughNiflEntrance} from './niflheimMapData';
 
 const hash=(x:number,z:number)=>{const n=Math.sin(x*127.1+z*311.7)*43758.5453;return n-Math.floor(n);};
@@ -176,7 +176,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       reshapeCaveEntrance(model,stone);
       model.rotation.y=angle;model.scale.setScalar(1.25);
       // Anchor the forward mouth to the marker, with the cave behind the approach.
-      const mouth=new THREE.Vector3(0,5.6,CAVE_FRONT_Z).multiplyScalar(1.25).applyAxisAngle(new THREE.Vector3(0,1,0),angle);
+      const mouth=new THREE.Vector3(CAVE_MOUTH_X,CAVE_FLOOR_Y,CAVE_FRONT_Z).multiplyScalar(1.25).applyAxisAngle(new THREE.Vector3(0,1,0),angle);
       model.position.set(shelter.x-mouth.x,niflGroundY(shelter.x,shelter.z)-mouth.y-.35,shelter.z-mouth.z);
       model.name='Приют великанов-хранителей';
       model.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});

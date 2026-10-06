@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import {addEntrancePowder} from './niflheimEntrancePowder';
 
 export const CAVE_FRONT_Z=9;
+export const CAVE_MOUTH_X=-1.1;
+export const CAVE_FLOOR_Y=5.825;
 
 // Cut triangles at the entrance plane, interpolating normals and UVs at the rim.
 export function trimCaveFront(source:THREE.BufferGeometry){
@@ -33,13 +35,15 @@ export function trimCaveFront(source:THREE.BufferGeometry){
 export function reshapeCaveEntrance(model:THREE.Object3D,stone:THREE.MeshStandardMaterial){
   model.traverse((o:any)=>{if(o.isMesh){const old=o.geometry;o.geometry=trimCaveFront(old);old.dispose();}});
   const frame=new THREE.Group();frame.name='Three monolith entrance';
+  // Match the asymmetric cut rim, whose centre lies left of the mesh origin.
+  frame.position.x=CAVE_MOUTH_X;
   const rock=stone.clone();rock.name='floor';rock.color.set('#87949b');rock.roughness=1;
   const geometry=new THREE.DodecahedronGeometry(1,1);
   const add=(x:number,y:number,z:number,sx:number,sy:number,sz:number,tilt:number)=>{
     const block=new THREE.Mesh(geometry,rock);block.position.set(x,y,z);block.scale.set(sx,sy,sz);block.rotation.z=tilt;block.castShadow=true;block.receiveShadow=true;frame.add(block);
   };
-  add(-4.9,11.7,CAVE_FRONT_Z+.35,2.6,7.2,2.6,-.055);
-  add(4.9,11.7,CAVE_FRONT_Z+.35,2.6,7.2,2.6,.06);
-  add(0,18,CAVE_FRONT_Z+.35,8.2,2.5,3.1,-.025);
+  add(-4.9,11.7,CAVE_FRONT_Z-.65,2.6,7.2,2.6,-.055);
+  add(4.9,11.7,CAVE_FRONT_Z-.65,2.6,7.2,2.6,.06);
+  add(0,18,CAVE_FRONT_Z-.65,8.2,2.5,3.1,-.025);
   addEntrancePowder(frame);rock.dispose();model.add(frame);
 }
