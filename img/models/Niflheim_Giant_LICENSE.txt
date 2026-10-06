@@ -1,0 +1,7 @@
+Lowpoly Giant Warrior (rigged)
+Author: luch.pok (@lvintoniyak)
+Source: https://sketchfab.com/3d-models/lowpoly-giant-warrior-rigged-66588f8fd6f64212abe49c7c6cababa9
+License: Creative Commons Attribution 4.0 International
+https://creativecommons.org/licenses/by/4.0/
+
+Changes for Yggdrasil: removed both oversized wristbands; lightened skin to a cold white tone; resized textures and compacted mesh buffers. Original skeleton and Walking/StaticPose animations preserved.
