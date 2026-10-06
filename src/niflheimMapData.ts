@@ -1,5 +1,5 @@
 import terrainHeights from './niflheimTerrainHeights.json';
-export type NiflLocation={id:string;name:string;x:number;z:number;kind:'gate'|'shelter'|'river'|'cave'|'root'|'source'|'lair'|'lake'|'bridge'|'hall'|'lookout';text:string};
+export type NiflLocation={id:string;name:string;x:number;z:number;kind:'gate'|'shelter'|'river'|'cave'|'root'|'source'|'lair'|'lake'|'bridge'|'hall'|'lookout'|'forge';text:string};
 export const NIFL_SCALE=2;
 export const NIFL_SOURCE={x:0,z:-49*NIFL_SCALE,rx:8*NIFL_SCALE,rz:7*NIFL_SCALE};
 export const NIFL_LOCATIONS:NiflLocation[]=([
@@ -14,6 +14,7 @@ export const NIFL_LOCATIONS:NiflLocation[]=([
   {id:'crossing',name:'Разрушенная переправа',x:-32,z:-18,kind:'bridge',text:'Через западное русло перекинуты остатки каменной переправы. Здесь предстоит восстановить древний путь.'},
   {id:'namesHall',name:'Зал забытых имён',x:-38,z:-39,kind:'hall',text:'Пустые плиты хранят имена, стёртые тьмой. Их возвращение поможет хранителям вспомнить своё прошлое.'},
   {id:'echoCave',name:'Пещера ледяного эха',x:41,z:32,kind:'cave',text:'Туман повторяет чужие голоса. Вике предстоит отличить настоящий зов о помощи от ловушки.'},
+  {id:'forge',name:'Кузница хранителей',x:-1,z:45,kind:'forge',text:'В скальной пещере горит горн великана-кузнеца. Здесь можно выбрать золотой меч и золотой щит и укрепить снаряжение.'},
   {id:'lookout',name:'Площадка у корней',x:-18,z:-62,kind:'lookout',text:'Отсюда видны источник и заражённые потоки. Над льдом возвышаются древние корни Иггдрасиля.'}
 ] as NiflLocation[]).map(l=>({...l,x:l.x*NIFL_SCALE,z:l.z*NIFL_SCALE}));
 // One centreline drives both the carved bed and its water/ice surface.
@@ -38,7 +39,7 @@ export const NIFL_RIVERS=[
   [{x:0,z:-49},{x:23,z:-34},{x:34,z:-10},{x:29,z:12},{x:39,z:35},{x:57,z:54}]
 ].map(r=>smoothRiver(r.map(p=>({x:p.x*NIFL_SCALE,z:p.z*NIFL_SCALE}))));
 export const NIFL_LAKES=[{x:-36,z:4,rx:11,rz:9},{x:26,z:51,rx:6,rz:4}].map(l=>({...l,x:l.x*NIFL_SCALE,z:l.z*NIFL_SCALE,rx:l.rx*NIFL_SCALE,rz:l.rz*NIFL_SCALE}));
-export const NIFL_ROUTES=[['threshold','shelter'],['threshold','frozenRiver'],['shelter','echoCave'],['shelter','memoryCave'],['frozenRiver','iceLake'],['iceLake','crossing'],['crossing','namesHall'],['frozenRiver','roots'],['memoryCave','roots'],['namesHall','lookout'],['lookout','hvergelmir'],['roots','hvergelmir'],['hvergelmir','nidhogg']];
+export const NIFL_ROUTES=[['threshold','forge'],['forge','shelter'],['threshold','shelter'],['threshold','frozenRiver'],['shelter','echoCave'],['shelter','memoryCave'],['frozenRiver','iceLake'],['iceLake','crossing'],['crossing','namesHall'],['frozenRiver','roots'],['memoryCave','roots'],['namesHall','lookout'],['lookout','hvergelmir'],['roots','hvergelmir'],['hvergelmir','nidhogg']];
 // GLB bounds mapped to the existing world; keep the entrance foundation level.
 export const niflTerrainY=(x:number,z:number)=>{
   const gx=Math.max(0,Math.min(96,(x/240+.5)*96)),gz=Math.max(0,Math.min(96,(z/312+.5)*96));

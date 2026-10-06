@@ -1,3 +1,4 @@
+import {createNiflheimForge} from './niflheimForge';
 import {createNiflheimGiant} from './niflheimGiant';
 import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
@@ -21,7 +22,7 @@ const CSS=`
 .nifl-overlay{position:absolute;inset:0;z-index:10;background:#142b3acc;display:flex;align-items:center;justify-content:center;padding:12px;touch-action:auto}.nifl-panel{background:#fff;color:#22323d;border:2px solid #bac8d0;border-radius:16px;padding:16px;width:100%;max-width:620px;max-height:94%;overflow:auto}.nifl-panel h3{margin:0 0 8px;font-size:20px}.nifl-panel p{font-size:14px;line-height:1.6}.nifl-panel button{background:#eef3f6;color:#22323d;border:1px solid #b3c4ce;border-radius:9px;padding:10px;font:inherit;font-size:13px}.nifl-close{float:right}.nifl-panel svg{display:block;width:100%;height:42vh;min-height:240px;background:#e7eff4;border-radius:12px;margin-top:12px}.nifl-map-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:12px 0}.nifl-map-list button{text-align:left;font-size:12px}.nifl-map-legend{font-size:12px!important;color:#536875}
 `;
 
-export default function Niflheim3D({initialPosition,onRemember}:{initialPosition:{x:number;z:number};onRemember:(position:{x:number;z:number})=>void}){
+export default function Niflheim3D({initialPosition,onRemember,onForge}:{onForge:(position:{x:number;z:number})=>void;initialPosition:{x:number;z:number};onRemember:(position:{x:number;z:number})=>void}){
   const mount=useRef<HTMLDivElement>(null);
   const position=useRef(clampNiflPosition(initialPosition.x,initialPosition.z));
   const remember=useRef(onRemember);remember.current=onRemember;
@@ -61,9 +62,10 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     const textures=new Set<THREE.Texture>();
     let entranceVeil:ReturnType<typeof addEntranceVeil>|undefined;
     let caveSpace:ReturnType<typeof createCaveSpace>|undefined;
+    let forgeSpace:ReturnType<typeof createNiflheimForge>|undefined;
     let giant:ReturnType<typeof createNiflheimGiant>|undefined;
-    const walkingY=(x:number,z:number)=>caveSpace?.groundY(x,z)??niflGroundY(x,z);
-    const terrainY=(x:number,z:number)=>caveSpace?.inside(x,z)?caveSpace.floor-.06:niflGroundY(x,z);
+    const walkingY=(x:number,z:number)=>forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??niflGroundY(x,z);
+    const terrainY=(x:number,z:number)=>forgeSpace?.groundY(x,z)??(caveSpace?.inside(x,z)?caveSpace.floor-.06:niflGroundY(x,z));
     const crystalMaterials:THREE.MeshStandardMaterial[]=[];
     const crystalHalos:THREE.Sprite[]=[];
     const snowCanvas=document.createElement('canvas');snowCanvas.width=snowCanvas.height=128;
@@ -174,6 +176,20 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     let mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,moving=false,currentAction:THREE.AnimationAction|undefined;
     const disposeObject=(root:THREE.Object3D)=>{root.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}});};
     // Fred Drabble's cave, CC BY 4.0: snowy giant shelter facing the entrance road.
+    const forgeLocation=NIFL_LOCATIONS.find(l=>l.id==='forge')!;
+    forgeSpace=createNiflheimForge(forgeLocation.x,forgeLocation.z,niflGroundY(forgeLocation.x,forgeLocation.z));scene.add(forgeSpace.root);
+    const workshop=forgeSpace;
+    cachedGlbBuffer(`${BASE}img/models/Niflheim_Giant_Optimized.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,asset=>{
+      if(!alive){disposeObject(asset.scene);textures.forEach(t=>t.dispose());return;}
+      const smith=createNiflheimGiant(asset.scene,{world:(x,y,z)=>new THREE.Vector3(x,y,z),inside:()=>true},0,0);
+      smith.update(2.8,{x:0,z:-12},true);smith.rock.geometry.dispose();(smith.rock.material as THREE.Material).dispose();
+      const body=smith.root;body.name='Великан-кузнец';body.scale.setScalar(.65);body.position.set(3.8,0,-11);body.rotation.y=0;
+      workshop.root.add(body);body.updateMatrixWorld(true);
+      body.traverse((o:any)=>{if(o.isSkinnedMesh){o.skeleton.update();o.computeBoundingBox();}});
+      const bounds=new THREE.Box3().setFromObject(body);body.position.y+=workshop.root.position.y-bounds.min.y;
+      refreshShadows();
+    },()=>{})).catch(()=>{});
+    refreshShadows();
     const shelter=NIFL_LOCATIONS.find(l=>l.id==='shelter')!;
     cachedGlbBuffer(`${BASE}img/models/Niflheim_Snow_Cave_Optimized.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,gltf=>{
       if(!alive){disposeObject(gltf.scene);textures.forEach(t=>t.dispose());return;}
@@ -273,7 +289,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       const steer=1-Math.exp(-dt*14);
       velocityX=THREE.MathUtils.lerp(velocityX,isMoving?dx/length:0,steer);velocityZ=THREE.MathUtils.lerp(velocityZ,isMoving?dz/length:0,steer);
       if(!paused.current&&!document.hidden){const from=position.current,next=moveThroughNiflEntrance(from,from.x+velocityX*8.5*dt,from.z+velocityZ*8.5*dt);const candidate=caveSpace?caveSpace.move(from,next):next;
-        if(!giant?.blocked(candidate.x,candidate.z))position.current=candidate;}
+        if(!giant?.blocked(candidate.x,candidate.z)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
       if(isMoving){const target=Math.atan2(velocityX,velocityZ),difference=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y));hero.rotation.y+=difference*(1-Math.exp(-dt*14));cameraDir.x=Math.sin(hero.rotation.y);cameraDir.z=Math.cos(hero.rotation.y);}
       const walking=!paused.current&&!document.hidden&&Math.hypot(velocityX,velocityZ)>.08;
       moving=walking;
@@ -283,7 +299,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       if(giant?.update(dt,pos,!paused.current&&!document.hidden))refreshShadows();
       const hy=walkingY(pos.x,pos.z);
       entranceVeil?.update(now*.001,pos);
-      rivers.update(now*.001);
+      rivers.update(now*.001);forgeSpace?.update(now*.001);
       const inCave=caveSpace?.inside(pos.x,pos.z);
       const cameraTarget=inCave?caveSpace!.camera(pos.x,pos.z):new THREE.Vector3(pos.x-cameraDir.x*2,hy+9,pos.z-cameraDir.z*2+17);
       camera.position.lerp(cameraTarget,1-Math.exp(-dt*3.4));
@@ -311,7 +327,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     <div className="nifl-top"><div><h2>Нифльхейм</h2><p>По следу чёрных вод</p></div><button onClick={()=>{clearInput();setMapOpen(true);}}>Карта</button></div>
     {status&&<div className="nifl-status">{status}</div>}
     <button className="nifl-joystick" aria-label="Управление Викой: тяни в нужном направлении" onPointerDown={startStick} onPointerMove={steerStick} onPointerUp={stopStick} onPointerCancel={stopStick} onLostPointerCapture={stopStick}><img src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/><span className="nifl-stick" ref={stick}/></button>
-    {nearest&&<div className="nifl-near"><b>{nearest.name}</b><button onClick={()=>{clearInput();setSelected(nearest.id);}}>Осмотреть</button></div>}
+    {nearest&&<div className="nifl-near"><b>{nearest.name}</b><button onClick={()=>{clearInput();if(nearest.id==='forge'){remember.current({...position.current});onForge({...position.current});}else setSelected(nearest.id);}}>{nearest.id==='forge'?'Войти в кузницу':'Осмотреть'}</button></div>}
     {mapOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Карта Нифльхейма"><button className="nifl-close" onClick={()=>setMapOpen(false)}>Закрыть</button><h3>Карта Нифльхейма</h3><p className="nifl-map-legend">Три реки · два озера · источник Хвергельмир. Нажми на номер или название локации.</p>
       <svg viewBox="0 0 130 160" aria-label="Реки и локации Нифльхейма">
         {NIFL_ROUTES.map((route,i)=>{const a=NIFL_LOCATIONS.find(l=>l.id===route[0])!,b=NIFL_LOCATIONS.find(l=>l.id===route[1])!;return <line key={i} x1={a.x/NIFL_SCALE+65} y1={a.z/NIFL_SCALE+80} x2={b.x/NIFL_SCALE+65} y2={b.z/NIFL_SCALE+80} stroke="#8a9eab" strokeWidth="1" strokeDasharray="2 2"/>;})}
@@ -325,6 +341,6 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       <p className="nifl-map-legend">Ландшафт: <a href="https://sketchfab.com/3d-models/terrain-62dc7db392f34dacb4c07bfcb4faf14e" target="_blank" rel="noopener noreferrer">Terrain — FreeModel (DiFed)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены детализация и текстуры, изменены масштаб, снежный материал и размещение; выровнен пол пещеры.</p>
       <p className="nifl-map-legend">Великан: <a href="https://sketchfab.com/3d-models/lowpoly-giant-warrior-rigged-66588f8fd6f64212abe49c7c6cababa9" target="_blank" rel="noopener noreferrer">Lowpoly Giant Warrior (rigged) — luch.pok (lvintoniyak)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Убраны крупные браслеты, осветлена кожа, уменьшены текстуры; изменены масштаб и размещение, добавлены поза сидя и подъём с камня.</p>
     </section></div>}
-    {info&&<div className="nifl-overlay" style={{zIndex:11}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label={info.name}><h3>{info.name}</h3><p>{info.text}</p><button onClick={()=>setSelected('')}>Продолжить путь</button></section></div>}
+    {info&&<div className="nifl-overlay" style={{zIndex:11}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label={info.name}><h3>{info.name}</h3><p>{info.text}</p>{info.id==='forge'&&<p>Подойди к освещённому входу, чтобы войти в кузницу.</p>}<button onClick={()=>setSelected('')}>Продолжить путь</button></section></div>}
   </div>;
 }

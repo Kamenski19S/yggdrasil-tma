@@ -88,7 +88,8 @@ export const STEEL_CRAFT_RECIPES:SteelCraftRecipe[]=[
 
 
 
-export function ForgeWeaponWall({owned,ownedShields,selected,selectedShield,onChoose}:{owned:string[];ownedShields:string[];selected:HeroWeapon;selectedShield:string|null;onChoose:(asset:string,name:string,id:string)=>void}) {
+export function ForgeWeaponWall({owned,ownedShields,selected,selectedShield,onChoose,niflheim=false}:{niflheim?:boolean;owned:string[];ownedShields:string[];selected:HeroWeapon;selectedShield:string|null;onChoose:(asset:string,name:string,id:string)=>void}) {
+  const models=niflheim?FORGE_WEAPON_MODELS.filter(([asset])=>asset==='Sword_Golden.glb'||asset==='Shield_Celtic_Golden.glb'):FORGE_WEAPON_MODELS;
   const canvas=useRef<HTMLCanvasElement>(null);
   useEffect(()=>{
     const target=canvas.current;
@@ -106,7 +107,7 @@ export function ForgeWeaponWall({owned,ownedShields,selected,selectedShield,onCh
     const loader=new GLTFLoader();
     let active=true;
     renderer.render(scene,camera);
-    FORGE_WEAPON_MODELS.forEach(([asset],index)=>{
+    models.forEach(([asset],index)=>{
       const url=`${BASE}img/models/${asset}`;
       cachedGlbBuffer(url).then(buffer=>new Promise<any>((resolve,reject)=>{
         loader.parse(buffer,`${BASE}img/models/`,resolve,reject);
@@ -122,14 +123,14 @@ export function ForgeWeaponWall({owned,ownedShields,selected,selectedShield,onCh
         const center=box.getCenter(new THREE.Vector3());
         item.position.set(-center.x,-center.y,-center.z);
         const mount=new THREE.Group();mount.add(item);
-        mount.scale.setScalar(1.48/span);
-        mount.position.set((index%5-2)*2.17,(1.5-Math.floor(index/5))*2.28+.22,0);
+        mount.scale.setScalar((niflheim?4.5:1.48)/span);
+        mount.position.set(niflheim?(index-.5)*5:(index%5-2)*2.17,niflheim?0:(1.5-Math.floor(index/5))*2.28+.22,0);
         scene.add(mount);
         renderer.render(scene,camera);
       }).catch(error=>console.warn('Forge display model unavailable',asset,error));
     });
     return()=>{active=false;scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.dispose();};
-  },[]);
-  return <><div className="forge-wall"><canvas ref={canvas}/><div className="forge-wall-labels">{FORGE_WEAPON_MODELS.map(([asset,name,id])=><button type="button" className={'forge-wall-label'+(id&&owned.includes(id)?' owned':'')+(ownedShields.includes(asset)?' owned':'')+(asset===selectedShield||(!asset.startsWith('Shield_')&&id===selected)?' equipped':'')} key={asset} aria-label={'Выбрать '+name} onClick={()=>onChoose(asset,name,id)}>{name}</button>)}</div></div>
+  },[niflheim]);
+  return <><div className="forge-wall"><canvas ref={canvas}/><div className="forge-wall-labels" style={niflheim?{gridTemplateColumns:"repeat(2,minmax(0,1fr))"}:undefined}>{models.map(([asset,name,id])=><button type="button" className={'forge-wall-label'+(id&&owned.includes(id)?' owned':'')+(ownedShields.includes(asset)?' owned':'')+(asset===selectedShield||(!asset.startsWith('Shield_')&&id===selected)?' equipped':'')} key={asset} aria-label={'Выбрать '+name} onClick={()=>onChoose(asset,name,id)}>{name}</button>)}</div></div>
     <p className="forge-wall-note">Выбери полученное оружие или щит. Остальные щиты откроются по мере прохождения.</p></>;
 }

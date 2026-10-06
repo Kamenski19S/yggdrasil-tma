@@ -55,6 +55,7 @@ export function App() {
   const [valk, setValk] = useState(false);
   const [over, setOver] = useState("");
   const [combatFx, setCombatFx] = useState<{kind:"hit"|"rune"|"guard";key:number}|null>(null);
+  const [forgeRealm,setForgeRealm]=useState("midgard");
   const [forgeTransition, setForgeTransition] = useState(false);
   const [craftWeapon,setCraftWeapon]=useState<HeroWeapon|''>('');
   const [craftMaterial,setCraftMaterial]=useState<CraftMaterial|''>('');
@@ -86,10 +87,10 @@ const [roadT, setRoadT] = useState(0.06);
   }, [save.heroSkin]);
   useEffect(() => {
     if (!tg?.BackButton) return;
-    const back = () => { if(screen.t==="mill")millScreenActiveRef.current=false; setScreen(screen.t === "forge" || screen.t === "mill" ? { t: "realm", id:"midgard" } : { t: "tree" }); };
+    const back = () => { if(screen.t==="mill")millScreenActiveRef.current=false; setScreen(screen.t === "forge" || screen.t === "mill" ? { t: "realm", id:screen.t==="forge"?forgeRealm:"midgard" } : { t: "tree" }); };
     if (screen.t !== "tree" && screen.t !== "choose" && save.hero) { tg.BackButton.show(); tg.BackButton.onClick(back); } else tg.BackButton.hide();
     return () => { tg.BackButton?.offClick?.(back); };
-  }, [screen, save.hero]);
+  }, [screen, save.hero,forgeRealm]);
   useEffect(() => { setRes(null); setRemoved(null); setWhisper(false); setOver(""); setShield(false); setCombatFx(null); setHouseDialog(""); houseDialogPending.current=null; }, [screen]);
   useEffect(()=>()=>window.clearTimeout(forgeTimer.current),[]);
 
@@ -156,11 +157,12 @@ const [roadT, setRoadT] = useState(0.06);
     setSave(s=>s.millStored<=0?s:{...s,immortalityDrops:s.immortalityDrops+s.millStored,millStored:0});
   },[]);
 
-  const enterForge=(position?:{x:number;z:number})=>{
+  const enterForge=(position?:{x:number;z:number},realm="midgard")=>{
     if(forgeTransition)return;
-    if(position)midgardReturn.current={x:position.x,z:position.z};
+    setForgeRealm(realm);
+    if(position){if(realm==="niflheim")niflheimReturn.current={...position};else midgardReturn.current={...position};}
     const goldenSwordReady=MIDGARD_GUARDIAN_ORDER.slice(0,-1).every(id=>save.done.includes("guardian:stage:"+id));
-    if(goldenSwordReady&&!save.ownedWeapons.includes("swordGolden")){
+    if(realm==="midgard"&&goldenSwordReady&&!save.ownedWeapons.includes("swordGolden")){
       setSave(state=>state.ownedWeapons.includes("swordGolden")?state:{...state,
         ownedWeapons:[...new Set([...state.ownedWeapons,"swordGolden"])],
         lootCounts:lootCountAdd(state.lootCounts,["swordGolden"]),
@@ -227,6 +229,7 @@ const [roadT, setRoadT] = useState(0.06);
   };
   const forgeCost=(id:string)=>save.forgeFreeUsed?2+forgeLevel(id==='shield'?shieldForgeKey(save.shieldAsset):id)*2:0;
   const improveForgeItem=(item:typeof forgeItems[number])=>{
+    if(forgeRealm==="niflheim"&&((item.kind==="weapon"&&item.id!=="swordGolden")||(item.id==="shield"&&save.shieldAsset!=="Shield_Celtic_Golden.glb"))){say("Для Нифльхейма нужны золотой меч и золотой щит.");return;}
     if(!item.owned){say("Этот предмет ещё нужно получить в награду за испытание.");return;}
     const key=item.id==='shield'?shieldForgeKey(save.shieldAsset):item.id;
     const level=forgeLevel(key);
@@ -240,6 +243,7 @@ const [roadT, setRoadT] = useState(0.06);
     say((cost===0?"Первая ковка бесплатна. ":"")+item.name+": закалка +1");
   };
   const chooseForgeWeapon=(asset:string,name:string,id:string)=>{
+    if(forgeRealm==="niflheim"&&id!=="swordGolden"&&asset!=="Shield_Celtic_Golden.glb"){say("Это снаряжение Мидгарда не действует в Нифльхейме.");return;}
     if(asset.startsWith('Shield_')){
       if(!save.ownedShields.includes(asset)){say(name+' ещё не получен. Щиты будут открываться за испытания.');return;}
       const already=save.shieldAsset===asset&&equipped('shield');
@@ -530,7 +534,7 @@ const [roadT, setRoadT] = useState(0.06);
         {screen.t === "gift" && <div className="title">🎁 Дар</div>}
         {screen.t === "hall" && <div className="title">🏛️ Чертог</div>}
         {screen.t === "craft" && <button className="back" onClick={() => go({ t: "hall" })}>← Чертог · Крафт</button>}
-        {screen.t === "forge" && <button className="back" onClick={() => go({ t: "realm", id:"midgard" })}>← Мидгард · Кузница</button>}
+        {screen.t === "forge" && <button className="back" onClick={() => go({ t: "realm", id:forgeRealm })}>← {forgeRealm==="niflheim"?"Нифльхейм":"Мидгард"} · Кузница</button>}
         {screen.t === "trial" && <div className="title">🗝 Испытание</div>}
         {screen.t === "fight" && <div className="title">⚔ Бой</div>}
         <div className="sparks"><SparkDrop/> {screen.t==="mill"?<>{save.immortalityDrops} Капель бессмертия</>:<>{save.immortalityDrops} Капель бессмертия</>}</div>
@@ -584,7 +588,7 @@ const [roadT, setRoadT] = useState(0.06);
       {screen.t === "realm" && (() => {
   const realm = REALMS.find(r => r.id === screen.id)!;
 
-  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition}/></React.Suspense>;
+  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")}/></React.Suspense>;
 
   if (realm.id === "midgard") {
     if (!heroDef) return null;
@@ -1158,20 +1162,21 @@ const [roadT, setRoadT] = useState(0.06);
         const forgeButton=(item:typeof forgeItems[number])=>{
           const level=forgeLevel(item.id==='shield'?shieldForgeKey(save.shieldAsset):item.id);
           const maxed=level>=(item.id==='shield'?10:5);
+          const incompatible=forgeRealm==="niflheim"&&item.id==="shield"&&save.shieldAsset!=="Shield_Celtic_Golden.glb";
           const free=!save.forgeFreeUsed&&item.owned&&!maxed;
           const label=<><span className="fi-icon">{item.icon}</span><span className="fi-name">{item.id==='shield'?FORGE_WEAPON_MODELS.find(([asset])=>asset===save.shieldAsset)?.[1]:item.name}</span><span className="fi-level">{level>0?"Закалка +"+level:"Без улучшений"}</span></>;
           if(item.kind==='gear'){
             const on=equipped(item.id as GearId);
             return <div key={item.id} className={'forge-item'+(on?' selected':'')}>{label}<div className="forge-gear-actions">
               <button className={on?'on':''} onClick={()=>toggleGear(item.id as GearId)}>{on?'Снять':'Надеть'}</button>
-              <button disabled={maxed} onClick={()=>improveForgeItem(item)}>{maxed?'★':free?'0':<>{forgeCost(item.id)}<SparkDrop/>{forgeAshCost(item.id==='shield',level,!save.forgeFreeUsed)>0?' + 🪵✨1':''}</>}</button>
+              <button disabled={maxed||incompatible} onClick={()=>improveForgeItem(item)}>{maxed?'★':free?'0':<>{forgeCost(item.id)}<SparkDrop/>{forgeAshCost(item.id==='shield',level,!save.forgeFreeUsed)>0?' + 🪵✨1':''}</>}</button>
             </div></div>;
           }
           return null;
         };
         return <div key="forge" className="scroll forge-screen" ref={element=>{if(element&&!element.dataset.forgeEntered){element.scrollTop=0;element.dataset.forgeEntered='yes';}}}>
           <div className="forge-head">
-            <div className="forge-title">Кузница Вёлунда</div>
+            <div className="forge-title">{forgeRealm==="niflheim"?"Кузница хранителей":"Кузница Вёлунда"}</div>
             <div className="forge-master">«Сталь помнит каждый бой. Отдай её огню — и она вернётся сильнее».</div>
             <div className="forge-advice"><b>Совет:</b> выбери оружие или щит на стене. Их предел закалки +10; броня, шлем и сапоги — до +5. Для оружия и щитов начиная с +5 дополнительно нужна ясеневая древесина ×1. В запасе: {save.stock.ashWood}.</div>
             <div className="forge-wallet"><span>Запас:</span><b><SparkDrop/> {save.immortalityDrops}</b><span>Капель бессмертия</span></div>
@@ -1179,14 +1184,15 @@ const [roadT, setRoadT] = useState(0.06);
           <div className={"forge-free"+(!save.forgeFreeUsed?" ready":"")}>{save.forgeFreeUsed
             ? "Следующая закалка оплачивается Каплями силы. Цена растёт вместе с уровнем предмета."
             : "Дар кузнеца: первое улучшение любого доступного предмета бесплатно."}</div>
-          <div className="forge-group-title">Стена оружия Вёлунда</div>
-          <ForgeWeaponWall owned={save.ownedWeapons} ownedShields={save.ownedShields} selected={save.heroWeapon} selectedShield={equipped('shield')?save.shieldAsset:null} onChoose={chooseForgeWeapon}/>
+          <div className="forge-group-title">{forgeRealm==="niflheim"?"Оружие для Нифльхейма":"Стена оружия Вёлунда"}</div>
+          {forgeRealm==="niflheim"&&<div className="forge-note">Из оружия Мидгарда здесь подходят золотой меч и золотой щит. Получи их в Мидгарде; новое оружие Нифльхейма появится по мере освобождения хранителей.</div>}
+          <ForgeWeaponWall niflheim={forgeRealm==="niflheim"} owned={save.ownedWeapons} ownedShields={save.ownedShields} selected={save.heroWeapon} selectedShield={equipped('shield')?save.shieldAsset:null} onChoose={chooseForgeWeapon}/>
           <div className="forge-equipped"><span>В руке: {save.heroWeapon==='default'?('Меч валькирии'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} · сила +{WEAPON_POWER[save.heroWeapon]} · закалка +{forgeLevel(save.heroWeapon)}</span>
-            <button disabled={forgeLevel(save.heroWeapon)>=10} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=10?'Максимум +10':<>Закалить {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/>{forgeAshCost(true,forgeLevel(save.heroWeapon),!save.forgeFreeUsed)>0?" + ясень ×1":""}</>:'бесплатно'}</>}</button></div>
+            <button disabled={forgeLevel(save.heroWeapon)>=10||(forgeRealm==="niflheim"&&save.heroWeapon!=="swordGolden")} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=10?'Максимум +10':<>Закалить {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/>{forgeAshCost(true,forgeLevel(save.heroWeapon),!save.forgeFreeUsed)>0?" + ясень ×1":""}</>:'бесплатно'}</>}</button></div>
           <div className="forge-group-title">Экипировка</div>
           <div className="forge-grid">{gear.map(forgeButton)}</div>
                     <div className="forge-note"><b>Закалка действует в бою.</b> Оружие усиливает обычный удар; броня и шлем добавляют здоровье и снижают урон; щит крепче держит защиту; улучшенные сапоги помогают быстрее восстановить энергию.</div>
-          <button className="forge-exit" onClick={()=>{haptic();go({t:"realm",id:"midgard"});}}>🔥 Открыть дверь и вернуться в Мидгард</button>
+          <button className="forge-exit" onClick={()=>{haptic();go({t:"realm",id:forgeRealm});}}>🔥 Открыть дверь и вернуться в {forgeRealm==="niflheim"?"Нифльхейм":"Мидгард"}</button>
         </div>;
       })()}
 
