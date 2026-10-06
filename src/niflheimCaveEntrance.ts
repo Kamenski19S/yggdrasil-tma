@@ -64,7 +64,7 @@ export function createCaveHallGeometry(){
     const z=CAVE_FRONT_Z+(CAVE_BACK_Z-CAVE_FRONT_Z)*i/depthSteps;
     for(let j=0;j<=archSteps;j++){
       const a=j/archSteps*Math.PI,r=caveHalfWidth(z)+layer*1.1;
-      const variation=Math.sin(i*.7+j*.8)*Math.sin(a)*.12*Math.sin(Math.PI*i/depthSteps);
+      const variation=(layer?Math.sin(i*.45+j*.7)*.9+Math.cos(i*.77-j*1.4)*.4:Math.sin(i*.7+j*.8)*.12)*Math.sin(a)*Math.sin(Math.PI*i/depthSteps);
       positions.push(CAVE_MOUTH_X+(r+variation)*Math.cos(a),CAVE_FLOOR_Y+(caveHeight(z)+layer*1.1+variation)*Math.sin(a),z);
       uv.push(.12+.52*j/archSteps,.12+.55*i/depthSteps);
       if(i<depthSteps&&j<archSteps){
@@ -81,9 +81,15 @@ export function createCaveHallGeometry(){
   positions.push(CAVE_MOUTH_X,CAVE_FLOOR_Y,CAVE_BACK_Z);uv.push(.35,.6);
   const end=depthSteps*(archSteps+1);
   for(let j=0;j<archSteps;j++)indices.push(backCentre,end+j,end+j+1);
-  const outerBackCentre=positions.length/3;
-  positions.push(CAVE_MOUTH_X,CAVE_FLOOR_Y,CAVE_BACK_Z);uv.push(.35,.6);
-  for(let j=0;j<archSteps;j++)indices.push(outerBackCentre,shell+end+j+1,shell+end+j);
+  // Round the rear exterior into the snowbank instead of leaving a flat cut.
+  const rear=positions.length/3,rearSteps=12;
+  for(let i=0;i<=rearSteps;i++)for(let j=0;j<=archSteps;j++){
+    const t=i/rearSteps,a=j/archSteps*Math.PI,r=Math.cos(t*Math.PI/2),z=CAVE_BACK_Z-7*Math.sin(t*Math.PI/2);
+    const bump=Math.sin(j*.8+i*.7)*.35*r*Math.sin(a)*Math.sin(t*Math.PI);
+    positions.push(CAVE_MOUTH_X+(10.1*r+bump)*Math.cos(a),CAVE_FLOOR_Y+(13.1*r+bump)*Math.sin(a),z);
+    uv.push(.12+.52*j/archSteps,.67+.12*t);
+    if(i<rearSteps&&j<archSteps){const k=rear+i*(archSteps+1)+j;indices.push(k,k+archSteps+1,k+1,k+1,k+archSteps+1,k+archSteps+2);}
+  }
   const floor=positions.length/3;
   for(let i=0;i<=depthSteps;i++){
     const z=CAVE_FRONT_Z+(CAVE_BACK_Z-CAVE_FRONT_Z)*i/depthSteps,w=caveHalfWidth(z);
@@ -104,7 +110,8 @@ export function createCaveSpace(model:THREE.Object3D){
     const p=local(x,z),dx=Math.abs(p.x-CAVE_MOUTH_X),radius=.65/CAVE_SCALE;
     // Tall stone uprights: keep their full footprint solid, including the taper.
     for(const side of [-1,1])if(Math.abs(p.x-(CAVE_MOUTH_X+side*4.9))<2.7+radius&&Math.abs(p.z-(CAVE_FRONT_Z-.65))<2.65+radius)return true;
-    if(p.z>CAVE_FRONT_Z+.2+radius||p.z<CAVE_BACK_Z-1.1-radius)return false;
+    if(p.z>CAVE_FRONT_Z+.2+radius||p.z<CAVE_BACK_Z-7-radius)return false;
+    if(p.z<CAVE_BACK_Z){const t=THREE.MathUtils.clamp((CAVE_BACK_Z-p.z)/7,0,1);return dx<10.1*Math.sqrt(1-t*t)+radius;}
     const width=caveHalfWidth(p.z);
     const headroom=width*Math.sqrt(Math.max(0,1-(5.4/caveHeight(p.z))**2));
     if(p.z<CAVE_BACK_Z+radius)return dx<width+1.1+radius;
