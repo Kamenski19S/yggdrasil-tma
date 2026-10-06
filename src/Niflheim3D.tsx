@@ -139,11 +139,14 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     for(const part of scene.children.slice(-4))entrancePlaceholder.add(part);
     scene.add(entrancePlaceholder);
     gates.push(entranceGate);
+    const shelterPlaceholder=new THREE.Group();scene.add(shelterPlaceholder);
     NIFL_LOCATIONS.forEach((l,index)=>{
       if(l.kind==='cave'||l.kind==='lair')cave(l.x,l.z-3);
       if(l.kind==='hall'||l.kind==='shelter'){
+        const first=scene.children.length;
         pillar(l.x-3,l.z-2,4);pillar(l.x+3,l.z-2,4);pillar(l.x-3,l.z+2,4);pillar(l.x+3,l.z+2,4);
         mesh(poleGeo,snow,l.x,niflGroundY(l.x,l.z)+4.5,l.z,8,.8,7);mesh(poleGeo,pathMat,l.x,niflGroundY(l.x,l.z)+.3,l.z,8,.6,7);
+        if(l.kind==='shelter')for(const part of scene.children.slice(first))shelterPlaceholder.add(part);
       }
       if(l.kind==='bridge'){for(let j=0;j<6;j++)mesh(poleGeo,stone,l.x-6+j*2,niflGroundY(l.x-6+j*2,l.z)+.45,l.z,1.8,.7,3.6);}
       if(l.kind==='lookout')mesh(poleGeo,stone,l.x,niflGroundY(l.x,l.z)+1,l.z,7,2,6);
@@ -164,6 +167,25 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     const hero=new THREE.Group();hero.rotation.y=Math.PI;scene.add(hero);
     let mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,moving=false,currentAction:THREE.AnimationAction|undefined;
     const disposeObject=(root:THREE.Object3D)=>{root.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}});};
+    // Fred Drabble's cave, CC BY 4.0: snowy giant shelter facing the entrance road.
+    const shelter=NIFL_LOCATIONS.find(l=>l.id==='shelter')!;
+    cachedGlbBuffer(`${BASE}img/models/Niflheim_Snow_Cave_Optimized.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,gltf=>{
+      if(!alive){disposeObject(gltf.scene);textures.forEach(t=>t.dispose());return;}
+      const model=gltf.scene,angle=Math.atan2(-shelter.x,130-shelter.z);
+      model.rotation.y=angle;model.scale.setScalar(1.25);
+      // Anchor the forward mouth to the marker, with the cave behind the approach.
+      const mouth=new THREE.Vector3(-3,5.6,14).multiplyScalar(1.25).applyAxisAngle(new THREE.Vector3(0,1,0),angle);
+      model.position.set(shelter.x-mouth.x,niflGroundY(shelter.x,shelter.z)-mouth.y-.35,shelter.z-mouth.z);
+      model.name='Приют великанов-хранителей';
+      model.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+      scene.add(model);shelterPlaceholder.visible=false;
+      for(const [dx,dz,r] of [[-8,2,2.2],[8,1,2.8],[-11,-6,3],[11,-7,2.4]]){
+        const offset=new THREE.Vector3(dx,0,dz).applyAxisAngle(new THREE.Vector3(0,1,0),angle),x=shelter.x+offset.x,z=shelter.z+offset.z;
+        mesh(rockGeo,ice,x,niflGroundY(x,z)+r*.4,z,r,r*.8,r*.9);
+        mesh(rockGeo,snow,x,niflGroundY(x,z)+r*.83,z,r*.94,r*.27,r*.85);
+      }
+      refreshShadows();
+    },()=>{})).catch(()=>{});
     cachedGlbBuffer(`${BASE}img/models/Vika-3d-animated-optimized.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,gltf=>{
       if(!alive){disposeObject(gltf.scene);textures.forEach(t=>t.dispose());return;}
       const model=gltf.scene,bounds=new THREE.Box3().setFromObject(model);const height=Math.max(.01,bounds.max.y-bounds.min.y);model.scale.setScalar(6.1/height);model.position.y=-bounds.min.y*(6.1/height);hero.add(model);model.traverse((o:any)=>{if(o.isMesh)o.receiveShadow=true;});
@@ -270,6 +292,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
         {NIFL_LOCATIONS.map((l,i)=><g key={l.id} role="button" tabIndex={0} aria-label={l.name} onClick={()=>setSelected(l.id)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelected(l.id);}}} style={{cursor:'pointer'}}><circle cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} r="5.5" fill="#fff" stroke="#526f82" strokeWidth=".6"/><text x={l.x/NIFL_SCALE+65} y={l.z/NIFL_SCALE+81.5} textAnchor="middle" fontSize="4" fill="#203e52">{i+1}</text></g>)}
         <circle cx={mapPoint(position.current.x,position.current.z).x} cy={mapPoint(position.current.x,position.current.z).y} r="2.5" fill="#d29d30" stroke="#fff" strokeWidth=".8"/>
       </svg><div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><button key={l.id} onClick={()=>setSelected(l.id)}>{i+1}. {l.name}</button>)}</div><p className="nifl-map-legend">Золотая точка — Вика. Русла покрыты льдом: по ним пока можно пройти.</p><p className="nifl-map-legend">Входные врата: <a href="https://sketchfab.com/3d-models/stone-portal-bfaf2e45dd7242579f5a37b810eca423" target="_blank" rel="noopener noreferrer">Stone Portal — hirairmak</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения в игре: масштаб, размещение основания в снегу и сияние кристаллов.</p>
+      <p className="nifl-map-legend">Пещера: <a href="https://sketchfab.com/3d-models/cave-lp-9k-free-download-819687653df14a4a9acb267212093d1a" target="_blank" rel="noopener noreferrer">Cave LP — Fred Drabble</a>, CC BY 4.0. Уменьшены текстуры, добавлены снег и иней, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Сосульки: <a href="https://sketchfab.com/3d-models/icicle-01-2dc75ae22f1c4d11abbfd32819312a12" target="_blank" rel="noopener noreferrer">Icicle 01 — Elin</a>, CC BY 4.0. Текстуры уменьшены до 256 пикселей, изменены масштаб, оттенок и размещение; сверху добавлен снег.</p>
     </section></div>}
     {info&&<div className="nifl-overlay" style={{zIndex:11}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label={info.name}><h3>{info.name}</h3><p>{info.text}</p><button onClick={()=>setSelected('')}>Продолжить путь</button></section></div>}
