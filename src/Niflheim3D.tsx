@@ -49,9 +49,11 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     const camera=new THREE.PerspectiveCamera(58,1,.1,280);
     scene.add(new THREE.HemisphereLight('#e8f7ff','#536d80',1.35));
     const sun=new THREE.DirectionalLight('#ecf5ff',2.2);sun.position.set(-135,90,85);
-    sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);
+    sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
     Object.assign(sun.shadow.camera,{left:-190,right:190,top:190,bottom:-190,near:1,far:500});
-    sun.shadow.camera.updateProjectionMatrix();sun.shadow.bias=-.00015;sun.shadow.normalBias=.08;
+    // The large, shallow-lit snow field needs enough offset to avoid shadow-map
+    // texels drawing stripes on their own surface. Keep terrain casting shadows.
+    sun.shadow.camera.updateProjectionMatrix();sun.shadow.bias=-.0005;sun.shadow.normalBias=.45;
     scene.add(sun);scene.add(sun.target);
     const textures=new Set<THREE.Texture>();
     let entranceVeil:ReturnType<typeof addEntranceVeil>|undefined;
