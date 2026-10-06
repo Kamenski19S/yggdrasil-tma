@@ -1,3 +1,4 @@
+import {createNiflheimGiant} from './niflheimGiant';
 import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -60,6 +61,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     const textures=new Set<THREE.Texture>();
     let entranceVeil:ReturnType<typeof addEntranceVeil>|undefined;
     let caveSpace:ReturnType<typeof createCaveSpace>|undefined;
+    let giant:ReturnType<typeof createNiflheimGiant>|undefined;
     const walkingY=(x:number,z:number)=>caveSpace?.groundY(x,z)??niflGroundY(x,z);
     const terrainY=(x:number,z:number)=>caveSpace?.inside(x,z)?caveSpace.floor-.06:niflGroundY(x,z);
     const crystalMaterials:THREE.MeshStandardMaterial[]=[];
@@ -185,6 +187,12 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       model.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
       scene.add(model);shelterPlaceholder.visible=false;
       caveSpace=createCaveSpace(model);
+      const giantSpace=caveSpace;
+      cachedGlbBuffer(`${BASE}img/models/Niflheim_Giant_Optimized.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,asset=>{
+        if(!alive){disposeObject(asset.scene);textures.forEach(t=>t.dispose());return;}
+        giant=createNiflheimGiant(asset.scene,giantSpace,CAVE_MOUTH_X,CAVE_FLOOR_Y);
+        scene.add(giant.root,giant.rock);refreshShadows();
+      },()=>{if(alive)setStatus('Не удалось загрузить великана. Войди в Нифльхейм снова.');})).catch(()=>{if(alive)setStatus('Не удалось загрузить великана. Войди в Нифльхейм снова.');});
       scene.traverse((o:any)=>{
         if(o.name!=='Niflheim terrain'||!o.isMesh)return;
         const vertices=o.geometry.getAttribute('position');
@@ -264,20 +272,22 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       const length=Math.hypot(dx,dz),isMoving=length>.05;
       const steer=1-Math.exp(-dt*14);
       velocityX=THREE.MathUtils.lerp(velocityX,isMoving?dx/length:0,steer);velocityZ=THREE.MathUtils.lerp(velocityZ,isMoving?dz/length:0,steer);
-      if(!paused.current&&!document.hidden){const from=position.current,next=moveThroughNiflEntrance(from,from.x+velocityX*8.5*dt,from.z+velocityZ*8.5*dt);position.current=caveSpace?caveSpace.move(from,next):next;}
+      if(!paused.current&&!document.hidden){const from=position.current,next=moveThroughNiflEntrance(from,from.x+velocityX*8.5*dt,from.z+velocityZ*8.5*dt);const candidate=caveSpace?caveSpace.move(from,next):next;
+        if(!giant?.blocked(candidate.x,candidate.z))position.current=candidate;}
       if(isMoving){const target=Math.atan2(velocityX,velocityZ),difference=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y));hero.rotation.y+=difference*(1-Math.exp(-dt*14));cameraDir.x=Math.sin(hero.rotation.y);cameraDir.z=Math.cos(hero.rotation.y);}
       const walking=!paused.current&&!document.hidden&&Math.hypot(velocityX,velocityZ)>.08;
       moving=walking;
       const next=moving?walk:idle;
       if(next&&next!==currentAction){currentAction?.fadeOut(.16);next.reset();next.enabled=true;next.setEffectiveWeight(1);next.setEffectiveTimeScale(1);next.fadeIn(.16).play();currentAction=next;}
       const pos=position.current;hero.position.set(pos.x,walkingY(pos.x,pos.z),pos.z);mixer?.update(dt);
+      if(giant?.update(dt,pos,!paused.current&&!document.hidden))refreshShadows();
       const hy=walkingY(pos.x,pos.z);
       entranceVeil?.update(now*.001,pos);
       rivers.update(now*.001);
       const inCave=caveSpace?.inside(pos.x,pos.z);
       const cameraTarget=inCave?caveSpace!.camera(pos.x,pos.z):new THREE.Vector3(pos.x-cameraDir.x*2,hy+9,pos.z-cameraDir.z*2+17);
       camera.position.lerp(cameraTarget,1-Math.exp(-dt*3.4));
-      if(inCave){const p=caveSpace!.local(pos.x,pos.z);camera.lookAt(caveSpace!.world(p.x,CAVE_FLOOR_Y+3,p.z-4));}
+      if(inCave){const p=caveSpace!.local(pos.x,pos.z);camera.lookAt(caveSpace!.world(p.x,CAVE_FLOOR_Y+(p.z<0?6.5:3),p.z-6));}
       else camera.lookAt(pos.x+cameraDir.x*1.9,hy+3,pos.z-10+cameraDir.z*1.9);
       crystalMaterials.forEach(m=>{m.emissiveIntensity=1.35+Math.sin(now*.0017)*.12;});crystalHalos.forEach(h=>{(h.material as THREE.SpriteMaterial).opacity=.48+Math.sin(now*.0017)*.05;});
       sourceRing.rotation.z+=dt*.12;gates.forEach(g=>{(g.material as THREE.MeshBasicMaterial).opacity=.78+Math.sin(now*.001)*.06;});
