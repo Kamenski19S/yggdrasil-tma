@@ -14,7 +14,7 @@ export const NIFL_LOCATIONS:NiflLocation[]=([
   {id:'crossing',name:'Разрушенная переправа',x:-32,z:-18,kind:'bridge',text:'Через западное русло перекинуты остатки каменной переправы. Здесь предстоит восстановить древний путь.'},
   {id:'namesHall',name:'Зал забытых имён',x:-38,z:-39,kind:'hall',text:'Пустые плиты хранят имена, стёртые тьмой. Их возвращение поможет хранителям вспомнить своё прошлое.'},
   {id:'echoCave',name:'Пещера ледяного эха',x:41,z:32,kind:'cave',text:'Туман повторяет чужие голоса. Вике предстоит отличить настоящий зов о помощи от ловушки.'},
-  {id:'forge',name:'Кузница хранителей',x:-1,z:45,kind:'forge',text:'В скальной пещере горит горн великана-кузнеца. Здесь можно выбрать золотой меч и золотой щит и укрепить снаряжение.'},
+  {id:'forge',name:'Кузница хранителей',x:7,z:45,kind:'forge',text:'В скальной пещере горит горн великана-кузнеца. Здесь можно выбрать золотой меч и золотой щит и укрепить снаряжение.'},
   {id:'lookout',name:'Площадка у корней',x:-18,z:-62,kind:'lookout',text:'Отсюда видны источник и заражённые потоки. Над льдом возвышаются древние корни Иггдрасиля.'}
 ] as NiflLocation[]).map(l=>({...l,x:l.x*NIFL_SCALE,z:l.z*NIFL_SCALE}));
 // One centreline drives both the carved bed and its water/ice surface.
@@ -31,7 +31,7 @@ const smoothRiver=(points:{x:number;z:number}[])=>{
   }
   result.push(points[points.length-1]);return result;
 };
-export const NIFL_RIVER_WIDTHS=[3.6,3,2.7];
+export const NIFL_RIVER_WIDTHS=[7.2,6,5.4];
 export const NIFL_LIVING_RIVER=2;
 export const NIFL_RIVERS=[
   [{x:0,z:-49},{x:-6,z:-30},{x:-10,z:-5},{x:-8,z:24},{x:-1,z:48},{x:-6,z:74}],
