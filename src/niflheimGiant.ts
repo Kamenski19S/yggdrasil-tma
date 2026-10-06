@@ -7,8 +7,8 @@ export function createNiflheimGiant(model:THREE.Group,space:{world(x:number,y:nu
   const bones:THREE.Bone[]=[];model.traverse(o=>{if((o as THREE.Bone).isBone)bones.push(o as THREE.Bone);});
   const find=(name:string)=>bones.find(b=>b.name.replace(/[^a-zA-Z0-9_]/g,'').startsWith(name.replace(/[^a-zA-Z0-9_]/g,'')));
   const point=(b:THREE.Object3D)=>b.getWorldPosition(new THREE.Vector3());
-  const foot=find('foot.L_'),toe=find('toe.L_');
-  const forward=foot&&toe?point(toe).sub(point(foot)).setY(0).normalize():new THREE.Vector3(0,0,1);
+  const left=find('shoulder.L_'),right=find('shoulder.R_');
+  const forward=left&&right?point(right).sub(point(left)).setY(0).normalize().cross(new THREE.Vector3(0,1,0)):new THREE.Vector3(0,0,1);
   const facing=Math.atan2(forward.x,forward.z);
   model.rotation.y-=facing;model.updateMatrixWorld(true);
   const bounds=new THREE.Box3().setFromObject(model),scale=13.5/Math.max(.01,bounds.max.y-bounds.min.y);
@@ -32,6 +32,16 @@ export function createNiflheimGiant(model:THREE.Group,space:{world(x:number,y:nu
   const pose=(standing:number)=>{
     rest.forEach(({b,q})=>b.quaternion.copy(q));model.position.copy(origin);
     for(const [a,b] of [['spine_01','spine.001_02'],['spine.001_02','spine.002_00'],['spine.002_00','spine.003_03'],['spine.003_03','spine.004_04'],['spine.004_04','spine.005_05'],['spine.005_05','spine.006_06']])aim(a,b,new THREE.Vector3(0,1,0));
+    // Align the chest from both shoulders after straightening the source rig.
+    const chest=find('spine_01'),sl=find('shoulder.L_'),sr=find('shoulder.R_');
+    if(chest&&sl&&sr){
+      root.updateMatrixWorld(true);
+      const across=point(sr).sub(point(sl)).setY(0).normalize();
+      const desired=new THREE.Vector3(1,0,0).applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion()));
+      const turn=new THREE.Quaternion().setFromUnitVectors(across,desired);
+      const parent=chest.parent!.getWorldQuaternion(new THREE.Quaternion());
+      chest.quaternion.copy(parent.invert().multiply(turn.multiply(chest.getWorldQuaternion(new THREE.Quaternion()))));
+    }
     for(const side of ['L','R']){
       aim(`thigh.${side}_`,`shin.${side}_`,new THREE.Vector3(side==='L'?-.07:.07,-standing-.08,1-standing).normalize());
       aim(`shin.${side}_`,`foot.${side}_`,new THREE.Vector3(0,-1,0));
@@ -52,9 +62,9 @@ export function createNiflheimGiant(model:THREE.Group,space:{world(x:number,y:nu
   const fit=13.5/Math.max(.01,uprightBounds.max.y-uprightBounds.min.y);
   model.scale.multiplyScalar(fit);origin.multiplyScalar(fit);
   pose(0);
-  const hip=find('thigh.L_'),seatHeight=hip?point(hip).y-seat.y-.2:3.5;
-  const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(1,1),new THREE.MeshStandardMaterial({color:'#7c8990',roughness:1}));
-  rock.name='Камень великана';rock.position.copy(seat).addScaledVector(front,-.6);rock.position.y+=seatHeight/2;rock.scale.set(3.1,Math.max(.8,seatHeight/2),2.5);rock.castShadow=true;rock.receiveShadow=true;
+  const hip=find('thigh.L_'),seatHeight=hip?point(hip).y-seat.y-.35:3.5;
+  const rock=new THREE.Mesh(new THREE.CylinderGeometry(1,.94,1,9,1),new THREE.MeshStandardMaterial({color:'#7c8990',roughness:1}));
+  rock.name='Камень великана';rock.position.copy(seat).addScaledVector(front,-.75);rock.position.y+=seatHeight/2;rock.rotation.y=root.rotation.y;rock.scale.set(4.1,Math.max(1.6,seatHeight),1.85);rock.castShadow=true;rock.receiveShadow=true;
   let rising=false,elapsed=0,standing=false;
   return {root,rock,update(dt:number,pos:{x:number;z:number},active:boolean){
     if(!active)return false;
@@ -63,6 +73,6 @@ export function createNiflheimGiant(model:THREE.Group,space:{world(x:number,y:nu
     return false;
   },blocked(x:number,z:number){
     const dx=x-seat.x,dz=z-seat.z,along=dx*front.x+dz*front.z,across=dx*front.z-dz*front.x;
-    return Math.abs(across)<3.5&&along>-2.8&&along<(standing?4.2:3.4);
+    return Math.abs(across)<4.6&&along>-3.2&&along<(standing?4.2:3.4);
   }};
 }
