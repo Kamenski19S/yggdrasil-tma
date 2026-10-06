@@ -37,16 +37,17 @@ export function createNiflheimGiant(model:THREE.Group,space:{world(x:number,y:nu
     if(chest&&sl&&sr){
       root.updateMatrixWorld(true);
       const across=point(sr).sub(point(sl)).setY(0).normalize();
-      const desired=new THREE.Vector3(1,0,0).applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion()));
+      // The imported rig faces -Z when its shoulder axis points +X.
+      const desired=new THREE.Vector3(-1,0,0).applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion()));
       const turn=new THREE.Quaternion().setFromUnitVectors(across,desired);
       const parent=chest.parent!.getWorldQuaternion(new THREE.Quaternion());
       chest.quaternion.copy(parent.invert().multiply(turn.multiply(chest.getWorldQuaternion(new THREE.Quaternion()))));
     }
     for(const side of ['L','R']){
-      aim(`thigh.${side}_`,`shin.${side}_`,new THREE.Vector3(side==='L'?-.07:.07,-standing-.08,1-standing).normalize());
+      aim(`thigh.${side}_`,`shin.${side}_`,new THREE.Vector3(side==='L'?.07:-.07,-standing-.08,1-standing).normalize());
       aim(`shin.${side}_`,`foot.${side}_`,new THREE.Vector3(0,-1,0));
       aim(`foot.${side}_`,`toe.${side}_`,new THREE.Vector3(0,0,1));
-      aim(`upper_arm.${side}_`,`forearm.${side}_`,new THREE.Vector3(side==='L'?-.2:.2,-1,.12));
+      aim(`upper_arm.${side}_`,`forearm.${side}_`,new THREE.Vector3(side==='L'?.2:-.2,-1,.12));
       aim(`forearm.${side}_`,`hand.${side}_`,new THREE.Vector3(0,-1,(1-standing)*.65));
     }
     root.updateMatrixWorld(true);
