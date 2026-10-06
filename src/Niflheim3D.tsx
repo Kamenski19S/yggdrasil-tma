@@ -7,7 +7,7 @@ import {addEntranceSnow} from './niflheimEntranceSnow';
 import {addEntranceVeil} from './niflheimEntranceVeil';
 import {addEntrancePowder} from './niflheimEntrancePowder';
 import {addNiflheimRivers} from './niflheimRivers';
-import {reshapeCaveEntrance,CAVE_FRONT_Z,CAVE_MOUTH_X,CAVE_FLOOR_Y} from './niflheimCaveEntrance';
+import {reshapeCaveEntrance,createCaveSpace,CAVE_SCALE,CAVE_FRONT_Z,CAVE_MOUTH_X,CAVE_FLOOR_Y} from './niflheimCaveEntrance';
 import {NIFL_SCALE,NIFL_SOURCE,NIFL_ENTRANCE_ARCS,NIFL_LOCATIONS,NIFL_RIVERS,NIFL_LAKES,NIFL_ROUTES,niflGroundY,clampNiflPosition,moveThroughNiflEntrance} from './niflheimMapData';
 
 const hash=(x:number,z:number)=>{const n=Math.sin(x*127.1+z*311.7)*43758.5453;return n-Math.floor(n);};
@@ -59,6 +59,9 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     scene.add(sun);scene.add(sun.target);
     const textures=new Set<THREE.Texture>();
     let entranceVeil:ReturnType<typeof addEntranceVeil>|undefined;
+    let caveSpace:ReturnType<typeof createCaveSpace>|undefined;
+    const walkingY=(x:number,z:number)=>caveSpace?.groundY(x,z)??niflGroundY(x,z);
+    const terrainY=(x:number,z:number)=>caveSpace?.inside(x,z)?caveSpace.floor-.06:niflGroundY(x,z);
     const crystalMaterials:THREE.MeshStandardMaterial[]=[];
     const crystalHalos:THREE.Sprite[]=[];
     const snowCanvas=document.createElement('canvas');snowCanvas.width=snowCanvas.height=128;
@@ -72,7 +75,7 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
     const glow=new THREE.MeshBasicMaterial({color:'#8edafb',transparent:true,opacity:.55});
     new THREE.TextureLoader().load(`${BASE}img/models/Stone_Sacred_1.jpg`,texture=>{if(!alive){texture.dispose();return;}texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;textures.add(texture);stone.map=texture;stone.needsUpdate=true;});
     const groundGeo=new THREE.PlaneGeometry(120*NIFL_SCALE,156*NIFL_SCALE,72,90);groundGeo.rotateX(-Math.PI/2);
-    const p=groundGeo.getAttribute('position');for(let i=0;i<p.count;i++)p.setY(i,niflGroundY(p.getX(i),p.getZ(i)));groundGeo.computeVertexNormals();const fallbackGround=new THREE.Mesh(groundGeo,snow);fallbackGround.castShadow=true;fallbackGround.receiveShadow=true;scene.add(fallbackGround);
+    const p=groundGeo.getAttribute('position');for(let i=0;i<p.count;i++)p.setY(i,niflGroundY(p.getX(i),p.getZ(i)));groundGeo.computeVertexNormals();const fallbackGround=new THREE.Mesh(groundGeo,snow);fallbackGround.name="Niflheim terrain";fallbackGround.castShadow=true;fallbackGround.receiveShadow=true;scene.add(fallbackGround);
     new GLTFLoader().load(`${BASE}img/models/Terrain_Optimized.glb`,asset=>{
       if(!alive){asset.scene.traverse((o:any)=>{if(!o.isMesh)return;o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)v.dispose();m.dispose();}});return;}
       // Bake the source node transform before mapping its unit square to the world.
@@ -80,9 +83,9 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       asset.scene.traverse((o:any)=>{if(!o.isMesh)return;
         const geo=o.geometry as THREE.BufferGeometry;geo.applyMatrix4(o.matrixWorld);
         const vertices=geo.getAttribute('position');
-        for(let i=0;i<vertices.count;i++){const x=(vertices.getX(i)-.5)*240,z=(vertices.getZ(i)+.5)*312;vertices.setXYZ(i,x,niflGroundY(x,z),z);}
+        for(let i=0;i<vertices.count;i++){const x=(vertices.getX(i)-.5)*240,z=(vertices.getZ(i)+.5)*312;vertices.setXYZ(i,x,terrainY(x,z),z);}
         geo.computeVertexNormals();geo.computeBoundingSphere();
-        const terrain=new THREE.Mesh(geo,snow);terrain.castShadow=true;terrain.receiveShadow=true;scene.add(terrain);
+        const terrain=new THREE.Mesh(geo,snow);terrain.name="Niflheim terrain";terrain.castShadow=true;terrain.receiveShadow=true;scene.add(terrain);
         for(const material of Array.isArray(o.material)?o.material:[o.material]){for(const value of Object.values(material))if(value instanceof THREE.Texture)value.dispose();material.dispose();}
       });
       scene.remove(fallbackGround);groundGeo.dispose();refreshShadows();
@@ -174,13 +177,22 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       if(!alive){disposeObject(gltf.scene);textures.forEach(t=>t.dispose());return;}
       const model=gltf.scene,angle=Math.atan2(-shelter.x,130-shelter.z);
       reshapeCaveEntrance(model,stone);
-      model.rotation.y=angle;model.scale.setScalar(1.25);
+      model.rotation.y=angle;model.scale.setScalar(CAVE_SCALE);
       // Anchor the forward mouth to the marker, with the cave behind the approach.
-      const mouth=new THREE.Vector3(CAVE_MOUTH_X,CAVE_FLOOR_Y,CAVE_FRONT_Z).multiplyScalar(1.25).applyAxisAngle(new THREE.Vector3(0,1,0),angle);
-      model.position.set(shelter.x-mouth.x,niflGroundY(shelter.x,shelter.z)-mouth.y-.35,shelter.z-mouth.z);
+      const mouth=new THREE.Vector3(CAVE_MOUTH_X,CAVE_FLOOR_Y,CAVE_FRONT_Z).multiplyScalar(CAVE_SCALE).applyAxisAngle(new THREE.Vector3(0,1,0),angle);
+      model.position.set(shelter.x-mouth.x,niflGroundY(shelter.x,shelter.z)-mouth.y-.04,shelter.z-mouth.z);
       model.name='Приют великанов-хранителей';
       model.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
       scene.add(model);shelterPlaceholder.visible=false;
+      caveSpace=createCaveSpace(model);
+      scene.traverse((o:any)=>{
+        if(o.name!=='Niflheim terrain'||!o.isMesh)return;
+        const vertices=o.geometry.getAttribute('position');
+        for(let i=0;i<vertices.count;i++)vertices.setY(i,terrainY(vertices.getX(i),vertices.getZ(i)));
+        vertices.needsUpdate=true;o.geometry.computeVertexNormals();o.geometry.computeBoundingSphere();
+      });
+      const hallLight=new THREE.PointLight('#c2deec',35,38,2);
+      hallLight.position.copy(caveSpace.world(CAVE_MOUTH_X,CAVE_FLOOR_Y+10,-5));scene.add(hallLight);
       for(const [dx,dz,r] of [[-8,2,2.2],[8,1,2.8],[-11,-6,3],[11,-7,2.4]]){
         const offset=new THREE.Vector3(dx,0,dz).applyAxisAngle(new THREE.Vector3(0,1,0),angle),x=shelter.x+offset.x,z=shelter.z+offset.z;
         mesh(rockGeo,ice,x,niflGroundY(x,z)+r*.4,z,r,r*.8,r*.9);
@@ -252,17 +264,21 @@ export default function Niflheim3D({initialPosition,onRemember}:{initialPosition
       const length=Math.hypot(dx,dz),isMoving=length>.05;
       const steer=1-Math.exp(-dt*14);
       velocityX=THREE.MathUtils.lerp(velocityX,isMoving?dx/length:0,steer);velocityZ=THREE.MathUtils.lerp(velocityZ,isMoving?dz/length:0,steer);
-      if(!paused.current&&!document.hidden){position.current=moveThroughNiflEntrance(position.current,position.current.x+velocityX*8.5*dt,position.current.z+velocityZ*8.5*dt);}
+      if(!paused.current&&!document.hidden){const from=position.current,next=moveThroughNiflEntrance(from,from.x+velocityX*8.5*dt,from.z+velocityZ*8.5*dt);position.current=caveSpace?caveSpace.move(from,next):next;}
       if(isMoving){const target=Math.atan2(velocityX,velocityZ),difference=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y));hero.rotation.y+=difference*(1-Math.exp(-dt*14));cameraDir.x=Math.sin(hero.rotation.y);cameraDir.z=Math.cos(hero.rotation.y);}
       const walking=!paused.current&&!document.hidden&&Math.hypot(velocityX,velocityZ)>.08;
       moving=walking;
       const next=moving?walk:idle;
       if(next&&next!==currentAction){currentAction?.fadeOut(.16);next.reset();next.enabled=true;next.setEffectiveWeight(1);next.setEffectiveTimeScale(1);next.fadeIn(.16).play();currentAction=next;}
-      const pos=position.current;hero.position.set(pos.x,niflGroundY(pos.x,pos.z),pos.z);mixer?.update(dt);
-      const hy=niflGroundY(pos.x,pos.z);
+      const pos=position.current;hero.position.set(pos.x,walkingY(pos.x,pos.z),pos.z);mixer?.update(dt);
+      const hy=walkingY(pos.x,pos.z);
       entranceVeil?.update(now*.001,pos);
       rivers.update(now*.001);
-      camera.position.lerp(new THREE.Vector3(pos.x-cameraDir.x*2,hy+9,pos.z-cameraDir.z*2+17),1-Math.exp(-dt*3.4));camera.lookAt(pos.x+cameraDir.x*1.9,hy+3,pos.z-10+cameraDir.z*1.9);
+      const inCave=caveSpace?.inside(pos.x,pos.z);
+      const cameraTarget=inCave?caveSpace!.camera(pos.x,pos.z):new THREE.Vector3(pos.x-cameraDir.x*2,hy+9,pos.z-cameraDir.z*2+17);
+      camera.position.lerp(cameraTarget,1-Math.exp(-dt*3.4));
+      if(inCave){const p=caveSpace!.local(pos.x,pos.z);camera.lookAt(caveSpace!.world(p.x,CAVE_FLOOR_Y+3,p.z-4));}
+      else camera.lookAt(pos.x+cameraDir.x*1.9,hy+3,pos.z-10+cameraDir.z*1.9);
       crystalMaterials.forEach(m=>{m.emissiveIntensity=1.35+Math.sin(now*.0017)*.12;});crystalHalos.forEach(h=>{(h.material as THREE.SpriteMaterial).opacity=.48+Math.sin(now*.0017)*.05;});
       sourceRing.rotation.z+=dt*.12;gates.forEach(g=>{(g.material as THREE.MeshBasicMaterial).opacity=.78+Math.sin(now*.001)*.06;});
       if(now-checkAt>180){checkAt=now;const l=NIFL_LOCATIONS.reduce((a,b)=>Math.hypot(pos.x-a.x,pos.z-a.z)<Math.hypot(pos.x-b.x,pos.z-b.z)?a:b);const id=Math.hypot(pos.x-l.x,pos.z-l.z)<9?l.id:'';if(id!==currentNear){currentNear=id;setNear(id);}}
