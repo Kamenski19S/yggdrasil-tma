@@ -3,7 +3,7 @@ import {createNiflheimGiant} from './niflheimGiant';
 import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
-import {BASE,cachedGlbBuffer} from './core';
+import {BASE,cachedGlbBuffer,WEAPON_ASSET,textureSteelOnWeapon,type HeroWeapon} from './core';
 import {addEntranceIce} from './niflheimEntranceIce';
 import {addEntranceSnow} from './niflheimEntranceSnow';
 import {addEntranceVeil} from './niflheimEntranceVeil';
@@ -22,7 +22,7 @@ const CSS=`
 .nifl-overlay{position:absolute;inset:0;z-index:10;background:#142b3acc;display:flex;align-items:center;justify-content:center;padding:12px;touch-action:auto}.nifl-panel{background:#fff;color:#22323d;border:2px solid #bac8d0;border-radius:16px;padding:16px;width:100%;max-width:620px;max-height:94%;overflow:auto}.nifl-panel h3{margin:0 0 8px;font-size:20px}.nifl-panel p{font-size:14px;line-height:1.6}.nifl-panel button{background:#eef3f6;color:#22323d;border:1px solid #b3c4ce;border-radius:9px;padding:10px;font:inherit;font-size:13px}.nifl-close{float:right}.nifl-panel svg{display:block;width:100%;height:42vh;min-height:240px;background:#e7eff4;border-radius:12px;margin-top:12px}.nifl-map-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:12px 0}.nifl-map-list button{text-align:left;font-size:12px}.nifl-map-legend{font-size:12px!important;color:#536875}
 `;
 
-export default function Niflheim3D({initialPosition,onRemember,onForge}:{onForge:(position:{x:number;z:number})=>void;initialPosition:{x:number;z:number};onRemember:(position:{x:number;z:number})=>void}){
+export default function Niflheim3D({initialPosition,onRemember,onForge,weapon,shieldAsset,shieldEquipped}:{weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;onForge:(position:{x:number;z:number})=>void;initialPosition:{x:number;z:number};onRemember:(position:{x:number;z:number})=>void}){
   const mount=useRef<HTMLDivElement>(null);
   const position=useRef(clampNiflPosition(initialPosition.x,initialPosition.z));
   const remember=useRef(onRemember);remember.current=onRemember;
@@ -227,6 +227,24 @@ export default function Niflheim3D({initialPosition,onRemember,onForge}:{onForge
     cachedGlbBuffer(`${BASE}img/models/Vika-3d-animated-optimized.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,gltf=>{
       if(!alive){disposeObject(gltf.scene);textures.forEach(t=>t.dispose());return;}
       const model=gltf.scene,bounds=new THREE.Box3().setFromObject(model);const height=Math.max(.01,bounds.max.y-bounds.min.y);model.scale.setScalar(6.1/height);model.position.y=-bounds.min.y*(6.1/height);hero.add(model);model.traverse((o:any)=>{if(o.isMesh)o.receiveShadow=true;});
+      const bone=(suffix:string)=>{let result:THREE.Object3D|undefined;model.traverse(o=>{if(o.name.replace(/[^a-zA-Z0-9]/g,'').endsWith(suffix))result=o;});return result;};
+      const attach=(asset:string,parent:THREE.Object3D,isShield:boolean)=>{
+        cachedGlbBuffer(`${BASE}img/models/${asset}`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,equipment=>{
+          if(!alive){disposeObject(equipment.scene);textures.forEach(t=>t.dispose());return;}
+          const item=equipment.scene;textureSteelOnWeapon(item,asset);
+          if(isShield&&asset==='Shield_Round.glb')item.scale.z=.22;
+          item.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(item),size=box.getSize(new THREE.Vector3()),centre=box.getCenter(new THREE.Vector3());
+          const span=isShield?Math.max(size.x,size.y,size.z):size.y;if(span<.001){disposeObject(item);return;}
+          item.position.set(-centre.x,isShield?-centre.y:-box.min.y,-centre.z);
+          const mount=new THREE.Group();mount.scale.setScalar((isShield?.38:weapon==='spear'?.82:.57)/span);
+          mount.position.set(0,isShield?.075:-.065,isShield?-.016:.015);
+          if(isShield)mount.rotation.y=Math.PI;else mount.rotation.x=-.2;
+          mount.add(item);parent.add(mount);item.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});refreshShadows();
+        },()=>{})).catch(()=>{});
+      };
+      const rightHand=bone('RightHand'),leftArm=bone('LeftForeArm');
+      if(rightHand)attach(weapon==='default'?'Sword.glb':WEAPON_ASSET[weapon],rightHand,false);
+      if(shieldEquipped&&leftArm)attach(shieldAsset,leftArm,true);
       mixer=new THREE.AnimationMixer(model);const findClip=(...names:string[])=>names.map(name=>THREE.AnimationClip.findByName(gltf.animations,name)).find(Boolean);
       const idleClip=findClip('idle','sword_idle')||gltf.animations[0],walkClip=findClip('walk_loop','walk')||idleClip;
       if(idleClip)idle=mixer.clipAction(idleClip);if(walkClip)walk=mixer.clipAction(walkClip);idle?.play();currentAction=idle;setStatus('');
@@ -313,7 +331,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge}:{onForge
       renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
     return()=>{alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});rivers.dispose();mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());sun.shadow.dispose();renderer.dispose();renderer.domElement.remove();};
-  },[]);
+  },[weapon,shieldAsset,shieldEquipped]);
   const steerStick=(event:React.PointerEvent<HTMLButtonElement>)=>{
     if(pointerId.current!==event.pointerId)return;
     const rect=event.currentTarget.getBoundingClientRect(),radius=rect.width*.36;

@@ -13,6 +13,15 @@ export function createNiflheimForge(x:number,z:number,floor:number,ground:(x:num
   // Narrow the mouth slightly; keep the existing height and room dimensions.
   for(const side of [-1,1])add(box,stone,side*5.4,4.5,.1,2.2,9,1.8);
   add(box,stone,0,10.1,.1,10,2.2,1.8);
+  // Sparse fine powder on the roof, ledges and upper wall faces.
+  const powderPositions:number[]=[];
+  for(let i=0;i<340;i++){
+    const rand=(salt:number)=>{const n=Math.sin(i*127.1+salt*311.7)*43758.5453;return n-Math.floor(n);};
+    if(i<210)powderPositions.push((rand(1)-.5)*22.5,15.54,-7.5+(rand(2)-.5)*18.6);
+    else powderPositions.push(i%2?11.52:-11.52,7+rand(3)*4,-7.5+(rand(4)-.5)*18.5);
+  }
+  const powder=new THREE.BufferGeometry();powder.setAttribute('position',new THREE.Float32BufferAttribute(powderPositions,3));
+  root.add(new THREE.Points(powder,new THREE.PointsMaterial({color:'#ffffff',size:.1,transparent:true,opacity:.8,depthWrite:false})));
   add(box,stone,0,6,-16,19,12,2);add(box,stone,0,-.15,-7.5,17,.3,17);
   add(box,stone,-4.3,1.1,-11,4.7,2.2,4.1);add(box,iron,-4.3,2.25,-11,3.9,.3,3.3);add(box,stone,-4.3,8.8,-14.2,3,8,2);add(box,ember,-4.3,2.55,-11,3.2,.35,2.6);
   const flames:THREE.Mesh[]=[];for(let i=0;i<7;i++)flames.push(add(new THREE.ConeGeometry(.4,1.7,5),ember,-5.5+i*.4,3.1,-11+(i%2)*.5,1,1+(i%3)*.25,1));

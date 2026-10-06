@@ -227,13 +227,14 @@ const [roadT, setRoadT] = useState(0.06);
     setSave(s=>({...s,equippedGear:isOn?s.equippedGear.filter(gear=>gear!==id):[...s.equippedGear,id]}));
     haptic();say((isOn?'Снято: ':'Надето: ')+(forgeItems.find(item=>item.id===id)?.name||id));
   };
+  const forgeLimit=(weaponOrShield:boolean)=>forgeRealm==="niflheim"?(weaponOrShield?20:15):(weaponOrShield?10:5);
   const forgeCost=(id:string)=>save.forgeFreeUsed?2+forgeLevel(id==='shield'?shieldForgeKey(save.shieldAsset):id)*2:0;
   const improveForgeItem=(item:typeof forgeItems[number])=>{
     if(forgeRealm==="niflheim"&&((item.kind==="weapon"&&item.id!=="swordGolden")||(item.id==="shield"&&save.shieldAsset!=="Shield_Celtic_Golden.glb"))){say("Для Нифльхейма нужны золотой меч и золотой щит.");return;}
     if(!item.owned){say("Этот предмет ещё нужно получить в награду за испытание.");return;}
     const key=item.id==='shield'?shieldForgeKey(save.shieldAsset):item.id;
     const level=forgeLevel(key);
-    if(level>=(item.kind==='weapon'||item.id==='shield'?10:5)){say(item.name+" уже достиг максимальной закалки Мидгарда.");return;}
+    if(level>=forgeLimit(item.kind==='weapon'||item.id==='shield')){say(item.name+' уже достиг максимальной закалки '+(forgeRealm==="niflheim"?"Нифльхейма":"Мидгарда")+'.');return;}
     const ashCost=forgeAshCost(item.kind==="weapon"||item.id==="shield",level,!save.forgeFreeUsed);
     if(save.stock.ashWood<ashCost){say("Для закалки от +5 нужна ясеневая древесина ×1.");return;}
     const cost=forgeCost(item.id);
@@ -588,7 +589,7 @@ const [roadT, setRoadT] = useState(0.06);
       {screen.t === "realm" && (() => {
   const realm = REALMS.find(r => r.id === screen.id)!;
 
-  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")}/></React.Suspense>;
+  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")}/></React.Suspense>;
 
   if (realm.id === "midgard") {
     if (!heroDef) return null;
@@ -1161,7 +1162,7 @@ const [roadT, setRoadT] = useState(0.06);
         const gear=forgeItems.filter(item=>item.kind==="gear");
         const forgeButton=(item:typeof forgeItems[number])=>{
           const level=forgeLevel(item.id==='shield'?shieldForgeKey(save.shieldAsset):item.id);
-          const maxed=level>=(item.id==='shield'?10:5);
+          const maxed=level>=forgeLimit(item.id==='shield');
           const incompatible=forgeRealm==="niflheim"&&item.id==="shield"&&save.shieldAsset!=="Shield_Celtic_Golden.glb";
           const free=!save.forgeFreeUsed&&item.owned&&!maxed;
           const label=<><span className="fi-icon">{item.icon}</span><span className="fi-name">{item.id==='shield'?FORGE_WEAPON_MODELS.find(([asset])=>asset===save.shieldAsset)?.[1]:item.name}</span><span className="fi-level">{level>0?"Закалка +"+level:"Без улучшений"}</span></>;
@@ -1178,17 +1179,17 @@ const [roadT, setRoadT] = useState(0.06);
           <div className="forge-head">
             <div className="forge-title">{forgeRealm==="niflheim"?"Кузница хранителей":"Кузница Вёлунда"}</div>
             <div className="forge-master">«Сталь помнит каждый бой. Отдай её огню — и она вернётся сильнее».</div>
-            <div className="forge-advice"><b>Совет:</b> выбери оружие или щит на стене. Их предел закалки +10; броня, шлем и сапоги — до +5. Для оружия и щитов начиная с +5 дополнительно нужна ясеневая древесина ×1. В запасе: {save.stock.ashWood}.</div>
+            <div className="forge-advice"><b>Совет:</b> выбери оружие или щит на стене. Их предел закалки +{forgeLimit(true)}; броня, шлем и сапоги — до +{forgeLimit(false)}. Для оружия и щитов начиная с +5 дополнительно нужна ясеневая древесина ×1. В запасе: {save.stock.ashWood}.</div>
             <div className="forge-wallet"><span>Запас:</span><b><SparkDrop/> {save.immortalityDrops}</b><span>Капель бессмертия</span></div>
           </div>
           <div className={"forge-free"+(!save.forgeFreeUsed?" ready":"")}>{save.forgeFreeUsed
-            ? "Следующая закалка оплачивается Каплями силы. Цена растёт вместе с уровнем предмета."
+            ? "Следующая закалка оплачивается Каплями бессмертия. Цена растёт вместе с уровнем предмета."
             : "Дар кузнеца: первое улучшение любого доступного предмета бесплатно."}</div>
           <div className="forge-group-title">{forgeRealm==="niflheim"?"Оружие для Нифльхейма":"Стена оружия Вёлунда"}</div>
           {forgeRealm==="niflheim"&&<div className="forge-note">Из оружия Мидгарда здесь подходят золотой меч и золотой щит. Получи их в Мидгарде; новое оружие Нифльхейма появится по мере освобождения хранителей.</div>}
           <ForgeWeaponWall niflheim={forgeRealm==="niflheim"} owned={save.ownedWeapons} ownedShields={save.ownedShields} selected={save.heroWeapon} selectedShield={equipped('shield')?save.shieldAsset:null} onChoose={chooseForgeWeapon}/>
           <div className="forge-equipped"><span>В руке: {save.heroWeapon==='default'?('Меч валькирии'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} · сила +{WEAPON_POWER[save.heroWeapon]} · закалка +{forgeLevel(save.heroWeapon)}</span>
-            <button disabled={forgeLevel(save.heroWeapon)>=10||(forgeRealm==="niflheim"&&save.heroWeapon!=="swordGolden")} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=10?'Максимум +10':<>Закалить {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/>{forgeAshCost(true,forgeLevel(save.heroWeapon),!save.forgeFreeUsed)>0?" + ясень ×1":""}</>:'бесплатно'}</>}</button></div>
+            <button disabled={forgeLevel(save.heroWeapon)>=forgeLimit(true)||(forgeRealm==="niflheim"&&save.heroWeapon!=="swordGolden")} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=forgeLimit(true)?'Максимум +'+forgeLimit(true):<>Закалить {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/>{forgeAshCost(true,forgeLevel(save.heroWeapon),!save.forgeFreeUsed)>0?" + ясень ×1":""}</>:'бесплатно'}</>}</button></div>
           <div className="forge-group-title">Экипировка</div>
           <div className="forge-grid">{gear.map(forgeButton)}</div>
                     <div className="forge-note"><b>Закалка действует в бою.</b> Оружие усиливает обычный удар; броня и шлем добавляют здоровье и снижают урон; щит крепче держит защиту; улучшенные сапоги помогают быстрее восстановить энергию.</div>
