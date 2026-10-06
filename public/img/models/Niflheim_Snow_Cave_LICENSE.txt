@@ -1,0 +1,5 @@
+Cave LP (9k) FREE DOWNLOAD
+Author: Fred Drabble https://sketchfab.com/FredDrabble
+Source: https://sketchfab.com/3d-models/cave-lp-9k-free-download-819687653df14a4a9acb267212093d1a
+License: Creative Commons Attribution 4.0 https://creativecommons.org/licenses/by/4.0/
+Modifications for Yggdrasil: optimized textures and geometry storage; baked snow and frost with exposed rock; upright, centred, scaled to 18m overall height. Original mesh geometry retained.
