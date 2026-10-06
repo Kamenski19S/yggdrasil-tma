@@ -1,3 +1,4 @@
+import {InventorySection} from './inventory';
 import {createNiflheimForge} from './niflheimForge';
 import {createNiflheimGiant} from './niflheimGiant';
 import React,{useEffect,useRef,useState} from 'react';
@@ -15,14 +16,13 @@ import {NIFL_SCALE,NIFL_SOURCE,NIFL_ENTRANCE_ARCS,NIFL_LOCATIONS,NIFL_RIVERS,NIF
 const hash=(x:number,z:number)=>{const n=Math.sin(x*127.1+z*311.7)*43758.5453;return n-Math.floor(n);};
 const CSS=`
 .nifl-world{position:relative;flex:1;min-height:0;overflow:hidden;background:#9ab3c4;touch-action:none}.nifl-mount{position:absolute;inset:0}.nifl-mount canvas{display:block;width:100%;height:100%}.nifl-top{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;pointer-events:none}.nifl-top h2{margin:0;color:#eaf7ff;font-size:20px;text-shadow:0 2px 4px #143449}.nifl-top p{margin:4px 0;color:#eaf7ff;font-size:11px;text-shadow:0 1px 3px #143449}.nifl-top button{pointer-events:auto;background:#f9fcff;color:#253847;border:2px solid #b7c9d2;border-radius:10px;padding:10px;font:inherit;font-size:13px}.nifl-status{position:absolute;top:70px;left:50%;transform:translateX(-50%);padding:7px 12px;border-radius:9px;background:#fff;color:#253847;font-size:12px;text-align:center;max-width:85%}
-.nifl-joystick{position:absolute;bottom:110px;left:18px;width:124px;height:124px;border:0;padding:0;background:transparent;touch-action:none;user-select:none}.nifl-joystick img{width:100%;height:100%;pointer-events:none}@media(max-height:480px){.nifl-joystick{bottom:72px}}
-.nifl-stick{position:absolute;width:32px;height:32px;left:46px;top:46px;border-radius:50%;background:#efd58566;border:2px solid #fff7c866;pointer-events:none}
+.nifl-joystick{padding:0;user-select:none}.nifl-joystick img{width:100%;height:100%;pointer-events:none}.nifl-realm-title{display:flex;align-items:center;justify-content:center;height:58px;color:#eaf7ff!important;font-size:20px!important;text-shadow:0 2px 4px #143449}
 
 .nifl-near{position:absolute;bottom:24px;right:14px;width:min(44%,210px);background:#fffffff2;color:#23313b;border:2px solid #b5c7d1;border-radius:13px;padding:10px}.nifl-near b{font-size:13px;display:block;line-height:1.4}.nifl-near button{width:100%;padding:9px 4px;margin-top:7px;border:1px solid #acbec9;border-radius:8px;background:#edf3f6;color:#23313b;font:inherit;font-size:12px}
 .nifl-overlay{position:absolute;inset:0;z-index:10;background:#142b3acc;display:flex;align-items:center;justify-content:center;padding:12px;touch-action:auto}.nifl-panel{background:#fff;color:#22323d;border:2px solid #bac8d0;border-radius:16px;padding:16px;width:100%;max-width:620px;max-height:94%;overflow:auto}.nifl-panel h3{margin:0 0 8px;font-size:20px}.nifl-panel p{font-size:14px;line-height:1.6}.nifl-panel button{background:#eef3f6;color:#22323d;border:1px solid #b3c4ce;border-radius:9px;padding:10px;font:inherit;font-size:13px}.nifl-close{float:right}.nifl-panel svg{display:block;width:100%;height:42vh;min-height:240px;background:#e7eff4;border-radius:12px;margin-top:12px}.nifl-map-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:12px 0}.nifl-map-list button{text-align:left;font-size:12px}.nifl-map-legend{font-size:12px!important;color:#536875}
 `;
 
-export default function Niflheim3D({initialPosition,onRemember,onForge,weapon,shieldAsset,shieldEquipped}:{weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;onForge:(position:{x:number;z:number})=>void;initialPosition:{x:number;z:number};onRemember:(position:{x:number;z:number})=>void}){
+export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMill,inventory,weapon,shieldAsset,shieldEquipped}:{onOpenMill:()=>void;inventory:Omit<React.ComponentProps<typeof InventorySection>,'kind'>;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;onForge:(position:{x:number;z:number})=>void;initialPosition:{x:number;z:number};onRemember:(position:{x:number;z:number})=>void}){
   const mount=useRef<HTMLDivElement>(null);
   const position=useRef(clampNiflPosition(initialPosition.x,initialPosition.z));
   const remember=useRef(onRemember);remember.current=onRemember;
@@ -33,9 +33,12 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,weapon,sh
   const clearInput=()=>{input.current.clear();analog.current={x:0,z:0};pointerId.current=null;if(stick.current)stick.current.style.transform="translate(0px,0px)";};
   const [near,setNear]=useState('threshold');
   const [mapOpen,setMapOpen]=useState(false);
+  const [inventoryOpen,setInventoryOpen]=useState(false);
+  const attackAction=useRef<(()=>void)|null>(null);
+  const guardUntil=useRef(0);
   const [selected,setSelected]=useState('');
   const [status,setStatus]=useState('Вика входит в Нифльхейм…');
-  const paused=useRef(false);paused.current=mapOpen||!!selected;
+  const paused=useRef(false);paused.current=mapOpen||inventoryOpen||!!selected;
   const info=NIFL_LOCATIONS.find(l=>l.id===selected);
   const nearest=NIFL_LOCATIONS.find(l=>l.id===near);
   useEffect(()=>{
@@ -173,7 +176,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,weapon,sh
     for(let i=0;i<160;i++){snowCoords[i*3]=(hash(i,51)*110-55)*NIFL_SCALE;snowCoords[i*3+1]=hash(i,52)*18+2;snowCoords[i*3+2]=(hash(i,53)*140-70)*NIFL_SCALE;}
     snowPoints.setAttribute('position',new THREE.BufferAttribute(snowCoords,3));scene.add(new THREE.Points(snowPoints,new THREE.PointsMaterial({color:'#edf8ff',size:.11,transparent:true,opacity:.7})));
     const hero=new THREE.Group();hero.rotation.y=Math.PI;scene.add(hero);
-    let mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,moving=false,currentAction:THREE.AnimationAction|undefined;
+    let mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,attack:THREE.AnimationAction|undefined,attackUntil=0,shieldBones:THREE.Object3D[]=[],shieldBase:THREE.Quaternion[]=[],moving=false,currentAction:THREE.AnimationAction|undefined;
     const disposeObject=(root:THREE.Object3D)=>{root.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}});};
     // Fred Drabble's cave, CC BY 4.0: snowy giant shelter facing the entrance road.
     const forgeLocation=NIFL_LOCATIONS.find(l=>l.id==='forge')!;
@@ -243,10 +246,13 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,weapon,sh
         },()=>{})).catch(()=>{});
       };
       const rightHand=bone('RightHand'),leftArm=bone('LeftForeArm');
+      shieldBones=[bone('LeftArm'),leftArm].filter((b):b is THREE.Object3D=>!!b);shieldBase=shieldBones.map(b=>b.quaternion.clone());
       if(rightHand)attach(weapon==='default'?'Sword.glb':WEAPON_ASSET[weapon],rightHand,false);
       if(shieldEquipped&&leftArm)attach(shieldAsset,leftArm,true);
       mixer=new THREE.AnimationMixer(model);const findClip=(...names:string[])=>names.map(name=>THREE.AnimationClip.findByName(gltf.animations,name)).find(Boolean);
       const idleClip=findClip('idle','sword_idle')||gltf.animations[0],walkClip=findClip('walk_loop','walk')||idleClip;
+      const attackClip=findClip('sword_attack','attack');if(attackClip)attack=mixer.clipAction(attackClip);
+      attackAction.current=()=>{if(paused.current||!attack||performance.now()<attackUntil)return;clearInput();currentAction?.fadeOut(.08);attack.reset().setLoop(THREE.LoopOnce,1);attack.clampWhenFinished=true;attack.setEffectiveWeight(1);attack.fadeIn(.05).play();currentAction=attack;attackUntil=performance.now()+Math.max(650,attack.getClip().duration*1000);};
       if(idleClip)idle=mixer.clipAction(idleClip);if(walkClip)walk=mixer.clipAction(walkClip);idle?.play();currentAction=idle;setStatus('');
     },()=>{if(alive)setStatus('Не удалось загрузить Вику. Выйди на Древо и войди снова.');})).catch(()=>{if(alive)setStatus('Не удалось загрузить Вику. Выйди на Древо и войди снова.');});
     // Stone Portal by hirairmak, CC BY 4.0. The original GLB stays unchanged.
@@ -306,16 +312,19 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,weapon,sh
       const length=Math.hypot(dx,dz),isMoving=length>.05;
       const steer=1-Math.exp(-dt*14);
       velocityX=THREE.MathUtils.lerp(velocityX,isMoving?dx/length:0,steer);velocityZ=THREE.MathUtils.lerp(velocityZ,isMoving?dz/length:0,steer);
-      if(!paused.current&&!document.hidden){const from=position.current,next=moveThroughNiflEntrance(from,from.x+velocityX*8.5*dt,from.z+velocityZ*8.5*dt);// The open approach between the two buildings must stay walkable.
-        const onApproach=next.x>-15&&next.x<48&&next.z>96&&next.z<109;
-        const candidate=caveSpace&&!onApproach?caveSpace.move(from,next):next;
+      if(!paused.current&&!document.hidden){const from=position.current,next=moveThroughNiflEntrance(from,from.x+velocityX*8.5*dt,from.z+velocityZ*8.5*dt);
+        const candidate=caveSpace?caveSpace.move(from,next):next;
         if(!giant?.blocked(candidate.x,candidate.z)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
       if(isMoving){const target=Math.atan2(velocityX,velocityZ),difference=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y));hero.rotation.y+=difference*(1-Math.exp(-dt*14));cameraDir.x=Math.sin(hero.rotation.y);cameraDir.z=Math.cos(hero.rotation.y);}
       const walking=!paused.current&&!document.hidden&&Math.hypot(velocityX,velocityZ)>.08;
       moving=walking;
-      const next=moving?walk:idle;
+      const next=now<attackUntil?attack:moving?walk:idle;
       if(next&&next!==currentAction){currentAction?.fadeOut(.16);next.reset();next.enabled=true;next.setEffectiveWeight(1);next.setEffectiveTimeScale(1);next.fadeIn(.16).play();currentAction=next;}
-      const pos=position.current;hero.position.set(pos.x,walkingY(pos.x,pos.z),pos.z);mixer?.update(dt);
+      const pos=position.current;hero.position.set(pos.x,walkingY(pos.x,pos.z),pos.z);
+      shieldBones.forEach((b,i)=>b.quaternion.copy(shieldBase[i]));mixer?.update(dt);
+      shieldBones.forEach((b,i)=>shieldBase[i].copy(b.quaternion));
+      const remaining=guardUntil.current-now,lift=shieldEquipped&&remaining>0?Math.min(THREE.MathUtils.clamp((1250-remaining)/170,0,1),THREE.MathUtils.clamp(remaining/260,0,1)):0;
+      if(lift>0){const upper=shieldBones[0],lower=shieldBones[1];if(upper){upper.rotateX(-lift*1.9);upper.rotateY(-lift);upper.rotateZ(lift*1.1);}lower?.rotateX(-lift*.3);}
       if(giant?.update(dt,pos,!paused.current&&!document.hidden))refreshShadows();
       const hy=walkingY(pos.x,pos.z);
       entranceVeil?.update(now*.001,pos);
@@ -330,7 +339,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,weapon,sh
       if(now-checkAt>180){checkAt=now;const l=NIFL_LOCATIONS.reduce((a,b)=>Math.hypot(pos.x-a.x,pos.z-a.z)<Math.hypot(pos.x-b.x,pos.z-b.z)?a:b);const id=forgeSpace?.canEnter(pos.x,pos.z)?'forge':l.id!=='forge'&&Math.hypot(pos.x-l.x,pos.z-l.z)<9?l.id:'';if(id!==currentNear){currentNear=id;setNear(id);}}
       renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
-    return()=>{alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});rivers.dispose();mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());sun.shadow.dispose();renderer.dispose();renderer.domElement.remove();};
+    return()=>{attackAction.current=null;guardUntil.current=0;alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});rivers.dispose();mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());sun.shadow.dispose();renderer.dispose();renderer.domElement.remove();};
   },[weapon,shieldAsset,shieldEquipped]);
   const steerStick=(event:React.PointerEvent<HTMLButtonElement>)=>{
     if(pointerId.current!==event.pointerId)return;
@@ -344,9 +353,17 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,weapon,sh
   const stopStick=(event:React.PointerEvent<HTMLButtonElement>)=>{if(pointerId.current===event.pointerId)clearInput();};
   const mapPoint=(x:number,z:number)=>({x:x/NIFL_SCALE+65,y:z/NIFL_SCALE+80});
   return <div className="nifl-world"><style>{CSS}</style><div className="nifl-mount" ref={mount}/>
-    <div className="nifl-top"><div><h2>Нифльхейм</h2><p>По следу чёрных вод</p></div><button onClick={()=>{clearInput();setMapOpen(true);}}>Карта</button></div>
+    <div className="mid3d-ui mid3d-top">
+      <button className="mid3d-top-btn" aria-label="Карта Нифльхейма" onClick={()=>{clearInput();setMapOpen(true);}}><img className="mid3d-top-button-art" src={`${BASE}img/models/ui_map.png`} alt="" draggable={false}/></button>
+      <div className="mid3d-realm-title nifl-realm-title">Нифльхейм</div>
+      <button className="mid3d-top-btn" aria-label="Мельница капель бессмертия" onClick={()=>{clearInput();remember.current({...position.current});onOpenMill();}}><img className="mid3d-top-button-art" src={`${BASE}img/models/ui_mill.png`} alt="" draggable={false}/></button>
+    </div>
     {status&&<div className="nifl-status">{status}</div>}
-    <button className="nifl-joystick" aria-label="Управление Викой: тяни в нужном направлении" onPointerDown={startStick} onPointerMove={steerStick} onPointerUp={stopStick} onPointerCancel={stopStick} onLostPointerCapture={stopStick}><img src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/><span className="nifl-stick" ref={stick}/></button>
+    <button className="mid3d-ui mid3d-joy nifl-joystick" aria-label="Управление Викой: тяни в нужном направлении" onPointerDown={startStick} onPointerMove={steerStick} onPointerUp={stopStick} onPointerCancel={stopStick} onLostPointerCapture={stopStick}><img src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/><span className="mid3d-knob" ref={stick}/></button>
+    <button className="mid3d-ui mid3d-block" aria-label="Прикрыться щитом" disabled={!shieldEquipped} onClick={()=>{if(!paused.current){clearInput();guardUntil.current=performance.now()+1250;}}}><img className="mid3d-control-art" src={`${BASE}img/models/ui_shield.png`} alt="" draggable={false}/></button>
+    <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" onClick={()=>attackAction.current?.()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></button>
+    <button className="mid3d-ui mid3d-action" style={{top:125}} aria-label="Запас рун и эликсиров" onClick={()=>{clearInput();setInventoryOpen(true);}}><img className="mid3d-control-art" src={`${BASE}img/models/ui_inventory.png`} alt="" draggable={false}/></button>
+    {inventoryOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Запас Вики"><h3>Запас Вики</h3><InventorySection kind="potions" {...inventory}/><InventorySection kind="runes" {...inventory}/><button onClick={()=>setInventoryOpen(false)}>Вернуться в игру</button></section></div>}
     {nearest&&<div className="nifl-near"><b>{nearest.name}</b><button onClick={()=>{clearInput();if(nearest.id==='forge'){remember.current({...position.current});onForge({...position.current});}else setSelected(nearest.id);}}>{nearest.id==='forge'?'Войти в кузницу':'Осмотреть'}</button></div>}
     {mapOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Карта Нифльхейма"><button className="nifl-close" onClick={()=>setMapOpen(false)}>Закрыть</button><h3>Карта Нифльхейма</h3><p className="nifl-map-legend">Три реки · два озера · источник Хвергельмир. Нажми на номер или название локации.</p>
       <svg viewBox="0 0 130 160" aria-label="Реки и локации Нифльхейма">

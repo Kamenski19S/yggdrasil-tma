@@ -42,6 +42,6 @@ export function createNiflheimForge(x:number,z:number,floor:number,ground:(x:num
     inside(px:number,pz:number){const p=local(px,pz);return Math.abs(p.x)<6.5&&p.z<0&&p.z>-15;},
     canEnter(px:number,pz:number){const p=local(px,pz);return Math.abs(p.x)<4&&p.z<-1&&p.z>-5.5;},
     groundY(px:number,pz:number){const p=local(px,pz);if(Math.abs(p.x)<3.8&&p.z>=0&&p.z<=12)return floor+deckY(p.z)+.04;return Math.abs(p.x)<6.5&&p.z<0&&p.z>-15?floor:undefined;},
-    blocked(px:number,pz:number){const p=local(px,pz);return (Math.abs(p.x)>6&&Math.abs(p.x)<12&&p.z<2.6&&p.z>-17.6)||(Math.abs(p.x)<12&&p.z<-14.5&&p.z>-18)||(Math.abs(p.x)>3.7&&Math.abs(p.x)<7.1&&Math.abs(p.z-.1)<1.5)||(p.x>-7&&p.x<-1.5&&p.z<-8&&p.z>-13.5)||(Math.abs(p.x-1)<3.2&&Math.abs(p.z+6.8)<2.4)||(p.x>3.8&&p.z<-9&&p.z>-15);},
+    blocked(px:number,pz:number){const p=local(px,pz);return (Math.abs(p.x)>6&&Math.abs(p.x)<12&&p.z<2.6&&p.z>-17.6)||(Math.abs(p.x)<12&&p.z<-14.5&&p.z>-18)||(Math.abs(p.x)>3.7&&Math.abs(p.x)<7.1&&Math.abs(p.z-.1)<1.5)||(p.x>-7&&p.x<-1.5&&p.z<-8&&p.z>-13.5)||(Math.abs(p.x-1)<3.2&&Math.abs(p.z+6.8)<2.4)||(p.x>3.8&&p.x<8.4&&p.z<-9&&p.z>-15);},
     update(time:number){flames.forEach((f,i)=>{f.scale.y=1+(i%3)*.25+Math.sin(time*7+i*1.8)*.13;});light.intensity=100+Math.sin(time*8)*8;}};
 }

@@ -55,6 +55,7 @@ export function App() {
   const [valk, setValk] = useState(false);
   const [over, setOver] = useState("");
   const [combatFx, setCombatFx] = useState<{kind:"hit"|"rune"|"guard";key:number}|null>(null);
+  const [millRealm,setMillRealm]=useState("midgard");
   const [forgeRealm,setForgeRealm]=useState("midgard");
   const [forgeTransition, setForgeTransition] = useState(false);
   const [craftWeapon,setCraftWeapon]=useState<HeroWeapon|''>('');
@@ -87,10 +88,10 @@ const [roadT, setRoadT] = useState(0.06);
   }, [save.heroSkin]);
   useEffect(() => {
     if (!tg?.BackButton) return;
-    const back = () => { if(screen.t==="mill")millScreenActiveRef.current=false; setScreen(screen.t === "forge" || screen.t === "mill" ? { t: "realm", id:screen.t==="forge"?forgeRealm:"midgard" } : { t: "tree" }); };
+    const back = () => { if(screen.t==="mill")millScreenActiveRef.current=false; setScreen(screen.t === "forge" || screen.t === "mill" ? { t: "realm", id:screen.t==="forge"?forgeRealm:millRealm } : { t: "tree" }); };
     if (screen.t !== "tree" && screen.t !== "choose" && save.hero) { tg.BackButton.show(); tg.BackButton.onClick(back); } else tg.BackButton.hide();
     return () => { tg.BackButton?.offClick?.(back); };
-  }, [screen, save.hero,forgeRealm]);
+  }, [screen, save.hero,forgeRealm,millRealm]);
   useEffect(() => { setRes(null); setRemoved(null); setWhisper(false); setOver(""); setShield(false); setCombatFx(null); setHouseDialog(""); houseDialogPending.current=null; }, [screen]);
   useEffect(()=>()=>window.clearTimeout(forgeTimer.current),[]);
 
@@ -529,7 +530,7 @@ const [roadT, setRoadT] = useState(0.06);
       <div className="hdr">
         {screen.t === "tree" && <div className="title">🌳 Мировое Древо Иггдрасиль</div>}
         {screen.t === "realm" && <button className="back" onClick={() => go({ t: "tree" })}>← На Древо</button>}
-        {screen.t === "mill" && <button className="back" onClick={() => go({ t: "realm", id:"midgard" })}>← Мидгард · Мельница</button>}
+        {screen.t === "mill" && <button className="back" onClick={() => go({ t: "realm", id:millRealm })}>← {millRealm==="niflheim"?"Нифльхейм":"Мидгард"} · Мельница</button>}
         {screen.t === "choose" && <div className="title">🌫️ Выбор судьбы</div>}
         {screen.t === "hero" && <div className="title">🛡 Герой</div>}
         {screen.t === "gift" && <div className="title">🎁 Дар</div>}
@@ -582,14 +583,14 @@ const [roadT, setRoadT] = useState(0.06);
           onProduce={produceMillDrops}
           onCollect={collectMillDrops}
           onFind={findMillReward}
-          onBack={()=>go({t:"realm",id:"midgard"})}
+          onBack={()=>go({t:"realm",id:millRealm})}
         />
       )}
 
       {screen.t === "realm" && (() => {
   const realm = REALMS.find(r => r.id === screen.id)!;
 
-  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")}/></React.Suspense>;
+  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")} onOpenMill={()=>{setMillRealm("niflheim");go({t:"mill"});}} inventory={{potions:save.potions,runes:save.runes,equippedRune:save.equippedRune,lootCounts:save.lootCounts,runeLevels:save.forgeLevels,hp:Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp()),maxHp:(heroDef?.hp??100)+gearHp(),frostGuard:save.frostGuard,potionBoosts:save.potionBoosts,onUsePotion:useInventoryPotion,onEquipRune:equipInventoryRune,onFuseRune:fuseInventoryRune}} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")}/></React.Suspense>;
 
   if (realm.id === "midgard") {
     if (!heroDef) return null;
@@ -940,7 +941,7 @@ const [roadT, setRoadT] = useState(0.06);
       gearLevels={save.forgeLevels}
       shieldAsset={save.shieldAsset}
       on={interact}
-      onOpenMill={()=>go({t:"mill"})}
+      onOpenMill={()=>{setMillRealm("midgard");go({t:"mill"});}}
       eventDone={save.done.includes("forest:choice")}
       start={midgardReturn.current}
       rememberPosition={rememberMidgardPosition}
