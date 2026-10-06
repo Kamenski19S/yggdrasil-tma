@@ -16,11 +16,27 @@ export const NIFL_LOCATIONS:NiflLocation[]=([
   {id:'echoCave',name:'Пещера ледяного эха',x:41,z:32,kind:'cave',text:'Туман повторяет чужие голоса. Вике предстоит отличить настоящий зов о помощи от ловушки.'},
   {id:'lookout',name:'Площадка у корней',x:-18,z:-62,kind:'lookout',text:'Отсюда видны источник и заражённые потоки. Над льдом возвышаются древние корни Иггдрасиля.'}
 ] as NiflLocation[]).map(l=>({...l,x:l.x*NIFL_SCALE,z:l.z*NIFL_SCALE}));
+// One centreline drives both the carved bed and its water/ice surface.
+const smoothRiver=(points:{x:number;z:number}[])=>{
+  const result:{x:number;z:number}[]=[];
+  for(let i=0;i<points.length-1;i++){
+    const a=points[Math.max(0,i-1)],b=points[i],c=points[i+1],d=points[Math.min(points.length-1,i+2)];
+    const steps=Math.ceil(Math.hypot(c.x-b.x,c.z-b.z)/2);
+    for(let j=0;j<steps;j++){
+      const t=j/steps,t2=t*t,t3=t2*t;
+      const at=(key:'x'|'z')=>.5*(2*b[key]+(-a[key]+c[key])*t+(2*a[key]-5*b[key]+4*c[key]-d[key])*t2+(-a[key]+3*b[key]-3*c[key]+d[key])*t3);
+      result.push({x:at('x'),z:at('z')});
+    }
+  }
+  result.push(points[points.length-1]);return result;
+};
+export const NIFL_RIVER_WIDTHS=[3.6,3,2.7];
+export const NIFL_LIVING_RIVER=2;
 export const NIFL_RIVERS=[
   [{x:0,z:-49},{x:-6,z:-30},{x:-10,z:-5},{x:-8,z:24},{x:-1,z:48},{x:-6,z:74}],
   [{x:0,z:-49},{x:-19,z:-35},{x:-32,z:-18},{x:-30,z:4},{x:-44,z:27},{x:-57,z:49}],
   [{x:0,z:-49},{x:23,z:-34},{x:34,z:-10},{x:29,z:12},{x:39,z:35},{x:57,z:54}]
-].map(r=>r.map(p=>({x:p.x*NIFL_SCALE,z:p.z*NIFL_SCALE})));
+].map(r=>smoothRiver(r.map(p=>({x:p.x*NIFL_SCALE,z:p.z*NIFL_SCALE}))));
 export const NIFL_LAKES=[{x:-36,z:4,rx:11,rz:9},{x:26,z:51,rx:6,rz:4}].map(l=>({...l,x:l.x*NIFL_SCALE,z:l.z*NIFL_SCALE,rx:l.rx*NIFL_SCALE,rz:l.rz*NIFL_SCALE}));
 export const NIFL_ROUTES=[['threshold','shelter'],['threshold','frozenRiver'],['shelter','echoCave'],['shelter','memoryCave'],['frozenRiver','iceLake'],['iceLake','crossing'],['crossing','namesHall'],['frozenRiver','roots'],['memoryCave','roots'],['namesHall','lookout'],['lookout','hvergelmir'],['roots','hvergelmir'],['hvergelmir','nidhogg']];
 // GLB bounds mapped to the existing world; keep the entrance foundation level.
@@ -38,8 +54,12 @@ const riverDistance=(x:number,z:number,a:{x:number;z:number},b:{x:number;z:numbe
 };
 export const niflGroundY=(x:number,z:number)=>{
   let channel=0;
-  NIFL_RIVERS.forEach((r,index)=>{const half=(index===0?4.3:3.2)/2;
-    for(let i=1;i<r.length;i++)channel=Math.max(channel,Math.max(0,Math.min(1,(half+4-riverDistance(x,z,r[i-1],r[i]))/3)));
+  NIFL_RIVERS.forEach((r,index)=>{const half=NIFL_RIVER_WIDTHS[index]/2;
+    for(let i=1;i<r.length;i++){
+      const a=r[i-1],b=r[i],reach=half+4;
+      if(x<Math.min(a.x,b.x)-reach||x>Math.max(a.x,b.x)+reach||z<Math.min(a.z,b.z)-reach||z>Math.max(a.z,b.z)+reach)continue;
+      channel=Math.max(channel,Math.max(0,Math.min(1,(reach-riverDistance(x,z,a,b))/3)));
+    }
   });
   for(const l of [...NIFL_LAKES,NIFL_SOURCE]){
     const edge=Math.hypot((x-l.x)/l.rx,(z-l.z)/l.rz);
