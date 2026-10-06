@@ -1,7 +1,9 @@
 import * as THREE from 'three';
-import {BASE} from './core';
+import {BASE,cachedGlbBuffer} from './core';
+import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
+import bridgeHeights from './niflheimBridgeHeights.json';
 
-export function createNiflheimForge(x:number,z:number,floor:number,ground:(x:number,z:number)=>number=()=>floor){
+export function createNiflheimForge(x:number,z:number,floor:number,ground:(x:number,z:number)=>number=()=>floor,onReady:()=>void=()=>{}){
   const root=new THREE.Group();root.name='Кузница хранителей';root.position.set(x,floor,z);root.rotation.y=Math.atan2(-x,124-z);
   const stone=new THREE.MeshStandardMaterial({color:'#a4becf',roughness:1}),snow=new THREE.MeshStandardMaterial({color:'#d3e4ed',roughness:1});
   const iron=new THREE.MeshStandardMaterial({color:'#394149',metalness:.75,roughness:.4}),ember=new THREE.MeshStandardMaterial({color:'#ff8b27',emissive:'#ff4a08',emissiveIntensity:2.7});
@@ -32,16 +34,23 @@ export function createNiflheimForge(x:number,z:number,floor:number,ground:(x:num
   for(let i=0;i<3;i++){add(box,iron,6,4.45,-13+i,1.3,.6,.6);add(box,stone,6,4.35,-12.5+i,.25,.25,1.6);}
   root.updateMatrixWorld(true);
   const outer=root.localToWorld(new THREE.Vector3(0,0,12)),outerY=ground(outer.x,outer.z)-floor+.12;
-  const deckY=(z:number)=>THREE.MathUtils.lerp(0,outerY,THREE.MathUtils.clamp(z/12,0,1));
-  const ice=new THREE.MeshStandardMaterial({color:'#a7d7ed',metalness:.12,roughness:.28});
-  const deck=new THREE.BufferGeometry();deck.setAttribute('position',new THREE.Float32BufferAttribute([-3.8,0,0,3.8,0,0,-3.8,outerY,12,3.8,outerY,12],3));deck.setIndex([0,2,1,1,2,3]);deck.computeVertexNormals();add(deck,ice,0,.04,0);
-  // Slim ice edges make the raised walkway readable above the river.
-  for(const side of [-1,1]){const edge=add(box,ice,side*3.8,outerY/2-.2,6,.25,.45,Math.hypot(12,outerY));edge.rotation.x=-Math.atan2(outerY,12);}
+  const sourceDeckY=(z:number)=>{const t=THREE.MathUtils.clamp(z/12,0,1),i=t*(bridgeHeights.length-1),a=Math.min(bridgeHeights.length-2,Math.floor(i));return THREE.MathUtils.lerp(bridgeHeights[a],bridgeHeights[a+1],i-a);};
+  // A shallow arch keeps the ice above the river and meets the low doorway.
+  const deckY=(z:number)=>{const t=THREE.MathUtils.clamp(z/12,0,1);return outerY*t+.22+.28*Math.sin(Math.PI*t);};
+  let alive=true;
+  // The shaped deck is also the walking surface. Its open half meets the door.
+  cachedGlbBuffer(`${BASE}img/models/Niflheim_Forge_Ice_Bridge.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,asset=>{
+    if(!alive){asset.scene.traverse((o:any)=>{if(!o.isMesh)return;o.geometry.dispose();for(const material of Array.isArray(o.material)?o.material:[o.material]){for(const value of Object.values(material))if(value instanceof THREE.Texture)value.dispose();material.dispose();}});return;}
+    asset.scene.name='Ледяной мост кузницы';
+    asset.scene.traverse((o:any)=>{if(!o.isMesh)return;const positions=o.geometry.getAttribute('position');for(let i=0;i<positions.count;i++)positions.setY(i,positions.getY(i)-sourceDeckY(positions.getZ(i))+deckY(positions.getZ(i))+.04);positions.needsUpdate=true;o.geometry.computeVertexNormals();o.geometry.computeBoundingSphere();o.castShadow=true;o.receiveShadow=true;});
+    root.add(asset.scene);onReady();
+  },()=>{})).catch(()=>{});
   const local=(px:number,pz:number)=>root.worldToLocal(new THREE.Vector3(px,floor,pz));
   return {root,world:(px:number,py:number,pz:number)=>root.localToWorld(new THREE.Vector3(px,py,pz)),
     inside(px:number,pz:number){const p=local(px,pz);return Math.abs(p.x)<6.5&&p.z<0&&p.z>-15;},
     canEnter(px:number,pz:number){const p=local(px,pz);return Math.abs(p.x)<4&&p.z<-1&&p.z>-5.5;},
     groundY(px:number,pz:number){const p=local(px,pz);if(Math.abs(p.x)<3.8&&p.z>=0&&p.z<=12)return floor+deckY(p.z)+.04;return Math.abs(p.x)<6.5&&p.z<0&&p.z>-15?floor:undefined;},
     blocked(px:number,pz:number){const p=local(px,pz);return (Math.abs(p.x)>6&&Math.abs(p.x)<12&&p.z<2.6&&p.z>-17.6)||(Math.abs(p.x)<12&&p.z<-14.5&&p.z>-18)||(Math.abs(p.x)>3.7&&Math.abs(p.x)<7.1&&Math.abs(p.z-.1)<1.5)||(p.x>-7&&p.x<-1.5&&p.z<-8&&p.z>-13.5)||(Math.abs(p.x-1)<3.2&&Math.abs(p.z+6.8)<2.4)||(p.x>3.8&&p.x<8.4&&p.z<-9&&p.z>-15);},
+    dispose(){alive=false;},
     update(time:number){flames.forEach((f,i)=>{f.scale.y=1+(i%3)*.25+Math.sin(time*7+i*1.8)*.13;});light.intensity=100+Math.sin(time*8)*8;}};
 }
