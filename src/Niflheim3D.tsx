@@ -177,6 +177,18 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       sourceIceBounds=new THREE.Box3().setFromObject(cluster).expandByScalar(.65);refreshShadows();
     },()=>{})).catch(()=>{});
 
+    const rootsLocation=NIFL_LOCATIONS.find(l=>l.id==='roots')!;
+    cachedGlbBuffer(`${BASE}img/models/Niflheim_Ancient_Roots.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,asset=>{
+      if(!alive){disposeObject(asset.scene);textures.forEach(t=>t.dispose());return;}
+      // Two large banks of roots frame a clear central corridor for Vika and future ice.
+      for(const [dx,dz,turn] of [[-21,-4,0],[21,-8,Math.PI]]){
+        const root=asset.scene.clone(true);root.name='Древние корни Иггдрасиля';root.rotation.y=turn;
+        root.position.set(rootsLocation.x+dx,niflGroundY(rootsLocation.x+dx,rootsLocation.z+dz)-.2,rootsLocation.z+dz);
+        root.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});scene.add(root);
+      }
+      refreshShadows();
+    },()=>{})).catch(()=>{});
+
     const memoryLocation=NIFL_LOCATIONS.find(l=>l.id==='memoryCave')!;
     cachedGlbBuffer(`${BASE}img/models/Niflheim_Memory_Igloo.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,asset=>{
       if(!alive){disposeObject(asset.scene);textures.forEach(t=>t.dispose());return;}
@@ -393,6 +405,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       <p className="nifl-map-legend">Ландшафт: <a href="https://sketchfab.com/3d-models/terrain-62dc7db392f34dacb4c07bfcb4faf14e" target="_blank" rel="noopener noreferrer">Terrain — FreeModel (DiFed)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены детализация и текстуры, изменены масштаб, снежный материал и размещение; выровнен пол пещеры.</p>
       <p className="nifl-map-legend">Лёд Хвергельмира: <a href="https://sketchfab.com/3d-models/ice-cluster-free-4d2271f8bf7f400e9a5c8f10812a32de" target="_blank" rel="noopener noreferrer">Ice Cluster (free) — chrismartin1337</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, изменены масштаб, материал и размещение; добавлены багровый цвет и чёрные потоки.</p>
       <p className="nifl-map-legend">Мост кузницы: <a href="https://sketchfab.com/3d-models/ice-bridge-f2e6aff3a1744a7293527b5e0a16dd48" target="_blank" rel="noopener noreferrer">Ice Bridge — starchild</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Удалены звёзды и треугольная табличка, сохранены верёвочные ограждения; уменьшены текстуры, изменены масштаб, наклон и размещение.</p>
+      <p className="nifl-map-legend">Корни: <a href="https://sketchfab.com/3d-models/tree-roots-961841eefc0c4896a42648cc8d480482" target="_blank" rel="noopener noreferrer">Tree Roots — falk lochmann</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшена текстура, увеличен масштаб, изменены освещение, ориентация и размещение.</p>
       <p className="nifl-map-legend">Ледяной дом: <a href="https://sketchfab.com/3d-models/igloo-224f673917e6486eb08c496baf77ce84" target="_blank" rel="noopener noreferrer">Igloo — Vera4Art</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, убрана исходная площадка, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Великан: <a href="https://sketchfab.com/3d-models/lowpoly-giant-warrior-rigged-66588f8fd6f64212abe49c7c6cababa9" target="_blank" rel="noopener noreferrer">Lowpoly Giant Warrior (rigged) — luch.pok (lvintoniyak)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Убраны крупные браслеты, осветлена кожа, уменьшены текстуры; изменены масштаб и размещение, добавлены поза сидя и подъём с камня.</p>
     </section></div>}
