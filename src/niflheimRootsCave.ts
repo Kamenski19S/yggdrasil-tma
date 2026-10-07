@@ -65,5 +65,49 @@ export function createRootsIceCave(walls:THREE.Group,roof:THREE.Group,x:number,z
     return false;
   };
   const camera=(px:number,pz:number)=>new THREE.Vector3(THREE.MathUtils.clamp(px,x-13,x+13),floor+9,THREE.MathUtils.clamp(pz+12,z-14,z+21));
-  return {root,inside,groundY,blocked,camera};
+  const addIceberg=(iceberg:THREE.Group)=>{
+    iceberg.name='Малый багровый айсберг — место будущего осколка';
+    const bounds=new THREE.Box3().setFromObject(iceberg),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
+    const scale=11/Math.max(size.x,size.z,.001);
+    iceberg.scale.setScalar(scale);
+    iceberg.position.set(-1-center.x*scale,-bounds.min.y*scale,-9-center.z*scale);
+    iceberg.updateMatrixWorld(true);
+    const crimson=new THREE.Color('#9b163b'),ice=new THREE.Color('#d5efff');
+    iceberg.traverse(object=>{
+      if(!(object instanceof THREE.Mesh))return;
+      const geometry=object.geometry,p=geometry.getAttribute('position');
+      const colors=new Float32Array(p.count*3);
+      for(let i=0;i<p.count;i++){
+        const v=new THREE.Vector3().fromBufferAttribute(p,i).applyMatrix4(object.matrixWorld);
+        const nx=(v.x+1)/5.5,nz=(v.z+9)/5.5,ny=v.y/Math.max(size.y*scale,.001);
+        // Two irregular crimson patches leave most of the original ice blue.
+        const a=Math.hypot((nx-.4)/.5,(nz+.1)/.65,(ny-.55)/.8);
+        const b=Math.hypot((nx+.55)/.38,(nz-.4)/.5,(ny-.3)/.65);
+        const edge=Math.min(a,b)+.12*Math.sin(v.x*2.2+v.y*1.8)*Math.sin(v.z*2);
+        const tint=ice.clone().lerp(crimson,1-THREE.MathUtils.smoothstep(edge,.72,1.05));
+        tint.toArray(colors,i*3);
+      }
+      geometry.setAttribute('color',new THREE.BufferAttribute(colors,3));
+      const materials=Array.isArray(object.material)?object.material:[object.material];
+      const tinted=materials.map(material=>{
+        const m=material.clone() as THREE.MeshStandardMaterial;
+        m.vertexColors=true;m.color.set('#ffffff');m.needsUpdate=true;return m;
+      });
+      object.material=Array.isArray(object.material)?tinted:tinted[0];
+      object.castShadow=true;object.receiveShadow=true;
+      // Respect the open centre: collision follows ice walls rather than a solid box.
+      const index=geometry.getIndex(),count=index?.count??p.count;
+      for(let i=0;i<count;i+=3){
+        const vertices=[0,1,2].map(k=>new THREE.Vector3().fromBufferAttribute(p,index?index.getX(i+k):i+k).applyMatrix4(object.matrixWorld));
+        const hit:THREE.Vector3[]=[];
+        for(let e=0;e<3;e++){
+          const a=vertices[e],b=vertices[(e+1)%3];
+          if((a.y<1.8)!==(b.y<1.8))hit.push(a.clone().lerp(b,(1.8-a.y)/(b.y-a.y)));
+        }
+        if(hit.length===2)addSegment(hit[0],hit[1]);
+      }
+    });
+    root.add(iceberg);
+  };
+  return {root,inside,groundY,blocked,camera,addIceberg};
 }

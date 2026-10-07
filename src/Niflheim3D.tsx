@@ -213,6 +213,12 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       const loaded=results.filter((r):r is PromiseFulfilledResult<THREE.Group>=>r.status==='fulfilled').map(r=>r.value);
       if(!alive||loaded.length!==2){loaded.forEach(disposeObject);if(!alive)textures.forEach(t=>t.dispose());return;}
       rootsSpace=createRootsIceCave(loaded[0],loaded[1],rootsLocation.x,rootsLocation.z,niflGroundY);scene.add(rootsSpace.root);
+      const space=rootsSpace;
+      loadRootsAsset('Ice_Cave_1_Optimized.glb').then(iceberg=>{
+        if(!alive){disposeObject(iceberg);textures.forEach(t=>t.dispose());return;}
+        space.addIceberg(iceberg);refreshShadows();
+      }).catch(()=>{});
+
       scene.traverse((o:any)=>{if(o.name==='Niflheim terrain'&&o.isMesh){const p=o.geometry.getAttribute('position');for(let i=0;i<p.count;i++)p.setY(i,terrainY(p.getX(i),p.getZ(i)));p.needsUpdate=true;o.geometry.computeVertexNormals();o.geometry.computeBoundingSphere();}});
       refreshShadows();
     });
