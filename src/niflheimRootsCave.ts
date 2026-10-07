@@ -28,8 +28,8 @@ export function createRootsIceCave(walls:THREE.Group,roof:THREE.Group,x:number,z
       const ids=[0,1,2].map(k=>index?index.getX(i+k):i+k);
       const p=ids.map(id=>new THREE.Vector3().fromBufferAttribute(positions,id).applyMatrix4(object.matrixWorld));
       const center=p[0].clone().add(p[1]).add(p[2]).multiplyScalar(1/3);
-      // A broad south-facing doorway, over twice the hero's height.
-      if(Math.abs(center.x)<9.5&&center.z>11&&center.y<11.5)continue;
+      // Cut a wide, deep entrance through every front layer of ice.
+      if(Math.abs(center.x)<13&&center.z>-5&&center.y<12.8)continue;
       keep.push(...ids);
       const intersections:THREE.Vector3[]=[];
       for(let e=0;e<3;e++){
@@ -41,7 +41,7 @@ export function createRootsIceCave(walls:THREE.Group,roof:THREE.Group,x:number,z
     geometry.setIndex(keep);geometry.computeBoundingSphere();object.geometry.dispose();object.geometry=geometry;
     object.castShadow=true;object.receiveShadow=true;
   });
-  roof.scale.set(14.5,1,17);roof.updateMatrixWorld(true);
+  roof.scale.set(10,1,12);roof.updateMatrixWorld(true);
   const roofBounds=new THREE.Box3().setFromObject(roof);
   roof.scale.y=1.3/Math.max(roofBounds.max.y-roofBounds.min.y,.001);
   roof.position.set(0,wallHeight-.6-roofBounds.min.y*roof.scale.y,0);roof.name='Ледяной свод';
