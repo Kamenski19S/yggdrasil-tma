@@ -1,0 +1,5 @@
+iceland scene for canimatic
+Author: m42345081
+Source: https://sketchfab.com/3d-models/iceland-scene-for-canimatic-36105320e882416e870c5f6ee8db2e6b
+License: CC BY 4.0 https://creativecommons.org/licenses/by/4.0/
+Changes: extracted one iceberg; simplified to 700 triangles; texture reduced to 256x256; origin and scale normalized; cloned around Niflheim boundary.
