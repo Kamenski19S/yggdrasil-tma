@@ -183,8 +183,14 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     cachedGlbBuffer(`${BASE}img/models/Yggdrasil_Roots_Ice.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,asset=>{
       if(!alive){disposeObject(asset.scene);textures.forEach(t=>t.dispose());return;}
       const root=asset.scene;root.name='Сплетение корней — ледяная арка';
-      // Fit the roots beneath the lowered cave roof, preserving their width.
-      root.scale.y=.48;
+      // Lower only the upper roots; keep the arch's walking clearance intact.
+      root.traverse((object:any)=>{
+        if(!object.isMesh)return;
+        const p=object.geometry.getAttribute('position');
+        for(let i=0;i<p.count;i++){const y=p.getY(i);if(y>9)p.setY(i,9+(y-9)*.22);}
+        p.needsUpdate=true;object.geometry.computeVertexNormals();
+        object.geometry.computeBoundingBox();object.geometry.computeBoundingSphere();
+      });
       const bounds=new THREE.Box3().setFromObject(root);
       root.position.set(rootsLocation.x,niflGroundY(rootsLocation.x,rootsLocation.z)-.2-bounds.min.y,rootsLocation.z);
       root.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});scene.add(root);refreshShadows();
