@@ -76,7 +76,9 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     let rootsSpace:ReturnType<typeof createRootsIceCave>|undefined;
     let sourceIceBounds:THREE.Box3|undefined;
     const sourceIceBlocked=(x:number,z:number)=>!!sourceIceBounds&&x>sourceIceBounds.min.x&&x<sourceIceBounds.max.x&&z>sourceIceBounds.min.z&&z<sourceIceBounds.max.z;
-    const walkingY=(x:number,z:number)=>hallSpace?.groundY(x,z)??memorySpace?.groundY(x,z)??forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??rootsSpace?.groundY(x,z)??niflGroundY(x,z);
+    let lakeBridgeDeck:number|undefined;
+    const lakeBridgeY=(x:number,z:number)=>lakeBridgeDeck!==undefined&&Math.abs(x+72)<3.7&&z>=-12&&z<=23?lakeBridgeDeck:undefined;
+    const walkingY=(x:number,z:number)=>lakeBridgeY(x,z)??hallSpace?.groundY(x,z)??memorySpace?.groundY(x,z)??forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??rootsSpace?.groundY(x,z)??niflGroundY(x,z);
     const terrainY=(x:number,z:number)=>hallSpace?.terrainY(x,z)??memorySpace?.terrainY(x,z)??forgeSpace?.terrainY(x,z)??(caveSpace?.inside(x,z)?caveSpace.floor-.06:(rootsSpace?.groundY(x,z)??niflGroundY(x,z)));
     const crystalMaterials:THREE.MeshStandardMaterial[]=[];
     const crystalHalos:THREE.Sprite[]=[];
@@ -199,7 +201,20 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
         mesh(poleGeo,snow,l.x,niflGroundY(l.x,l.z)+4.5,l.z,8,.8,7);mesh(poleGeo,pathMat,l.x,niflGroundY(l.x,l.z)+.3,l.z,8,.6,7);
         if(l.kind==='shelter')for(const part of scene.children.slice(first))shelterPlaceholder.add(part);
       }
-      if(l.kind==='bridge'){for(let j=0;j<6;j++)mesh(poleGeo,stone,l.x-6+j*2,niflGroundY(l.x-6+j*2,l.z)+.45,l.z,1.8,.7,3.6);}
+      if(l.kind==='bridge'){
+        cachedGlbBuffer(`${BASE}img/models/Niflheim_Lake_Bridge.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
+          if(!alive){asset.scene.traverse((o:any)=>{if(o.isMesh){o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)v.dispose();m.dispose();}}});return;}
+          const bridge=asset.scene;bridge.updateMatrixWorld(true);
+          const bounds=new THREE.Box3().setFromObject(bridge),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
+          bridge.scale.set(8/size.x,6/size.y,35/size.z);
+          lakeBridgeDeck=Math.max(niflGroundY(-72,-12),niflGroundY(-72,26))+.3;
+          // Source deck at local world Y=9.2; north end touches shore, south end stops three units short.
+          bridge.position.set(-72-center.x*bridge.scale.x,lakeBridgeDeck-9.2*bridge.scale.y,5.5-center.z*bridge.scale.z);
+          bridge.name='Разрушенная переправа через озеро';
+          bridge.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}});
+          scene.add(bridge);refreshShadows();
+        }).catch(()=>{});
+      }
       // The former lookout is now the dry riverbed; leave its channel unobstructed.
       if(l.kind!=='source'){
         const marker=mesh(new THREE.OctahedronGeometry(.5),glow,l.x+3,niflGroundY(l.x+3,l.z+3)+2.8,l.z+3);marker.name=`Location ${index+1}: ${l.name}`;
@@ -493,6 +508,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       <p className="nifl-map-legend">Сосульки: <a href="https://sketchfab.com/3d-models/icicle-01-2dc75ae22f1c4d11abbfd32819312a12" target="_blank" rel="noopener noreferrer">Icicle 01 — Elin</a>, CC BY 4.0. Текстуры уменьшены до 256 пикселей, изменены масштаб, оттенок и размещение; сверху добавлен снег.</p>
       <p className="nifl-map-legend">Ландшафт: <a href="https://sketchfab.com/3d-models/terrain-62dc7db392f34dacb4c07bfcb4faf14e" target="_blank" rel="noopener noreferrer">Terrain — FreeModel (DiFed)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены детализация и текстуры, изменены масштаб, снежный материал и размещение; выровнен пол пещеры.</p>
       <p className="nifl-map-legend">Лёд Хвергельмира: <a href="https://sketchfab.com/3d-models/ice-cluster-free-4d2271f8bf7f400e9a5c8f10812a32de" target="_blank" rel="noopener noreferrer">Ice Cluster (free) — chrismartin1337</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, изменены масштаб, материал и размещение; добавлены багровый цвет и чёрные потоки.</p>
+      <p className="nifl-map-legend">Переправа через озеро: <a href="https://sketchfab.com/3d-models/scandinavian-bridge-ed021c21c21d4e44a4de8903042f3da8" target="_blank" rel="noopener noreferrer">Scandinavian bridge — Ivan Norman (vanidza)</a>, CC BY 4.0. Уменьшены текстуры, убраны дополнительные карты; сохранена геометрия, изменены масштаб и размещение, оставлен разрыв до берега.</p>
       <p className="nifl-map-legend">Мост кузницы: <a href="https://sketchfab.com/3d-models/ice-bridge-f2e6aff3a1744a7293527b5e0a16dd48" target="_blank" rel="noopener noreferrer">Ice Bridge — starchild</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Удалены звёзды и треугольная табличка, сохранены верёвочные ограждения; уменьшены текстуры, изменены масштаб, наклон и размещение.</p>
       <p className="nifl-map-legend">Ледяные образования у корней: <a href="https://sketchfab.com/3d-models/ice-castles-ny-ice-formations-293eff95dafc409f8d203374e0ff45be" target="_blank" rel="noopener noreferrer">Ice Castles NY — Ice Formations — Katie Alois (@kalois)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Модель разделена на два файла, уменьшены детализация и текстуры; стены увеличены вокруг корней, вырезан проход для Вики.</p>
       <p className="nifl-map-legend">Ледяные плиты и стены: <a href="https://sketchfab.com/3d-models/ice-glacier-933b3c2ee51c48bb958d06655d1ff8bd" target="_blank" rel="noopener noreferrer">Ice Glacier — Svenja (gwenchana3)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры; одна ледяная плита выделена в отдельный файл и увеличена для свода пещеры.</p>
