@@ -1,0 +1,4 @@
+MAZE Rock Assets by Jeremy_W
+https://sketchfab.com/3d-models/maze-rock-assets-61c64e5c177144bf89a3f4bb5214235a
+CC BY 4.0 https://creativecommons.org/licenses/by/4.0/
+Changes: wall, floor and ceiling modules extracted, centered, resized textures, simplified ceiling, cloned to build Hall of Forgotten Names.
