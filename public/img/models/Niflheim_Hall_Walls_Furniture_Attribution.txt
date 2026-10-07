@@ -1,0 +1,6 @@
+Walls: Stone bricks beige Wall-set — DADedits
+https://sketchfab.com/3d-models/stone-bricks-beige-wall-set-8df474d0b8df453c87255a1758dde6e2
+Furniture: Cave Rocks — Splanyic
+https://sketchfab.com/3d-models/cave-rocks-4101c07c6a754f85962c6b516af4713a
+Both licensed CC BY 4.0 https://creativecommons.org/licenses/by/4.0/
+Changes: extracted modules, resized textures, removed tangents; scaled and assembled into hall walls, plates and table.

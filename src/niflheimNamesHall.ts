@@ -59,23 +59,6 @@ export function createForgottenNamesHall(x:number,z:number,ground:(x:number,z:nu
   }
   box(0,13.5,-24,13,.8,4.3);box(0,14,-24,13,.18,4.2,snow);
   const shellColliderCount=colliders.length;shell=false;
-  // Blank memorial steles; names and game interactions will be added later.
-  for(const side of [-1,1])for(let i=0;i<3;i++){
-    const px=side*7.6,pz=-5-i*7,height=4.4+i*.35;
-    box(px,.42,pz,3.4,.65,2.4,paving);
-    box(px,.7+height/2,pz,2.4,height,.8);
-    const top=box(px,.7+height,pz,2.4,.65,.85);top.rotation.z=side*.08;
-    box(px,.82+height/2,pz+.43,1.8,height-1,.04,recess);
-    box(px,.92+height,pz,2.5,.14,1,snow);
-    solid(px,pz,3.4,2.4);
-    for(let k=0;k<3;k++)box(px-.85+k*.7,height+.42-k*.1,pz+.5,.07,.8-k*.15,.07,frost);
-  }
-  box(0,.36,-21,5,.48,3.5,paving);
-  box(0,3,-21,3.8,5.2,1);
-  box(0,3.1,-20.48,2.95,3.7,.05,recess);
-  box(0,5.74,-21,4,.18,1.2,snow);solid(0,-21,5,3.5);
-  // Small fallen stones outside the main walking aisle.
-  for(let i=0;i<5;i++){const side=i%2?-1:1;const rubble=box(side*(9-i%3*.4),.45,-10-i*2.5,1.4,.8,1.7,paving);rubble.rotation.y=i*.8;rubble.rotation.z=.12;}
   const light=new THREE.PointLight('#b6ddf5',65,34,2);light.position.set(0,9,-12);root.add(light);
   const inside=(px:number,pz:number)=>Math.abs(px-x)<15&&pz-z<1&&pz-z>-31;
   const groundY=(px:number,pz:number)=>{
@@ -87,8 +70,9 @@ export function createForgottenNamesHall(x:number,z:number,ground:(x:number,z:nu
   const terrainY=(px:number,pz:number)=>{const y=groundY(px,pz);return y===undefined?undefined:y-.16;};
   const blocked=(px:number,pz:number)=>colliders.some(c=>Math.abs(px-x-c.x)<c.w&&Math.abs(pz-z-c.z)<c.d);
   const camera=(px:number,pz:number)=>new THREE.Vector3(THREE.MathUtils.clamp(px,x-12,x+12),base+9.5,THREE.MathUtils.clamp(pz+10,z-22,z+7));
-  const replaceShell=(asset:THREE.Group)=>{
+  const replaceShell=(asset:THREE.Group,wallAsset:THREE.Group)=>{
     const templates=['Hall wall module','Hall floor module','Hall ceiling module'].map(name=>asset.getObjectByName(THREE.PropertyBinding.sanitizeNodeName(name)) as THREE.Mesh);
+    templates[0]=wallAsset.getObjectByName('Beige_wall') as THREE.Mesh;
     if(templates.some(m=>!m?.isMesh))throw new Error('Hall modules missing');
     shellParts.forEach(part=>root.remove(part));
     const batches:{x:number;y:number;z:number;w:number;h:number;d:number;angle?:number}[][]=[[],[],[]];
@@ -120,6 +104,25 @@ export function createForgottenNamesHall(x:number,z:number,ground:(x:number,z:nu
     });
     box(0,14.75,-16,33,.18,33,snow);
   };
+  const addFurniture=(asset:THREE.Group)=>{
+    const place=(name:string,px:number,py:number,pz:number,w:number,h:number,d:number)=>{
+      const template=asset.getObjectByName(name) as THREE.Mesh;
+      if(!template?.isMesh)throw new Error('Hall furniture missing: '+name);
+      const item=template.clone();item.geometry.computeBoundingBox();
+      const size=item.geometry.boundingBox!.getSize(new THREE.Vector3());
+      item.scale.set(w/size.x,h/size.y,d/size.z);item.position.set(px,py,pz);
+      item.castShadow=true;item.receiveShadow=true;root.add(item);return item;
+    };
+    for(const side of [-1,1])for(let i=0;i<3;i++){
+      const px=side*11.5,pz=-7-i*8,height=5+i*.35;
+      place(i%2?'Stone_plate_variant':'Stone_plate',px,.22+height/2,pz,3.6,height,.85);
+      solid(px,pz,3.6,.85);
+    }
+    place('Stone_plate',0,3.12,-28,4.4,5.8,1);solid(0,-28,4.4,1);
+    place('Table_top',0,3.15,-16,8,.75,4.6);
+    for(const side of [-1,1])place('Table_support',side*2.6,1.5,-16,1.7,2.55,2.4);
+    solid(0,-16,8,4.6);
+  };
   const addArch=(asset:THREE.Group)=>{
     // The original opening is 2.5 units wide: x4 keeps our ten-unit doorway clear.
     asset.scale.set(4,2,1.26);asset.position.set(0,.22,1);
@@ -136,5 +139,5 @@ export function createForgottenNamesHall(x:number,z:number,ground:(x:number,z:nu
     asset.traverse(o=>{if(o instanceof THREE.Mesh){for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)v.dispose();m.dispose();}o.material=snow;o.castShadow=true;o.receiveShadow=true;}});
     root.add(slab);
   };
-  return {root,inside,groundY,terrainY,blocked,camera,replaceShell,addArch,addSnowRoof};
+  return {root,inside,groundY,terrainY,blocked,camera,replaceShell,addFurniture,addArch,addSnowRoof};
 }
