@@ -8,11 +8,12 @@ export function createForgottenNamesHall(x:number,z:number,ground:(x:number,z:nu
   const paving=stone.clone();paving.color.set('#76828c');paving.roughness=.94;
   const frost=new THREE.MeshStandardMaterial({color:'#aad4e3',roughness:.55,metalness:.04});
   const recess=new THREE.MeshStandardMaterial({color:'#283740',roughness:1});
+  const shellParts:THREE.Object3D[]=[];let shell=true;
   const colliders:{x:number;z:number;w:number;d:number}[]=[];
   const box=(px:number,py:number,pz:number,w:number,h:number,d:number,material:THREE.Material=dark)=>{
     const mesh=new THREE.Mesh(block,material);mesh.position.set(px,py,pz);mesh.scale.set(w,h,d);mesh.castShadow=true;mesh.receiveShadow=true;
     mesh.onBeforeRender=()=>{if(stone.map){for(const m of [dark,paving])if(m.map!==stone.map){m.map=stone.map;m.needsUpdate=true;}}};
-    root.add(mesh);return mesh;
+    root.add(mesh);if(shell)shellParts.push(mesh);return mesh;
   };
   const solid=(px:number,pz:number,w:number,d:number)=>colliders.push({x:px,z:pz,w:w/2+.65,d:d/2+.65});
   // Broad tiled floor, level with the approach; seams remain visible.
@@ -57,6 +58,7 @@ export function createForgottenNamesHall(x:number,z:number,ground:(x:number,z:nu
     box(px,py+.46,pz,5.2,.16,7.1,snow);
   }
   box(0,13.5,-24,13,.8,4.3);box(0,14,-24,13,.18,4.2,snow);
+  const shellColliderCount=colliders.length;shell=false;
   // Blank memorial steles; names and game interactions will be added later.
   for(const side of [-1,1])for(let i=0;i<3;i++){
     const px=side*7.6,pz=-5-i*7,height=4.4+i*.35;
@@ -75,15 +77,48 @@ export function createForgottenNamesHall(x:number,z:number,ground:(x:number,z:nu
   // Small fallen stones outside the main walking aisle.
   for(let i=0;i<5;i++){const side=i%2?-1:1;const rubble=box(side*(9-i%3*.4),.45,-10-i*2.5,1.4,.8,1.7,paving);rubble.rotation.y=i*.8;rubble.rotation.z=.12;}
   const light=new THREE.PointLight('#b6ddf5',65,34,2);light.position.set(0,9,-12);root.add(light);
-  const inside=(px:number,pz:number)=>Math.abs(px-x)<10.8&&pz-z<1&&pz-z>-25;
+  const inside=(px:number,pz:number)=>Math.abs(px-x)<15&&pz-z<1&&pz-z>-31;
   const groundY=(px:number,pz:number)=>{
     const lx=Math.abs(px-x),lz=pz-z;
-    if(lx>14||lz>5||lz<-29)return undefined;
-    const edge=Math.max((lx-12)/2,(lz-1)/4,(-27-lz)/2,0);
+    if(lx>19||lz>5||lz<-36)return undefined;
+    const edge=Math.max((lx-17)/2,(lz-1)/4,(-34-lz)/2,0);
     return THREE.MathUtils.lerp(floor,ground(px,pz),THREE.MathUtils.smoothstep(edge,0,1));
   };
   const terrainY=(px:number,pz:number)=>{const y=groundY(px,pz);return y===undefined?undefined:y-.16;};
   const blocked=(px:number,pz:number)=>colliders.some(c=>Math.abs(px-x-c.x)<c.w&&Math.abs(pz-z-c.z)<c.d);
-  const camera=(px:number,pz:number)=>new THREE.Vector3(THREE.MathUtils.clamp(px,x-8,x+8),base+9.5,THREE.MathUtils.clamp(pz+10,z-16,z+7));
-  return {root,inside,groundY,terrainY,blocked,camera};
+  const camera=(px:number,pz:number)=>new THREE.Vector3(THREE.MathUtils.clamp(px,x-12,x+12),base+9.5,THREE.MathUtils.clamp(pz+10,z-22,z+7));
+  const replaceShell=(asset:THREE.Group)=>{
+    const templates=['Hall wall module','Hall floor module','Hall ceiling module'].map(name=>asset.getObjectByName(name) as THREE.Mesh);
+    if(templates.some(m=>!m?.isMesh))throw new Error('Hall modules missing');
+    shellParts.forEach(part=>root.remove(part));
+    const batches:{x:number;y:number;z:number;w:number;h:number;d:number;angle?:number}[][]=[[],[],[]];
+    const wall=(px:number,py:number,pz:number,w:number,h:number,angle=0)=>batches[0].push({x:px,y:py,z:pz,w:w+.06,h:h+.06,d:1.2,angle});
+    const boundaries:{x:number;z:number;w:number;d:number}[]=[];
+    for(const side of [-1,1]){
+      for(let i=0;i<4;i++)for(const py of [3.5,10.5])wall(side*16.3,py,-4-i*8,8,7,Math.PI/2);
+      boundaries.push({x:side*16.3,z:-16,w:1.25,d:16.8});
+      for(const py of [3.5,10.5])wall(side*10.65,py,0,11.3,7);
+      boundaries.push({x:side*10.65,z:0,w:6.3,d:1.25});
+    }
+    for(let i=0;i<4;i++)for(const py of [3.5,10.5])wall(-12+i*8,py,-32.3,8,7);
+    boundaries.push({x:0,z:-32.3,w:17,d:1.25});
+    wall(0,11.6,0,10,4.8);
+    colliders.splice(0,shellColliderCount,...boundaries);
+    for(let iz=0;iz<4;iz++)for(let ix=0;ix<4;ix++){
+      const px=-12+ix*8,pz=-4-iz*8;
+      batches[1].push({x:px,y:.08,z:pz,w:8.04,h:.28,d:8.04});
+      batches[2].push({x:px,y:14.1,z:pz,w:8.08,h:1.1,d:8.08});
+    }
+    templates.forEach((template,k)=>{
+      template.geometry.computeBoundingBox();
+      const size=template.geometry.boundingBox!.getSize(new THREE.Vector3());
+      const material=(template.material as THREE.MeshStandardMaterial).clone();material.color.set('#a7b8c4');
+      const panels=new THREE.InstancedMesh(template.geometry,material,batches[k].length),dummy=new THREE.Object3D();
+      panels.name=['Каменные стены зала','Каменный пол зала','Каменная крыша зала'][k];
+      batches[k].forEach((p,i)=>{dummy.position.set(p.x,p.y,p.z);dummy.rotation.set(0,p.angle??0,0);dummy.scale.set(p.w/size.x,p.h/size.y,p.d/size.z);dummy.updateMatrix();panels.setMatrixAt(i,dummy.matrix);});
+      panels.instanceMatrix.needsUpdate=true;panels.computeBoundingSphere();panels.castShadow=true;panels.receiveShadow=true;root.add(panels);
+    });
+    box(0,14.75,-16,33,.18,33,snow);
+  };
+  return {root,inside,groundY,terrainY,blocked,camera,replaceShell};
 }
