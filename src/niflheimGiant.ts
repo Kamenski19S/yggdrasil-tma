@@ -14,7 +14,8 @@ export function createNiflheimGiant(model:THREE.Group,space:{world(x:number,y:nu
       const c=white.clone().lerp(tint,Math.min(1,w*1.5));c.toArray(colors,i*3);
     }
     o.geometry.setAttribute('color',new THREE.BufferAttribute(colors,3));
-    o.material=(Array.isArray(o.material)?o.material:[o.material]).map((m:THREE.MeshStandardMaterial)=>{const copy=m.clone();copy.vertexColors=true;return copy;});
+    const tinted=(m:THREE.MeshStandardMaterial)=>{const copy=m.clone();copy.vertexColors=true;return copy;};
+    o.material=Array.isArray(o.material)?o.material.map(tinted):tinted(o.material);
   });
   model.traverse((o:any)=>{if(o.isSkinnedMesh)o.skeleton.pose();if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;}});
   model.updateMatrixWorld(true);
