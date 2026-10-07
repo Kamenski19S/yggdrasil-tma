@@ -76,9 +76,37 @@ export function addNiflheimRivers(scene:THREE.Scene,base:string){
     texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.MirroredRepeatWrapping;
     flowTexture=texture;water.map=texture;water.needsUpdate=true;
   });
+  // Only the frozen river carries the infection; lake ice stays unchanged.
+  const taintedIce=ice.clone();taintedIce.customProgramCacheKey=()=> 'nifl-under-ice-taint-v1';
+  taintedIce.onBeforeCompile=shader=>{
+    shader.vertexShader='varying vec3 vIcePosition;\n'+'varying vec2 vIceUV;\n'+shader.vertexShader;
+    shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvIcePosition=position;vIceUV=uv;');
+    shader.fragmentShader=`varying vec3 vIcePosition;
+      varying vec2 vIceUV;
+      float iceHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+      float iceNoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(iceHash(i),iceHash(i+vec2(1.0,0.0)),f.x),mix(iceHash(i+vec2(0.0,1.0)),iceHash(i+vec2(1.0,1.0)),f.x),f.y);}
+    `+shader.fragmentShader;
+    shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+      // Clean ice at the bridge; first visible threads near Frozen River (Z=48).
+      float reveal=1.0-smoothstep(35.0,68.0,vIcePosition.z);
+      float upstream=clamp((48.0-vIcePosition.z)/146.0,0.0,1.0);
+      float bank=1.0-smoothstep(.34,.49,abs(vIceUV.x-.5));
+      float depthNoise=iceNoise(vIcePosition.xz*.31)*.65+iceNoise(vIcePosition.xz*.73)*.35;
+      float thread=.5+.16*sin(vIcePosition.z*.21)+.035*sin(vIcePosition.z*.79);
+      float branch=.34+.14*sin(vIcePosition.z*.13+1.7);
+      float veins=(1.0-smoothstep(.008,.035,abs(vIceUV.x-thread)))
+        +(1.0-smoothstep(.006,.022,abs(vIceUV.x-branch)))*.65;
+      float stains=smoothstep(.64-upstream*.2,.82-upstream*.2,depthNoise);
+      float clot=exp(-pow((vIcePosition.z-32.0)/5.0,2.0))*smoothstep(.4,.7,depthNoise);
+      float taint=reveal*bank*clamp(veins*(.33+upstream*.24)+stains*(.16+upstream*.5)+clot*.48,0.0,.78);
+      // A blue veil and the existing pale fractures keep the dark matter below ice.
+      vec3 underIce=mix(vec3(.035,.065,.085),vec3(.13,.23,.28),depthNoise*.3);
+      diffuseColor.rgb=mix(diffuseColor.rgb,underIce,taint);
+    `);
+  };
   let living:THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>|undefined;
   NIFL_RIVERS.forEach((points,index)=>{
-    const mesh=new THREE.Mesh(createNiflRiverGeometry(points,NIFL_RIVER_WIDTHS[index]),index===NIFL_LIVING_RIVER?water:ice);
+    const mesh=new THREE.Mesh(createNiflRiverGeometry(points,NIFL_RIVER_WIDTHS[index]),index===NIFL_LIVING_RIVER?water:taintedIce);
     mesh.name=index===NIFL_LIVING_RIVER?'Living eastern river':'Frozen river';mesh.receiveShadow=true;scene.add(mesh);
     if(index===NIFL_LIVING_RIVER)living=mesh;
   });
