@@ -67,6 +67,8 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     let caveSpace:ReturnType<typeof createCaveSpace>|undefined;
     let forgeSpace:ReturnType<typeof createNiflheimForge>|undefined;
     let giant:ReturnType<typeof createNiflheimGiant>|undefined;
+    let sourceIceBounds:THREE.Box3|undefined;
+    const sourceIceBlocked=(x:number,z:number)=>!!sourceIceBounds&&x>sourceIceBounds.min.x&&x<sourceIceBounds.max.x&&z>sourceIceBounds.min.z&&z<sourceIceBounds.max.z;
     const walkingY=(x:number,z:number)=>forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??niflGroundY(x,z);
     const terrainY=(x:number,z:number)=>forgeSpace?.terrainY(x,z)??(caveSpace?.inside(x,z)?caveSpace.floor-.06:niflGroundY(x,z));
     const crystalMaterials:THREE.MeshStandardMaterial[]=[];
@@ -165,6 +167,13 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     const hero=new THREE.Group();hero.rotation.y=Math.PI;scene.add(hero);
     let mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,attack:THREE.AnimationAction|undefined,attackUntil=0,shieldBones:THREE.Object3D[]=[],shieldBase:THREE.Quaternion[]=[],moving=false,currentAction:THREE.AnimationAction|undefined;
     const disposeObject=(root:THREE.Object3D)=>{root.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}});};
+    cachedGlbBuffer(`${BASE}img/models/Niflheim_Corrupted_Ice_Cluster.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,asset=>{
+      if(!alive){disposeObject(asset.scene);textures.forEach(t=>t.dispose());return;}
+      const cluster=asset.scene;cluster.name='Багровый лёд Хвергельмира';cluster.position.set(NIFL_SOURCE.x,niflGroundY(NIFL_SOURCE.x,NIFL_SOURCE.z)+.12,NIFL_SOURCE.z);
+      cluster.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});scene.add(cluster);cluster.updateMatrixWorld(true);
+      sourceIceBounds=new THREE.Box3().setFromObject(cluster).expandByScalar(.65);refreshShadows();
+    },()=>{})).catch(()=>{});
+
     // Fred Drabble's cave, CC BY 4.0: snowy giant shelter facing the entrance road.
     const forgeLocation=NIFL_LOCATIONS.find(l=>l.id==='forge')!;
     forgeSpace=createNiflheimForge(forgeLocation.x,forgeLocation.z,niflGroundY(forgeLocation.x,forgeLocation.z),niflGroundY,refreshShadows);scene.add(forgeSpace.root);
@@ -301,7 +310,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       velocityX=THREE.MathUtils.lerp(velocityX,isMoving?dx/length:0,steer);velocityZ=THREE.MathUtils.lerp(velocityZ,isMoving?dz/length:0,steer);
       if(!paused.current&&!document.hidden){const from=position.current,next=moveThroughNiflEntrance(from,from.x+velocityX*8.5*dt,from.z+velocityZ*8.5*dt);
         const candidate=caveSpace?caveSpace.move(from,next):next;
-        if(!giant?.blocked(candidate.x,candidate.z)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
+        if(!sourceIceBlocked(candidate.x,candidate.z)&&!giant?.blocked(candidate.x,candidate.z)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
       if(isMoving){const target=Math.atan2(velocityX,velocityZ),difference=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y));hero.rotation.y+=difference*(1-Math.exp(-dt*14));cameraDir.x=Math.sin(hero.rotation.y);cameraDir.z=Math.cos(hero.rotation.y);}
       const walking=!paused.current&&!document.hidden&&Math.hypot(velocityX,velocityZ)>.08;
       moving=walking;
@@ -363,6 +372,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       <p className="nifl-map-legend">Пещера: <a href="https://sketchfab.com/3d-models/cave-lp-9k-free-download-819687653df14a4a9acb267212093d1a" target="_blank" rel="noopener noreferrer">Cave LP — Fred Drabble</a>, CC BY 4.0. Уменьшены текстуры, добавлены снег и иней, изменены масштаб, размещение и форма входа.</p>
       <p className="nifl-map-legend">Сосульки: <a href="https://sketchfab.com/3d-models/icicle-01-2dc75ae22f1c4d11abbfd32819312a12" target="_blank" rel="noopener noreferrer">Icicle 01 — Elin</a>, CC BY 4.0. Текстуры уменьшены до 256 пикселей, изменены масштаб, оттенок и размещение; сверху добавлен снег.</p>
       <p className="nifl-map-legend">Ландшафт: <a href="https://sketchfab.com/3d-models/terrain-62dc7db392f34dacb4c07bfcb4faf14e" target="_blank" rel="noopener noreferrer">Terrain — FreeModel (DiFed)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены детализация и текстуры, изменены масштаб, снежный материал и размещение; выровнен пол пещеры.</p>
+      <p className="nifl-map-legend">Лёд Хвергельмира: <a href="https://sketchfab.com/3d-models/ice-cluster-free-4d2271f8bf7f400e9a5c8f10812a32de" target="_blank" rel="noopener noreferrer">Ice Cluster (free) — chrismartin1337</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, изменены масштаб, материал и размещение; добавлены багровый цвет и чёрные потоки.</p>
       <p className="nifl-map-legend">Мост кузницы: <a href="https://sketchfab.com/3d-models/ice-bridge-f2e6aff3a1744a7293527b5e0a16dd48" target="_blank" rel="noopener noreferrer">Ice Bridge — starchild</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Удалены звёзды и треугольная табличка, сохранены верёвочные ограждения; уменьшены текстуры, изменены масштаб, наклон и размещение.</p>
       <p className="nifl-map-legend">Великан: <a href="https://sketchfab.com/3d-models/lowpoly-giant-warrior-rigged-66588f8fd6f64212abe49c7c6cababa9" target="_blank" rel="noopener noreferrer">Lowpoly Giant Warrior (rigged) — luch.pok (lvintoniyak)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Убраны крупные браслеты, осветлена кожа, уменьшены текстуры; изменены масштаб и размещение, добавлены поза сидя и подъём с камня.</p>
     </section></div>}
