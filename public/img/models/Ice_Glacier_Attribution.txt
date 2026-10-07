@@ -1,0 +1,5 @@
+author: Svenja (https://sketchfab.com/gwenchana3)
+license: CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+source: https://sketchfab.com/3d-models/ice-glacier-933b3c2ee51c48bb958d06655d1ff8bd
+title: Ice Glacier
+changes: Textures reduced to 512px; geometry, openings, UVs, transforms and materials retained.
