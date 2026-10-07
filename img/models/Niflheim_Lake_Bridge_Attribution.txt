@@ -1,0 +1,4 @@
+Scandinavian bridge — Ivan Norman (vanidza)
+https://sketchfab.com/3d-models/scandinavian-bridge-ed021c21c21d4e44a4de8903042f3da8
+CC BY 4.0 https://creativecommons.org/licenses/by/4.0/
+Changes: resized color maps, removed secondary maps and tangents, geometry retained; scaled and placed across the lake with a gap at the far bank.
