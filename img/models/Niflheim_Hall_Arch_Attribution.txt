@@ -1,0 +1,4 @@
+Arch 1 — chuckcg (https://sketchfab.com/chuckcg)
+Source: https://sketchfab.com/3d-models/arch-1-38b5572e58fb40fca8c0d38f8e1192c5
+License: CC BY 4.0 — https://creativecommons.org/licenses/by/4.0/
+Changes: reduced textures, removed tangents, normalized hierarchy, scaled and placed at the hall entrance. Geometry preserved.
