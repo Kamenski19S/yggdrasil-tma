@@ -44,7 +44,7 @@ export function createRootsIceCave(walls:THREE.Group,roof:THREE.Group,x:number,z
   roof.scale.set(10,1,12);roof.updateMatrixWorld(true);
   const roofBounds=new THREE.Box3().setFromObject(roof);
   roof.scale.y=1.3/Math.max(roofBounds.max.y-roofBounds.min.y,.001);
-  roof.position.set(0,wallHeight-.6-roofBounds.min.y*roof.scale.y,0);roof.name='Ледяной свод';
+  roof.position.set(4,wallHeight-.6-roofBounds.min.y*roof.scale.y,-5);roof.name='Ледяной свод';
   roof.traverse(object=>{if(object instanceof THREE.Mesh){object.castShadow=true;object.receiveShadow=true;}});
   root.add(walls,roof);
   const light=new THREE.PointLight('#a9ddff',95,70,2);light.position.set(0,10,8);root.add(light);
