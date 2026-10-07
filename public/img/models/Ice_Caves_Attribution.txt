@@ -1,0 +1,6 @@
+title: Ice Castles NY — Ice Formations
+author: Katie Alois (@kalois)
+source: https://sketchfab.com/3d-models/ice-castles-ny-ice-formations-293eff95dafc409f8d203374e0ff45be
+license: CC BY 4.0
+license_url: https://creativecommons.org/licenses/by/4.0/
+changes: Separated formations, vertex clustering, resized JPEG textures, centered and grounded. Original shape and UVs retained at surviving vertices.
