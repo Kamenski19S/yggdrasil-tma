@@ -88,7 +88,7 @@ export function createForgottenNamesHall(x:number,z:number,ground:(x:number,z:nu
   const blocked=(px:number,pz:number)=>colliders.some(c=>Math.abs(px-x-c.x)<c.w&&Math.abs(pz-z-c.z)<c.d);
   const camera=(px:number,pz:number)=>new THREE.Vector3(THREE.MathUtils.clamp(px,x-12,x+12),base+9.5,THREE.MathUtils.clamp(pz+10,z-22,z+7));
   const replaceShell=(asset:THREE.Group)=>{
-    const templates=['Hall wall module','Hall floor module','Hall ceiling module'].map(name=>asset.getObjectByName(name) as THREE.Mesh);
+    const templates=['Hall wall module','Hall floor module','Hall ceiling module'].map(name=>asset.getObjectByName(THREE.PropertyBinding.sanitizeNodeName(name)) as THREE.Mesh);
     if(templates.some(m=>!m?.isMesh))throw new Error('Hall modules missing');
     shellParts.forEach(part=>root.remove(part));
     const batches:{x:number;y:number;z:number;w:number;h:number;d:number;angle?:number}[][]=[[],[],[]];
