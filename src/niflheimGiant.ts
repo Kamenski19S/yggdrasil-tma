@@ -1,7 +1,21 @@
 import * as THREE from 'three';
 
 // Pose the original rig; no scaling or sliding a rigid seated statue.
-export function createNiflheimGiant(model:THREE.Group,space:{world(x:number,y:number,z:number):THREE.Vector3;inside(x:number,z:number):boolean},mouthX:number,floorY:number){
+export function createNiflheimGiant(model:THREE.Group,space:{world(x:number,y:number,z:number):THREE.Vector3;inside(x:number,z:number):boolean},mouthX:number,floorY:number,options:{headColor?:string;remainSeated?:boolean}={}){
+  // Tint only vertices weighted to the head bone; clothes and jewellery retain their textures.
+  if(options.headColor)model.traverse((o:any)=>{
+    if(!o.isSkinnedMesh)return;
+    const joints=o.geometry.getAttribute('skinIndex'),weights=o.geometry.getAttribute('skinWeight');
+    if(!joints||!weights)return;
+    const head=o.skeleton.bones.findIndex((b:THREE.Bone)=>b.name.replace(/[^a-zA-Z0-9_]/g,'').startsWith('spine006_'));
+    const tint=new THREE.Color(options.headColor),white=new THREE.Color(1,1,1),colors=new Float32Array(joints.count*3);
+    for(let i=0;i<joints.count;i++){
+      let w=0;for(let k=0;k<4;k++)if(joints.getComponent(i,k)===head)w+=weights.getComponent(i,k);
+      const c=white.clone().lerp(tint,Math.min(1,w*1.5));c.toArray(colors,i*3);
+    }
+    o.geometry.setAttribute('color',new THREE.BufferAttribute(colors,3));
+    o.material=(Array.isArray(o.material)?o.material:[o.material]).map((m:THREE.MeshStandardMaterial)=>{const copy=m.clone();copy.vertexColors=true;return copy;});
+  });
   model.traverse((o:any)=>{if(o.isSkinnedMesh)o.skeleton.pose();if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;}});
   model.updateMatrixWorld(true);
   const bones:THREE.Bone[]=[];model.traverse(o=>{if((o as THREE.Bone).isBone)bones.push(o as THREE.Bone);});
@@ -68,7 +82,7 @@ export function createNiflheimGiant(model:THREE.Group,space:{world(x:number,y:nu
   rock.name='Камень великана';rock.position.copy(seat).addScaledVector(front,-.75);rock.position.y+=seatHeight/2;rock.rotation.y=root.rotation.y;rock.scale.set(4.1,Math.max(1.6,seatHeight),1.85);rock.castShadow=true;rock.receiveShadow=true;
   let rising=false,elapsed=0,standing=false;
   return {root,rock,update(dt:number,pos:{x:number;z:number},active:boolean){
-    if(!active)return false;
+    if(!active||options.remainSeated)return false;
     if(!rising&&!standing&&space.inside(pos.x,pos.z)&&Math.hypot(pos.x-seat.x,pos.z-seat.z)<11)rising=true;
     if(rising){elapsed=Math.min(2.8,elapsed+dt);const t=elapsed/2.8;pose(t*t*(3-2*t));if(elapsed===2.8){rising=false;standing=true;}return true;}
     return false;

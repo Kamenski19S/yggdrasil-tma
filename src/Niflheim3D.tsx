@@ -1,5 +1,6 @@
 import {InventorySection} from './inventory';
 import {createNiflheimForge} from './niflheimForge';
+import {createMemoryIgloo} from './niflheimIgloo';
 import {createNiflheimGiant} from './niflheimGiant';
 import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
@@ -67,10 +68,12 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     let caveSpace:ReturnType<typeof createCaveSpace>|undefined;
     let forgeSpace:ReturnType<typeof createNiflheimForge>|undefined;
     let giant:ReturnType<typeof createNiflheimGiant>|undefined;
+    let memorySpace:ReturnType<typeof createMemoryIgloo>|undefined;
+    let memoryGiant:ReturnType<typeof createNiflheimGiant>|undefined;
     let sourceIceBounds:THREE.Box3|undefined;
     const sourceIceBlocked=(x:number,z:number)=>!!sourceIceBounds&&x>sourceIceBounds.min.x&&x<sourceIceBounds.max.x&&z>sourceIceBounds.min.z&&z<sourceIceBounds.max.z;
-    const walkingY=(x:number,z:number)=>forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??niflGroundY(x,z);
-    const terrainY=(x:number,z:number)=>forgeSpace?.terrainY(x,z)??(caveSpace?.inside(x,z)?caveSpace.floor-.06:niflGroundY(x,z));
+    const walkingY=(x:number,z:number)=>memorySpace?.groundY(x,z)??forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??niflGroundY(x,z);
+    const terrainY=(x:number,z:number)=>memorySpace?.terrainY(x,z)??forgeSpace?.terrainY(x,z)??(caveSpace?.inside(x,z)?caveSpace.floor-.06:niflGroundY(x,z));
     const crystalMaterials:THREE.MeshStandardMaterial[]=[];
     const crystalHalos:THREE.Sprite[]=[];
     const snowCanvas=document.createElement('canvas');snowCanvas.width=snowCanvas.height=128;
@@ -141,7 +144,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     gates.push(entranceGate);
     const shelterPlaceholder=new THREE.Group();scene.add(shelterPlaceholder);
     NIFL_LOCATIONS.forEach((l,index)=>{
-      if(l.kind==='cave'||l.kind==='lair')cave(l.x,l.z-3);
+      if((l.kind==='cave'||l.kind==='lair')&&l.id!=='memoryCave')cave(l.x,l.z-3);
       if(l.kind==='hall'||l.kind==='shelter'){
         const first=scene.children.length;
         pillar(l.x-3,l.z-2,4);pillar(l.x+3,l.z-2,4);pillar(l.x-3,l.z+2,4);pillar(l.x+3,l.z+2,4);
@@ -174,13 +177,27 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       sourceIceBounds=new THREE.Box3().setFromObject(cluster).expandByScalar(.65);refreshShadows();
     },()=>{})).catch(()=>{});
 
+    const memoryLocation=NIFL_LOCATIONS.find(l=>l.id==='memoryCave')!;
+    cachedGlbBuffer(`${BASE}img/models/Niflheim_Memory_Igloo.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,asset=>{
+      if(!alive){disposeObject(asset.scene);textures.forEach(t=>t.dispose());return;}
+      memorySpace=createMemoryIgloo(asset.scene,memoryLocation.x,memoryLocation.z,niflGroundY);
+      const space=memorySpace;scene.add(space.model,space.base);
+      scene.traverse((o:any)=>{if(o.name==='Niflheim terrain'&&o.isMesh){const p=o.geometry.getAttribute('position');for(let i=0;i<p.count;i++)p.setY(i,terrainY(p.getX(i),p.getZ(i)));p.needsUpdate=true;o.geometry.computeVertexNormals();o.geometry.computeBoundingSphere();}});
+      const light=new THREE.PointLight('#c8e2ff',65,45,2);light.position.set(memoryLocation.x,space.floor+13,memoryLocation.z-20);scene.add(light);
+      cachedGlbBuffer(`${BASE}img/models/Niflheim_Giant_Optimized.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,asset=>{
+        if(!alive){disposeObject(asset.scene);textures.forEach(t=>t.dispose());return;}
+        memoryGiant=createNiflheimGiant(asset.scene,space,0,0,{headColor:'#81b6d9',remainSeated:true});
+        memoryGiant.root.name='Хранитель воспоминаний';scene.add(memoryGiant.root,memoryGiant.rock);refreshShadows();
+      },()=>{})).catch(()=>{});refreshShadows();
+    },()=>{})).catch(()=>{});
+
     // Fred Drabble's cave, CC BY 4.0: snowy giant shelter facing the entrance road.
     const forgeLocation=NIFL_LOCATIONS.find(l=>l.id==='forge')!;
     forgeSpace=createNiflheimForge(forgeLocation.x,forgeLocation.z,niflGroundY(forgeLocation.x,forgeLocation.z),niflGroundY,refreshShadows);scene.add(forgeSpace.root);
     const workshop=forgeSpace;
     cachedGlbBuffer(`${BASE}img/models/Niflheim_Giant_Optimized.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,asset=>{
       if(!alive){disposeObject(asset.scene);textures.forEach(t=>t.dispose());return;}
-      const smith=createNiflheimGiant(asset.scene,{world:(x,y,z)=>new THREE.Vector3(x,y,z),inside:()=>true},0,0);
+      const smith=createNiflheimGiant(asset.scene,{world:(x,y,z)=>new THREE.Vector3(x,y,z),inside:()=>true},0,0,{headColor:'#d8b59a'});
       smith.update(2.8,{x:0,z:-12},true);smith.rock.geometry.dispose();(smith.rock.material as THREE.Material).dispose();
       const body=smith.root;body.name='Великан-кузнец';body.scale.setScalar(.65);body.position.set(3.8,0,-11);body.rotation.y=0;
       workshop.root.add(body);body.updateMatrixWorld(true);
@@ -310,7 +327,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       velocityX=THREE.MathUtils.lerp(velocityX,isMoving?dx/length:0,steer);velocityZ=THREE.MathUtils.lerp(velocityZ,isMoving?dz/length:0,steer);
       if(!paused.current&&!document.hidden){const from=position.current,next=moveThroughNiflEntrance(from,from.x+velocityX*8.5*dt,from.z+velocityZ*8.5*dt);
         const candidate=caveSpace?caveSpace.move(from,next):next;
-        if(!sourceIceBlocked(candidate.x,candidate.z)&&!giant?.blocked(candidate.x,candidate.z)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
+        if(!memorySpace?.blocked(candidate.x,candidate.z)&&!memoryGiant?.blocked(candidate.x,candidate.z)&&!sourceIceBlocked(candidate.x,candidate.z)&&!giant?.blocked(candidate.x,candidate.z)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
       if(isMoving){const target=Math.atan2(velocityX,velocityZ),difference=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y));hero.rotation.y+=difference*(1-Math.exp(-dt*14));cameraDir.x=Math.sin(hero.rotation.y);cameraDir.z=Math.cos(hero.rotation.y);}
       const walking=!paused.current&&!document.hidden&&Math.hypot(velocityX,velocityZ)>.08;
       moving=walking;
@@ -326,9 +343,11 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       entranceVeil?.update(now*.001,pos);
       rivers.update(now*.001);forgeSpace?.update(now*.001);
       const inCave=caveSpace?.inside(pos.x,pos.z);
-      const cameraTarget=inCave?caveSpace!.camera(pos.x,pos.z):new THREE.Vector3(pos.x-cameraDir.x*2,hy+9,pos.z-cameraDir.z*2+17);
+      const inMemory=memorySpace?.inside(pos.x,pos.z);
+      const cameraTarget=inMemory?memorySpace!.camera(pos.x,pos.z):inCave?caveSpace!.camera(pos.x,pos.z):new THREE.Vector3(pos.x-cameraDir.x*2,hy+9,pos.z-cameraDir.z*2+17);
       camera.position.lerp(cameraTarget,1-Math.exp(-dt*3.4));
-      if(inCave){const p=caveSpace!.local(pos.x,pos.z);camera.lookAt(caveSpace!.world(p.x,CAVE_FLOOR_Y+(p.z<0?6.5:3),p.z-6));}
+      if(inMemory){camera.lookAt(pos.x,hy+5,pos.z-7);}
+      else if(inCave){const p=caveSpace!.local(pos.x,pos.z);camera.lookAt(caveSpace!.world(p.x,CAVE_FLOOR_Y+(p.z<0?6.5:3),p.z-6));}
       else camera.lookAt(pos.x+cameraDir.x*1.9,hy+3,pos.z-10+cameraDir.z*1.9);
       crystalMaterials.forEach(m=>{m.emissiveIntensity=1.35+Math.sin(now*.0017)*.12;});crystalHalos.forEach(h=>{(h.material as THREE.SpriteMaterial).opacity=.48+Math.sin(now*.0017)*.05;});
       sourceRing.rotation.z+=dt*.12;gates.forEach(g=>{(g.material as THREE.MeshBasicMaterial).opacity=.78+Math.sin(now*.001)*.06;});
@@ -374,6 +393,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       <p className="nifl-map-legend">Ландшафт: <a href="https://sketchfab.com/3d-models/terrain-62dc7db392f34dacb4c07bfcb4faf14e" target="_blank" rel="noopener noreferrer">Terrain — FreeModel (DiFed)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены детализация и текстуры, изменены масштаб, снежный материал и размещение; выровнен пол пещеры.</p>
       <p className="nifl-map-legend">Лёд Хвергельмира: <a href="https://sketchfab.com/3d-models/ice-cluster-free-4d2271f8bf7f400e9a5c8f10812a32de" target="_blank" rel="noopener noreferrer">Ice Cluster (free) — chrismartin1337</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, изменены масштаб, материал и размещение; добавлены багровый цвет и чёрные потоки.</p>
       <p className="nifl-map-legend">Мост кузницы: <a href="https://sketchfab.com/3d-models/ice-bridge-f2e6aff3a1744a7293527b5e0a16dd48" target="_blank" rel="noopener noreferrer">Ice Bridge — starchild</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Удалены звёзды и треугольная табличка, сохранены верёвочные ограждения; уменьшены текстуры, изменены масштаб, наклон и размещение.</p>
+      <p className="nifl-map-legend">Ледяной дом: <a href="https://sketchfab.com/3d-models/igloo-224f673917e6486eb08c496baf77ce84" target="_blank" rel="noopener noreferrer">Igloo — Vera4Art</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, убрана исходная площадка, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Великан: <a href="https://sketchfab.com/3d-models/lowpoly-giant-warrior-rigged-66588f8fd6f64212abe49c7c6cababa9" target="_blank" rel="noopener noreferrer">Lowpoly Giant Warrior (rigged) — luch.pok (lvintoniyak)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Убраны крупные браслеты, осветлена кожа, уменьшены текстуры; изменены масштаб и размещение, добавлены поза сидя и подъём с камня.</p>
     </section></div>}
     {info&&<div className="nifl-overlay" style={{zIndex:11}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label={info.name}><h3>{info.name}</h3><p>{info.text}</p>{info.id==='forge'&&<p>Подойди к освещённому входу, чтобы войти в кузницу.</p>}<button onClick={()=>setSelected('')}>Продолжить путь</button></section></div>}
