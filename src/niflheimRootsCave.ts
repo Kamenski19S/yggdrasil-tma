@@ -4,7 +4,12 @@ import * as THREE from 'three';
 export function createRootsIceCave(walls:THREE.Group,roof:THREE.Group,x:number,z:number,ground:(x:number,z:number)=>number){
   const floor=ground(x,z)-.2;
   const root=new THREE.Group();root.name='Ледяная пещера вокруг корней';root.position.set(x,floor,z);
-  walls.scale.set(18,22,18);walls.updateMatrixWorld(true);
+  // Keep the broad footprint, but fit a low ceiling instead of a 38-unit tower.
+  const wallHeight=14.8;
+  walls.scale.set(18,1,18);walls.updateMatrixWorld(true);
+  const wallBounds=new THREE.Box3().setFromObject(walls);
+  walls.scale.y=wallHeight/Math.max(wallBounds.max.y-wallBounds.min.y,.001);
+  walls.position.y=-wallBounds.min.y*walls.scale.y;walls.updateMatrixWorld(true);
   const segments:{ax:number;az:number;bx:number;bz:number}[]=[];
   const buckets=new Map<string,number[]>();
   const cell=4;
@@ -24,7 +29,7 @@ export function createRootsIceCave(walls:THREE.Group,roof:THREE.Group,x:number,z
       const p=ids.map(id=>new THREE.Vector3().fromBufferAttribute(positions,id).applyMatrix4(object.matrixWorld));
       const center=p[0].clone().add(p[1]).add(p[2]).multiplyScalar(1/3);
       // A broad south-facing doorway, over twice the hero's height.
-      if(Math.abs(center.x)<9.5&&center.z>11&&center.y<15)continue;
+      if(Math.abs(center.x)<9.5&&center.z>11&&center.y<11.5)continue;
       keep.push(...ids);
       const intersections:THREE.Vector3[]=[];
       for(let e=0;e<3;e++){
@@ -36,10 +41,13 @@ export function createRootsIceCave(walls:THREE.Group,roof:THREE.Group,x:number,z
     geometry.setIndex(keep);geometry.computeBoundingSphere();object.geometry.dispose();object.geometry=geometry;
     object.castShadow=true;object.receiveShadow=true;
   });
-  roof.scale.set(14.5,2.5,17);roof.position.set(0,36,0);roof.name='Ледяной свод';
+  roof.scale.set(14.5,1,17);roof.updateMatrixWorld(true);
+  const roofBounds=new THREE.Box3().setFromObject(roof);
+  roof.scale.y=1.3/Math.max(roofBounds.max.y-roofBounds.min.y,.001);
+  roof.position.set(0,wallHeight-.6-roofBounds.min.y*roof.scale.y,0);roof.name='Ледяной свод';
   roof.traverse(object=>{if(object instanceof THREE.Mesh){object.castShadow=true;object.receiveShadow=true;}});
   root.add(walls,roof);
-  const light=new THREE.PointLight('#a9ddff',95,70,2);light.position.set(0,18,8);root.add(light);
+  const light=new THREE.PointLight('#a9ddff',95,70,2);light.position.set(0,10,8);root.add(light);
   const inside=(px:number,pz:number)=>Math.hypot((px-x)/23,(pz-z)/22)<1;
   const groundY=(px:number,pz:number)=>{
     const radius=Math.hypot((px-x)/29,(pz-z)/28);
