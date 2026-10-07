@@ -41,7 +41,7 @@ export function createNiflheimForge(x:number,z:number,floor:number,ground:(x:num
   const sourceDeckY=(z:number)=>{const t=THREE.MathUtils.clamp(z/12,0,1),i=t*(bridgeHeights.length-1),a=Math.min(bridgeHeights.length-2,Math.floor(i));return THREE.MathUtils.lerp(bridgeHeights[a],bridgeHeights[a+1],i-a);};
   const deckY=(z:number)=>sourceDeckY(z)+THREE.MathUtils.lerp(nearY,farY,THREE.MathUtils.clamp(z/12,0,1))+.04;
   let alive=true;
-  cachedGlbBuffer(`${BASE}img/models/Niflheim_Forge_Ice_Bridge.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,asset=>{
+  cachedGlbBuffer(`${BASE}img/models/Niflheim_Forge_Ice_Bridge_Ropes.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,asset=>{
     if(!alive){asset.scene.traverse((o:any)=>{if(!o.isMesh)return;o.geometry.dispose();for(const material of Array.isArray(o.material)?o.material:[o.material]){for(const value of Object.values(material))if(value instanceof THREE.Texture)value.dispose();material.dispose();}});return;}
     asset.scene.name='Ледяной мост кузницы';
     // Keep the original downward curve; only match the two bank elevations.

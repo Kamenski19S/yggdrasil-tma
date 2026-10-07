@@ -31,11 +31,10 @@ const smoothRiver=(points:{x:number;z:number}[])=>{
   }
   result.push(points[points.length-1]);return result;
 };
-export const NIFL_RIVER_WIDTHS=[7.2,6,5.4];
-export const NIFL_LIVING_RIVER=2;
+export const NIFL_RIVER_WIDTHS=[7.2,5.4];
+export const NIFL_LIVING_RIVER=1;
 export const NIFL_RIVERS=[
   [{x:0,z:-49},{x:-6,z:-30},{x:-10,z:-5},{x:-8,z:24},{x:-1,z:48},{x:-6,z:74}],
-  [{x:0,z:-49},{x:-19,z:-35},{x:-32,z:-18},{x:-30,z:4},{x:-44,z:27},{x:-57,z:49}],
   [{x:0,z:-49},{x:23,z:-34},{x:34,z:-10},{x:29,z:12},{x:39,z:35},{x:57,z:54}]
 ].map(r=>smoothRiver(r.map(p=>({x:p.x*NIFL_SCALE,z:p.z*NIFL_SCALE}))));
 export const NIFL_LAKES=[{x:-36,z:4,rx:11,rz:9},{x:26,z:51,rx:6,rz:4}].map(l=>({...l,x:l.x*NIFL_SCALE,z:l.z*NIFL_SCALE,rx:l.rx*NIFL_SCALE,rz:l.rz*NIFL_SCALE}));

@@ -121,19 +121,6 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       const rim=arc.map(p=>new THREE.Vector3(p.x,niflGroundY(p.x,p.z)+3.9,p.z));
       scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rim),new THREE.LineBasicMaterial({color:'#cef4ff',transparent:true,opacity:.8,depthWrite:false})));
     }
-    const ribbon=(points:{x:number;z:number}[],width:number,mat:THREE.Material)=>{
-      const sampled:{x:number;z:number}[]=[];
-      for(let i=1;i<points.length;i++){const a=points[i-1],b=points[i],steps=Math.ceil(Math.hypot(b.x-a.x,b.z-a.z)/1);for(let j=0;j<steps;j++)sampled.push({x:a.x+(b.x-a.x)*j/steps,z:a.z+(b.z-a.z)*j/steps});}
-      sampled.push(points[points.length-1]);points=sampled;
-      const verts:number[]=[],uv:number[]=[];
-      for(let i=0;i<points.length-1;i++){
-        const a=points[i],b=points[i+1],dx=b.x-a.x,dz=b.z-a.z,len=Math.hypot(dx,dz),ox=-dz/len*width/2,oz=dx/len*width/2;
-        const corners=[[a.x+ox,a.z+oz],[a.x-ox,a.z-oz],[b.x+ox,b.z+oz],[b.x-ox,b.z-oz]];
-        for(const j of [0,2,1,1,2,3]){const [x,z]=corners[j];verts.push(x,niflGroundY(x,z)+.045,z);uv.push(j%2,i+(j>1?1:0));}
-      }
-      const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.computeVertexNormals();const strip=new THREE.Mesh(geo,mat);strip.receiveShadow=true;scene.add(strip);
-    };
-    NIFL_ROUTES.forEach(route=>{const a=NIFL_LOCATIONS.find(l=>l.id===route[0])!,b=NIFL_LOCATIONS.find(l=>l.id===route[1])!;ribbon([a,b],2.4,pathMat);});
     const rivers=addNiflheimRivers(scene,BASE),{ice,water}=rivers;
     const disc=(x:number,z:number,rx:number,rz:number,mat:THREE.Material)=>{const m=mesh(new THREE.CircleGeometry(1,48),mat,x,niflGroundY(x,z)+.08,z,rx,rz,1);m.rotation.x=-Math.PI/2;return m;};
     NIFL_LAKES.forEach(l=>{disc(l.x,l.z,l.rx,l.rz,ice);for(let i=0;i<7;i++){const a=i/7*6.28;mesh(rockGeo,stone,l.x+Math.cos(a)*(l.rx+1),.6,l.z+Math.sin(a)*(l.rz+1),1,.8,1);}});
@@ -365,7 +352,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     <button className="mid3d-ui mid3d-action" style={{top:125}} aria-label="Запас рун и эликсиров" onClick={()=>{clearInput();setInventoryOpen(true);}}><img className="mid3d-control-art" src={`${BASE}img/models/ui_inventory.png`} alt="" draggable={false}/></button>
     {inventoryOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Запас Вики"><h3>Запас Вики</h3><InventorySection kind="potions" {...inventory}/><InventorySection kind="runes" {...inventory}/><button onClick={()=>setInventoryOpen(false)}>Вернуться в игру</button></section></div>}
     {nearest&&<div className="nifl-near"><b>{nearest.name}</b><button onClick={()=>{clearInput();if(nearest.id==='forge'){remember.current({...position.current});onForge({...position.current});}else setSelected(nearest.id);}}>{nearest.id==='forge'?'Войти в кузницу':'Осмотреть'}</button></div>}
-    {mapOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Карта Нифльхейма"><button className="nifl-close" onClick={()=>setMapOpen(false)}>Закрыть</button><h3>Карта Нифльхейма</h3><p className="nifl-map-legend">Три реки · два озера · источник Хвергельмир. Нажми на номер или название локации.</p>
+    {mapOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Карта Нифльхейма"><button className="nifl-close" onClick={()=>setMapOpen(false)}>Закрыть</button><h3>Карта Нифльхейма</h3><p className="nifl-map-legend">Две реки · два озера · источник Хвергельмир. Нажми на номер или название локации.</p>
       <svg viewBox="0 0 130 160" aria-label="Реки и локации Нифльхейма">
         {NIFL_ROUTES.map((route,i)=>{const a=NIFL_LOCATIONS.find(l=>l.id===route[0])!,b=NIFL_LOCATIONS.find(l=>l.id===route[1])!;return <line key={i} x1={a.x/NIFL_SCALE+65} y1={a.z/NIFL_SCALE+80} x2={b.x/NIFL_SCALE+65} y2={b.z/NIFL_SCALE+80} stroke="#8a9eab" strokeWidth="1" strokeDasharray="2 2"/>;})}
         {NIFL_RIVERS.map((river,i)=><polyline key={i} points={river.map(p=>`${p.x/NIFL_SCALE+65},${p.z/NIFL_SCALE+80}`).join(' ')} fill="none" stroke="#78b2cf" strokeWidth={i===0?4:3}/>)}
