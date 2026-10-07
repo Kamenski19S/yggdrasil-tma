@@ -1,3 +1,4 @@
+import {createForgottenNamesHall} from './niflheimNamesHall';
 import {createRootsIceCave} from './niflheimRootsCave';
 import {InventorySection} from './inventory';
 import {createNiflheimForge} from './niflheimForge';
@@ -71,11 +72,12 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     let giant:ReturnType<typeof createNiflheimGiant>|undefined;
     let memorySpace:ReturnType<typeof createMemoryIgloo>|undefined;
     let memoryGiant:ReturnType<typeof createNiflheimGiant>|undefined;
+    let hallSpace:ReturnType<typeof createForgottenNamesHall>|undefined;
     let rootsSpace:ReturnType<typeof createRootsIceCave>|undefined;
     let sourceIceBounds:THREE.Box3|undefined;
     const sourceIceBlocked=(x:number,z:number)=>!!sourceIceBounds&&x>sourceIceBounds.min.x&&x<sourceIceBounds.max.x&&z>sourceIceBounds.min.z&&z<sourceIceBounds.max.z;
-    const walkingY=(x:number,z:number)=>memorySpace?.groundY(x,z)??forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??rootsSpace?.groundY(x,z)??niflGroundY(x,z);
-    const terrainY=(x:number,z:number)=>memorySpace?.terrainY(x,z)??forgeSpace?.terrainY(x,z)??(caveSpace?.inside(x,z)?caveSpace.floor-.06:(rootsSpace?.groundY(x,z)??niflGroundY(x,z)));
+    const walkingY=(x:number,z:number)=>hallSpace?.groundY(x,z)??memorySpace?.groundY(x,z)??forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??rootsSpace?.groundY(x,z)??niflGroundY(x,z);
+    const terrainY=(x:number,z:number)=>hallSpace?.terrainY(x,z)??memorySpace?.terrainY(x,z)??forgeSpace?.terrainY(x,z)??(caveSpace?.inside(x,z)?caveSpace.floor-.06:(rootsSpace?.groundY(x,z)??niflGroundY(x,z)));
     const crystalMaterials:THREE.MeshStandardMaterial[]=[];
     const crystalHalos:THREE.Sprite[]=[];
     const snowCanvas=document.createElement('canvas');snowCanvas.width=snowCanvas.height=128;
@@ -175,7 +177,11 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     const shelterPlaceholder=new THREE.Group();scene.add(shelterPlaceholder);
     NIFL_LOCATIONS.forEach((l,index)=>{
       if((l.kind==='cave'||l.kind==='lair')&&l.id!=='memoryCave')cave(l.x,l.z-3);
-      if(l.kind==='hall'||l.kind==='shelter'){
+      if(l.kind==='hall'){
+        hallSpace=createForgottenNamesHall(l.x,l.z,niflGroundY,stone,snow);scene.add(hallSpace.root);
+        const positions=groundGeo.getAttribute('position');for(let i=0;i<positions.count;i++)positions.setY(i,terrainY(positions.getX(i),positions.getZ(i)));groundGeo.computeVertexNormals();positions.needsUpdate=true;
+      }
+      if(l.kind==='shelter'){
         const first=scene.children.length;
         pillar(l.x-3,l.z-2,4);pillar(l.x+3,l.z-2,4);pillar(l.x-3,l.z+2,4);pillar(l.x+3,l.z+2,4);
         mesh(poleGeo,snow,l.x,niflGroundY(l.x,l.z)+4.5,l.z,8,.8,7);mesh(poleGeo,pathMat,l.x,niflGroundY(l.x,l.z)+.3,l.z,8,.6,7);
@@ -401,7 +407,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       velocityX=THREE.MathUtils.lerp(velocityX,isMoving?dx/length:0,steer);velocityZ=THREE.MathUtils.lerp(velocityZ,isMoving?dz/length:0,steer);
       if(!paused.current&&!document.hidden){const from=position.current,next=moveThroughNiflEntrance(from,from.x+velocityX*8.5*dt,from.z+velocityZ*8.5*dt);
         const candidate=caveSpace?caveSpace.move(from,next):next;
-        if(!memorySpace?.blocked(candidate.x,candidate.z)&&!memoryGiant?.blocked(candidate.x,candidate.z)&&!sourceIceBlocked(candidate.x,candidate.z)&&!rootsSpace?.blocked(candidate.x,candidate.z)&&!giant?.blocked(candidate.x,candidate.z)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
+        if(!hallSpace?.blocked(candidate.x,candidate.z)&&!memorySpace?.blocked(candidate.x,candidate.z)&&!memoryGiant?.blocked(candidate.x,candidate.z)&&!sourceIceBlocked(candidate.x,candidate.z)&&!rootsSpace?.blocked(candidate.x,candidate.z)&&!giant?.blocked(candidate.x,candidate.z)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
       if(isMoving){const target=Math.atan2(velocityX,velocityZ),difference=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y));hero.rotation.y+=difference*(1-Math.exp(-dt*14));cameraDir.x=Math.sin(hero.rotation.y);cameraDir.z=Math.cos(hero.rotation.y);}
       const walking=!paused.current&&!document.hidden&&Math.hypot(velocityX,velocityZ)>.08;
       moving=walking;
@@ -418,10 +424,12 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       rivers.update(now*.001);forgeSpace?.update(now*.001);
       const inCave=caveSpace?.inside(pos.x,pos.z);
       const inMemory=memorySpace?.inside(pos.x,pos.z);
+      const inHall=hallSpace?.inside(pos.x,pos.z);
       const inRoots=rootsSpace?.inside(pos.x,pos.z);
-      const cameraTarget=inRoots?rootsSpace!.camera(pos.x,pos.z):inMemory?memorySpace!.camera(pos.x,pos.z):inCave?caveSpace!.camera(pos.x,pos.z):new THREE.Vector3(pos.x-cameraDir.x*2,hy+9,pos.z-cameraDir.z*2+17);
+      const cameraTarget=inHall?hallSpace!.camera(pos.x,pos.z):inRoots?rootsSpace!.camera(pos.x,pos.z):inMemory?memorySpace!.camera(pos.x,pos.z):inCave?caveSpace!.camera(pos.x,pos.z):new THREE.Vector3(pos.x-cameraDir.x*2,hy+9,pos.z-cameraDir.z*2+17);
       camera.position.lerp(cameraTarget,1-Math.exp(-dt*3.4));
-      if(inRoots){camera.lookAt(pos.x,hy+5,pos.z-8);}
+      if(inHall){camera.lookAt(pos.x,hy+4.5,pos.z-7);}
+      else if(inRoots){camera.lookAt(pos.x,hy+5,pos.z-8);}
       else if(inMemory){camera.lookAt(pos.x,hy+5,pos.z-7);}
       else if(inCave){const p=caveSpace!.local(pos.x,pos.z);camera.lookAt(caveSpace!.world(p.x,CAVE_FLOOR_Y+(p.z<0?6.5:3),p.z-6));}
       else camera.lookAt(pos.x+cameraDir.x*1.9,hy+3,pos.z-10+cameraDir.z*1.9);
