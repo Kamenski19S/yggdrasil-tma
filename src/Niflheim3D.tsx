@@ -183,6 +183,12 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
         cachedGlbBuffer(`${BASE}img/models/Niflheim_Hall_Modules.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,asset=>{
           if(!alive){asset.scene.traverse((o:any)=>{if(o.isMesh){o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)v.dispose();m.dispose();}}});return;}
           space.replaceShell(asset.scene);refreshShadows();
+          for(const [file,install] of [['Niflheim_Hall_Arch.glb',space.addArch],['Ice_Roof_Slab.glb',space.addSnowRoof]] as const){
+            cachedGlbBuffer(`${BASE}img/models/${file}`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,loaded=>{
+              if(!alive){loaded.scene.traverse((o:any)=>{if(o.isMesh){o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)v.dispose();m.dispose();}}});return;}
+              install(loaded.scene);refreshShadows();
+            },()=>{})).catch(()=>{});
+          }
         },()=>{})).catch(()=>{});
 
         const positions=groundGeo.getAttribute('position');for(let i=0;i<positions.count;i++)positions.setY(i,terrainY(positions.getX(i),positions.getZ(i)));groundGeo.computeVertexNormals();positions.needsUpdate=true;
@@ -478,6 +484,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
         {NIFL_LOCATIONS.map((l,i)=><g key={l.id} role="button" tabIndex={0} aria-label={l.name} onClick={()=>setSelected(l.id)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelected(l.id);}}} style={{cursor:'pointer'}}><circle cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} r="5.5" fill="#fff" stroke="#526f82" strokeWidth=".6"/><text x={l.x/NIFL_SCALE+65} y={l.z/NIFL_SCALE+81.5} textAnchor="middle" fontSize="4" fill="#203e52">{i+1}</text></g>)}
         <circle cx={mapPoint(position.current.x,position.current.z).x} cy={mapPoint(position.current.x,position.current.z).y} r="2.5" fill="#d29d30" stroke="#fff" strokeWidth=".8"/>
       </svg><div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><button key={l.id} onClick={()=>setSelected(l.id)}>{i+1}. {l.name}</button>)}</div><p className="nifl-map-legend">Золотая точка — Вика. Русла покрыты льдом: по ним пока можно пройти.</p><p className="nifl-map-legend">Входные врата: <a href="https://sketchfab.com/3d-models/stone-portal-bfaf2e45dd7242579f5a37b810eca423" target="_blank" rel="noopener noreferrer">Stone Portal — hirairmak</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения в игре: масштаб, размещение основания в снегу и сияние кристаллов.</p>
+      <p className="nifl-map-legend">Арка зала: <a href="https://sketchfab.com/3d-models/arch-1-38b5572e58fb40fca8c0d38f8e1192c5" target="_blank" rel="noopener noreferrer">Arch 1 — chuckcg</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, убраны тангенты; геометрия сохранена, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Зал: <a href="https://sketchfab.com/3d-models/maze-rock-assets-61c64e5c177144bf89a3f4bb5214235a" target="_blank" rel="noopener noreferrer">MAZE Rock Assets — Jeremy_W</a>, CC BY 4.0. Модули стены, пола и потолка извлечены, облегчены и собраны в комнату.</p>
       <p className="nifl-map-legend">Ледяная граница: <a href="https://sketchfab.com/3d-models/iceland-scene-for-canimatic-36105320e882416e870c5f6ee8db2e6b" target="_blank" rel="noopener noreferrer">iceland scene for canimatic — m42345081</a>, CC BY 4.0. Извлечён один массив, упрощена геометрия и уменьшена текстура.</p>
       <p className="nifl-map-legend">Пещера: <a href="https://sketchfab.com/3d-models/cave-lp-9k-free-download-819687653df14a4a9acb267212093d1a" target="_blank" rel="noopener noreferrer">Cave LP — Fred Drabble</a>, CC BY 4.0. Уменьшены текстуры, добавлены снег и иней, изменены масштаб, размещение и форма входа.</p>

@@ -120,5 +120,21 @@ export function createForgottenNamesHall(x:number,z:number,ground:(x:number,z:nu
     });
     box(0,14.75,-16,33,.18,33,snow);
   };
-  return {root,inside,groundY,terrainY,blocked,camera,replaceShell};
+  const addArch=(asset:THREE.Group)=>{
+    // The original opening is 2.5 units wide: x4 keeps our ten-unit doorway clear.
+    asset.scale.set(4,2,1.26);asset.position.set(0,.22,1);
+    asset.name='Каменная арка входа';
+    asset.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}});
+    root.add(asset);
+  };
+  const addSnowRoof=(asset:THREE.Group)=>{
+    const slab=new THREE.Group();slab.add(asset);slab.updateMatrixWorld(true);
+    const bounds=new THREE.Box3().setFromObject(slab),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
+    asset.position.sub(center);
+    slab.scale.set(34/Math.max(size.x,.001),1.2/Math.max(size.y,.001),34/Math.max(size.z,.001));
+    slab.position.set(0,15.25,-16);slab.name='Снежная плита крыши зала';
+    asset.traverse(o=>{if(o instanceof THREE.Mesh){for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)v.dispose();m.dispose();}o.material=snow;o.castShadow=true;o.receiveShadow=true;}});
+    root.add(slab);
+  };
+  return {root,inside,groundY,terrainY,blocked,camera,replaceShell,addArch,addSnowRoof};
 }
