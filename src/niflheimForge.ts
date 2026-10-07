@@ -33,9 +33,9 @@ export function createNiflheimForge(x:number,z:number,floor:number,ground:(x:num
   add(box,stone,6,2,-12,3.2,4,4.4);add(box,iron,6,4.15,-12,3.5,.3,4.7);
   for(let i=0;i<3;i++){add(box,iron,6,4.45,-13+i,1.3,.6,.6);add(box,stone,6,4.35,-12.5+i,.25,.25,1.6);}
   root.updateMatrixWorld(true);
-  // A dry forecourt joins the doorway to the eastern river bank.
+  // A dry forecourt joins the doorway to the western river bank.
   add(box,stone,0,-.24,7,10,.45,15);add(box,snow,0,-.025,7,10,.08,15);
-  const bridge=new THREE.Group();bridge.name='Поперечный мост через реку';bridge.position.set(-4,0,14);bridge.rotation.y=-Math.PI/2;bridge.scale.z=2;root.add(bridge);root.updateMatrixWorld(true);
+  const bridge=new THREE.Group();bridge.name='Поперечный мост через реку';bridge.position.set(4,0,14);bridge.rotation.y=Math.PI/2;bridge.scale.z=5/3;root.add(bridge);root.updateMatrixWorld(true);
   const east=bridge.localToWorld(new THREE.Vector3(0,0,0)),west=bridge.localToWorld(new THREE.Vector3(0,0,12));
   const nearY=ground(east.x,east.z)-floor+.12,farY=ground(west.x,west.z)-floor+.12;
   const sourceDeckY=(z:number)=>{const t=THREE.MathUtils.clamp(z/12,0,1),i=t*(bridgeHeights.length-1),a=Math.min(bridgeHeights.length-2,Math.floor(i));return THREE.MathUtils.lerp(bridgeHeights[a],bridgeHeights[a+1],i-a);};
