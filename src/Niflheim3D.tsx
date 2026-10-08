@@ -259,11 +259,11 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
 
 
     const dragonLair=NIFL_LOCATIONS.find(l=>l.id==='nidhogg')!;
-    cachedGlbBuffer(`${BASE}img/models/Collapsed_Tower_Optimized.glb?v=tower-1`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
+    cachedGlbBuffer(`${BASE}img/models/Collapsed_Tower_Optimized.glb?v=tower-2`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
       if(!alive){disposeObject(asset.scene);return;}
       const tower=asset.scene;tower.name='Разрушенная башня — логово Нидхёгга';
       tower.updateMatrixWorld(true);
-      tower.rotation.y=Math.PI;
+      tower.rotation.y=-Math.PI/2; // Source doorway faces +X; turn it toward Vika on the south (+Z) side.
       tower.updateMatrixWorld(true);
       const initial=new THREE.Box3().setFromObject(tower),size=initial.getSize(new THREE.Vector3());
       tower.scale.multiplyScalar(Math.min(58.08/Math.max(size.y,.001),68.64/Math.max(size.x,size.z,.001)));
@@ -678,6 +678,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       <p className="nifl-map-legend">Ледяные образования у корней: <a href="https://sketchfab.com/3d-models/ice-castles-ny-ice-formations-293eff95dafc409f8d203374e0ff45be" target="_blank" rel="noopener noreferrer">Ice Castles NY — Ice Formations — Katie Alois (@kalois)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Модель разделена на два файла, уменьшены детализация и текстуры; стены увеличены вокруг корней, вырезан проход для Вики.</p>
       <p className="nifl-map-legend">Ледяные плиты и стены: <a href="https://sketchfab.com/3d-models/ice-glacier-933b3c2ee51c48bb958d06655d1ff8bd" target="_blank" rel="noopener noreferrer">Ice Glacier — Svenja (gwenchana3)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры; одна ледяная плита выделена в отдельный файл и увеличена для свода пещеры.</p>
       <p className="nifl-map-legend">Сплетение корней: оригинальная процедурная модель корней, коры, снега и льда, созданная для Yggdrasil Runes по концепту локации.</p>
+      <p className="nifl-map-legend">Дракон: <a href="https://sketchfab.com/3d-models/european-dragon-82f393a2e6c048ad80c171ce3b3a7b87" target="_blank" rel="noopener noreferrer">European Dragon — Nonexistent 101</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, геометрия, скелет и пять анимаций сохранены.</p>
       <p className="nifl-map-legend">Разрушенная башня: <a href="https://sketchfab.com/3d-models/collapesed-tower-984b012678be49a79c1509cdeeb53402" target="_blank" rel="noopener noreferrer">collapesed tower — portwindyroad</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшена текстура, геометрия сохранена; изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Колодец: <a href="https://sketchfab.com/3d-models/good-ol-well-9eadcb31e4b445c8978e791fcce548fe" target="_blank" rel="noopener noreferrer">Good Ol' Well — mikelkel2</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, геометрия сохранена, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Лестница: <a href="https://sketchfab.com/3d-models/the-staircase-step-ladder-20e23588d08d4cae986dc1e208d1c969" target="_blank" rel="noopener noreferrer">Mehdi Shahsavana (@ahmagh2e)</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Убраны верхний пролёт и надписи; сохранены нижние ступени и площадка.</p>
