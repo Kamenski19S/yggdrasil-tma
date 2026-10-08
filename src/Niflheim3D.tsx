@@ -265,7 +265,17 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       const bounds=new THREE.Box3().setFromObject(assembly);
       const center=bounds.getCenter(new THREE.Vector3());
       const sampleY=(x:number,z:number)=>niflGroundY(x,z);
-      const baseY=sampleY(wellSiteX,wellSiteZ+7.8)-.08;
+      // Seat the foundation below the lowest snow surface across its footprint.
+      // Sampling only the stair entrance left the rear and sides suspended.
+      let baseY=Infinity;
+      const halfX=(bounds.max.x-bounds.min.x)*.5;
+      const halfZ=(bounds.max.z-bounds.min.z)*.5;
+      for(let ix=0;ix<=12;ix++)for(let iz=0;iz<=12;iz++){
+        const x=wellSiteX-halfX+2*halfX*ix/12;
+        const z=wellSiteZ-halfZ+2*halfZ*iz/12;
+        baseY=Math.min(baseY,sampleY(x,z));
+      }
+      baseY-=.3;
       assembly.position.set(wellSiteX-center.x,baseY+.12-bounds.min.y,wellSiteZ-center.z);
 
       assembly.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
