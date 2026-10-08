@@ -241,10 +241,10 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     },()=>{})).catch(()=>{});
 
     const rootsLocation=NIFL_LOCATIONS.find(l=>l.id==='roots')!;
-    const wellSiteX=rootsLocation.x+15,wellSiteZ=rootsLocation.z+6;
+    const wellSiteX=NIFL_SOURCE.x,wellSiteZ=NIFL_SOURCE.z-14;
     cachedGlbBuffer(`${BASE}img/models/Niflheim_Well_Assembly.glb?v=well-site-2`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
       if(!alive){disposeObject(asset.scene);return;}
-      const assembly=asset.scene;assembly.name='Старый колодец и лестница — площадка у корней';
+      const assembly=asset.scene;assembly.name='Старый колодец и лестница — Хвергельмир';
       // Normalize source units and put the entire base above the surrounding snow.
       assembly.updateMatrixWorld(true);
       const initialBounds=new THREE.Box3().setFromObject(assembly);
@@ -254,7 +254,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       assembly.updateMatrixWorld(true);
       const bounds=new THREE.Box3().setFromObject(assembly);
       const center=bounds.getCenter(new THREE.Vector3());
-      const sampleY=(x:number,z:number)=>rootsSpace?.groundY(x,z)??niflGroundY(x,z);
+      const sampleY=(x:number,z:number)=>niflGroundY(x,z);
       let baseY=sampleY(wellSiteX,wellSiteZ);
       for(const dx of [-6,0,6])for(const dz of [-6,0,6])baseY=Math.max(baseY,sampleY(wellSiteX+dx,wellSiteZ+dz));
       assembly.position.set(wellSiteX-center.x,baseY+.12-bounds.min.y,wellSiteZ-center.z);
