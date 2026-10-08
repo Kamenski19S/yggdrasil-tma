@@ -80,6 +80,15 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     let lakeBridgeDeck:number|undefined;
     const lakeBridgeY=(x:number,z:number)=>lakeBridgeDeck!==undefined&&Math.abs(x+72)<3.7&&z>=-12&&z<=23?lakeBridgeDeck:undefined;
     let platformBounds:THREE.Box3|undefined,wellObstacle:{x:number;z:number;radius:number}|undefined;
+    let foundationSnow:{x:number;z:number;halfX:number;halfZ:number;height:number}|undefined;
+    const wellGlowSprites:THREE.Sprite[]=[];
+    const raisedSnowY=(x:number,z:number)=>{
+      const original=niflGroundY(x,z),pad=foundationSnow;
+      if(!pad)return original;
+      const distance=Math.hypot(Math.max(0,Math.abs(x-pad.x)-pad.halfX),Math.max(0,Math.abs(z-pad.z)-pad.halfZ));
+      const influence=1-THREE.MathUtils.smoothstep(distance,0,5);
+      return original+Math.max(0,pad.height-original)*influence;
+    };
     const stairWalkMeshes:THREE.Object3D[]=[];
     const stairRay=new THREE.Raycaster();
     const stairGroundY=(x:number,z:number)=>{
@@ -90,9 +99,9 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     const platformBlocked=(from:{x:number;z:number},next:{x:number;z:number})=>{
       if(wellObstacle&&Math.hypot(next.x-wellObstacle.x,next.z-wellObstacle.z)<wellObstacle.radius)return true;
       const toY=stairGroundY(next.x,next.z),fromY=stairGroundY(from.x,from.z);
-      return toY!==undefined&&toY-(fromY??niflGroundY(from.x,from.z))>.85;
+      return toY!==undefined&&toY-(fromY??raisedSnowY(from.x,from.z))>.85;
     };
-    const walkingY=(x:number,z:number)=>stairGroundY(x,z)??lakeBridgeY(x,z)??hallSpace?.groundY(x,z)??memorySpace?.groundY(x,z)??forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??rootsSpace?.groundY(x,z)??niflGroundY(x,z);
+    const walkingY=(x:number,z:number)=>stairGroundY(x,z)??lakeBridgeY(x,z)??hallSpace?.groundY(x,z)??memorySpace?.groundY(x,z)??forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??rootsSpace?.groundY(x,z)??raisedSnowY(x,z);
     const terrainY=(x:number,z:number)=>hallSpace?.terrainY(x,z)??memorySpace?.terrainY(x,z)??forgeSpace?.terrainY(x,z)??(caveSpace?.inside(x,z)?caveSpace.floor-.06:(rootsSpace?.groundY(x,z)??niflGroundY(x,z)));
     const crystalMaterials:THREE.MeshStandardMaterial[]=[];
     const crystalHalos:THREE.Sprite[]=[];
@@ -265,22 +274,30 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       const bounds=new THREE.Box3().setFromObject(assembly);
       const center=bounds.getCenter(new THREE.Vector3());
       const sampleY=(x:number,z:number)=>niflGroundY(x,z);
-      // Seat the foundation below the lowest snow surface across its footprint.
-      // Sampling only the stair entrance left the rear and sides suspended.
-      let baseY=Infinity;
-      const halfX=(bounds.max.x-bounds.min.x)*.5;
-      const halfZ=(bounds.max.z-bounds.min.z)*.5;
-      for(let ix=0;ix<=12;ix++)for(let iz=0;iz<=12;iz++){
-        const x=wellSiteX-halfX+2*halfX*ix/12;
-        const z=wellSiteZ-halfZ+2*halfZ*iz/12;
-        baseY=Math.min(baseY,sampleY(x,z));
-      }
-      baseY-=.3;
+      const baseY=sampleY(wellSiteX,wellSiteZ+7.8)-.08;
       assembly.position.set(wellSiteX-center.x,baseY+.12-bounds.min.y,wellSiteZ-center.z);
 
       assembly.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
       scene.add(assembly);assembly.updateMatrixWorld(true);
       const worldBounds=new THREE.Box3().setFromObject(assembly);
+      foundationSnow={x:wellSiteX,z:wellSiteZ,halfX:(worldBounds.max.x-worldBounds.min.x)*.5,halfZ:(worldBounds.max.z-worldBounds.min.z)*.5,height:worldBounds.min.y+.12};
+      scene.traverse((o:any)=>{
+        if(o.name!=='Niflheim terrain'||!o.isMesh)return;
+        const p=o.geometry.getAttribute('position');
+        for(let i=0;i<p.count;i++)p.setY(i,terrainY(p.getX(i),p.getZ(i)));
+        p.needsUpdate=true;o.geometry.computeVertexNormals();o.geometry.computeBoundingSphere();
+      });
+      // Dense local snow surface keeps the foundation supported between coarse terrain vertices.
+      const snowPatchGeo=new THREE.PlaneGeometry(foundationSnow.halfX*2+10,foundationSnow.halfZ*2+10,44,44);
+      snowPatchGeo.rotateX(-Math.PI/2);
+      const snowPatchPositions=snowPatchGeo.getAttribute('position');
+      for(let i=0;i<snowPatchPositions.count;i++){
+        const x=snowPatchPositions.getX(i)+wellSiteX,z=snowPatchPositions.getZ(i)+wellSiteZ;
+        snowPatchPositions.setXYZ(i,x,raisedSnowY(x,z)+.018,z);
+      }
+      snowPatchGeo.computeVertexNormals();
+      const raisedPatch=new THREE.Mesh(snowPatchGeo,snow);raisedPatch.name='Снежное основание постамента';raisedPatch.receiveShadow=true;scene.add(raisedPatch);
+
       const landingBounds=new THREE.Box3();
       assembly.traverse(object=>{
         if(!(object instanceof THREE.Mesh))return;
@@ -317,6 +334,21 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
         well.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
         scene.add(well);
         wellObstacle={x:landingCenter.x,z:landingCenter.z,radius:2.02};
+        const glowCanvas=document.createElement('canvas');glowCanvas.width=glowCanvas.height=64;
+        const glowCtx=glowCanvas.getContext('2d')!,gradient=glowCtx.createRadialGradient(32,32,0,32,32,32);
+        gradient.addColorStop(0,'rgba(255,255,255,.95)');gradient.addColorStop(.32,'rgba(255,255,255,.48)');gradient.addColorStop(1,'rgba(255,255,255,0)');
+        glowCtx.fillStyle=gradient;glowCtx.fillRect(0,0,64,64);
+        const glowTexture=new THREE.CanvasTexture(glowCanvas);textures.add(glowTexture);
+        const openingY=slabTop+2.05;
+        for(const [index,color] of ['#277eff','#b71959'].entries()){
+          const halo=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTexture,color,transparent:true,opacity:.62,depthWrite:false,blending:THREE.AdditiveBlending}));
+          halo.position.set(landingCenter.x+(index===0?-.32:.32),openingY+1.1,landingCenter.z);halo.scale.set(2.7,5,1);
+          scene.add(halo);wellGlowSprites.push(halo);
+          const light=new THREE.PointLight(color,16,12,2);light.position.set(halo.position.x,openingY+.4,landingCenter.z);scene.add(light);
+        }
+        const luminousWater=new THREE.Mesh(new THREE.CircleGeometry(.83,40),new THREE.MeshBasicMaterial({color:'#554bbd',transparent:true,opacity:.8,side:THREE.DoubleSide}));
+        luminousWater.rotation.x=-Math.PI/2;luminousWater.position.set(landingCenter.x,openingY-.08,landingCenter.z);scene.add(luminousWater);
+
         well.updateMatrixWorld(true);
         const roofMeshes:THREE.Mesh[]=[];
         well.traverse(object=>{if(object instanceof THREE.Mesh&&/roof/i.test(object.name))roofMeshes.push(object);});
@@ -578,6 +610,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       crystalMaterials.forEach(m=>{m.emissiveIntensity=1.35+Math.sin(now*.0017)*.12;});crystalHalos.forEach(h=>{(h.material as THREE.SpriteMaterial).opacity=.48+Math.sin(now*.0017)*.05;});
       sourceRing.rotation.z+=dt*.12;gates.forEach(g=>{(g.material as THREE.MeshBasicMaterial).opacity=.78+Math.sin(now*.001)*.06;});
       if(now-checkAt>180){checkAt=now;const l=NIFL_LOCATIONS.reduce((a,b)=>Math.hypot(pos.x-a.x,pos.z-a.z)<Math.hypot(pos.x-b.x,pos.z-b.z)?a:b);const id=forgeSpace?.canEnter(pos.x,pos.z)?'forge':l.id!=='forge'&&Math.hypot(pos.x-l.x,pos.z-l.z)<9?l.id:'';if(id!==currentNear){currentNear=id;setNear(id);}}
+      wellGlowSprites.forEach((sprite,i)=>{(sprite.material as THREE.SpriteMaterial).opacity=.54+.12*Math.sin(performance.now()*.0017+i*2);});
       renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
     return()=>{attackAction.current=null;guardUntil.current=0;alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});rivers.dispose();forgeSpace?.dispose();mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());sun.shadow.dispose();renderer.dispose();renderer.domElement.remove();};
