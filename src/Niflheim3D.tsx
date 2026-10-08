@@ -241,6 +241,15 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     },()=>{})).catch(()=>{});
 
     const rootsLocation=NIFL_LOCATIONS.find(l=>l.id==='roots')!;
+    const wellSiteX=rootsLocation.x+15,wellSiteZ=rootsLocation.z+6;
+    cachedGlbBuffer(`${BASE}img/models/Niflheim_Well_Assembly.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
+      if(!alive){disposeObject(asset.scene);return;}
+      const assembly=asset.scene;assembly.name='Старый колодец и лестница — площадка у корней';
+      assembly.position.set(wellSiteX,niflGroundY(wellSiteX,wellSiteZ),wellSiteZ);
+      assembly.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+      scene.add(assembly);refreshShadows();
+    }).catch(()=>{if(alive)setStatus('Не удалось загрузить лестницу и колодец. Обнови игру.');});
+
     cachedGlbBuffer(`${BASE}img/models/Yggdrasil_Roots_Ice.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,asset=>{
       if(!alive){disposeObject(asset.scene);textures.forEach(t=>t.dispose());return;}
       const root=asset.scene;root.name='Сплетение корней — ледяная арка';
@@ -513,6 +522,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       <p className="nifl-map-legend">Ледяные образования у корней: <a href="https://sketchfab.com/3d-models/ice-castles-ny-ice-formations-293eff95dafc409f8d203374e0ff45be" target="_blank" rel="noopener noreferrer">Ice Castles NY — Ice Formations — Katie Alois (@kalois)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Модель разделена на два файла, уменьшены детализация и текстуры; стены увеличены вокруг корней, вырезан проход для Вики.</p>
       <p className="nifl-map-legend">Ледяные плиты и стены: <a href="https://sketchfab.com/3d-models/ice-glacier-933b3c2ee51c48bb958d06655d1ff8bd" target="_blank" rel="noopener noreferrer">Ice Glacier — Svenja (gwenchana3)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры; одна ледяная плита выделена в отдельный файл и увеличена для свода пещеры.</p>
       <p className="nifl-map-legend">Сплетение корней: оригинальная процедурная модель корней, коры, снега и льда, созданная для Yggdrasil Runes по концепту локации.</p>
+      <p className="nifl-map-legend">Колодец: <a href="https://sketchfab.com/3d-models/medieval-stone-well-game-prop-a0ca279889b84afb9f24b88bff9c6860" target="_blank" rel="noopener noreferrer">Pigcraft</a>. Лестница: <a href="https://sketchfab.com/3d-models/the-staircase-step-ladder-20e23588d08d4cae986dc1e208d1c969" target="_blank" rel="noopener noreferrer">Mehdi Shahsavana (@ahmagh2e)</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Убраны верхний пролёт и надписи, расширены ступени и площадка; колодец установлен сверху.</p>
       <p className="nifl-map-legend">Ледяной дом: <a href="https://sketchfab.com/3d-models/igloo-224f673917e6486eb08c496baf77ce84" target="_blank" rel="noopener noreferrer">Igloo — Vera4Art</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, убрана исходная площадка, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Великан: <a href="https://sketchfab.com/3d-models/lowpoly-giant-warrior-rigged-66588f8fd6f64212abe49c7c6cababa9" target="_blank" rel="noopener noreferrer">Lowpoly Giant Warrior (rigged) — luch.pok (lvintoniyak)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Убраны крупные браслеты, осветлена кожа, уменьшены текстуры; изменены масштаб и размещение, добавлены поза сидя и подъём с камня.</p>
     </section></div>}
