@@ -264,10 +264,11 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       const tower=asset.scene;tower.name='Разрушенная башня — логово Нидхёгга';
       tower.updateMatrixWorld(true);
       const initial=new THREE.Box3().setFromObject(tower),size=initial.getSize(new THREE.Vector3());
-      tower.scale.multiplyScalar(Math.min(22/Math.max(size.y,.001),26/Math.max(size.x,size.z,.001)));
+      tower.scale.multiplyScalar(Math.min(48.4/Math.max(size.y,.001),57.2/Math.max(size.x,size.z,.001)));
       tower.updateMatrixWorld(true);
       const bounds=new THREE.Box3().setFromObject(tower),center=bounds.getCenter(new THREE.Vector3());
-      tower.position.set(dragonLair.x-center.x,niflGroundY(dragonLair.x,dragonLair.z)-bounds.min.y-.15,dragonLair.z-center.z);
+      const towerX=dragonLair.x+6;
+      tower.position.set(towerX-center.x,niflGroundY(towerX,dragonLair.z)-bounds.min.y-.15,dragonLair.z-center.z);
       tower.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
       scene.add(tower);refreshShadows();
     }).catch(()=>{if(alive)setStatus('Не удалось загрузить разрушенную башню.');});
