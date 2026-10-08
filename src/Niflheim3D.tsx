@@ -260,11 +260,12 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       const size=initialBounds.getSize(new THREE.Vector3());
       if(!Number.isFinite(size.x+size.y+size.z)||Math.max(size.x,size.z)<=0)throw new Error('Empty staircase');
       assembly.scale.multiplyScalar(12/Math.max(size.x,size.z));
+      assembly.scale.x*=1.3;assembly.scale.z*=1.3;
       assembly.updateMatrixWorld(true);
       const bounds=new THREE.Box3().setFromObject(assembly);
       const center=bounds.getCenter(new THREE.Vector3());
       const sampleY=(x:number,z:number)=>niflGroundY(x,z);
-      const baseY=sampleY(wellSiteX,wellSiteZ+6)-.08;
+      const baseY=sampleY(wellSiteX,wellSiteZ+7.8)-.08;
       assembly.position.set(wellSiteX-center.x,baseY+.12-bounds.min.y,wellSiteZ-center.z);
 
       assembly.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
@@ -299,13 +300,47 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
         const well=gltf.scene;well.name="Good Ol' Well — mikelkel2";
         well.updateMatrixWorld(true);
         const sourceBounds=new THREE.Box3().setFromObject(well),wellSize=sourceBounds.getSize(new THREE.Vector3());
-        well.scale.multiplyScalar(5.8/Math.max(wellSize.y,.001));well.updateMatrixWorld(true);
+        well.scale.multiplyScalar(6.67/Math.max(wellSize.y,.001));well.updateMatrixWorld(true);
         const fitted=new THREE.Box3().setFromObject(well),center=fitted.getCenter(new THREE.Vector3());
         const slabTop=slab.position.y+.09;
         well.position.set(landingCenter.x-center.x,slabTop-fitted.min.y,landingCenter.z-center.z);
         well.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
         scene.add(well);
-        wellObstacle={x:landingCenter.x,z:landingCenter.z,radius:1.75};
+        wellObstacle={x:landingCenter.x,z:landingCenter.z,radius:2.02};
+        well.updateMatrixWorld(true);
+        const roofMeshes:THREE.Mesh[]=[];
+        well.traverse(object=>{if(object instanceof THREE.Mesh&&/roof/i.test(object.name))roofMeshes.push(object);});
+        if(roofMeshes.length)cachedGlbBuffer(`${BASE}img/models/Niflheim_Snow_Pieces.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(pieces=>{
+          if(!alive){disposeObject(pieces.scene);return;}
+          const roofBounds=new THREE.Box3();for(const roof of roofMeshes)roofBounds.union(new THREE.Box3().setFromObject(roof));
+          const roofSize=roofBounds.getSize(new THREE.Vector3()),roofCenter=roofBounds.getCenter(new THREE.Vector3()),ray=new THREE.Raycaster();
+          const sources:THREE.Mesh[]=[];pieces.scene.traverse(o=>{if(o instanceof THREE.Mesh)sources.push(o);});
+          for(let patch=0;patch<3&&sources.length;patch++){
+            const source=sources[(patch+2)%sources.length],geometry=source.geometry.clone();
+            geometry.computeBoundingBox();
+            const local=geometry.boundingBox!,localSize=local.getSize(new THREE.Vector3()),localCenter=local.getCenter(new THREE.Vector3());
+            const positions=geometry.getAttribute('position'),valid:boolean[]=[];
+            for(let i=0;i<positions.count;i++){
+              const x=roofCenter.x+(patch-1)*roofSize.x*.27+(positions.getX(i)-localCenter.x)/Math.max(localSize.x,.001)*roofSize.x*.48;
+              const z=roofCenter.z+(positions.getZ(i)-localCenter.z)/Math.max(localSize.z,.001)*roofSize.z*.94;
+              const thickness=(positions.getY(i)-local.min.y)/Math.max(localSize.y,.001)*.24;
+              ray.set(new THREE.Vector3(x,roofBounds.max.y+2,z),new THREE.Vector3(0,-1,0));
+              const hit=ray.intersectObjects(roofMeshes,false)[0];
+              valid.push(!!hit);
+              positions.setXYZ(i,x,(hit?.point.y??roofCenter.y)+.015+thickness,z);
+            }
+            const index=geometry.getIndex(),keep:number[]=[];
+            for(let i=0;i<(index?.count??positions.count);i+=3){
+              const ids=[0,1,2].map(k=>index?index.getX(i+k):i+k);
+              if(ids.every(id=>valid[id]))keep.push(...ids);
+            }
+            geometry.setIndex(keep);positions.needsUpdate=true;geometry.computeVertexNormals();geometry.computeBoundingSphere();
+            const material=new THREE.MeshStandardMaterial({color:'#eef7fc',roughness:1});
+            const cover=new THREE.Mesh(geometry,material);cover.name='Снег на крыше колодца';cover.castShadow=true;cover.receiveShadow=true;scene.add(cover);
+          }
+          disposeObject(pieces.scene);refreshShadows();
+        }).catch(()=>{});
+
         refreshShadows();
       }).catch(()=>{if(alive)setStatus('Не удалось загрузить новый колодец.');});
       refreshShadows();
