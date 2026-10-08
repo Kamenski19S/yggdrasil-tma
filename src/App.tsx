@@ -17,6 +17,7 @@ import { CSS } from './styles';
 import { MillScene, type MillFind } from './MillScene';
 import {MILL_BONUS_DROPS_MIN,MILL_BONUS_DROPS_RANGE,MILL_POTION_QUANTITY,MILL_RUNE_QUANTITY} from './millRewards';
 import { Midgard3D } from './Midgard3D';
+const NidhoggUnderground=React.lazy(()=>import('./NidhoggUnderground'));
 const Niflheim3D=React.lazy(()=>import('./Niflheim3D'));
 
 
@@ -88,7 +89,7 @@ const [roadT, setRoadT] = useState(0.06);
   }, [save.heroSkin]);
   useEffect(() => {
     if (!tg?.BackButton) return;
-    const back = () => { if(screen.t==="mill")millScreenActiveRef.current=false; setScreen(screen.t === "forge" || screen.t === "mill" ? { t: "realm", id:screen.t==="forge"?forgeRealm:millRealm } : { t: "tree" }); };
+    const back = () => { if(screen.t==="underground"){setScreen({t:"realm",id:"niflheim"});return;} if(screen.t==="mill")millScreenActiveRef.current=false; setScreen(screen.t === "forge" || screen.t === "mill" ? { t: "realm", id:screen.t==="forge"?forgeRealm:millRealm } : { t: "tree" }); };
     if (screen.t !== "tree" && screen.t !== "choose" && save.hero) { tg.BackButton.show(); tg.BackButton.onClick(back); } else tg.BackButton.hide();
     return () => { tg.BackButton?.offClick?.(back); };
   }, [screen, save.hero,forgeRealm,millRealm]);
@@ -530,6 +531,7 @@ const [roadT, setRoadT] = useState(0.06);
       <div className="hdr">
         {screen.t === "tree" && <div className="title">🌳 Мировое Древо Иггдрасиль</div>}
         {screen.t === "realm" && <button className="back" onClick={() => go({ t: "tree" })}>← На Древо</button>}
+        {screen.t === "underground" && <button className="back" onClick={()=>go({t:"realm",id:"niflheim"})}>← Нифльхейм · Подземелье</button>}
         {screen.t === "mill" && <button className="back" onClick={() => go({ t: "realm", id:millRealm })}>← {millRealm==="niflheim"?"Нифльхейм":"Мидгард"} · Мельница</button>}
         {screen.t === "choose" && <div className="title">🌫️ Выбор судьбы</div>}
         {screen.t === "hero" && <div className="title">🛡 Герой</div>}
@@ -576,6 +578,7 @@ const [roadT, setRoadT] = useState(0.06);
       )}
 
 
+      {screen.t === "underground" && <React.Suspense fallback={<div className="content">Спуск под башню…</div>}><NidhoggUnderground weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")} onBack={()=>go({t:"realm",id:"niflheim"})}/></React.Suspense>}
       {screen.t === "mill" && (
         <MillScene
           stored={save.millStored}
@@ -590,7 +593,7 @@ const [roadT, setRoadT] = useState(0.06);
       {screen.t === "realm" && (() => {
   const realm = REALMS.find(r => r.id === screen.id)!;
 
-  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")} onOpenMill={()=>{setMillRealm("niflheim");go({t:"mill"});}} inventory={{potions:save.potions,runes:save.runes,equippedRune:save.equippedRune,lootCounts:save.lootCounts,runeLevels:save.forgeLevels,hp:Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp()),maxHp:(heroDef?.hp??100)+gearHp(),frostGuard:save.frostGuard,potionBoosts:save.potionBoosts,onUsePotion:useInventoryPotion,onEquipRune:equipInventoryRune,onFuseRune:fuseInventoryRune}} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")}/></React.Suspense>;
+  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D onEnterUnderground={position=>{niflheimReturn.current={...position};go({t:"underground"});}} initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")} onOpenMill={()=>{setMillRealm("niflheim");go({t:"mill"});}} inventory={{potions:save.potions,runes:save.runes,equippedRune:save.equippedRune,lootCounts:save.lootCounts,runeLevels:save.forgeLevels,hp:Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp()),maxHp:(heroDef?.hp??100)+gearHp(),frostGuard:save.frostGuard,potionBoosts:save.potionBoosts,onUsePotion:useInventoryPotion,onEquipRune:equipInventoryRune,onFuseRune:fuseInventoryRune}} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")}/></React.Suspense>;
 
   if (realm.id === "midgard") {
     if (!heroDef) return null;
@@ -1333,7 +1336,7 @@ const [roadT, setRoadT] = useState(0.06);
         </div>
       )}
 
-      {save.hero && screen.t!=="forge" && screen.t!=="mill" && (
+      {save.hero && screen.t!=="forge" && screen.t!=="mill" && screen.t!=="underground" && (
         <div className="nav">
           {NAV.map(n => (<button key={n.id} className={"navbtn" + (isNav(n.id) ? " on" : "")} aria-current={isNav(n.id) ? "page" : undefined} onClick={() => go(navScreen(n.id))}><span className="ic" aria-hidden="true"><img className="nav-art" src={`${BASE}img/models/ui_nav_${n.id === "tree" ? "path" : n.id}.png`} alt="" draggable={false} onError={e=>{e.currentTarget.hidden=true;const fallback=e.currentTarget.nextElementSibling;if(fallback instanceof HTMLElement)fallback.hidden=false;}}/><span hidden>{n.ic}</span></span>{n.t}</button>))}
         </div>
@@ -1386,3 +1389,4 @@ const [roadT, setRoadT] = useState(0.06);
     </div>
   );
 }
+

@@ -193,7 +193,7 @@ export const REALMS: Realm[] = [
 export const NAV = [{ id: "tree", ic: "ᚱ", t: "Путь" }, { id: "hero", ic: "ᛗ", t: "Герой" }, { id: "gift", ic: "ᚷ", t: "Дар" }, { id: "hall", ic: "ᛟ", t: "Чертог" }];
 
 
-export type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" } | { t: "hero" } | { t: "gift" } | { t: "hall" } | { t: "craft" } | { t: "forge" } | { t: "mill" } | { t: "trial"; id: string } | { t: "fight"; id: string };
+export type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" } | { t: "hero" } | { t: "gift" } | { t: "hall" } | { t: "craft" } | { t: "forge" } | { t: "mill" } | { t: "underground" } | { t: "trial"; id: string } | { t: "fight"; id: string };
 
 
 export type HeroSkin = "viking" | "valkyrie";
@@ -615,4 +615,5 @@ export function BgImg({ name, className }: { name: string; className: string }) 
     />
   );
 }
+
 
