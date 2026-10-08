@@ -242,10 +242,23 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
 
     const rootsLocation=NIFL_LOCATIONS.find(l=>l.id==='roots')!;
     const wellSiteX=rootsLocation.x+15,wellSiteZ=rootsLocation.z+6;
-    cachedGlbBuffer(`${BASE}img/models/Niflheim_Well_Assembly.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
+    cachedGlbBuffer(`${BASE}img/models/Niflheim_Well_Assembly.glb?v=well-site-2`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
       if(!alive){disposeObject(asset.scene);return;}
       const assembly=asset.scene;assembly.name='Старый колодец и лестница — площадка у корней';
-      assembly.position.set(wellSiteX,niflGroundY(wellSiteX,wellSiteZ),wellSiteZ);
+      // Normalize source units and put the entire base above the surrounding snow.
+      assembly.updateMatrixWorld(true);
+      const initialBounds=new THREE.Box3().setFromObject(assembly);
+      const size=initialBounds.getSize(new THREE.Vector3());
+      if(!Number.isFinite(size.x+size.y+size.z)||Math.max(size.x,size.z)<=0)throw new Error('Empty well assembly');
+      assembly.scale.multiplyScalar(12/Math.max(size.x,size.z));
+      assembly.updateMatrixWorld(true);
+      const bounds=new THREE.Box3().setFromObject(assembly);
+      const center=bounds.getCenter(new THREE.Vector3());
+      const sampleY=(x:number,z:number)=>rootsSpace?.groundY(x,z)??niflGroundY(x,z);
+      let baseY=sampleY(wellSiteX,wellSiteZ);
+      for(const dx of [-6,0,6])for(const dz of [-6,0,6])baseY=Math.max(baseY,sampleY(wellSiteX+dx,wellSiteZ+dz));
+      assembly.position.set(wellSiteX-center.x,baseY+.12-bounds.min.y,wellSiteZ-center.z);
+
       assembly.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
       scene.add(assembly);refreshShadows();
     }).catch(()=>{if(alive)setStatus('Не удалось загрузить лестницу и колодец. Обнови игру.');});
