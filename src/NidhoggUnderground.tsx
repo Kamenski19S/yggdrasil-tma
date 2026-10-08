@@ -36,7 +36,40 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     const hero=new THREE.Group();scene.add(hero);const pos={x:0,z:19};hero.rotation.y=Math.PI;
     let mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,current:THREE.AnimationAction|undefined,dragonMixer:THREE.AnimationMixer|undefined;
     let dragonBounds:THREE.Box3|undefined;
+    const terrainMeshes:THREE.Mesh[]=[];
+    const groundRay=new THREE.Raycaster(),groundOrigin=new THREE.Vector3(),groundDown=new THREE.Vector3(0,-1,0);
+    let groundX=NaN,groundZ=NaN,groundY=0;
+    const groundAt=(x:number,z:number)=>{
+      if(!terrainMeshes.length)return 0;
+      groundOrigin.set(x,40,z);groundRay.set(groundOrigin,groundDown);
+      return Math.max(0,groundRay.intersectObjects(terrainMeshes,false)[0]?.point.y??0);
+    };
     const load=async(file:string)=>new GLTFLoader().parseAsync(await cachedGlbBuffer(`${BASE}img/models/${file}`),`${BASE}img/models/`);
+    load('The_Hills_Optimized.glb').then(gltf=>{
+      if(!alive){dispose(gltf.scene);assets.forEach(t=>t.dispose());return;}
+      const terrain=gltf.scene;terrain.updateMatrixWorld(true);
+      const bounds=new THREE.Box3().setFromObject(terrain),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
+      const smooth=(a:number,b:number,value:number)=>{const t=THREE.MathUtils.clamp((value-a)/(b-a),0,1);return t*t*(3-2*t);};
+      const point=new THREE.Vector3();
+      terrain.traverse(o=>{
+        if(!(o instanceof THREE.Mesh))return;
+        // Bake the source orientation before stretching the ground to fit the room.
+        const geometry=o.geometry.clone().applyMatrix4(o.matrixWorld),positions=geometry.getAttribute('position');
+        for(let i=0;i<positions.count;i++){
+          point.fromBufferAttribute(positions,i);
+          const x=(point.x-center.x)*72/Math.max(size.x,.01),z=(point.z-center.z)*100/Math.max(size.z,.01)-21;
+          // Gentle transitions preserve clear footing at the door, dragon and den.
+          const door=smooth(6,14,Math.hypot(x,z-26)),dragon=smooth(16,24,Math.hypot(x,z+35)),den=smooth(-54,-40,z);
+          const y=.04+(point.y-bounds.min.y)*9/Math.max(size.y,.01)*door*dragon*den;
+          positions.setXYZ(i,x,y,z);
+        }
+        geometry.deleteAttribute('tangent');geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();
+        const materials=(Array.isArray(o.material)?o.material:[o.material]).map(m=>{const material=m.clone();if(material instanceof THREE.MeshStandardMaterial){material.color.set('#8f949b');material.roughness=.95;material.emissive.set('#000000');material.emissiveMap=null;}return material;});
+        const mesh=new THREE.Mesh(geometry,Array.isArray(o.material)?materials:materials[0]);terrainMeshes.push(mesh);scene.add(mesh);
+      });
+      // Geometry and materials were cloned; shared textures now belong to the scene.
+      dispose(terrain);scene.updateMatrixWorld(true);groundX=groundZ=NaN;
+    }).catch(()=>{if(alive)setStatus('Рельеф не загрузился. Вернись в Нифльхейм и попробуй снова.');});
     load('Dark_Side_Cave_Optimized.glb').then(gltf=>{
       if(!alive){dispose(gltf.scene);assets.forEach(t=>t.dispose());return;}
       const cave=gltf.scene;cave.updateMatrixWorld(true);
@@ -77,8 +110,9 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
       if(!alive)return;const dt=Math.min((now-previous)/1000,.05);previous=now;
       let dx=0,dz=0;if(!document.hidden){dx=analog.current.x+(keys.has('d')||keys.has('ArrowRight')?1:0)-(keys.has('a')||keys.has('ArrowLeft')?1:0);dz=analog.current.z+(keys.has('s')||keys.has('ArrowDown')?1:0)-(keys.has('w')||keys.has('ArrowUp')?1:0);}
       const length=Math.hypot(dx,dz);let moving=false;if(length>.08){dx/=Math.max(1,length);dz/=Math.max(1,length);const x=THREE.MathUtils.clamp(pos.x+dx*8.5*dt,-31,31),z=THREE.MathUtils.clamp(pos.z+dz*8.5*dt,-65,24.5);const blocked=dragonBounds&&x>dragonBounds.min.x&&x<dragonBounds.max.x&&z>dragonBounds.min.z&&z<dragonBounds.max.z;if(!blocked){moving=Math.hypot(x-pos.x,z-pos.z)>.001;pos.x=x;pos.z=z;}const target=Math.atan2(dx,dz);hero.rotation.y+=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y))*(1-Math.exp(-dt*14));}
-      const action=moving?walk:idle;if(action&&action!==current){current?.fadeOut(.15);action.reset().fadeIn(.15).play();current=action;}mixer?.update(dt);dragonMixer?.update(dt);hero.position.set(pos.x,0,pos.z);
-      camera.position.lerp(new THREE.Vector3(pos.x*.65,10,pos.z+16),1-Math.exp(-dt*4));camera.lookAt(pos.x,3.5,pos.z-8);
+      if(pos.x!==groundX||pos.z!==groundZ){groundY=groundAt(pos.x,pos.z);groundX=pos.x;groundZ=pos.z;}
+      const action=moving?walk:idle;if(action&&action!==current){current?.fadeOut(.15);action.reset().fadeIn(.15).play();current=action;}mixer?.update(dt);dragonMixer?.update(dt);hero.position.set(pos.x,groundY,pos.z);
+      camera.position.lerp(new THREE.Vector3(pos.x*.65,groundY+10,pos.z+16),1-Math.exp(-dt*4));camera.lookAt(pos.x,groundY+3.5,pos.z-8);
       const near=Math.abs(pos.x)<5&&pos.z>20;if(near!==wasNear){wasNear=near;setNearExit(near);}renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
     return()=>{alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',reset);document.removeEventListener('visibilitychange',reset);reset();mixer?.stopAllAction();dragonMixer?.stopAllAction();dispose(scene);assets.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();};
