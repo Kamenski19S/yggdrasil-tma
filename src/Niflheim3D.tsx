@@ -220,12 +220,6 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
         const marker=mesh(new THREE.OctahedronGeometry(.5),glow,l.x+3,niflGroundY(l.x+3,l.z+3)+2.8,l.z+3);marker.name=`Location ${index+1}: ${l.name}`;
       }
     });
-    // Large roots frame the source and cave; the walking corridors stay open.
-    for(let i=0;i<6;i++){
-      const x=(-24+i*9)*NIFL_SCALE,z=(-55-(i%2)*6)*NIFL_SCALE;
-      const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(x,niflGroundY(x,z),z),new THREE.Vector3(x+2,niflGroundY(x,z)+5,z-5),new THREE.Vector3(x-4,niflGroundY(x,z)+15,z-10),new THREE.Vector3(x+5,niflGroundY(x,z)+24,z-16)]);
-      const root=new THREE.Mesh(new THREE.TubeGeometry(curve,18,1.3+(i%2)*.6,7,false),stone);root.castShadow=true;root.receiveShadow=true;scene.add(root);
-    }
     // Lightweight snow drifts instead of a full-screen effect.
     const snowPoints=new THREE.BufferGeometry(),snowCoords=new Float32Array(160*3);
     for(let i=0;i<160;i++){snowCoords[i*3]=(hash(i,51)*110-55)*NIFL_SCALE;snowCoords[i*3+1]=hash(i,52)*18+2;snowCoords[i*3+2]=(hash(i,53)*140-70)*NIFL_SCALE;}
@@ -242,9 +236,11 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
 
     const rootsLocation=NIFL_LOCATIONS.find(l=>l.id==='roots')!;
     const wellSiteX=NIFL_SOURCE.x,wellSiteZ=NIFL_SOURCE.z-14;
-    cachedGlbBuffer(`${BASE}img/models/Niflheim_Well_Assembly.glb?v=well-site-2`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
+    cachedGlbBuffer(`${BASE}img/models/Niflheim_Well_Assembly.glb?v=well-stairs-restored-3`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
       if(!alive){disposeObject(asset.scene);return;}
       const assembly=asset.scene;assembly.name='Старый колодец и лестница — Хвергельмир';
+      const well=assembly.children[0]?.children.find(o=>o.name.startsWith('Medieval stone well'));
+      if(well)well.position.z=3.5;
       // Normalize source units and put the entire base above the surrounding snow.
       assembly.updateMatrixWorld(true);
       const initialBounds=new THREE.Box3().setFromObject(assembly);
