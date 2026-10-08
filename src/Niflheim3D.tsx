@@ -192,7 +192,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     const pillar=(x:number,z:number,height:number,mat=stone)=>mesh(poleGeo,mat,x,niflGroundY(x,z)+height/2,z,1.15,height,1.3);
     const cave=(x:number,z:number)=>{const base=niflGroundY(x,z);mesh(rockGeo,stone,x-3,base+2,z,2,3,2);mesh(rockGeo,stone,x+3,base+2,z,2,3,2);mesh(rockGeo,stone,x,base+5,z,4,1.7,2);const opening=mesh(new THREE.CircleGeometry(2.6,24),dark,x,base+2.6,z+.25,1,1,1);return opening;};
     const gate=(x:number,z:number)=>{pillar(x-2.7,z,6);pillar(x+2.7,z,6);mesh(poleGeo,stone,x,niflGroundY(x,z)+6,z,6.6,.8,1.5);const portal=mesh(new THREE.PlaneGeometry(4,5),new THREE.MeshBasicMaterial({color:'#24253a',transparent:true,opacity:.85,side:THREE.DoubleSide}),x,niflGroundY(x,z)+3,z);return portal;};
-    const gates=[gate(-10*NIFL_SCALE,16*NIFL_SCALE),gate(25*NIFL_SCALE,-57*NIFL_SCALE)];
+    const gates=[gate(-10*NIFL_SCALE,16*NIFL_SCALE)];
     const entrancePlaceholder=new THREE.Group();
     const entranceGate=gate(0,65*NIFL_SCALE);
     // Keep the lightweight entrance only until the downloaded model is ready.
@@ -201,7 +201,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     gates.push(entranceGate);
     const shelterPlaceholder=new THREE.Group();scene.add(shelterPlaceholder);
     NIFL_LOCATIONS.forEach((l,index)=>{
-      if((l.kind==='cave'||l.kind==='lair')&&l.id!=='memoryCave')cave(l.x,l.z-3);
+      if(l.kind==='cave'&&l.id!=='memoryCave')cave(l.x,l.z-3);
       if(l.kind==='hall'){
         hallSpace=createForgottenNamesHall(l.x,l.z,niflGroundY,stone,snow);scene.add(hallSpace.root);
         const space=hallSpace;
@@ -257,6 +257,20 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       sourceIceBounds=new THREE.Box3().setFromObject(cluster).expandByScalar(.65);refreshShadows();
     },()=>{})).catch(()=>{});
 
+
+    const dragonLair=NIFL_LOCATIONS.find(l=>l.id==='nidhogg')!;
+    cachedGlbBuffer(`${BASE}img/models/Collapsed_Tower_Optimized.glb?v=tower-1`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
+      if(!alive){disposeObject(asset.scene);return;}
+      const tower=asset.scene;tower.name='Разрушенная башня — логово Нидхёгга';
+      tower.updateMatrixWorld(true);
+      const initial=new THREE.Box3().setFromObject(tower),size=initial.getSize(new THREE.Vector3());
+      tower.scale.multiplyScalar(Math.min(22/Math.max(size.y,.001),26/Math.max(size.x,size.z,.001)));
+      tower.updateMatrixWorld(true);
+      const bounds=new THREE.Box3().setFromObject(tower),center=bounds.getCenter(new THREE.Vector3());
+      tower.position.set(dragonLair.x-center.x,niflGroundY(dragonLair.x,dragonLair.z)-bounds.min.y-.15,dragonLair.z-center.z);
+      tower.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+      scene.add(tower);refreshShadows();
+    }).catch(()=>{if(alive)setStatus('Не удалось загрузить разрушенную башню.');});
     const rootsLocation=NIFL_LOCATIONS.find(l=>l.id==='roots')!;
     const wellSiteX=NIFL_SOURCE.x-22,wellSiteZ=NIFL_SOURCE.z-34;
     cachedGlbBuffer(`${BASE}img/models/Niflheim_Well_Assembly.glb?v=staircase-only-4`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
@@ -661,6 +675,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       <p className="nifl-map-legend">Ледяные образования у корней: <a href="https://sketchfab.com/3d-models/ice-castles-ny-ice-formations-293eff95dafc409f8d203374e0ff45be" target="_blank" rel="noopener noreferrer">Ice Castles NY — Ice Formations — Katie Alois (@kalois)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Модель разделена на два файла, уменьшены детализация и текстуры; стены увеличены вокруг корней, вырезан проход для Вики.</p>
       <p className="nifl-map-legend">Ледяные плиты и стены: <a href="https://sketchfab.com/3d-models/ice-glacier-933b3c2ee51c48bb958d06655d1ff8bd" target="_blank" rel="noopener noreferrer">Ice Glacier — Svenja (gwenchana3)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры; одна ледяная плита выделена в отдельный файл и увеличена для свода пещеры.</p>
       <p className="nifl-map-legend">Сплетение корней: оригинальная процедурная модель корней, коры, снега и льда, созданная для Yggdrasil Runes по концепту локации.</p>
+      <p className="nifl-map-legend">Разрушенная башня: <a href="https://sketchfab.com/3d-models/collapesed-tower-984b012678be49a79c1509cdeeb53402" target="_blank" rel="noopener noreferrer">collapesed tower — portwindyroad</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшена текстура, геометрия сохранена; изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Колодец: <a href="https://sketchfab.com/3d-models/good-ol-well-9eadcb31e4b445c8978e791fcce548fe" target="_blank" rel="noopener noreferrer">Good Ol' Well — mikelkel2</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, геометрия сохранена, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Лестница: <a href="https://sketchfab.com/3d-models/the-staircase-step-ladder-20e23588d08d4cae986dc1e208d1c969" target="_blank" rel="noopener noreferrer">Mehdi Shahsavana (@ahmagh2e)</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Убраны верхний пролёт и надписи; сохранены нижние ступени и площадка.</p>
       <p className="nifl-map-legend">Ледяной дом: <a href="https://sketchfab.com/3d-models/igloo-224f673917e6486eb08c496baf77ce84" target="_blank" rel="noopener noreferrer">Igloo — Vera4Art</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, убрана исходная площадка, изменены масштаб и размещение.</p>
