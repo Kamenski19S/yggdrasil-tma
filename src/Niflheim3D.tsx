@@ -259,11 +259,25 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
 
 
     const dragonLair=NIFL_LOCATIONS.find(l=>l.id==='nidhogg')!;
-    cachedGlbBuffer(`${BASE}img/models/Collapsed_Tower_Optimized.glb?v=tower-2`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
+    cachedGlbBuffer(`${BASE}img/models/Collapsed_Tower_Optimized.glb?v=tower-3`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
       if(!alive){disposeObject(asset.scene);return;}
       const tower=asset.scene;tower.name='Разрушенная башня — логово Нидхёгга';
       tower.updateMatrixWorld(true);
-      tower.rotation.y=-Math.PI/2; // Source doorway faces +X; turn it toward Vika on the south (+Z) side.
+      // Rotate only the standing stump; keep the fallen tower in its original placement.
+      const standing=tower.getObjectByName('polySurface1_blinn1_0') as THREE.Mesh|undefined;
+      if(standing){
+        const geometry=standing.geometry.clone().applyMatrix4(standing.matrixWorld);
+        geometry.computeBoundingBox();
+        const pivotCenter=geometry.boundingBox!.getCenter(new THREE.Vector3());
+        geometry.translate(-pivotCenter.x,-pivotCenter.y,-pivotCenter.z);
+        standing.geometry.dispose();standing.geometry=geometry;
+        const pivot=new THREE.Group();pivot.name='Standing tower entrance pivot';
+        pivot.position.copy(pivotCenter);pivot.rotation.y=Math.PI/2;
+        tower.add(pivot);pivot.add(standing);
+        standing.position.set(0,0,0);standing.rotation.set(0,0,0);standing.scale.set(1,1,1);
+        standing.matrixAutoUpdate=true;standing.updateMatrix();
+      }
+      tower.rotation.y=Math.PI;
       tower.updateMatrixWorld(true);
       const initial=new THREE.Box3().setFromObject(tower),size=initial.getSize(new THREE.Vector3());
       tower.scale.multiplyScalar(Math.min(58.08/Math.max(size.y,.001),68.64/Math.max(size.x,size.z,.001)));
