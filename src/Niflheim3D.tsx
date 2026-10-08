@@ -1,3 +1,4 @@
+import {textureBuildingPart} from './buildingTextures';
 import {createForgottenNamesHall} from './niflheimNamesHall';
 import {createRootsIceCave} from './niflheimRootsCave';
 import {InventorySection} from './inventory';
@@ -78,7 +79,20 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     const sourceIceBlocked=(x:number,z:number)=>!!sourceIceBounds&&x>sourceIceBounds.min.x&&x<sourceIceBounds.max.x&&z>sourceIceBounds.min.z&&z<sourceIceBounds.max.z;
     let lakeBridgeDeck:number|undefined;
     const lakeBridgeY=(x:number,z:number)=>lakeBridgeDeck!==undefined&&Math.abs(x+72)<3.7&&z>=-12&&z<=23?lakeBridgeDeck:undefined;
-    const walkingY=(x:number,z:number)=>lakeBridgeY(x,z)??hallSpace?.groundY(x,z)??memorySpace?.groundY(x,z)??forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??rootsSpace?.groundY(x,z)??niflGroundY(x,z);
+    let platformBounds:THREE.Box3|undefined,wellObstacle:{x:number;z:number;radius:number}|undefined;
+    const stairWalkMeshes:THREE.Object3D[]=[];
+    const stairRay=new THREE.Raycaster();
+    const stairGroundY=(x:number,z:number)=>{
+      if(!platformBounds||x<platformBounds.min.x||x>platformBounds.max.x||z<platformBounds.min.z||z>platformBounds.max.z)return undefined;
+      stairRay.set(new THREE.Vector3(x,platformBounds.max.y+8,z),new THREE.Vector3(0,-1,0));
+      return stairRay.intersectObjects(stairWalkMeshes,false)[0]?.point.y;
+    };
+    const platformBlocked=(from:{x:number;z:number},next:{x:number;z:number})=>{
+      if(wellObstacle&&Math.hypot(next.x-wellObstacle.x,next.z-wellObstacle.z)<wellObstacle.radius)return true;
+      const toY=stairGroundY(next.x,next.z),fromY=stairGroundY(from.x,from.z);
+      return toY!==undefined&&toY-(fromY??niflGroundY(from.x,from.z))>.85;
+    };
+    const walkingY=(x:number,z:number)=>stairGroundY(x,z)??lakeBridgeY(x,z)??hallSpace?.groundY(x,z)??memorySpace?.groundY(x,z)??forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??rootsSpace?.groundY(x,z)??niflGroundY(x,z);
     const terrainY=(x:number,z:number)=>hallSpace?.terrainY(x,z)??memorySpace?.terrainY(x,z)??forgeSpace?.terrainY(x,z)??(caveSpace?.inside(x,z)?caveSpace.floor-.06:(rootsSpace?.groundY(x,z)??niflGroundY(x,z)));
     const crystalMaterials:THREE.MeshStandardMaterial[]=[];
     const crystalHalos:THREE.Sprite[]=[];
@@ -250,12 +264,51 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       const bounds=new THREE.Box3().setFromObject(assembly);
       const center=bounds.getCenter(new THREE.Vector3());
       const sampleY=(x:number,z:number)=>niflGroundY(x,z);
-      let baseY=sampleY(wellSiteX,wellSiteZ);
-      for(const dx of [-6,0,6])for(const dz of [-6,0,6])baseY=Math.max(baseY,sampleY(wellSiteX+dx,wellSiteZ+dz));
+      const baseY=sampleY(wellSiteX,wellSiteZ+6)-.08;
       assembly.position.set(wellSiteX-center.x,baseY+.12-bounds.min.y,wellSiteZ-center.z);
 
       assembly.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
-      scene.add(assembly);refreshShadows();
+      scene.add(assembly);assembly.updateMatrixWorld(true);
+      const worldBounds=new THREE.Box3().setFromObject(assembly);
+      const landingBounds=new THREE.Box3();
+      assembly.traverse(object=>{
+        if(!(object instanceof THREE.Mesh))return;
+        object.castShadow=true;object.receiveShadow=true;stairWalkMeshes.push(object);
+        const p=object.geometry.getAttribute('position');
+        for(let i=0;i<p.count;i++){
+          const v=new THREE.Vector3().fromBufferAttribute(p,i).applyMatrix4(object.matrixWorld);
+          if(v.y>=worldBounds.max.y-.025)landingBounds.expandByPoint(v);
+        }
+      });
+      const landingSize=landingBounds.getSize(new THREE.Vector3()),landingCenter=landingBounds.getCenter(new THREE.Vector3());
+      const capMaterial=new THREE.MeshStandardMaterial({color:'#dce3e6',roughness:1});
+      const slab=new THREE.Mesh(new THREE.BoxGeometry(landingSize.x, .18, landingSize.z),capMaterial);
+      slab.name='Каменная плита площадки';
+      slab.position.set(landingCenter.x,worldBounds.max.y+.04,landingCenter.z);
+      slab.castShadow=true;slab.receiveShadow=true;scene.add(slab);slab.updateMatrixWorld(true);
+      stairWalkMeshes.push(slab);
+      platformBounds=new THREE.Box3().setFromObject(assembly).union(new THREE.Box3().setFromObject(slab));
+      new THREE.TextureLoader().load(`${BASE}img/models/T_Forge_WhiteStone.webp`,texture=>{
+        if(!alive){texture.dispose();return;}
+        texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;textures.add(texture);
+        assembly.traverse(object=>{if(object instanceof THREE.Mesh)textureBuildingPart(object,texture);});
+        textureBuildingPart(slab,texture);refreshShadows();
+      });
+      cachedGlbBuffer(`${BASE}img/models/Good_Ol_Well_Optimized.glb?v=good-well-1`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(gltf=>{
+        if(!alive){disposeObject(gltf.scene);return;}
+        const well=gltf.scene;well.name="Good Ol' Well — mikelkel2";
+        well.updateMatrixWorld(true);
+        const sourceBounds=new THREE.Box3().setFromObject(well),wellSize=sourceBounds.getSize(new THREE.Vector3());
+        well.scale.multiplyScalar(5.8/Math.max(wellSize.y,.001));well.updateMatrixWorld(true);
+        const fitted=new THREE.Box3().setFromObject(well),center=fitted.getCenter(new THREE.Vector3());
+        const slabTop=slab.position.y+.09;
+        well.position.set(landingCenter.x-center.x,slabTop-fitted.min.y,landingCenter.z-center.z);
+        well.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+        scene.add(well);
+        wellObstacle={x:landingCenter.x,z:landingCenter.z,radius:1.75};
+        refreshShadows();
+      }).catch(()=>{if(alive)setStatus('Не удалось загрузить новый колодец.');});
+      refreshShadows();
     }).catch(()=>{if(alive)setStatus('Не удалось загрузить лестницу. Обнови игру.');});
 
     cachedGlbBuffer(`${BASE}img/models/Yggdrasil_Roots_Ice.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,asset=>{
@@ -451,7 +504,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       velocityX=THREE.MathUtils.lerp(velocityX,isMoving?dx/length:0,steer);velocityZ=THREE.MathUtils.lerp(velocityZ,isMoving?dz/length:0,steer);
       if(!paused.current&&!document.hidden){const from=position.current,next=moveThroughNiflEntrance(from,from.x+velocityX*8.5*dt,from.z+velocityZ*8.5*dt);
         const candidate=caveSpace?caveSpace.move(from,next):next;
-        if(!hallSpace?.blocked(candidate.x,candidate.z)&&!memorySpace?.blocked(candidate.x,candidate.z)&&!memoryGiant?.blocked(candidate.x,candidate.z)&&!sourceIceBlocked(candidate.x,candidate.z)&&!rootsSpace?.blocked(candidate.x,candidate.z)&&!giant?.blocked(candidate.x,candidate.z)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
+        if(!platformBlocked(from,candidate)&&!hallSpace?.blocked(candidate.x,candidate.z)&&!memorySpace?.blocked(candidate.x,candidate.z)&&!memoryGiant?.blocked(candidate.x,candidate.z)&&!sourceIceBlocked(candidate.x,candidate.z)&&!rootsSpace?.blocked(candidate.x,candidate.z)&&!giant?.blocked(candidate.x,candidate.z)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
       if(isMoving){const target=Math.atan2(velocityX,velocityZ),difference=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y));hero.rotation.y+=difference*(1-Math.exp(-dt*14));cameraDir.x=Math.sin(hero.rotation.y);cameraDir.z=Math.cos(hero.rotation.y);}
       const walking=!paused.current&&!document.hidden&&Math.hypot(velocityX,velocityZ)>.08;
       moving=walking;
@@ -530,6 +583,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       <p className="nifl-map-legend">Ледяные образования у корней: <a href="https://sketchfab.com/3d-models/ice-castles-ny-ice-formations-293eff95dafc409f8d203374e0ff45be" target="_blank" rel="noopener noreferrer">Ice Castles NY — Ice Formations — Katie Alois (@kalois)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Модель разделена на два файла, уменьшены детализация и текстуры; стены увеличены вокруг корней, вырезан проход для Вики.</p>
       <p className="nifl-map-legend">Ледяные плиты и стены: <a href="https://sketchfab.com/3d-models/ice-glacier-933b3c2ee51c48bb958d06655d1ff8bd" target="_blank" rel="noopener noreferrer">Ice Glacier — Svenja (gwenchana3)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры; одна ледяная плита выделена в отдельный файл и увеличена для свода пещеры.</p>
       <p className="nifl-map-legend">Сплетение корней: оригинальная процедурная модель корней, коры, снега и льда, созданная для Yggdrasil Runes по концепту локации.</p>
+      <p className="nifl-map-legend">Колодец: <a href="https://sketchfab.com/3d-models/good-ol-well-9eadcb31e4b445c8978e791fcce548fe" target="_blank" rel="noopener noreferrer">Good Ol' Well — mikelkel2</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, геометрия сохранена, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Лестница: <a href="https://sketchfab.com/3d-models/the-staircase-step-ladder-20e23588d08d4cae986dc1e208d1c969" target="_blank" rel="noopener noreferrer">Mehdi Shahsavana (@ahmagh2e)</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Убраны верхний пролёт и надписи; сохранены нижние ступени и площадка.</p>
       <p className="nifl-map-legend">Ледяной дом: <a href="https://sketchfab.com/3d-models/igloo-224f673917e6486eb08c496baf77ce84" target="_blank" rel="noopener noreferrer">Igloo — Vera4Art</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, убрана исходная площадка, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Великан: <a href="https://sketchfab.com/3d-models/lowpoly-giant-warrior-rigged-66588f8fd6f64212abe49c7c6cababa9" target="_blank" rel="noopener noreferrer">Lowpoly Giant Warrior (rigged) — luch.pok (lvintoniyak)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Убраны крупные браслеты, осветлена кожа, уменьшены текстуры; изменены масштаб и размещение, добавлены поза сидя и подъём с камня.</p>
