@@ -263,8 +263,10 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       if(!alive){disposeObject(asset.scene);return;}
       const tower=asset.scene;tower.name='Разрушенная башня — логово Нидхёгга';
       tower.updateMatrixWorld(true);
+      tower.rotation.y=Math.PI;
+      tower.updateMatrixWorld(true);
       const initial=new THREE.Box3().setFromObject(tower),size=initial.getSize(new THREE.Vector3());
-      tower.scale.multiplyScalar(Math.min(48.4/Math.max(size.y,.001),57.2/Math.max(size.x,size.z,.001)));
+      tower.scale.multiplyScalar(Math.min(58.08/Math.max(size.y,.001),68.64/Math.max(size.x,size.z,.001)));
       tower.updateMatrixWorld(true);
       const bounds=new THREE.Box3().setFromObject(tower),center=bounds.getCenter(new THREE.Vector3());
       const towerX=dragonLair.x+6;
