@@ -1,3 +1,4 @@
+import {createLakeDescendingCave} from './niflheimLakeCave';
 import {createDragonFlyover} from './niflheimDragonFlyover';
 import {installTowerEntrance} from './niflheimTower';
 import {textureBuildingPart} from './buildingTextures';
@@ -74,6 +75,8 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     const textures=new Set<THREE.Texture>();
     let flyover:ReturnType<typeof createDragonFlyover>|undefined;
     cachedGlbBuffer(`${BASE}img/models/European_Dragon_Optimized.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(gltf=>{if(!alive){disposeObject(gltf.scene);textures.forEach(t=>t.dispose());return;}flyover=createDragonFlyover(scene,gltf.scene,gltf.animations,niflGroundY);}).catch(()=>{});
+    let lakeCave:ReturnType<typeof createLakeDescendingCave>|undefined;
+    cachedGlbBuffer(`${BASE}img/models/Niflheim_Lake_Descending_Cave.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{if(!alive){disposeObject(asset.scene);return;}lakeCave=createLakeDescendingCave(asset.scene,niflGroundY);scene.add(lakeCave.root);const p=groundGeo.getAttribute('position');for(let i=0;i<p.count;i++)p.setY(i,terrainY(p.getX(i),p.getZ(i)));groundGeo.computeVertexNormals();p.needsUpdate=true;scene.traverse(o=>{if(o instanceof THREE.Mesh&&o.name==='Niflheim terrain'){const v=o.geometry.getAttribute('position');for(let i=0;i<v.count;i++)v.setY(i,terrainY(v.getX(i),v.getZ(i)));v.needsUpdate=true;o.geometry.computeVertexNormals();}});refreshShadows();}).catch(()=>{if(alive)setStatus('Не удалось загрузить пещеру у озера.');});
     let entranceVeil:ReturnType<typeof addEntranceVeil>|undefined;
     let caveSpace:ReturnType<typeof createCaveSpace>|undefined;
     let forgeSpace:ReturnType<typeof createNiflheimForge>|undefined;
@@ -108,8 +111,8 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       const toY=stairGroundY(next.x,next.z),fromY=stairGroundY(from.x,from.z);
       return toY!==undefined&&toY-(fromY??raisedSnowY(from.x,from.z))>.85;
     };
-    const walkingY=(x:number,z:number)=>towerEntrance.current?.groundY(x,z)??stairGroundY(x,z)??lakeBridgeY(x,z)??hallSpace?.groundY(x,z)??memorySpace?.groundY(x,z)??forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??rootsSpace?.groundY(x,z)??raisedSnowY(x,z);
-    const terrainY=(x:number,z:number)=>towerEntrance.current?.groundY(x,z)??hallSpace?.terrainY(x,z)??memorySpace?.terrainY(x,z)??forgeSpace?.terrainY(x,z)??(caveSpace?.inside(x,z)?caveSpace.floor-.06:(rootsSpace?.groundY(x,z)??niflGroundY(x,z)));
+    const walkingY=(x:number,z:number)=>lakeCave?.groundY(x,z)??towerEntrance.current?.groundY(x,z)??stairGroundY(x,z)??lakeBridgeY(x,z)??hallSpace?.groundY(x,z)??memorySpace?.groundY(x,z)??forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??rootsSpace?.groundY(x,z)??raisedSnowY(x,z);
+    const terrainY=(x:number,z:number)=>lakeCave?.terrainY(x,z)??towerEntrance.current?.groundY(x,z)??hallSpace?.terrainY(x,z)??memorySpace?.terrainY(x,z)??forgeSpace?.terrainY(x,z)??(caveSpace?.inside(x,z)?caveSpace.floor-.06:(rootsSpace?.groundY(x,z)??niflGroundY(x,z)));
     const crystalMaterials:THREE.MeshStandardMaterial[]=[];
     const crystalHalos:THREE.Sprite[]=[];
     const snowCanvas=document.createElement('canvas');snowCanvas.width=snowCanvas.height=128;
@@ -628,7 +631,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       velocityX=THREE.MathUtils.lerp(velocityX,isMoving?dx/length:0,steer);velocityZ=THREE.MathUtils.lerp(velocityZ,isMoving?dz/length:0,steer);
       if(!paused.current&&!document.hidden){const from=position.current,next=moveThroughNiflEntrance(from,from.x+velocityX*8.5*dt,from.z+velocityZ*8.5*dt);
         const candidate=caveSpace?caveSpace.move(from,next):next;
-        if(!towerEntrance.current?.blocked(from,candidate)&&!platformBlocked(from,candidate)&&!hallSpace?.blocked(candidate.x,candidate.z)&&!memorySpace?.blocked(candidate.x,candidate.z)&&!memoryGiant?.blocked(candidate.x,candidate.z)&&!sourceIceBlocked(candidate.x,candidate.z)&&!rootsSpace?.blocked(candidate.x,candidate.z)&&!giant?.blocked(candidate.x,candidate.z)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
+        if(!lakeCave?.blocked(from,candidate)&&!towerEntrance.current?.blocked(from,candidate)&&!platformBlocked(from,candidate)&&!hallSpace?.blocked(candidate.x,candidate.z)&&!memorySpace?.blocked(candidate.x,candidate.z)&&!memoryGiant?.blocked(candidate.x,candidate.z)&&!sourceIceBlocked(candidate.x,candidate.z)&&!rootsSpace?.blocked(candidate.x,candidate.z)&&!giant?.blocked(candidate.x,candidate.z)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
       if(isMoving){const target=Math.atan2(velocityX,velocityZ),difference=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y));hero.rotation.y+=difference*(1-Math.exp(-dt*14));cameraDir.x=Math.sin(hero.rotation.y);cameraDir.z=Math.cos(hero.rotation.y);}
       const walking=!paused.current&&!document.hidden&&Math.hypot(velocityX,velocityZ)>.08;
       moving=walking;
@@ -652,9 +655,10 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       const inMemory=memorySpace?.inside(pos.x,pos.z);
       const inHall=hallSpace?.inside(pos.x,pos.z);
       const inRoots=rootsSpace?.inside(pos.x,pos.z);
-      const cameraTarget=inHall?hallSpace!.camera(pos.x,pos.z):inRoots?rootsSpace!.camera(pos.x,pos.z):inMemory?memorySpace!.camera(pos.x,pos.z):inCave?caveSpace!.camera(pos.x,pos.z):new THREE.Vector3(pos.x-cameraDir.x*2,hy+9,pos.z-cameraDir.z*2+17);
+      const cameraTarget=lakeCave?.inside(pos.x,pos.z)?lakeCave.camera(pos.x,pos.z):inHall?hallSpace!.camera(pos.x,pos.z):inRoots?rootsSpace!.camera(pos.x,pos.z):inMemory?memorySpace!.camera(pos.x,pos.z):inCave?caveSpace!.camera(pos.x,pos.z):new THREE.Vector3(pos.x-cameraDir.x*2,hy+9,pos.z-cameraDir.z*2+17);
       camera.position.lerp(cameraTarget,1-Math.exp(-dt*3.4));
-      if(inHall){camera.lookAt(pos.x,hy+4.5,pos.z-7);}
+      if(lakeCave?.inside(pos.x,pos.z)){camera.lookAt(pos.x,hy+2.2,pos.z-5);}
+      else if(inHall){camera.lookAt(pos.x,hy+4.5,pos.z-7);}
       else if(inRoots){camera.lookAt(pos.x,hy+5,pos.z-8);}
       else if(inMemory){camera.lookAt(pos.x,hy+5,pos.z-7);}
       else if(inCave){const p=caveSpace!.local(pos.x,pos.z);camera.lookAt(caveSpace!.world(p.x,CAVE_FLOOR_Y+(p.z<0?6.5:3),p.z-6));}
@@ -716,6 +720,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       <p className="nifl-map-legend">Сплетение корней: оригинальная процедурная модель корней, коры, снега и льда, созданная для Yggdrasil Runes по концепту локации.</p>
       <p className="nifl-map-legend">Корни над логовом дракона: <a href="https://sketchfab.com/3d-models/whispering-tree-roots-3d-model-free-73cf6e7b28854a02bb3dd7881ff7a6e7" target="_blank" rel="noopener noreferrer">Whispering tree Roots 3d model free — iGauravRajput</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Упрощена геометрия, уменьшены текстуры, удалены дубли данных; корни перевёрнуты, вытянуты и размещены с потолка вокруг логова.</p>
       <p className="nifl-map-legend">Рельеф подземелья: <a href="https://sketchfab.com/3d-models/the-hills-6d7faf10658e44279da7356cbe749d56" target="_blank" rel="noopener noreferrer">The Hills</a> — <a href="https://sketchfab.com/mhart" target="_blank" rel="noopener noreferrer">mhart</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, изменены масштаб, высота и оттенок; выровнены участки у двери, под драконом и пещерой.</p>
+      <p className="nifl-map-legend">Пещера у озера: <a href="https://sketchfab.com/3d-models/carriere-orleans-1-de20639e980449078dc30d6b35b79603" target="_blank" rel="noopener noreferrer">Carrière Orléans 1 — Silv1</a>, CC BY 4.0. Упрощены геометрия и текстура; включены обе стороны стен, изменены масштаб, наклон и размещение.</p>
       <p className="nifl-map-legend">Дракон: <a href="https://sketchfab.com/3d-models/european-dragon-82f393a2e6c048ad80c171ce3b3a7b87" target="_blank" rel="noopener noreferrer">European Dragon — Nonexistent 101</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, геометрия, скелет и пять анимаций сохранены. Для пролётов над Нифльхеймом подготовлена отдельная облегчённая копия с одной анимацией полёта.</p>
       <p className="nifl-map-legend">Разрушенная башня: <a href="https://sketchfab.com/3d-models/collapesed-tower-984b012678be49a79c1509cdeeb53402" target="_blank" rel="noopener noreferrer">collapesed tower — portwindyroad</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшена текстура; изменены масштаб и размещение, расширен проход, добавлены двери и столкновения со стенами.</p>
       <p className="nifl-map-legend">Колодец: <a href="https://sketchfab.com/3d-models/good-ol-well-9eadcb31e4b445c8978e791fcce548fe" target="_blank" rel="noopener noreferrer">Good Ol' Well — mikelkel2</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, геометрия сохранена, изменены масштаб и размещение.</p>
