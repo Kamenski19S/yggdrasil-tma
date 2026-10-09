@@ -38,6 +38,8 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     let heroReady=false;
     const flightCamera=new THREE.Vector3(),flightTarget=new THREE.Vector3();
     const terrainMeshes:THREE.Mesh[]=[];
+    const crystalGroups:THREE.Group[]=[],crystalBounds:THREE.Box3[]=[];
+    const seatCrystals=()=>{crystalBounds.length=0;for(const group of crystalGroups){group.position.y=groundAt(group.position.x,group.position.z)-.05;group.updateMatrixWorld(true);crystalBounds.push(new THREE.Box3().setFromObject(group).expandByScalar(.5));}};
     const groundRay=new THREE.Raycaster(),groundOrigin=new THREE.Vector3(),groundDown=new THREE.Vector3(0,-1,0);
     let groundX=NaN,groundZ=NaN,groundY=0;
     const groundAt=(x:number,z:number)=>{
@@ -46,6 +48,16 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
       return Math.max(0,groundRay.intersectObjects(terrainMeshes,false)[0]?.point.y??0);
     };
     const load=async(file:string)=>new GLTFLoader().parseAsync(await cachedGlbBuffer(`${BASE}img/models/${file}`),`${BASE}img/models/`);
+    load('Magic_Crystals_Optimized.glb').then(gltf=>{
+      if(!alive){dispose(gltf.scene);assets.forEach(t=>t.dispose());return;}
+      const model=gltf.scene;model.updateMatrixWorld(true);
+      const bounds=new THREE.Box3().setFromObject(model),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
+      model.position.x-=center.x;model.position.y-=bounds.min.y;model.position.z-=center.z;
+      model.traverse(o=>{if(o instanceof THREE.Mesh)for(const material of Array.isArray(o.material)?o.material:[o.material])if(material instanceof THREE.MeshStandardMaterial){material.emissiveIntensity=.65;material.roughness=.5;}});
+      const placements=[[-26,18,3.1], [25,14,4],[-23,4,4.5],[27,-1,2.8],[-28,-13,3.7],[24,-19,4.7],[-25,-29,3.2],[28,-36,3.8],[-27,-46,4.3],[26,-53,3.5],[-19,-61,3],[19,-63,4],[-15,12,2.2],[16,-9,2.5]];
+      placements.forEach(([x,z,height],i)=>{const group=new THREE.Group();group.name='Магические кристаллы';group.add(model.clone(true));group.scale.setScalar(Math.min(height/Math.max(size.y,.01),5/Math.max(size.x,size.z,.01)));group.rotation.y=i*2.399;group.position.set(x,0,z);crystalGroups.push(group);scene.add(group);});
+      seatCrystals();
+    }).catch(()=>{if(alive)setStatus('Кристаллы не загрузились. Можно вернуться и попробовать снова.');});
     load('Whispering_Roots_Optimized.glb').then(gltf=>{
       if(!alive){dispose(gltf.scene);assets.forEach(t=>t.dispose());return;}
       const model=gltf.scene;
@@ -84,7 +96,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
         const mesh=new THREE.Mesh(geometry,Array.isArray(o.material)?materials:materials[0]);terrainMeshes.push(mesh);scene.add(mesh);
       });
       // Geometry and materials were cloned; shared textures now belong to the scene.
-      dispose(terrain);scene.updateMatrixWorld(true);groundX=groundZ=NaN;
+      dispose(terrain);scene.updateMatrixWorld(true);groundX=groundZ=NaN;seatCrystals();
     }).catch(()=>{if(alive)setStatus('Рельеф не загрузился. Вернись в Нифльхейм и попробуй снова.');});
     load('Dark_Side_Cave_Optimized.glb').then(gltf=>{
       if(!alive){dispose(gltf.scene);assets.forEach(t=>t.dispose());return;}
@@ -131,7 +143,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     const frame=(now:number)=>{
       if(!alive)return;const dt=Math.min((now-previous)/1000,.05);previous=now;
       let dx=0,dz=0;if(!document.hidden){dx=analog.current.x+(keys.has('d')||keys.has('ArrowRight')?1:0)-(keys.has('a')||keys.has('ArrowLeft')?1:0);dz=analog.current.z+(keys.has('s')||keys.has('ArrowDown')?1:0)-(keys.has('w')||keys.has('ArrowUp')?1:0);}
-      const length=Math.hypot(dx,dz);let moving=false;if(length>.08&&!encounter?.flying){dx/=Math.max(1,length);dz/=Math.max(1,length);const x=THREE.MathUtils.clamp(pos.x+dx*8.5*dt,-31,31),z=THREE.MathUtils.clamp(pos.z+dz*8.5*dt,-65,24.5);const blocked=!encounter?.flying&&dragonBounds&&x>dragonBounds.min.x&&x<dragonBounds.max.x&&z>dragonBounds.min.z&&z<dragonBounds.max.z;if(!blocked){moving=Math.hypot(x-pos.x,z-pos.z)>.001;pos.x=x;pos.z=z;}const target=Math.atan2(dx,dz);hero.rotation.y+=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y))*(1-Math.exp(-dt*14));}
+      const length=Math.hypot(dx,dz);let moving=false;if(length>.08&&!encounter?.flying){dx/=Math.max(1,length);dz/=Math.max(1,length);const x=THREE.MathUtils.clamp(pos.x+dx*8.5*dt,-31,31),z=THREE.MathUtils.clamp(pos.z+dz*8.5*dt,-65,24.5);const blocked=crystalBounds.some(b=>x>b.min.x&&x<b.max.x&&z>b.min.z&&z<b.max.z)||(!encounter?.flying&&dragonBounds&&x>dragonBounds.min.x&&x<dragonBounds.max.x&&z>dragonBounds.min.z&&z<dragonBounds.max.z);if(!blocked){moving=Math.hypot(x-pos.x,z-pos.z)>.001;pos.x=x;pos.z=z;}const target=Math.atan2(dx,dz);hero.rotation.y+=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y))*(1-Math.exp(-dt*14));}
       if(pos.x!==groundX||pos.z!==groundZ){groundY=groundAt(pos.x,pos.z);groundX=pos.x;groundZ=pos.z;}
       const action=moving?walk:idle;if(action&&action!==current){current?.fadeOut(.15);action.reset().fadeIn(.15).play();current=action;}mixer?.update(dt);encounter?.update(document.hidden?0:dt,pos,heroReady&&terrainMeshes.length>0);hero.position.set(pos.x,groundY,pos.z);
       const flying=encounter?.flying;
@@ -150,6 +162,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     {status&&<div role="status" style={{position:'absolute',top:85,left:12,right:12,color:'#fff',textAlign:'center',background:'#18232be6',padding:10,borderRadius:8}}>{status}</div>}
     <button className="mid3d-ui mid3d-joy" style={{padding:0,userSelect:'none'}} aria-label="Управление Викой" onPointerDown={e=>{e.preventDefault();pointer.current=e.pointerId;e.currentTarget.setPointerCapture(e.pointerId);steer(e);}} onPointerMove={steer} onPointerUp={clear} onPointerCancel={clear} onLostPointerCapture={clear}><img style={{width:'100%',height:'100%',pointerEvents:'none'}} src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/><span className="mid3d-knob" ref={knob}/></button>
     <div style={{position:'absolute',left:12,bottom:4,fontSize:10,color:'#aebac2',maxWidth:'55%'}}>Пещера: <a href="https://sketchfab.com/3d-models/dark-side-cave-e6347843eec64b408157dabfb8b196b2" target="_blank" rel="noopener noreferrer" style={{color:'inherit'}}>diaspora</a> · CC BY 4.0 · уменьшены текстуры, изменены масштаб и высота.</div>
+    <div style={{position:'absolute',right:12,bottom:4,fontSize:10,color:'#aebac2',maxWidth:'40%'}}>Кристаллы: <a href="https://sketchfab.com/3d-models/magic-crystals-f20b3376ef9a4dff8ad27f1402087c52" target="_blank" rel="noopener noreferrer" style={{color:'inherit'}}>Enn Shtyka</a> · CC BY 4.0 · уменьшены текстуры и масштаб.</div>
     {nearExit&&<button onClick={()=>{clear();exit.current();}} style={{position:'absolute',right:16,bottom:25,padding:'12px 16px',background:'#171e25',color:'#e4c78c',border:'2px solid #b39150',borderRadius:10}}>Открыть дверь · Нифльхейм</button>}
   </div>;
 }
