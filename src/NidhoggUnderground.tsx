@@ -101,7 +101,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     load('Dark_Side_Cave_Optimized.glb').then(gltf=>{
       if(!alive){dispose(gltf.scene);assets.forEach(t=>t.dispose());return;}
       const cave=gltf.scene;cave.updateMatrixWorld(true);
-      cave.traverse(o=>{if(o instanceof THREE.Mesh)for(const m of Array.isArray(o.material)?o.material:[o.material])if(m instanceof THREE.MeshStandardMaterial){m.color.set('#666b73');m.roughness=.95;m.metalness=0;m.emissive.set('#000000');m.emissiveMap=null;}});
+      cave.traverse(o=>{if(o instanceof THREE.Mesh)for(const m of Array.isArray(o.material)?o.material:[o.material])if(m instanceof THREE.MeshStandardMaterial){m.color.set('#666b73');m.roughness=.95;m.metalness=0;/* Keep the source emissive map and strength: red light inside the den. */}});
       const bounds=new THREE.Box3().setFromObject(cave),size=bounds.getSize(new THREE.Vector3());
       const scale=27/Math.max(size.x,size.z,.01);cave.scale.multiplyScalar(scale);
       // Raise the rock formation into a tall dragon den against the back wall.
@@ -109,11 +109,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
       const fitted=new THREE.Box3().setFromObject(cave),center=fitted.getCenter(new THREE.Vector3());
       cave.position.set(-center.x,-fitted.min.y,-67-fitted.min.z);
       scene.add(cave);
-      // Red magic marks the den entrance without tinting the whole chamber.
-      const entranceZ=cave.position.z+fitted.max.z+.12;
-      const glow=new THREE.Mesh(new THREE.TorusGeometry(1,.025,8,64),new THREE.MeshBasicMaterial({color:'#ff3028',transparent:true,opacity:.85,depthWrite:false,blending:THREE.AdditiveBlending}));
-      glow.name='Красное сияние входа в логово';glow.scale.set(2.1,3.3,1);glow.position.set(0,3.7,entranceZ);scene.add(glow);
-      const entranceLight=new THREE.PointLight('#ff2520',55,12,2);entranceLight.position.set(0,4,entranceZ+1);scene.add(entranceLight);
+
     }).catch(()=>{if(alive)setStatus('Каменная пещера не загрузилась. Можно вернуться и попробовать снова.');});
     load('Vika-3d-animated-optimized.glb').then(gltf=>{
       if(!alive){dispose(gltf.scene);assets.forEach(t=>t.dispose());return;}
