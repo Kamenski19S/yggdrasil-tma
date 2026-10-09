@@ -73,7 +73,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     scene.add(sun);scene.add(sun.target);
     const textures=new Set<THREE.Texture>();
     let flyover:ReturnType<typeof createDragonFlyover>|undefined;
-    cachedGlbBuffer(`${BASE}img/models/European_Dragon_Flyover_Lite.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(gltf=>{if(!alive){disposeObject(gltf.scene);textures.forEach(t=>t.dispose());return;}flyover=createDragonFlyover(scene,gltf.scene,gltf.animations,niflGroundY);}).catch(()=>{});
+    cachedGlbBuffer(`${BASE}img/models/European_Dragon_Optimized.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(gltf=>{if(!alive){disposeObject(gltf.scene);textures.forEach(t=>t.dispose());return;}flyover=createDragonFlyover(scene,gltf.scene,gltf.animations,niflGroundY);}).catch(()=>{});
     let entranceVeil:ReturnType<typeof addEntranceVeil>|undefined;
     let caveSpace:ReturnType<typeof createCaveSpace>|undefined;
     let forgeSpace:ReturnType<typeof createNiflheimForge>|undefined;
