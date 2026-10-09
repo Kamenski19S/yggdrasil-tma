@@ -35,24 +35,43 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
     source.dispose();o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();
   });
   const stone=new THREE.MeshStandardMaterial({color:'#53616b',roughness:1,side:THREE.DoubleSide});
-  const snow=new THREE.MeshStandardMaterial({color:'#d6e5ed',roughness:1});
-  const part=(x:number,y:number,z:number,sx:number,sy:number,sz:number,mat=stone)=>{const mesh=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),mat);mesh.position.set(x,y,z);mesh.receiveShadow=true;root.add(mesh);};
-  // A level entrance and a 30 by 20 metre room, with solid walls and ceiling.
-  part(-12,-.15,0,24,.3,7,snow);part(5,-.15,0,10,.3,7);part(25,-.15,0,30,.3,20);
-  part(25,3.5,-10.2,30,7,.4);part(25,3.5,10.2,30,7,.4);part(40.2,3.5,0,.4,7,20);
-  part(10,3.5,-6.75,.4,7,6.5);part(10,3.5,6.75,.4,7,6.5);part(25,7.1,0,30,.2,20);
-  part(5,3,-3.7,10,6,.4);part(5,3,3.7,10,6,.4);part(5,6.1,0,10,.2,7.4);
+  // Broad, sloping interior walls replace the exposed rectangular entrance.
+  const vertices:number[]=[],indices:number[]=[],segments=48;
+  for(let ring=0;ring<2;ring++)for(let i=0;i<=segments;i++){
+    const angle=i/segments*Math.PI*2,r=ring===0?1:.22;
+    vertices.push(25+Math.cos(angle)*24*r,ring===0?-3:13,Math.sin(angle)*17*r);
+  }
+  for(let i=0;i<segments;i++){
+    const a=i,b=i+1,c=i+segments+1,d=c+1;
+    const cx=(vertices[a*3]+vertices[b*3])/2,cz=(vertices[a*3+2]+vertices[b*3+2])/2;
+    if(cx<12&&Math.abs(cz)<5)continue;
+    indices.push(a,c,b,b,c,d);
+  }
+  const wallsGeo=new THREE.BufferGeometry();wallsGeo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));wallsGeo.setIndex(indices);wallsGeo.computeVertexNormals();
+  const walls=new THREE.Mesh(wallsGeo,stone);walls.name='Наклонные стены внутреннего зала';root.add(walls);
+  const floor=new THREE.Mesh(new THREE.CircleGeometry(1,48),stone);floor.rotation.x=-Math.PI/2;floor.scale.set(24,17,1);floor.position.set(25,-3,0);root.add(floor);
+  const roof=new THREE.Mesh(new THREE.CircleGeometry(1,32),stone);roof.rotation.x=Math.PI/2;roof.scale.set(5.3,3.8,1);roof.position.set(25,13,0);root.add(roof);
+  const rampGeo=new THREE.BufferGeometry();rampGeo.setAttribute('position',new THREE.Float32BufferAttribute([0,0,-3.5,0,0,3.5,12,-3,-3.5,12,-3,3.5],3));rampGeo.setIndex([0,1,2,2,1,3]);rampGeo.computeVertexNormals();root.add(new THREE.Mesh(rampGeo,stone));
   const local=(x:number,z:number)=>root.worldToLocal(new THREE.Vector3(x,root.position.y,z));
-  const contains=(p:THREE.Vector3)=>(p.x>=-24&&p.x<=10&&Math.abs(p.z)<3.45)||(p.x>=10&&p.x<40&&Math.abs(p.z)<9.8);
+  const contains=(p:THREE.Vector3)=>(p.x>=0&&p.x<=12&&Math.abs(p.z)<3.3)||(p.x>=10&&((p.x-25)/23)**2+(p.z/16)**2<1);
   const inside=(x:number,z:number)=>contains(local(x,z));
-  const groundY=(x:number,z:number)=>inside(x,z)?root.position.y:undefined;
+  const groundY=(x:number,z:number)=>{const p=local(x,z);return contains(p)?root.position.y-(p.x<12?Math.max(0,p.x)*.25:3):undefined;};
+  const obstacleRay=new THREE.Raycaster();
   const blocked=(from:{x:number;z:number},next:{x:number;z:number})=>{
     const p=local(next.x,next.z),old=local(from.x,from.z);
     if(contains(p))return false;
-    if(contains(old)&&old.x>-23)return true;
-    return ((p.x-21)/44)**2+(p.z/29)**2<1;
+    if(contains(old)&&old.x>1)return true;
+    const direction=new THREE.Vector3(next.x-from.x,0,next.z-from.z),distance=direction.length();
+    if(!distance)return false;
+    obstacleRay.set(new THREE.Vector3(from.x,ground(from.x,from.z)+1.5,from.z),direction.normalize());obstacleRay.far=distance+.45;
+    return obstacleRay.intersectObjects(root.children.filter(o=>o.name==='Целая гора с входом'),true).length>0;
+  };
+  const addArch=(arch:THREE.Group)=>{
+    arch.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(arch),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
+    const fitted=new THREE.Group();fitted.name='Арка входа в снежную гору';
+    arch.position.sub(new THREE.Vector3(center.x,bounds.min.y,center.z));fitted.add(arch);fitted.scale.set(10/size.x,9/size.y,2/size.z);fitted.rotation.y=Math.PI/2;fitted.position.set(0,0,0);root.add(fitted);root.updateMatrixWorld(true);
   };
   root.updateMatrixWorld(true);
-  return {root,inside,groundY,blocked,terrainY:(x:number,z:number)=>inside(x,z)?root.position.y-.35:undefined,
-    camera:(x:number,z:number)=>new THREE.Vector3(x,root.position.y+4.8,z+7)};
+  return {root,addArch,inside,groundY,blocked,terrainY:(x:number,z:number)=>inside(x,z)?groundY(x,z)!-.35:undefined,
+    camera:(x:number,z:number)=>new THREE.Vector3(x,(groundY(x,z)??root.position.y)+4.8,z+7)};
 }
