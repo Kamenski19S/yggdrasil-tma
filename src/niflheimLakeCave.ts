@@ -84,6 +84,7 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
   const inside=(x:number,z:number)=>contains(local(x,z));
   const groundY=(x:number,z:number)=>{const p=local(x,z);return contains(p)?root.position.y-(p.x<12?Math.max(0,p.x)*.25:3):undefined;};
   let tableBounds:THREE.Box3|undefined;
+  let crystalTop:THREE.Vector3|undefined,orbMixer:THREE.AnimationMixer|undefined,orbPivot:THREE.Group|undefined;
   const obstacleRay=new THREE.Raycaster();
   const blocked=(from:{x:number;z:number},next:{x:number;z:number})=>{
     if(tableBounds&&next.x>tableBounds.min.x&&next.x<tableBounds.max.x&&next.z>tableBounds.min.z&&next.z<tableBounds.max.z)return true;
@@ -111,8 +112,19 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
     crystal.updateMatrixWorld(true);bounds.setFromObject(crystal);const center=bounds.getCenter(new THREE.Vector3());
     const top=root.worldToLocal(new THREE.Vector3(tableBounds.getCenter(new THREE.Vector3()).x,tableBounds.max.y-.4,tableBounds.getCenter(new THREE.Vector3()).z));
     crystal.position.add(new THREE.Vector3(top.x-center.x,top.y-bounds.min.y,top.z-center.z));
-    crystal.name='Большой кристалл на каменном столе';root.add(crystal);root.updateMatrixWorld(true);
+    crystal.traverse(o=>{if(o instanceof THREE.Mesh){for(const m of Array.isArray(o.material)?o.material:[o.material])if(m instanceof THREE.MeshStandardMaterial){m.color.set('#53e887');m.metalness=0;m.roughness=.28;m.emissive.set('#137c43');m.emissiveIntensity=.65;}o.castShadow=false;}});
+    crystal.name='Большой кристалл на каменном столе';root.add(crystal);root.updateMatrixWorld(true);const placed=new THREE.Box3().setFromObject(crystal);crystalTop=root.worldToLocal(new THREE.Vector3(placed.getCenter(new THREE.Vector3()).x,placed.max.y,placed.getCenter(new THREE.Vector3()).z));
   };
+  const addOrb=(orb:THREE.Group,animations:THREE.AnimationClip[])=>{
+    if(!crystalTop)return;
+    orb.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(orb),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
+    const scale=1.6/Math.max(size.x,size.y,size.z,.01);
+    orb.position.sub(center);const fitted=new THREE.Group();fitted.add(orb);fitted.scale.setScalar(scale);
+    orbPivot=new THREE.Group();orbPivot.name='Парящий магический шар';orbPivot.add(fitted);orbPivot.position.copy(crystalTop).add(new THREE.Vector3(0,size.y*scale/2+.45,0));root.add(orbPivot);
+    orbMixer=new THREE.AnimationMixer(orb);for(const clip of animations)if(clip.name==='Orb rotation')orbMixer.clipAction(clip).play();
+    root.updateMatrixWorld(true);
+  };
+  const update=(dt:number)=>{orbMixer?.update(dt);if(orbPivot)orbPivot.rotation.y+=dt*.25;};
   const addArch=(arch:THREE.Group)=>{
     arch.traverse(o=>{if(!(o instanceof THREE.Mesh))return;
       const old=Array.isArray(o.material)?o.material:[o.material];
@@ -125,6 +137,6 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
     arch.position.sub(new THREE.Vector3(center.x,bounds.min.y,center.z));fitted.add(arch);fitted.scale.set(10/size.x,9/size.y,2/size.z);fitted.rotation.y=Math.PI/2;fitted.position.set(0,0,0);root.add(fitted);root.updateMatrixWorld(true);
   };
   root.updateMatrixWorld(true);
-  return {root,addArch,addTable,addCrystal,inside,groundY,blocked,terrainY:(x:number,z:number)=>inside(x,z)?groundY(x,z)!-.35:undefined,
+  return {root,addArch,addTable,addCrystal,addOrb,update,inside,groundY,blocked,terrainY:(x:number,z:number)=>inside(x,z)?groundY(x,z)!-.35:undefined,
     camera:(x:number,z:number)=>new THREE.Vector3(x,(groundY(x,z)??root.position.y)+4.8,z+7)};
 }
