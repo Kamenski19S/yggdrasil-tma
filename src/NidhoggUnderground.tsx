@@ -129,9 +129,9 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     }).catch(()=>{if(alive)setStatus('Не удалось загрузить Вику. Вернись в Нифльхейм и попробуй снова.');});
     load('European_Dragon_Optimized.glb').then(gltf=>{
       if(!alive){dispose(gltf.scene);assets.forEach(t=>t.dispose());return;}
-      gltf.scene.traverse(o=>{if(o instanceof THREE.Mesh)for(const material of Array.isArray(o.material)?o.material:[o.material])if(material instanceof THREE.MeshStandardMaterial){material.emissive.set('#438cff');material.emissiveIntensity=.32;material.emissiveMap=null;}});
       encounter=createNidhoggEncounter(gltf.scene,gltf.animations,groundAt,()=>{});
-      const dragonGlow=new THREE.PointLight('#579cff',22,15,2);dragonGlow.position.set(0,6,3);encounter.anchor.add(dragonGlow);
+      // Side lighting keeps the original scales visible instead of filling the silhouette.
+      const dragonGlow=new THREE.PointLight('#9bc8ff',32,18,2);dragonGlow.position.set(-6,8,6);encounter.anchor.add(dragonGlow);
       scene.add(encounter.anchor);dragonMixer=encounter.mixer;dragonBounds=encounter.collision;
     }).catch(()=>{if(alive)setStatus('Дракон пока не загрузился. Выход из подземелья доступен.');});
     const keys=new Set<string>();const down=(e:KeyboardEvent)=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key)){e.preventDefault();keys.add(e.key);}};const up=(e:KeyboardEvent)=>keys.delete(e.key);const reset=()=>{keys.clear();clear();};
