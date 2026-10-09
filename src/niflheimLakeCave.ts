@@ -107,7 +107,7 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
       const mage=new THREE.Group();mage.name=`Маг ${i+1}`;
       const sculpture=statue.clone(true);mage.add(sculpture);
       mage.rotation.y=Math.atan2(31-spot.x,-spot.z);
-      const bounds=fitAt(mage,3.5,2.4,spot);ritualObstacles.push(bounds.clone().expandByScalar(.25));
+      const bounds=fitAt(mage,4.5,3.1,spot);ritualObstacles.push(bounds.clone().expandByScalar(.25));
       const direction=new THREE.Vector3(31-spot.x,0,-spot.z).normalize();const cupPosition=spot.clone().addScaledVector(direction,1.8);const cup=chalice.clone(true);cup.name=`Чаша мага ${i+1}`;const cupBounds=fitAt(cup,1.15,1.35,cupPosition);ritualObstacles.push(cupBounds.clone().expandByScalar(.2));
       const center=root.worldToLocal(cupBounds.getCenter(new THREE.Vector3()));const top=root.worldToLocal(new THREE.Vector3(cupBounds.getCenter(new THREE.Vector3()).x,cupBounds.max.y,cupBounds.getCenter(new THREE.Vector3()).z));const crystal=crystals.clone(true);crystal.name=`Кристалл в чаше ${i+1}`;fitAt(crystal,1.05,.8,new THREE.Vector3(center.x,top.y-.25,center.z));
     }
@@ -134,11 +134,11 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
   const addOrb=(orb:THREE.Group,animations:THREE.AnimationClip[])=>{
     if(!crystalTop)return;
     orb.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(orb),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
-    const scale=1.6/Math.max(size.x,size.y,size.z,.01);
+    const scale=1.2/Math.max(size.x,size.y,size.z,.01);
     orb.position.sub(center);const fitted=new THREE.Group();fitted.add(orb);fitted.scale.setScalar(scale);
     orbPivot=new THREE.Group();orbPivot.name='Парящий магический шар';orbPivot.add(fitted);orbPivot.position.copy(crystalTop).add(new THREE.Vector3(0,size.y*scale/2+.45,0));root.add(orbPivot);
     const canvas=document.createElement('canvas');canvas.width=canvas.height=64;const ctx=canvas.getContext('2d')!;const gradient=ctx.createRadialGradient(32,32,2,32,32,32);gradient.addColorStop(0,'rgba(70,255,140,.38)');gradient.addColorStop(.4,'rgba(40,230,110,.16)');gradient.addColorStop(1,'rgba(20,220,90,0)');ctx.fillStyle=gradient;ctx.fillRect(0,0,64,64);
-    const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(canvas),transparent:true,opacity:.45,depthWrite:false,blending:THREE.AdditiveBlending}));glow.name='Лёгкое зелёное сияние изумруда';glow.scale.set(2.7,2.7,1);orbPivot.add(glow);
+    const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(canvas),transparent:true,opacity:.45,depthWrite:false,blending:THREE.AdditiveBlending}));glow.name='Лёгкое зелёное сияние изумруда';glow.scale.set(2.05,2.05,1);orbPivot.add(glow);
     orbMixer=new THREE.AnimationMixer(orb);for(const clip of animations)if(clip.name==='Orb rotation')orbMixer.clipAction(clip).play();
     root.updateMatrixWorld(true);
   };
