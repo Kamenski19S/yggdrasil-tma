@@ -97,12 +97,21 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
   };
   const addTable=(table:THREE.Group)=>{
     table.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(table),size=bounds.getSize(new THREE.Vector3());
-    const scale=Math.min(5/Math.max(size.x,size.z,.01),2.3/Math.max(size.y,.01));
+    const scale=Math.min(7.5/Math.max(size.x,size.z,.01),3.45/Math.max(size.y,.01));
     table.scale.multiplyScalar(scale);table.updateMatrixWorld(true);bounds.setFromObject(table);
     const center=bounds.getCenter(new THREE.Vector3());
-    table.position.add(new THREE.Vector3(25-center.x,-3-bounds.min.y,-center.z));
+    table.position.add(new THREE.Vector3(31-center.x,-3-bounds.min.y,-center.z));
     table.name='Каменный стол — центр Снежной горы';table.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=false;o.receiveShadow=true;}});
     root.add(table);root.updateMatrixWorld(true);tableBounds=new THREE.Box3().setFromObject(table).expandByScalar(.4);
+  };
+  const addCrystal=(crystal:THREE.Group)=>{
+    if(!tableBounds)return;
+    crystal.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(crystal),size=bounds.getSize(new THREE.Vector3());
+    crystal.scale.multiplyScalar(Math.min(2.8/Math.max(size.y,.01),2.4/Math.max(size.x,size.z,.01)));
+    crystal.updateMatrixWorld(true);bounds.setFromObject(crystal);const center=bounds.getCenter(new THREE.Vector3());
+    const top=root.worldToLocal(new THREE.Vector3(tableBounds.getCenter(new THREE.Vector3()).x,tableBounds.max.y-.4,tableBounds.getCenter(new THREE.Vector3()).z));
+    crystal.position.add(new THREE.Vector3(top.x-center.x,top.y-bounds.min.y,top.z-center.z));
+    crystal.name='Большой кристалл на каменном столе';root.add(crystal);root.updateMatrixWorld(true);
   };
   const addArch=(arch:THREE.Group)=>{
     arch.traverse(o=>{if(!(o instanceof THREE.Mesh))return;
@@ -116,6 +125,6 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
     arch.position.sub(new THREE.Vector3(center.x,bounds.min.y,center.z));fitted.add(arch);fitted.scale.set(10/size.x,9/size.y,2/size.z);fitted.rotation.y=Math.PI/2;fitted.position.set(0,0,0);root.add(fitted);root.updateMatrixWorld(true);
   };
   root.updateMatrixWorld(true);
-  return {root,addArch,addTable,inside,groundY,blocked,terrainY:(x:number,z:number)=>inside(x,z)?groundY(x,z)!-.35:undefined,
+  return {root,addArch,addTable,addCrystal,inside,groundY,blocked,terrainY:(x:number,z:number)=>inside(x,z)?groundY(x,z)!-.35:undefined,
     camera:(x:number,z:number)=>new THREE.Vector3(x,(groundY(x,z)??root.position.y)+4.8,z+7)};
 }
