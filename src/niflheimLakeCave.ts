@@ -5,16 +5,16 @@ export function createLakeDescendingCave(model:THREE.Group,ground:(x:number,z:nu
   model.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(model);
   const centre=bounds.getCenter(new THREE.Vector3());
   model.position.set(-bounds.min.x,-bounds.min.y,-centre.z);
-  const slope=new THREE.Group();slope.add(model);slope.scale.setScalar(2);slope.rotation.z=-.18;
-  root.add(slope);root.rotation.y=Math.PI/2;root.position.set(-92,ground(-92,24),24);
+  const slope=new THREE.Group();slope.add(model);slope.scale.set(1.25,3,2.6);slope.rotation.z=-.18;
+  root.add(slope);root.rotation.y=Math.PI/2;root.position.set(-92,ground(-92,62),62);
   model.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=false;o.receiveShadow=true;for(const m of Array.isArray(o.material)?o.material:[o.material]){m.side=THREE.DoubleSide;m.needsUpdate=true;}}});
   root.updateMatrixWorld(true);
   const local=(x:number,z:number)=>root.worldToLocal(new THREE.Vector3(x,root.position.y,z));
-  const length=(bounds.max.x-bounds.min.x)*2*Math.cos(.18),width=(bounds.max.z-bounds.min.z);
+  const length=(bounds.max.x-bounds.min.x)*1.25*Math.cos(.18),width=(bounds.max.z-bounds.min.z)*1.3;
   const inside=(x:number,z:number)=>{const p=local(x,z);return p.x>0&&p.x<length&&Math.abs(p.z)<width-.5;};
   // A narrow stone ramp joins the scanned floor gaps into a continuous descent.
   const rampGeometry=new THREE.BufferGeometry();
-  rampGeometry.setAttribute('position',new THREE.Float32BufferAttribute([0,-.03,-2.5,0,-.03,2.5,length,-length*Math.tan(.18)-.03,-2.5,length,-length*Math.tan(.18)-.03,2.5],3));
+  rampGeometry.setAttribute('position',new THREE.Float32BufferAttribute([0,-.03,-3.25,0,-.03,3.25,length,-length*Math.tan(.18)-.03,-3.25,length,-length*Math.tan(.18)-.03,3.25],3));
   rampGeometry.setIndex([0,1,2,2,1,3]);rampGeometry.computeVertexNormals();
   const ramp=new THREE.Mesh(rampGeometry,new THREE.MeshStandardMaterial({color:'#6c655b',roughness:1,side:THREE.DoubleSide}));ramp.name='Каменный спуск';root.add(ramp);root.updateMatrixWorld(true);
   const expected=(x:number,z:number)=>root.position.y-local(x,z).x*Math.tan(.18);
