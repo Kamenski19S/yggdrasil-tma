@@ -94,6 +94,12 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
     return obstacleRay.intersectObjects(root.children.filter(o=>o.name==='Целая гора с входом'),true).length>0;
   };
   const addArch=(arch:THREE.Group)=>{
+    arch.traverse(o=>{if(!(o instanceof THREE.Mesh))return;
+      const old=Array.isArray(o.material)?o.material:[o.material];
+      const material=snowCover.clone();material.name='Арка — снежная текстура горы';
+      o.material=material;
+      for(const m of old){for(const value of Object.values(m))if(value instanceof THREE.Texture)value.dispose();m.dispose();}
+    });
     arch.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(arch),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
     const fitted=new THREE.Group();fitted.name='Арка входа в снежную гору';
     arch.position.sub(new THREE.Vector3(center.x,bounds.min.y,center.z));fitted.add(arch);fitted.scale.set(10/size.x,9/size.y,2/size.z);fitted.rotation.y=Math.PI/2;fitted.position.set(0,0,0);root.add(fitted);root.updateMatrixWorld(true);

@@ -1,5 +1,5 @@
 import terrainHeights from './niflheimTerrainHeights.json';
-export type NiflLocation={id:string;name:string;x:number;z:number;kind:'gate'|'shelter'|'river'|'cave'|'root'|'source'|'lair'|'lake'|'bridge'|'hall'|'lookout'|'forge';text:string};
+export type NiflLocation={id:string;name:string;x:number;z:number;kind:'gate'|'shelter'|'river'|'cave'|'root'|'source'|'lair'|'lake'|'bridge'|'hall'|'lookout'|'forge'|'mountain';text:string};
 export const NIFL_SCALE=2;
 export const NIFL_SOURCE={x:0,z:-49*NIFL_SCALE,rx:8*NIFL_SCALE,rz:7*NIFL_SCALE};
 export const NIFL_LOCATIONS:NiflLocation[]=([
@@ -15,6 +15,7 @@ export const NIFL_LOCATIONS:NiflLocation[]=([
   {id:'namesHall',name:'Зал забытых имён',x:-38,z:-39,kind:'hall',text:'Пустые плиты хранят имена, стёртые тьмой. Их возвращение поможет хранителям вспомнить своё прошлое.'},
   {id:'echoCave',name:'Пещера ледяного эха',x:41,z:32,kind:'cave',text:'Туман повторяет чужие голоса. Вике предстоит отличить настоящий зов о помощи от ловушки.'},
   {id:'forge',name:'Кузница хранителей',x:-9,z:45,kind:'forge',text:'В скальной пещере горит горн великана-кузнеца. Здесь можно выбрать золотой меч и золотой щит и укрепить снаряжение.'},
+  {id:'snowMountain',name:'Снежная гора',x:-43,z:48,kind:'mountain',text:'За заснеженной аркой открывается просторный каменный зал. Здесь тихо: под сводом горы укрываются от ледяного ветра.'},
   {id:'lookout',name:'Пересохшее русло',x:-18,z:-62,kind:'lookout',text:'Третья река ушла на северо-запад и пересохла. На дне глубокого русла остались трещины; древние корни нависают над пустым ложем.'}
 ] as NiflLocation[]).map(l=>({...l,x:l.x*NIFL_SCALE,z:l.z*NIFL_SCALE}));
 // One centreline drives both the carved bed and its water/ice surface.
