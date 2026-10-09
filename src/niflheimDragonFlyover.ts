@@ -9,7 +9,7 @@ export function createDragonFlyover(scene:THREE.Scene,model:THREE.Group,clips:TH
   const routes=[
     [[-140,110],[-65,72],[20,40],[90,-30],[120,-155]],
     [[120,100],[65,45],[-20,-5],[-90,-75],[-115,-155]]
-  ].map(points=>new THREE.CatmullRomCurve3(points.map(([x,z],i)=>new THREE.Vector3(x,ground(x,z)+28+Math.sin(i)*4,z)),false,'centripetal'));
+  ].map(points=>new THREE.CatmullRomCurve3(points.map(([x,z],i)=>new THREE.Vector3(x,ground(x,z)+18+Math.sin(i)*3,z)),false,'centripetal'));
   const frustum=new THREE.Frustum(),matrix=new THREE.Matrix4(),sphere=new THREE.Sphere(new THREE.Vector3(),14),direction=new THREE.Vector3();
   let elapsed=0,nextAt=20,flight=0,active=false,routeIndex=0,animationDebt=0;
   return {root,update(dt:number,camera:THREE.Camera,enabled:boolean){
