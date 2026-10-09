@@ -108,12 +108,12 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
   const addCrystal=(crystal:THREE.Group)=>{
     if(!tableBounds)return;
     crystal.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(crystal),size=bounds.getSize(new THREE.Vector3());
-    crystal.scale.multiplyScalar(Math.min(2.8/Math.max(size.y,.01),2.4/Math.max(size.x,size.z,.01)));
+    crystal.scale.multiplyScalar(Math.min(2.8/Math.max(size.y,.01),3.6/Math.max(size.x,size.z,.01)));
     crystal.updateMatrixWorld(true);bounds.setFromObject(crystal);const center=bounds.getCenter(new THREE.Vector3());
     const top=root.worldToLocal(new THREE.Vector3(tableBounds.getCenter(new THREE.Vector3()).x,tableBounds.max.y-.4,tableBounds.getCenter(new THREE.Vector3()).z));
     crystal.position.add(new THREE.Vector3(top.x-center.x,top.y-bounds.min.y,top.z-center.z));
-    crystal.traverse(o=>{if(o instanceof THREE.Mesh){for(const m of Array.isArray(o.material)?o.material:[o.material])if(m instanceof THREE.MeshStandardMaterial){m.color.set('#53e887');m.metalness=0;m.roughness=.28;m.emissive.set('#137c43');m.emissiveIntensity=.65;}o.castShadow=false;}});
-    crystal.name='Большой кристалл на каменном столе';root.add(crystal);root.updateMatrixWorld(true);const placed=new THREE.Box3().setFromObject(crystal);crystalTop=root.worldToLocal(new THREE.Vector3(placed.getCenter(new THREE.Vector3()).x,placed.max.y,placed.getCenter(new THREE.Vector3()).z));
+    crystal.traverse(o=>{if(o instanceof THREE.Mesh)o.castShadow=false;});
+    crystal.name='Кристаллы из космоса на каменном столе';root.add(crystal);root.updateMatrixWorld(true);const placed=new THREE.Box3().setFromObject(crystal);crystalTop=root.worldToLocal(new THREE.Vector3(placed.getCenter(new THREE.Vector3()).x,placed.max.y,placed.getCenter(new THREE.Vector3()).z));
   };
   const addOrb=(orb:THREE.Group,animations:THREE.AnimationClip[])=>{
     if(!crystalTop)return;
