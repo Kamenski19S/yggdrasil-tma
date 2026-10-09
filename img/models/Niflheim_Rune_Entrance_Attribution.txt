@@ -1,0 +1,6 @@
+Stone Arch — Teranox (https://sketchfab.com/Teranox1)
+https://sketchfab.com/3d-models/stone-arch-565793eb6528447c97223cfaf278d3f6
+Stylized Gothic Wall Torch — Galaxy Abundant (https://sketchfab.com/galaxyabundant)
+https://sketchfab.com/3d-models/stylized-gothic-wall-torch-eeee48e402a74a038d63b01878ea40c1
+Both: CC BY 4.0 — https://creativecommons.org/licenses/by/4.0/
+Changes: lossless texture compression at original resolution, duplicate attribute removal, high precision geometry quantization and meshopt compression, scale and placement. Blue flame and lighting added in game. Two torches share geometry and materials.
