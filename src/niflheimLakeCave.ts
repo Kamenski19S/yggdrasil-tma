@@ -1,71 +1,58 @@
 import * as THREE from 'three';
 
-export function createLakeDescendingCave(model:THREE.Group,ground:(x:number,z:number)=>number){
-  const root=new THREE.Group();root.name='Длинная пещера — спуск у озера';
-  model.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(model);
-  const centre=bounds.getCenter(new THREE.Vector3());
-  model.position.set(-bounds.min.x,-bounds.min.y,-centre.z);
-  const slope=new THREE.Group();slope.add(model);slope.scale.set(1.7,4,3.2);slope.rotation.z=-.18;
-  root.add(slope);root.rotation.y=Math.PI/2;root.position.set(-86,ground(-86,96),96);
-  model.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=false;o.receiveShadow=true;for(const m of Array.isArray(o.material)?o.material:[o.material]){m.side=THREE.DoubleSide;m.needsUpdate=true;}}});
-  root.updateMatrixWorld(true);
-  const local=(x:number,z:number)=>root.worldToLocal(new THREE.Vector3(x,root.position.y,z));
-  const length=(bounds.max.x-bounds.min.x)*1.7*Math.cos(.18),width=(bounds.max.z-bounds.min.z)*1.6;
-  // Trim the scanned exterior at the mouth and rear; retain the inner passage.
-  const inverseRoot=root.matrixWorld.clone().invert();
-  model.traverse(o=>{if(!(o instanceof THREE.Mesh))return;
-    const geometry=o.geometry.clone(),positions=geometry.getAttribute('position'),index=geometry.getIndex(),keep:number[]=[];
-    const transform=new THREE.Matrix4().multiplyMatrices(inverseRoot,o.matrixWorld),point=new THREE.Vector3();
-    const vertices=Array.from({length:positions.count},(_,i)=>point.fromBufferAttribute(positions,i).applyMatrix4(transform).clone());
-    for(let i=0;i<(index?.count??positions.count);i+=3){
-      const ids=[0,1,2].map(k=>index?index.getX(i+k):i+k),points=ids.map(id=>vertices[id]);
-      const x=points.reduce((v,p)=>v+p.x,0)/3,y=points.reduce((v,p)=>v+p.y,0)/3,z=points.reduce((v,p)=>v+p.z,0)/3;
-      if(x>length-5||(x<11&&(Math.abs(z)>6.5||y>11.5)))continue;
-      keep.push(...ids);
+type Vertex={p:THREE.Vector3;uv:THREE.Vector2};
+// Split at the doorway planes rather than discarding whole mountain triangles.
+function split(poly:Vertex[],axis:'x'|'y'|'z',value:number,sign:number){
+  const inside:Vertex[]=[],outside:Vertex[]=[];
+  for(let i=0;i<poly.length;i++){
+    const a=poly[i],b=poly[(i+1)%poly.length],da=(a.p[axis]-value)*sign,db=(b.p[axis]-value)*sign;
+    (da>=0?inside:outside).push(a);
+    if((da>=0)!==(db>=0)){
+      const t=da/(da-db),v={p:a.p.clone().lerp(b.p,t),uv:a.uv.clone().lerp(b.uv,t)};
+      inside.push(v);outside.push(v);
     }
-    geometry.setIndex(keep);geometry.computeBoundingBox();geometry.computeBoundingSphere();o.geometry.dispose();o.geometry=geometry;
+  }
+  return {inside,outside};
+}
+
+export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z:number)=>number){
+  const root=new THREE.Group();root.name='Снежная гора — внутренний зал';
+  root.rotation.y=Math.PI/2;root.position.set(-86,ground(-86,96),96);
+  mountain.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(mountain),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
+  const planes:[ 'x'|'y'|'z',number,number][]=[['x',-24,1],['x',14,-1],['y',-5,1],['y',6,-1],['z',-3.5,1],['z',3.5,-1]];
+  mountain.traverse(o=>{if(!(o instanceof THREE.Mesh))return;
+    const source=o.geometry.clone().applyMatrix4(o.matrixWorld),p=source.getAttribute('position'),uv=source.getAttribute('uv'),idx=source.getIndex();
+    const positions:number[]=[],uvs:number[]=[];
+    const emit=(poly:Vertex[])=>{for(let i=1;i<poly.length-1;i++)for(const v of [poly[0],poly[i],poly[i+1]]){positions.push(v.p.x,v.p.y,v.p.z);uvs.push(v.uv.x,v.uv.y);}};
+    for(let i=0;i<(idx?.count??p.count);i+=3){
+      let pending:Vertex[]=[0,1,2].map(k=>{const id=idx?idx.getX(i+k):i+k;return {p:new THREE.Vector3((p.getX(id)-center.x)/size.x*88+21,(p.getY(id)-box.min.y)/size.y*30-4,(p.getZ(id)-center.z)/size.z*58),uv:new THREE.Vector2(uv?.getX(id)??0,uv?.getY(id)??0)};});
+      for(const [axis,value,sign] of planes){if(pending.length<3)break;const parts=split(pending,axis,value,sign);if(parts.outside.length>=3)emit(parts.outside);pending=parts.inside;}
+      // Only the final portion inside all six planes is removed.
+    }
+    const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));geometry.computeVertexNormals();geometry.computeBoundingSphere();
+    const mats=(Array.isArray(o.material)?o.material:[o.material]).map(m=>{const copy=m.clone();copy.side=THREE.FrontSide;return copy;});
+    const shell=new THREE.Mesh(geometry,Array.isArray(o.material)?mats:mats[0]);shell.name='Целая гора с входом';shell.receiveShadow=true;root.add(shell);
+    source.dispose();o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();
   });
-  const inside=(x:number,z:number)=>{const p=local(x,z);return p.x>0&&p.x<length&&Math.abs(p.z)<width-.5;};
-  // A narrow stone ramp joins the scanned floor gaps into a continuous descent.
-  const rampGeometry=new THREE.BufferGeometry();
-  rampGeometry.setAttribute('position',new THREE.Float32BufferAttribute([0,-.03,-4,0,-.03,4,length,-length*Math.tan(.18)-.03,-4,length,-length*Math.tan(.18)-.03,4],3));
-  rampGeometry.setIndex([0,1,2,2,1,3]);rampGeometry.computeVertexNormals();
-  const ramp=new THREE.Mesh(rampGeometry,new THREE.MeshStandardMaterial({color:'#6c655b',roughness:1,side:THREE.DoubleSide}));ramp.name='Каменный спуск';root.add(ramp);root.updateMatrixWorld(true);
-  const expected=(x:number,z:number)=>root.position.y-local(x,z).x*Math.tan(.18);
-  const ray=new THREE.Raycaster(),down=new THREE.Vector3(0,-1,0);
-  const groundY=(x:number,z:number)=>{
-    if(!inside(x,z))return undefined;
-    const p=local(x,z);if(Math.abs(p.z)<3.8)return expected(x,z)-.03;
-    ray.set(new THREE.Vector3(x,expected(x,z)+2.5,z),down);ray.far=8;
-    const hit=ray.intersectObject(root,true).find(h=>h.face&&h.face.normal.clone().transformDirection(h.object.matrixWorld).y>.3);
-    return hit?.point.y;
-  };
+  const stone=new THREE.MeshStandardMaterial({color:'#53616b',roughness:1,side:THREE.DoubleSide});
+  const snow=new THREE.MeshStandardMaterial({color:'#d6e5ed',roughness:1});
+  const part=(x:number,y:number,z:number,sx:number,sy:number,sz:number,mat=stone)=>{const mesh=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),mat);mesh.position.set(x,y,z);mesh.receiveShadow=true;root.add(mesh);};
+  // A level entrance and a 30 by 20 metre room, with solid walls and ceiling.
+  part(-12,-.15,0,24,.3,7,snow);part(5,-.15,0,10,.3,7);part(25,-.15,0,30,.3,20);
+  part(25,3.5,-10.2,30,7,.4);part(25,3.5,10.2,30,7,.4);part(40.2,3.5,0,.4,7,20);
+  part(10,3.5,-6.75,.4,7,6.5);part(10,3.5,6.75,.4,7,6.5);part(25,7.1,0,30,.2,20);
+  part(5,3,-3.7,10,6,.4);part(5,3,3.7,10,6,.4);part(5,6.1,0,10,.2,7.4);
+  const local=(x:number,z:number)=>root.worldToLocal(new THREE.Vector3(x,root.position.y,z));
+  const contains=(p:THREE.Vector3)=>(p.x>=-24&&p.x<=10&&Math.abs(p.z)<3.45)||(p.x>=10&&p.x<40&&Math.abs(p.z)<9.8);
+  const inside=(x:number,z:number)=>contains(local(x,z));
+  const groundY=(x:number,z:number)=>inside(x,z)?root.position.y:undefined;
   const blocked=(from:{x:number;z:number},next:{x:number;z:number})=>{
-    if(!inside(next.x,next.z))return inside(from.x,from.z)&&local(from.x,from.z).x>2;
-    const y=groundY(next.x,next.z),old=groundY(from.x,from.z)??ground(from.x,from.z);
-    return y===undefined||y-old>.85||old-y>1.4;
+    const p=local(next.x,next.z),old=local(from.x,from.z);
+    if(contains(p))return false;
+    if(contains(old)&&old.x>-23)return true;
+    return ((p.x-21)/44)**2+(p.z/29)**2<1;
   };
-  const addMountain=(mountain:THREE.Group)=>{
-    mountain.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(mountain),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
-    const shell=new THREE.Group();shell.name='Снежная гора вокруг пещеры';
-    mountain.traverse(o=>{if(!(o instanceof THREE.Mesh))return;
-      const geometry=o.geometry.clone().applyMatrix4(o.matrixWorld),p=geometry.getAttribute('position');
-      for(let i=0;i<p.count;i++)p.setXYZ(i,(p.getX(i)-center.x)/Math.max(size.x,.001)*(length+46)+length*.5,(p.getY(i)-box.min.y)/Math.max(size.y,.001)*30-4,(p.getZ(i)-center.z)/Math.max(size.z,.001)*58);
-      const index=geometry.getIndex(),keep:number[]=[];
-      for(let i=0;i<(index?.count??p.count);i+=3){
-        const ids=[0,1,2].map(k=>index?index.getX(i+k):i+k);
-        const xs=ids.map(id=>p.getX(id)),ys=ids.map(id=>p.getY(id)),zs=ids.map(id=>p.getZ(id));
-        // Remove shell triangles crossing the mouth, including its approach.
-        const mouth=Math.min(...xs)<19&&Math.max(...xs)>-24&&Math.min(...zs)<7&&Math.max(...zs)>-7&&Math.min(...ys)<12.5;
-        const floor=Math.min(...xs)<length&&Math.max(...xs)>0&&Math.min(...zs)<5&&Math.max(...zs)>-5&&Math.max(...ys)<3;
-        if(!mouth&&!floor)keep.push(...ids);
-      }
-      geometry.setIndex(keep);geometry.computeVertexNormals();geometry.computeBoundingSphere();
-      const mats=(Array.isArray(o.material)?o.material:[o.material]).map(m=>{const copy=m.clone();copy.side=THREE.FrontSide;return copy;});
-      const mesh=new THREE.Mesh(geometry,Array.isArray(o.material)?mats:mats[0]);mesh.receiveShadow=true;shell.add(mesh);o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();
-    });
-    root.add(shell);root.updateMatrixWorld(true);
-  };
-  return {root,addMountain,inside,groundY,blocked,terrainY:(x:number,z:number)=>inside(x,z)?expected(x,z)-1:undefined,
-    camera:(x:number,z:number)=>new THREE.Vector3(x,(groundY(x,z)??expected(x,z))+4.8,z+7)};
+  root.updateMatrixWorld(true);
+  return {root,inside,groundY,blocked,terrainY:(x:number,z:number)=>inside(x,z)?root.position.y-.35:undefined,
+    camera:(x:number,z:number)=>new THREE.Vector3(x,root.position.y+4.8,z+7)};
 }
