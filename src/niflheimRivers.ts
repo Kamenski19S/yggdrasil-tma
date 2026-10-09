@@ -104,20 +104,10 @@ export function addNiflheimRivers(scene:THREE.Scene,base:string){
       diffuseColor.rgb=mix(diffuseColor.rgb,underIce,taint);
     `);
   };
-  const dryCanvas=document.createElement('canvas');dryCanvas.width=dryCanvas.height=256;
-  const dryCtx=dryCanvas.getContext('2d')!;dryCtx.fillStyle='#82766b';dryCtx.fillRect(0,0,256,256);
-  for(let i=0;i<1600;i++){dryCtx.fillStyle=i%2?'#958778':'#71665c';dryCtx.fillRect(hash(i*3)*256,hash(i*3+1)*256,2,2);}
-  // Repeating fractured soil tiles; no extra geometry or downloads.
-  const crack=new Path2D();
-  for(let row=0;row<9;row++)for(let col=0;col<9;col++){
-    const x=col*32,y=row*32,k=row*9+col;
-    crack.moveTo(x,y);crack.lineTo(x+16+(hash(k)-.5)*16,y+8);crack.lineTo(x+32,y);
-    crack.moveTo(x,y);crack.lineTo(x+8,y+16+(hash(k+90)-.5)*16);crack.lineTo(x,y+32);
-  }
-  dryCtx.strokeStyle='#b5a18a';dryCtx.lineWidth=3;dryCtx.stroke(crack);
-  dryCtx.strokeStyle='#302b29';dryCtx.lineWidth=1.3;dryCtx.stroke(crack);
-  const soil=new THREE.CanvasTexture(dryCanvas);soil.colorSpace=THREE.SRGBColorSpace;soil.wrapS=soil.wrapT=THREE.RepeatWrapping;
-  const dry=new THREE.MeshStandardMaterial({map:soil,color:'#b9afa2',roughness:1,side:THREE.DoubleSide});
+  const dry=new THREE.MeshStandardMaterial({color:'#ffffff',roughness:1,side:THREE.DoubleSide});
+  new THREE.TextureLoader().load(`${base}img/models/Niflheim_Dry_Riverbed.png`,soil=>{
+    if(disposed){soil.dispose();return;}soil.colorSpace=THREE.SRGBColorSpace;soil.wrapS=soil.wrapT=THREE.RepeatWrapping;dry.map=soil;dry.needsUpdate=true;
+  });
   let living:THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>|undefined;
   NIFL_RIVERS.forEach((points,index)=>{
     const mesh=new THREE.Mesh(createNiflRiverGeometry(points,NIFL_RIVER_WIDTHS[index]),index===NIFL_DRY_RIVER?dry:index===NIFL_LIVING_RIVER?water:taintedIce);
