@@ -1,5 +1,6 @@
 import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
+import {createNidhoggEncounter} from './nidhoggEncounter';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {BASE,cachedGlbBuffer,WEAPON_ASSET,textureSteelOnWeapon,type HeroWeapon} from './core';
 
@@ -33,7 +34,9 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     const wood=new THREE.MeshStandardMaterial({color:'#48352b',roughness:1});box(6,9,.4,0,4.5,26.8,wood);box(7,.7,1,0,9.3,26.6);box(.7,9.3,1,-3.4,4.65,26.6);box(.7,9.3,1,3.4,4.65,26.6);
     const hero=new THREE.Group();scene.add(hero);const pos={x:0,z:19};hero.rotation.y=Math.PI;
     let mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,current:THREE.AnimationAction|undefined,dragonMixer:THREE.AnimationMixer|undefined;
-    let dragonBounds:THREE.Box3|undefined;
+    let dragonBounds:THREE.Box3|undefined,encounter:ReturnType<typeof createNidhoggEncounter>|undefined;
+    let heroReady=false;
+    const flightCamera=new THREE.Vector3(),flightTarget=new THREE.Vector3();
     const terrainMeshes:THREE.Mesh[]=[];
     const groundRay=new THREE.Raycaster(),groundOrigin=new THREE.Vector3(),groundDown=new THREE.Vector3(0,-1,0);
     let groundX=NaN,groundZ=NaN,groundY=0;
@@ -54,7 +57,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
       for(const placement of placements){
         const anchor=new THREE.Group();anchor.name='Корни с потолка вокруг логова';
         const roots=model.clone(true);roots.position.set(-center.x,-bounds.max.y,-center.z);anchor.add(roots);
-        anchor.scale.set(placement.width/Math.max(size.x,.01),29/Math.max(size.y,.01),placement.depth/Math.max(size.z,.01));
+        anchor.scale.set(placement.width/Math.max(size.x,.01),33/Math.max(size.y,.01),placement.depth/Math.max(size.z,.01));
         anchor.rotation.y=placement.yaw;anchor.position.set(placement.x,37.8,placement.z);scene.add(anchor);
       }
     }).catch(()=>{if(alive)setStatus('Корни не загрузились. Можно вернуться и попробовать снова.');});
@@ -109,12 +112,12 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
       }).catch(()=>{});
       const hand=bone('RightHand'),arm=bone('LeftForeArm');if(hand)equip(weapon==='default'?'Sword.glb':WEAPON_ASSET[weapon],hand,false);if(arm&&shieldEquipped)equip(shieldAsset,arm,true);
       mixer=new THREE.AnimationMixer(model);const idleClip=THREE.AnimationClip.findByName(gltf.animations,'idle')||THREE.AnimationClip.findByName(gltf.animations,'sword_idle')||gltf.animations[0];const walkClip=THREE.AnimationClip.findByName(gltf.animations,'walk_loop')||THREE.AnimationClip.findByName(gltf.animations,'walk')||idleClip;
-      if(idleClip)idle=mixer.clipAction(idleClip);if(walkClip)walk=mixer.clipAction(walkClip);idle?.play();current=idle;setStatus('');
+      if(idleClip)idle=mixer.clipAction(idleClip);if(walkClip)walk=mixer.clipAction(walkClip);idle?.play();current=idle;heroReady=true;setStatus('');
     }).catch(()=>{if(alive)setStatus('Не удалось загрузить Вику. Вернись в Нифльхейм и попробуй снова.');});
     load('European_Dragon_Optimized.glb').then(gltf=>{
       if(!alive){dispose(gltf.scene);assets.forEach(t=>t.dispose());return;}
-      const dragon=gltf.scene;dragon.updateMatrixWorld(true);let bounds=new THREE.Box3().setFromObject(dragon),size=bounds.getSize(new THREE.Vector3());dragon.scale.multiplyScalar(Math.min(13/Math.max(size.y,.01),24/Math.max(size.x,size.z,.01)));dragon.updateMatrixWorld(true);bounds=new THREE.Box3().setFromObject(dragon);const center=bounds.getCenter(new THREE.Vector3());dragon.position.set(-center.x,-bounds.min.y,-35-center.z);scene.add(dragon);dragonBounds=new THREE.Box3().setFromObject(dragon).expandByScalar(1.2);
-      const clip=gltf.animations.find(a=>/idle|rest|breath/i.test(a.name));if(clip){dragonMixer=new THREE.AnimationMixer(dragon);dragonMixer.clipAction(clip).play();}
+      encounter=createNidhoggEncounter(gltf.scene,gltf.animations,groundAt,text=>{if(alive)setStatus(text);});
+      scene.add(encounter.anchor);dragonMixer=encounter.mixer;dragonBounds=encounter.collision;
     }).catch(()=>{if(alive)setStatus('Дракон пока не загрузился. Выход из подземелья доступен.');});
     const keys=new Set<string>();const down=(e:KeyboardEvent)=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key)){e.preventDefault();keys.add(e.key);}};const up=(e:KeyboardEvent)=>keys.delete(e.key);const reset=()=>{keys.clear();clear();};
     window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',reset);document.addEventListener('visibilitychange',reset);
@@ -123,10 +126,14 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     const frame=(now:number)=>{
       if(!alive)return;const dt=Math.min((now-previous)/1000,.05);previous=now;
       let dx=0,dz=0;if(!document.hidden){dx=analog.current.x+(keys.has('d')||keys.has('ArrowRight')?1:0)-(keys.has('a')||keys.has('ArrowLeft')?1:0);dz=analog.current.z+(keys.has('s')||keys.has('ArrowDown')?1:0)-(keys.has('w')||keys.has('ArrowUp')?1:0);}
-      const length=Math.hypot(dx,dz);let moving=false;if(length>.08){dx/=Math.max(1,length);dz/=Math.max(1,length);const x=THREE.MathUtils.clamp(pos.x+dx*8.5*dt,-31,31),z=THREE.MathUtils.clamp(pos.z+dz*8.5*dt,-65,24.5);const blocked=dragonBounds&&x>dragonBounds.min.x&&x<dragonBounds.max.x&&z>dragonBounds.min.z&&z<dragonBounds.max.z;if(!blocked){moving=Math.hypot(x-pos.x,z-pos.z)>.001;pos.x=x;pos.z=z;}const target=Math.atan2(dx,dz);hero.rotation.y+=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y))*(1-Math.exp(-dt*14));}
+      const length=Math.hypot(dx,dz);let moving=false;if(length>.08&&!encounter?.flying){dx/=Math.max(1,length);dz/=Math.max(1,length);const x=THREE.MathUtils.clamp(pos.x+dx*8.5*dt,-31,31),z=THREE.MathUtils.clamp(pos.z+dz*8.5*dt,-65,24.5);const blocked=!encounter?.flying&&dragonBounds&&x>dragonBounds.min.x&&x<dragonBounds.max.x&&z>dragonBounds.min.z&&z<dragonBounds.max.z;if(!blocked){moving=Math.hypot(x-pos.x,z-pos.z)>.001;pos.x=x;pos.z=z;}const target=Math.atan2(dx,dz);hero.rotation.y+=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y))*(1-Math.exp(-dt*14));}
       if(pos.x!==groundX||pos.z!==groundZ){groundY=groundAt(pos.x,pos.z);groundX=pos.x;groundZ=pos.z;}
-      const action=moving?walk:idle;if(action&&action!==current){current?.fadeOut(.15);action.reset().fadeIn(.15).play();current=action;}mixer?.update(dt);dragonMixer?.update(dt);hero.position.set(pos.x,groundY,pos.z);
-      camera.position.lerp(new THREE.Vector3(pos.x*.65,groundY+10,pos.z+16),1-Math.exp(-dt*4));camera.lookAt(pos.x,groundY+3.5,pos.z-8);
+      const action=moving?walk:idle;if(action&&action!==current){current?.fadeOut(.15);action.reset().fadeIn(.15).play();current=action;}mixer?.update(dt);encounter?.update(document.hidden?0:dt,pos,heroReady&&terrainMeshes.length>0);hero.position.set(pos.x,groundY,pos.z);
+      const flying=encounter?.flying;
+      flightCamera.set(pos.x*.4,flying?21:groundY+10,pos.z+(flying?25:16));
+      flightTarget.set(pos.x,groundY+3.5,pos.z-8);
+      if(flying)flightTarget.lerp(encounter!.anchor.position,.6);
+      camera.position.lerp(flightCamera,1-Math.exp(-dt*4));camera.lookAt(flightTarget);
       const near=Math.abs(pos.x)<5&&pos.z>20;if(near!==wasNear){wasNear=near;setNearExit(near);}renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
     return()=>{alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',reset);document.removeEventListener('visibilitychange',reset);reset();mixer?.stopAllAction();dragonMixer?.stopAllAction();dispose(scene);assets.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();};
