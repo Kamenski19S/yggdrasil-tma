@@ -28,9 +28,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     box(72,1,100,0,-.5,-21,floorMat);box(2,38,100,-36,19,-21);box(2,38,100,36,19,-21);box(72,38,2,0,19,-71);box(72,38,2,0,19,29);box(72,1,100,0,38,-21);
     const rockGeometry=new THREE.DodecahedronGeometry(1,1);
     for(let i=0;i<40;i++){const mesh=new THREE.Mesh(rockGeometry,stone);const side=i%2?-1:1;mesh.position.set(side*(33.5+Math.sin(i)*.7),12,-66+Math.floor(i/2)*4.7);mesh.scale.set(2.7,14+Math.sin(i*2)*3,3.5);mesh.rotation.y=i*.9;scene.add(mesh);}
-    // Roots and cool lamps mark the chamber without adding another world renderer.
-    const rootMat=new THREE.MeshStandardMaterial({color:'#332c25',roughness:1});
-    for(const side of [-1,1])for(let i=0;i<4;i++){const root=new THREE.Mesh(new THREE.CylinderGeometry(.4,.8,13,8),rootMat);root.position.set(side*30,31,-55+i*22);root.rotation.z=side*.7;scene.add(root);}
+    // Cool lamps mark the chamber without adding another world renderer.
     for(const z of [-55,-32,-8,15])for(const x of [-31,31]){const lamp=new THREE.PointLight('#73cae9',90,18,2);lamp.position.set(x,7,z);scene.add(lamp);const crystal=new THREE.Mesh(new THREE.OctahedronGeometry(.7),new THREE.MeshBasicMaterial({color:'#83dcf5'}));crystal.position.copy(lamp.position);scene.add(crystal);}
     const wood=new THREE.MeshStandardMaterial({color:'#48352b',roughness:1});box(6,9,.4,0,4.5,26.8,wood);box(7,.7,1,0,9.3,26.6);box(.7,9.3,1,-3.4,4.65,26.6);box(.7,9.3,1,3.4,4.65,26.6);
     const hero=new THREE.Group();scene.add(hero);const pos={x:0,z:19};hero.rotation.y=Math.PI;
@@ -45,6 +43,21 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
       return Math.max(0,groundRay.intersectObjects(terrainMeshes,false)[0]?.point.y??0);
     };
     const load=async(file:string)=>new GLTFLoader().parseAsync(await cachedGlbBuffer(`${BASE}img/models/${file}`),`${BASE}img/models/`);
+    load('Whispering_Roots_Optimized.glb').then(gltf=>{
+      if(!alive){dispose(gltf.scene);assets.forEach(t=>t.dispose());return;}
+      const model=gltf.scene;
+      // The dense root base anchors to the ceiling; fine branching tips hang down.
+      model.rotation.x+=Math.PI;model.updateMatrixWorld(true);
+      const bounds=new THREE.Box3().setFromObject(model),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
+      model.traverse(o=>{if(o instanceof THREE.Mesh)for(const m of Array.isArray(o.material)?o.material:[o.material])if(m instanceof THREE.MeshStandardMaterial){m.color.set('#8b8072');m.roughness=.96;m.emissive.set('#000000');}});
+      const placements=[{x:-15,z:-53,width:14,depth:25,yaw:-.12},{x:15,z:-53,width:14,depth:25,yaw:.12},{x:0,z:-64,width:28,depth:11,yaw:0}];
+      for(const placement of placements){
+        const anchor=new THREE.Group();anchor.name='Корни с потолка вокруг логова';
+        const roots=model.clone(true);roots.position.set(-center.x,-bounds.max.y,-center.z);anchor.add(roots);
+        anchor.scale.set(placement.width/Math.max(size.x,.01),29/Math.max(size.y,.01),placement.depth/Math.max(size.z,.01));
+        anchor.rotation.y=placement.yaw;anchor.position.set(placement.x,37.8,placement.z);scene.add(anchor);
+      }
+    }).catch(()=>{if(alive)setStatus('Корни не загрузились. Можно вернуться и попробовать снова.');});
     load('The_Hills_Optimized.glb').then(gltf=>{
       if(!alive){dispose(gltf.scene);assets.forEach(t=>t.dispose());return;}
       const terrain=gltf.scene;terrain.updateMatrixWorld(true);
@@ -73,6 +86,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     load('Dark_Side_Cave_Optimized.glb').then(gltf=>{
       if(!alive){dispose(gltf.scene);assets.forEach(t=>t.dispose());return;}
       const cave=gltf.scene;cave.updateMatrixWorld(true);
+      cave.traverse(o=>{if(o instanceof THREE.Mesh)for(const m of Array.isArray(o.material)?o.material:[o.material])if(m instanceof THREE.MeshStandardMaterial){m.color.set('#666b73');m.roughness=.95;m.metalness=0;m.emissive.set('#000000');m.emissiveMap=null;}});
       const bounds=new THREE.Box3().setFromObject(cave),size=bounds.getSize(new THREE.Vector3());
       const scale=27/Math.max(size.x,size.z,.01);cave.scale.multiplyScalar(scale);
       // Raise the rock formation into a tall dragon den against the back wall.
