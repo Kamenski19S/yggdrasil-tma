@@ -102,17 +102,14 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
   const fitAt=(asset:THREE.Group,height:number,width:number,position:THREE.Vector3)=>{
     asset.updateMatrixWorld(true);const b=new THREE.Box3().setFromObject(asset),s=b.getSize(new THREE.Vector3());asset.scale.multiplyScalar(Math.min(height/Math.max(s.y,.00001),width/Math.max(s.x,s.z,.00001)));asset.updateMatrixWorld(true);b.setFromObject(asset);const c=b.getCenter(new THREE.Vector3());asset.position.add(new THREE.Vector3(position.x-c.x,position.y-b.min.y,position.z-c.z));root.add(asset);root.updateMatrixWorld(true);return new THREE.Box3().setFromObject(asset);
   };
-  const addRitual=(chalice:THREE.Group,crystals:THREE.Group)=>{
-    const robe=new THREE.MeshStandardMaterial({color:'#283343',roughness:1}),trim=new THREE.MeshStandardMaterial({color:'#b1a273',roughness:.8}),dark=new THREE.MeshBasicMaterial({color:'#10151d'});
+  const addRitual=(chalice:THREE.Group,crystals:THREE.Group,statue:THREE.Group)=>{
     for(const [i,spot] of mageSpots.entries()){
-      const mage=new THREE.Group();mage.name=`Маг ${i+1}`;mage.position.copy(spot);mage.rotation.y=Math.atan2(31-spot.x,-spot.z);
-      const body=new THREE.Mesh(new THREE.CylinderGeometry(.38,.72,2.55,12),robe);body.position.y=1.28;mage.add(body);
-      const hood=new THREE.Mesh(new THREE.SphereGeometry(.46,12,10),robe);hood.scale.set(1,1.2,1);hood.position.set(0,2.8,0);mage.add(hood);
-      const face=new THREE.Mesh(new THREE.CircleGeometry(.29,12),dark);face.position.set(0,2.8,.47);mage.add(face);
-      for(const x of [-.53,.53]){const sleeve=new THREE.Mesh(new THREE.CylinderGeometry(.23,.31,1.25,10),robe);sleeve.position.set(x,1.85,.12);sleeve.rotation.z=x*.38;mage.add(sleeve);}
-      const staff=new THREE.Mesh(new THREE.CylinderGeometry(.06,.08,3.1,8),trim);staff.position.set(.85,1.55,.4);mage.add(staff);root.add(mage);root.updateMatrixWorld(true);ritualObstacles.push(new THREE.Box3().setFromObject(mage).expandByScalar(.25));
-      const direction=new THREE.Vector3(31-spot.x,0,-spot.z).normalize();const cupPosition=spot.clone().addScaledVector(direction,1.8);const cup=chalice.clone(true);cup.name=`Чаша мага ${i+1}`;const bounds=fitAt(cup,1.15,1.35,cupPosition);ritualObstacles.push(bounds.clone().expandByScalar(.2));
-      const center=root.worldToLocal(bounds.getCenter(new THREE.Vector3()));const top=root.worldToLocal(new THREE.Vector3(bounds.getCenter(new THREE.Vector3()).x,bounds.max.y,bounds.getCenter(new THREE.Vector3()).z));const crystal=crystals.clone(true);crystal.name=`Кристалл в чаше ${i+1}`;fitAt(crystal,1.05,.8,new THREE.Vector3(center.x,top.y-.25,center.z));
+      const mage=new THREE.Group();mage.name=`Маг ${i+1}`;
+      const sculpture=statue.clone(true);mage.add(sculpture);
+      mage.rotation.y=Math.atan2(31-spot.x,-spot.z);
+      const bounds=fitAt(mage,3.5,2.4,spot);ritualObstacles.push(bounds.clone().expandByScalar(.25));
+      const direction=new THREE.Vector3(31-spot.x,0,-spot.z).normalize();const cupPosition=spot.clone().addScaledVector(direction,1.8);const cup=chalice.clone(true);cup.name=`Чаша мага ${i+1}`;const cupBounds=fitAt(cup,1.15,1.35,cupPosition);ritualObstacles.push(cupBounds.clone().expandByScalar(.2));
+      const center=root.worldToLocal(cupBounds.getCenter(new THREE.Vector3()));const top=root.worldToLocal(new THREE.Vector3(cupBounds.getCenter(new THREE.Vector3()).x,cupBounds.max.y,cupBounds.getCenter(new THREE.Vector3()).z));const crystal=crystals.clone(true);crystal.name=`Кристалл в чаше ${i+1}`;fitAt(crystal,1.05,.8,new THREE.Vector3(center.x,top.y-.25,center.z));
     }
   };
   const addTable=(table:THREE.Group)=>{
