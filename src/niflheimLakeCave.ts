@@ -11,6 +11,20 @@ export function createLakeDescendingCave(model:THREE.Group,ground:(x:number,z:nu
   root.updateMatrixWorld(true);
   const local=(x:number,z:number)=>root.worldToLocal(new THREE.Vector3(x,root.position.y,z));
   const length=(bounds.max.x-bounds.min.x)*1.7*Math.cos(.18),width=(bounds.max.z-bounds.min.z)*1.6;
+  // Trim the scanned exterior at the mouth and rear; retain the inner passage.
+  const inverseRoot=root.matrixWorld.clone().invert();
+  model.traverse(o=>{if(!(o instanceof THREE.Mesh))return;
+    const geometry=o.geometry.clone(),positions=geometry.getAttribute('position'),index=geometry.getIndex(),keep:number[]=[];
+    const transform=new THREE.Matrix4().multiplyMatrices(inverseRoot,o.matrixWorld),point=new THREE.Vector3();
+    const vertices=Array.from({length:positions.count},(_,i)=>point.fromBufferAttribute(positions,i).applyMatrix4(transform).clone());
+    for(let i=0;i<(index?.count??positions.count);i+=3){
+      const ids=[0,1,2].map(k=>index?index.getX(i+k):i+k),points=ids.map(id=>vertices[id]);
+      const x=points.reduce((v,p)=>v+p.x,0)/3,y=points.reduce((v,p)=>v+p.y,0)/3,z=points.reduce((v,p)=>v+p.z,0)/3;
+      if(x>length-5||(x<11&&(Math.abs(z)>6.5||y>11.5)))continue;
+      keep.push(...ids);
+    }
+    geometry.setIndex(keep);geometry.computeBoundingBox();geometry.computeBoundingSphere();o.geometry.dispose();o.geometry=geometry;
+  });
   const inside=(x:number,z:number)=>{const p=local(x,z);return p.x>0&&p.x<length&&Math.abs(p.z)<width-.5;};
   // A narrow stone ramp joins the scanned floor gaps into a continuous descent.
   const rampGeometry=new THREE.BufferGeometry();
@@ -36,13 +50,13 @@ export function createLakeDescendingCave(model:THREE.Group,ground:(x:number,z:nu
     const shell=new THREE.Group();shell.name='Снежная гора вокруг пещеры';
     mountain.traverse(o=>{if(!(o instanceof THREE.Mesh))return;
       const geometry=o.geometry.clone().applyMatrix4(o.matrixWorld),p=geometry.getAttribute('position');
-      for(let i=0;i<p.count;i++)p.setXYZ(i,(p.getX(i)-center.x)/Math.max(size.x,.001)*(length+18)+length*.5,(p.getY(i)-box.min.y)/Math.max(size.y,.001)*26-4,(p.getZ(i)-center.z)/Math.max(size.z,.001)*42);
+      for(let i=0;i<p.count;i++)p.setXYZ(i,(p.getX(i)-center.x)/Math.max(size.x,.001)*(length+46)+length*.5,(p.getY(i)-box.min.y)/Math.max(size.y,.001)*30-4,(p.getZ(i)-center.z)/Math.max(size.z,.001)*58);
       const index=geometry.getIndex(),keep:number[]=[];
       for(let i=0;i<(index?.count??p.count);i+=3){
         const ids=[0,1,2].map(k=>index?index.getX(i+k):i+k);
         const xs=ids.map(id=>p.getX(id)),ys=ids.map(id=>p.getY(id)),zs=ids.map(id=>p.getZ(id));
         // Remove shell triangles crossing the mouth, including its approach.
-        const mouth=Math.min(...xs)<13&&Math.max(...xs)>-10&&Math.min(...zs)<8&&Math.max(...zs)>-8&&Math.min(...ys)<13;
+        const mouth=Math.min(...xs)<19&&Math.max(...xs)>-24&&Math.min(...zs)<7&&Math.max(...zs)>-7&&Math.min(...ys)<12.5;
         const floor=Math.min(...xs)<length&&Math.max(...xs)>0&&Math.min(...zs)<5&&Math.max(...zs)>-5&&Math.max(...ys)<3;
         if(!mouth&&!floor)keep.push(...ids);
       }
