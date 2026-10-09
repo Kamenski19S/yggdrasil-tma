@@ -83,8 +83,10 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
   const contains=(p:THREE.Vector3)=>(p.x>=0&&p.x<=12&&Math.abs(p.z)<3.3)||(p.x>=10&&((p.x-25)/23)**2+(p.z/16)**2<1);
   const inside=(x:number,z:number)=>contains(local(x,z));
   const groundY=(x:number,z:number)=>{const p=local(x,z);return contains(p)?root.position.y-(p.x<12?Math.max(0,p.x)*.25:3):undefined;};
+  let tableBounds:THREE.Box3|undefined;
   const obstacleRay=new THREE.Raycaster();
   const blocked=(from:{x:number;z:number},next:{x:number;z:number})=>{
+    if(tableBounds&&next.x>tableBounds.min.x&&next.x<tableBounds.max.x&&next.z>tableBounds.min.z&&next.z<tableBounds.max.z)return true;
     const p=local(next.x,next.z),old=local(from.x,from.z);
     if(contains(p))return false;
     if(contains(old)&&old.x>1)return true;
@@ -92,6 +94,15 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
     if(!distance)return false;
     obstacleRay.set(new THREE.Vector3(from.x,ground(from.x,from.z)+1.5,from.z),direction.normalize());obstacleRay.far=distance+.45;
     return obstacleRay.intersectObjects(root.children.filter(o=>o.name==='Целая гора с входом'),true).length>0;
+  };
+  const addTable=(table:THREE.Group)=>{
+    table.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(table),size=bounds.getSize(new THREE.Vector3());
+    const scale=Math.min(5/Math.max(size.x,size.z,.01),2.3/Math.max(size.y,.01));
+    table.scale.multiplyScalar(scale);table.updateMatrixWorld(true);bounds.setFromObject(table);
+    const center=bounds.getCenter(new THREE.Vector3());
+    table.position.add(new THREE.Vector3(25-center.x,-3-bounds.min.y,-center.z));
+    table.name='Каменный стол — центр Снежной горы';table.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=false;o.receiveShadow=true;}});
+    root.add(table);root.updateMatrixWorld(true);tableBounds=new THREE.Box3().setFromObject(table).expandByScalar(.4);
   };
   const addArch=(arch:THREE.Group)=>{
     arch.traverse(o=>{if(!(o instanceof THREE.Mesh))return;
@@ -105,6 +116,6 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
     arch.position.sub(new THREE.Vector3(center.x,bounds.min.y,center.z));fitted.add(arch);fitted.scale.set(10/size.x,9/size.y,2/size.z);fitted.rotation.y=Math.PI/2;fitted.position.set(0,0,0);root.add(fitted);root.updateMatrixWorld(true);
   };
   root.updateMatrixWorld(true);
-  return {root,addArch,inside,groundY,blocked,terrainY:(x:number,z:number)=>inside(x,z)?groundY(x,z)!-.35:undefined,
+  return {root,addArch,addTable,inside,groundY,blocked,terrainY:(x:number,z:number)=>inside(x,z)?groundY(x,z)!-.35:undefined,
     camera:(x:number,z:number)=>new THREE.Vector3(x,(groundY(x,z)??root.position.y)+4.8,z+7)};
 }
