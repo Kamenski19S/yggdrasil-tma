@@ -19,7 +19,7 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
   const root=new THREE.Group();root.name='Снежная гора — внутренний зал';
   root.rotation.y=Math.PI/2;root.position.set(-86,ground(-86,96),96);
   mountain.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(mountain),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
-  const planes:[ 'x'|'y'|'z',number,number][]=[['x',-24,1],['x',14,-1],['y',-5,1],['y',6,-1],['z',-3.5,1],['z',3.5,-1]];
+  const planes:[ 'x'|'y'|'z',number,number][]=[['x',-24,1],['x',14,-1],['y',-5,1],['y',7.6,-1],['z',-3.5,1],['z',3.5,-1]];
   mountain.traverse(o=>{if(!(o instanceof THREE.Mesh))return;
     const source=o.geometry.clone().applyMatrix4(o.matrixWorld),p=source.getAttribute('position'),uv=source.getAttribute('uv'),idx=source.getIndex();
     const positions:number[]=[],uvs:number[]=[];
@@ -34,7 +34,10 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
     const shell=new THREE.Mesh(geometry,Array.isArray(o.material)?mats:mats[0]);shell.name='Целая гора с входом';shell.receiveShadow=true;root.add(shell);
     source.dispose();o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();
   });
-  const stone=new THREE.MeshStandardMaterial({color:'#53616b',roughness:1,side:THREE.DoubleSide});
+  const shellMesh=root.children.find(o=>o.name==='Целая гора с входом') as THREE.Mesh;
+  const mountainMaterial=(Array.isArray(shellMesh.material)?shellMesh.material[0]:shellMesh.material) as THREE.MeshStandardMaterial;
+  const stone=new THREE.MeshStandardMaterial({map:mountainMaterial.map,color:'#aebac4',roughness:1,side:THREE.DoubleSide});
+  const snowCover=new THREE.MeshStandardMaterial({map:mountainMaterial.map,color:'#ffffff',roughness:1,side:THREE.DoubleSide});
   // Broad, sloping interior walls replace the exposed rectangular entrance.
   const vertices:number[]=[],indices:number[]=[],segments=48;
   for(let ring=0;ring<2;ring++)for(let i=0;i<=segments;i++){
@@ -44,14 +47,38 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
   for(let i=0;i<segments;i++){
     const a=i,b=i+1,c=i+segments+1,d=c+1;
     const cx=(vertices[a*3]+vertices[b*3])/2,cz=(vertices[a*3+2]+vertices[b*3+2])/2;
-    if(cx<12&&Math.abs(cz)<5)continue;
+    if(cx<12&&Math.abs(cz)<5){
+      // Close the upper band: leave only a low opening, not a gap to the summit.
+      const t=9/16,lowA=vertices.length/3,lowB=lowA+1;
+      for(const [bottom,top] of [[a,c],[b,d]])for(let k=0;k<3;k++)vertices.push(THREE.MathUtils.lerp(vertices[bottom*3+k],vertices[top*3+k],t));
+      indices.push(lowA,c,lowB,lowB,c,d);continue;
+    }
     indices.push(a,c,b,b,c,d);
   }
-  const wallsGeo=new THREE.BufferGeometry();wallsGeo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));wallsGeo.setIndex(indices);wallsGeo.computeVertexNormals();
+  const wallsGeo=new THREE.BufferGeometry();wallsGeo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));wallsGeo.setIndex(indices);
+  const wallUvs:number[]=[];for(let i=0;i<vertices.length;i+=3)wallUvs.push((vertices[i]+vertices[i+2])/16,(vertices[i+1]+3)/16);
+  wallsGeo.setAttribute('uv',new THREE.Float32BufferAttribute(wallUvs,2));wallsGeo.computeVertexNormals();
   const walls=new THREE.Mesh(wallsGeo,stone);walls.name='Наклонные стены внутреннего зала';root.add(walls);
   const floor=new THREE.Mesh(new THREE.CircleGeometry(1,48),stone);floor.rotation.x=-Math.PI/2;floor.scale.set(24,17,1);floor.position.set(25,-3,0);root.add(floor);
   const roof=new THREE.Mesh(new THREE.CircleGeometry(1,32),stone);roof.rotation.x=Math.PI/2;roof.scale.set(5.3,3.8,1);roof.position.set(25,13,0);root.add(roof);
-  const rampGeo=new THREE.BufferGeometry();rampGeo.setAttribute('position',new THREE.Float32BufferAttribute([0,0,-3.5,0,0,3.5,12,-3,-3.5,12,-3,3.5],3));rampGeo.setIndex([0,1,2,2,1,3]);rampGeo.computeVertexNormals();root.add(new THREE.Mesh(rampGeo,stone));
+  const rampGeo=new THREE.BufferGeometry();rampGeo.setAttribute('position',new THREE.Float32BufferAttribute([0,0,-3.5,0,0,3.5,12,-3,-3.5,12,-3,3.5],3));rampGeo.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,1,0,0,2,1,2],2));rampGeo.setIndex([0,1,2,2,1,3]);rampGeo.computeVertexNormals();root.add(new THREE.Mesh(rampGeo,stone));
+  // A covered arch passage blends into the mountain; its roof stays above Vika.
+  const coverPositions:number[]=[],coverUvs:number[]=[],coverIndices:number[]=[],steps=24;
+  for(let end=0;end<2;end++)for(let layer=0;layer<2;layer++)for(let i=0;i<=steps;i++){
+    const angle=i/steps*Math.PI,radius=layer===0?3.7:(end===0?6:11);
+    coverPositions.push(end===0?-.7:16,3.5+Math.sin(angle)*radius,Math.cos(angle)*radius);
+    coverUvs.push(i/steps,end===0?0:1);
+  }
+  const row=steps+1;
+  for(let i=0;i<steps;i++){
+    // Inner vault, snowy outer roof, and the front shoulder around the arch.
+    for(const [a,b,c,d] of [[i,i+1,2*row+i,2*row+i+1],[row+i,row+i+1,3*row+i,3*row+i+1],[i,i+1,row+i,row+i+1]])coverIndices.push(a,c,b,b,c,d);
+  }
+  const coverGeo=new THREE.BufferGeometry();coverGeo.setAttribute('position',new THREE.Float32BufferAttribute(coverPositions,3));coverGeo.setAttribute('uv',new THREE.Float32BufferAttribute(coverUvs,2));coverGeo.setIndex(coverIndices);coverGeo.computeVertexNormals();
+  const cover=new THREE.Mesh(coverGeo,snowCover);cover.name='Снежный свод над аркой';root.add(cover);
+  for(const side of [-1,1]){
+    const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute([-.7,-.2,side*3.7,-.7,3.5,side*3.7,16,-4,side*3.7,16,3.5,side*3.7],3));geometry.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,0,1,2,0,2,1],2));geometry.setIndex([0,1,2,2,1,3]);geometry.computeVertexNormals();root.add(new THREE.Mesh(geometry,stone));
+  }
   const local=(x:number,z:number)=>root.worldToLocal(new THREE.Vector3(x,root.position.y,z));
   const contains=(p:THREE.Vector3)=>(p.x>=0&&p.x<=12&&Math.abs(p.z)<3.3)||(p.x>=10&&((p.x-25)/23)**2+(p.z/16)**2<1);
   const inside=(x:number,z:number)=>contains(local(x,z));
