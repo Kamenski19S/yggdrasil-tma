@@ -7,7 +7,7 @@ export function entranceCrossing(from:Position,to:Position){
   const a=from.z-NIFL_ENTRANCE_Z,b=to.z-NIFL_ENTRANCE_Z;
   if(Math.abs(to.z-from.z)<1e-8||!((a>0&&b<=0)||(a<0&&b>=0)))return null;
   const t=(NIFL_ENTRANCE_Z-from.z)/(to.z-from.z),x=from.x+(to.x-from.x)*t;
-  return Math.abs(x)<5.4?x:null;
+  return Math.abs(x)<3.2?x:null;
 }
 
 export function addEntranceVeil(scene:THREE.Scene,groundY:number,initialPosition:Position){
@@ -23,12 +23,12 @@ export function addEntranceVeil(scene:THREE.Scene,groundY:number,initialPosition
       void main(){
         vVeilPosition=position.xy;
         vec3 p=position;
-        p.z+=.04*sin(p.x*1.7+uTime*.8)*sin(p.y*1.3-uTime*.6);
+        p.z+=.10*sin(p.x*1.7+uTime*.8)*sin(p.y*1.3-uTime*.6);
         for(int i=0;i<3;i++){
           float age=uTime-uRipples[i].z;
-          if(uRipples[i].w>.5&&age>=0.0&&age<3.4){
+          if(uRipples[i].w>.5&&age>=0.0&&age<4.2){
             float delta=distance(p.xy,uRipples[i].xy)-age*3.2;
-            p.z+=.24*sin(delta*8.0)*exp(-delta*delta*3.0)*exp(-age*.7);
+            p.z+=.55*sin(delta*8.0)*exp(-delta*delta*3.0)*exp(-age*.5);
           }
         }
         vec4 mvPosition=modelViewMatrix*vec4(p,1.0);
@@ -43,7 +43,7 @@ export function addEntranceVeil(scene:THREE.Scene,groundY:number,initialPosition
       float grainHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
       void main(){
         vec2 p=vVeilPosition;
-        float arch=length(vec2(p.x/5.4,max(0.0,p.y-3.6)/5.2));
+        float arch=length(vec2(p.x/3.2,max(0.0,p.y-4.9)/3.0));
         if(arch>1.0||p.y<-.1)discard;
         float edge=1.0-smoothstep(.94,1.0,arch);
         vec2 grain=p*24.0;
@@ -51,22 +51,22 @@ export function addEntranceVeil(scene:THREE.Scene,groundY:number,initialPosition
         float ripple=0.0;
         for(int i=0;i<3;i++){
           float age=uTime-uRipples[i].z;
-          if(uRipples[i].w>.5&&age>=0.0&&age<3.4){
+          if(uRipples[i].w>.5&&age>=0.0&&age<4.2){
             float d=distance(p,uRipples[i].xy),delta=d-age*3.2;
             float trailing=delta+.9;
             float third=delta+1.8;
-            ripple+=(exp(-delta*delta*10.0)+.55*exp(-trailing*trailing*10.0)+.2*exp(-third*third*10.0))*exp(-age*.7);
+            ripple+=(exp(-delta*delta*10.0)+.55*exp(-trailing*trailing*10.0)+.2*exp(-third*third*10.0))*exp(-age*.5);
           }
         }
         float breath=.016*sin(p.x*.7+p.y*.9+uTime*.75);
-        float alpha=(.16+breath+speck*.23+min(.45,ripple*.4))*edge;
-        vec3 color=mix(vec3(.22,.27,.32),vec3(.91,.97,1.0),clamp(speck+ripple*.6,0.0,1.0));
+        float alpha=(.16+breath+speck*.23+min(.65,ripple*.85))*edge;
+        vec3 color=mix(vec3(.22,.27,.32),vec3(.91,.97,1.0),clamp(speck+ripple*.8,0.0,1.0));
         gl_FragColor=vec4(color,alpha);
         #include <fog_fragment>
         #include <colorspace_fragment>
       }`
   });
-  const geometry=new THREE.PlaneGeometry(10.8,9.3,32,28);geometry.translate(0,4.55,0);
+  const geometry=new THREE.PlaneGeometry(6.4,8.0,32,36);geometry.translate(0,3.9,0);
   const membrane=new THREE.Mesh(geometry,material);membrane.name='Snow veil with crossing ripples';
   membrane.position.set(0,groundY,NIFL_ENTRANCE_Z);scene.add(membrane);
   let previous={...initialPosition},nextRipple=0;

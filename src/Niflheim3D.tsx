@@ -1,5 +1,5 @@
 import {MeshoptDecoder} from 'three/examples/jsm/libs/meshopt_decoder.module.js';
-import {fitRuneEntrance,addBlueEntranceTorches} from './niflheimRuneEntrance';
+import {fitRuneEntrance} from './niflheimRuneEntrance';
 import {addFrozenRiverFinds} from './niflheimFrozenFinds';
 import {createLakeDescendingCave} from './niflheimLakeCave';
 import {installTowerEntrance} from './niflheimTower';
@@ -587,12 +587,8 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     const entranceZ=65*NIFL_SCALE,entranceY=niflGroundY(0,entranceZ);
     cachedGlbBuffer(`${BASE}img/models/Niflheim_Rune_Entrance.glb`).then(buffer=>new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
       if(!alive){disposeObject(asset.scene);return;}
-      scene.add(fitRuneEntrance(asset.scene,entranceY,entranceZ));entrancePlaceholder.visible=false;refreshShadows();
+      scene.add(fitRuneEntrance(asset.scene,entranceY,entranceZ));entrancePlaceholder.visible=false;entranceVeil=addEntranceVeil(scene,entranceY,position.current);refreshShadows();
     }).catch(()=>{if(alive)setStatus('Не удалось загрузить рунические врата.');});
-    cachedGlbBuffer(`${BASE}img/models/Niflheim_Blue_Wall_Torch.glb`).then(buffer=>new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
-      if(!alive){disposeObject(asset.scene);return;}
-      addBlueEntranceTorches(scene,asset.scene,entranceY,entranceZ);refreshShadows();
-    }).catch(()=>{if(alive)setStatus('Не удалось загрузить факелы у входа.');});
     const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(!w||!h)return;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();};
     const observer=new ResizeObserver(resize);observer.observe(host);resize();
     const down=(event:KeyboardEvent)=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(event.key)){event.preventDefault();input.current.add(event.key);}};
@@ -680,7 +676,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
         {NIFL_LAKES.map((l,i)=><ellipse key={i} cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} rx={l.rx/NIFL_SCALE} ry={l.rz/NIFL_SCALE} fill="#9ecbdf"/>)}<ellipse cx="65" cy="31" rx="8" ry="7" fill="#347c9d"/>
         {NIFL_LOCATIONS.map((l,i)=><g key={l.id} role="button" tabIndex={0} aria-label={l.name} onClick={()=>setSelected(l.id)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelected(l.id);}}} style={{cursor:'pointer'}}><circle cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} r="5.5" fill="#fff" stroke="#526f82" strokeWidth=".6"/><text x={l.x/NIFL_SCALE+65} y={l.z/NIFL_SCALE+81.5} textAnchor="middle" fontSize="4" fill="#203e52">{i+1}</text></g>)}
         <circle cx={mapPoint(position.current.x,position.current.z).x} cy={mapPoint(position.current.x,position.current.z).y} r="2.5" fill="#d29d30" stroke="#fff" strokeWidth=".8"/>
-      </svg><div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><button key={l.id} onClick={()=>setSelected(l.id)}>{i+1}. {l.name}</button>)}</div><p className="nifl-map-legend">Золотая точка — Вика. Западное русло покрыто льдом, восточная река течёт, северо-западное русло пересохло.</p><p className="nifl-map-legend">Входные врата: <a href="https://sketchfab.com/3d-models/stone-arch-565793eb6528447c97223cfaf278d3f6" target="_blank" rel="noopener noreferrer">Stone Arch — Teranox</a>. Факелы: <a href="https://sketchfab.com/3d-models/stylized-gothic-wall-torch-eeee48e402a74a038d63b01878ea40c1" target="_blank" rel="noopener noreferrer">Stylized Gothic Wall Torch — Galaxy Abundant</a>. Обе модели: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения: сжатие, масштаб и размещение; факелам добавлено синее пламя.</p>
+      </svg><div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><button key={l.id} onClick={()=>setSelected(l.id)}>{i+1}. {l.name}</button>)}</div><p className="nifl-map-legend">Золотая точка — Вика. Западное русло покрыто льдом, восточная река течёт, северо-западное русло пересохло.</p><p className="nifl-map-legend">Входные врата: <a href="https://sketchfab.com/3d-models/stone-arch-565793eb6528447c97223cfaf278d3f6" target="_blank" rel="noopener noreferrer">Stone Arch — Teranox</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения: сжатие текстур, уменьшение высоты и размещение.</p>
       <p className="nifl-map-legend">Стены зала: <a href="https://sketchfab.com/3d-models/stone-bricks-beige-wall-set-8df474d0b8df453c87255a1758dde6e2" target="_blank" rel="noopener noreferrer">Stone bricks beige Wall-set — DADedits</a>, CC BY 4.0. Выделен прямой модуль, уменьшены текстуры, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Плиты и стол: <a href="https://sketchfab.com/3d-models/cave-rocks-4101c07c6a754f85962c6b516af4713a" target="_blank" rel="noopener noreferrer">Cave Rocks — Splanyic</a>, CC BY 4.0. Выделены каменные модули, уменьшены текстуры; из модулей собраны плиты и стол.</p>
       <p className="nifl-map-legend">Арка зала: <a href="https://sketchfab.com/3d-models/arch-1-38b5572e58fb40fca8c0d38f8e1192c5" target="_blank" rel="noopener noreferrer">Arch 1 — chuckcg</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, убраны тангенты; геометрия сохранена, изменены масштаб и размещение.</p>
