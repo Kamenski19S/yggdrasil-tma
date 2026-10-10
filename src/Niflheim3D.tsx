@@ -263,7 +263,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
         }).catch(()=>{});
       }
       // The former lookout is now the dry riverbed; leave its channel unobstructed.
-      if(l.kind!=='source'){
+      if(l.kind!=='source'&&l.id!=='roots'){
         const marker=mesh(new THREE.OctahedronGeometry(.5),glow,l.x+3,niflGroundY(l.x+3,l.z+3)+2.8,l.z+3);marker.name=`Location ${index+1}: ${l.name}`;
       }
     });
@@ -455,28 +455,12 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     cachedGlbBuffer(`${BASE}img/models/Yggdrasil_Roots_Ice.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,asset=>{
       if(!alive){disposeObject(asset.scene);textures.forEach(t=>t.dispose());return;}
       const root=asset.scene;root.name='Сплетение корней — ледяная арка';
-      // Lower only the upper roots; keep the arch's walking clearance intact.
-      root.traverse((object:any)=>{
-        if(!object.isMesh)return;
-        const p=object.geometry.getAttribute('position');
-        for(let i=0;i<p.count;i++){const y=p.getY(i);if(y>9)p.setY(i,9+(y-9)*.22);}
-        // Clear the same entrance corridor in the decorative roots and ice.
-        const index=object.geometry.getIndex(),keep:number[]=[];
-        const count=index?.count??p.count;
-        for(let i=0;i<count;i+=3){
-          const ids=[0,1,2].map(k=>index?index.getX(i+k):i+k);
-          const cx=ids.reduce((s,id)=>s+p.getX(id),0)/3;
-          const cy=ids.reduce((s,id)=>s+p.getY(id),0)/3;
-          const cz=ids.reduce((s,id)=>s+p.getZ(id),0)/3;
-          if(Math.abs(cx)<13&&cz>-5&&cy<11.4)continue;
-          keep.push(...ids);
-        }
-        object.geometry.setIndex(keep);
-        p.needsUpdate=true;object.geometry.computeVertexNormals();
-        object.geometry.computeBoundingBox();object.geometry.computeBoundingSphere();
-      });
-      const bounds=new THREE.Box3().setFromObject(root);
-      root.position.set(rootsLocation.x,niflGroundY(rootsLocation.x,rootsLocation.z)-.2-bounds.min.y,rootsLocation.z);
+      root.updateMatrixWorld(true);
+      const bounds=new THREE.Box3().setFromObject(root),size=bounds.getSize(new THREE.Vector3());
+      root.scale.set(14/Math.max(size.x,.001),9/Math.max(size.y,.001),10/Math.max(size.z,.001));
+      root.updateMatrixWorld(true);
+      const fitted=new THREE.Box3().setFromObject(root),center=fitted.getCenter(new THREE.Vector3());
+      root.position.set(rootsLocation.x-center.x,niflGroundY(rootsLocation.x,rootsLocation.z)-.2-fitted.min.y,rootsLocation.z-center.z);
       root.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});scene.add(root);refreshShadows();
     },()=>{})).catch(()=>{});
 

@@ -9,6 +9,23 @@ export function createRootsIceCave(walls:THREE.Group,x:number,z:number,ground:(x
   const room=createLakeDescendingCave(walls,ground);
   room.root.position.set(0,3,16.25);room.root.scale.x=.65;
   root.add(room.root);root.updateMatrixWorld(true);
+  // Sink the low mountain apron into the sampled terrain without lowering its peaks.
+  const inverse=new THREE.Matrix4();
+  room.root.traverse(o=>{
+    if(!(o instanceof THREE.Mesh)||o.name!=='Целая гора с входом')return;
+    inverse.copy(o.matrixWorld).invert();
+    const p=o.geometry.getAttribute('position');
+    for(let i=0;i<p.count;i++){
+      const local=new THREE.Vector3().fromBufferAttribute(p,i);
+      const weight=1-THREE.MathUtils.smoothstep(local.y,-1,6);
+      if(weight<=0)continue;
+      const world=local.clone().applyMatrix4(o.matrixWorld),terrain=ground(world.x,world.z)-.35;
+      world.y=THREE.MathUtils.lerp(world.y,Math.min(world.y,terrain),weight);
+      world.applyMatrix4(inverse);p.setXYZ(i,world.x,world.y,world.z);
+    }
+    p.needsUpdate=true;o.geometry.computeVertexNormals();o.geometry.computeBoundingBox();o.geometry.computeBoundingSphere();
+  });
+
   const segments:{ax:number;az:number;bx:number;bz:number}[]=[];
   const buckets=new Map<string,number[]>(),cell=4;
   const addSegment=(a:THREE.Vector3,b:THREE.Vector3)=>{
