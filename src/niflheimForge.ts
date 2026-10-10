@@ -50,7 +50,12 @@ export function createNiflheimForge(x:number,z:number,floor:number,ground:(x:num
     const prepared=new THREE.Group();
     asset.scene.traverse((o:any)=>{
       if(!o.isMesh)return;
-      const geometry=o.geometry.clone();geometry.applyMatrix4(o.matrixWorld);
+      const geometry=o.geometry.clone();
+      // Decode normalized integer positions before editing: integer writes wrap at the new world scale.
+      const source=geometry.getAttribute('position'),decoded=new Float32Array(source.count*3);
+      for(let i=0;i<source.count;i++){decoded[i*3]=source.getX(i);decoded[i*3+1]=source.getY(i);decoded[i*3+2]=source.getZ(i);}
+      geometry.setAttribute('position',new THREE.BufferAttribute(decoded,3));
+      geometry.applyMatrix4(o.matrixWorld);
       const positions=geometry.getAttribute('position');
       for(let i=0;i<positions.count;i++){
         const longitudinal=(positions.getZ(i)+1)*6;
