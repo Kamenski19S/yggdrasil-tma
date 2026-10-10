@@ -140,6 +140,22 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     new THREE.TextureLoader().load(`${BASE}img/models/Stone_Sacred_1.jpg`,texture=>{if(!alive){texture.dispose();return;}texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;textures.add(texture);stone.map=texture;stone.needsUpdate=true;});
     const groundGeo=new THREE.PlaneGeometry(120*NIFL_SCALE,156*NIFL_SCALE,72,90);groundGeo.rotateX(-Math.PI/2);
     const p=groundGeo.getAttribute('position');for(let i=0;i<p.count;i++)p.setY(i,niflGroundY(p.getX(i),p.getZ(i)));groundGeo.computeVertexNormals();const fallbackGround=new THREE.Mesh(groundGeo,snow);fallbackGround.name="Niflheim terrain";fallbackGround.castShadow=true;fallbackGround.receiveShadow=true;scene.add(fallbackGround);
+    const carveRootsTerrain=(objects:THREE.Object3D[])=>{
+      for(const object of objects){
+        if(!rootsSpace||!(object instanceof THREE.Mesh)||!object.parent)continue;
+        const geo=object.geometry,p=geo.getAttribute('position'),idx=geo.getIndex(),keep:number[]=[];
+        object.updateMatrixWorld(true);
+        for(let i=0;i<(idx?.count??p.count);i+=3){
+          const ids=[0,1,2].map(k=>idx?idx.getX(i+k):i+k);
+          const center=new THREE.Vector3();
+          for(const id of ids)center.add(new THREE.Vector3().fromBufferAttribute(p,id).applyMatrix4(object.matrixWorld));
+          center.multiplyScalar(1/3);
+          if(!rootsSpace.inside(center.x,center.z))keep.push(...ids);
+        }
+        geo.setIndex(keep);geo.computeBoundingSphere();
+      }
+
+    };
     new GLTFLoader().load(`${BASE}img/models/Terrain_Optimized.glb`,asset=>{
       if(!alive){asset.scene.traverse((o:any)=>{if(!o.isMesh)return;o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)v.dispose();m.dispose();}});return;}
       // Bake the source node transform before mapping its unit square to the world.
@@ -152,7 +168,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
         const terrain=new THREE.Mesh(geo,snow);terrain.name="Niflheim terrain";terrain.castShadow=true;terrain.receiveShadow=true;scene.add(terrain);
         for(const material of Array.isArray(o.material)?o.material:[o.material]){for(const value of Object.values(material))if(value instanceof THREE.Texture)value.dispose();material.dispose();}
       });
-      scene.remove(fallbackGround);groundGeo.dispose();refreshShadows();
+      scene.remove(fallbackGround);groundGeo.dispose();carveRootsTerrain(scene.children.filter(o=>o.name==='Niflheim terrain'));refreshShadows();
     },undefined,()=>{});
     const mesh=(geo:THREE.BufferGeometry,mat:THREE.Material,x:number,y:number,z:number,sx=1,sy=1,sz=1)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=mat instanceof THREE.MeshStandardMaterial&&!mat.transparent;m.receiveShadow=true;scene.add(m);return m;};
     const rockGeo=new THREE.DodecahedronGeometry(1,1);
@@ -457,7 +473,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       const root=asset.scene;root.name='Сплетение корней — ледяная арка';
       root.updateMatrixWorld(true);
       const bounds=new THREE.Box3().setFromObject(root),size=bounds.getSize(new THREE.Vector3());
-      root.scale.set(14/Math.max(size.x,.001),9/Math.max(size.y,.001),10/Math.max(size.z,.001));
+      root.scale.set(14/Math.max(size.x,.001),11/Math.max(size.y,.001),10/Math.max(size.z,.001));
       root.updateMatrixWorld(true);
       const fitted=new THREE.Box3().setFromObject(root),center=fitted.getCenter(new THREE.Vector3());
       root.position.set(rootsLocation.x-center.x,niflGroundY(rootsLocation.x,rootsLocation.z)-.2-fitted.min.y,rootsLocation.z-center.z);
@@ -469,6 +485,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       const loaded=results.filter((r):r is PromiseFulfilledResult<THREE.Group>=>r.status==='fulfilled').map(r=>r.value);
       if(!alive||loaded.length!==1){loaded.forEach(disposeObject);if(!alive)textures.forEach(t=>t.dispose());return;}
       rootsSpace=createRootsIceCave(loaded[0],rootsLocation.x,rootsLocation.z,niflGroundY);scene.add(rootsSpace.root);
+      carveRootsTerrain(scene.children.filter(o=>o.name==='Niflheim terrain'));
       const space=rootsSpace;
       loadRootsAsset('Ice_Cave_1_Optimized.glb').then(iceberg=>{
         if(!alive){disposeObject(iceberg);textures.forEach(t=>t.dispose());return;}
