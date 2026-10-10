@@ -72,7 +72,7 @@ export function createRootsIceCave(walls:THREE.Group,x:number,z:number,ground:(x
     const bounds=new THREE.Box3().setFromObject(iceberg),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
     const scale=11/Math.max(size.x,size.z,.001);
     iceberg.scale.setScalar(scale);
-    iceberg.position.set(-1-center.x*scale,-bounds.min.y*scale,-9-center.z*scale);
+    iceberg.position.set(-1-center.x*scale,-bounds.min.y*scale,-6-center.z*scale);
     iceberg.updateMatrixWorld(true);
     const crimson=new THREE.Color('#9b163b'),ice=new THREE.Color('#d5efff');
     iceberg.traverse(object=>{
@@ -81,7 +81,7 @@ export function createRootsIceCave(walls:THREE.Group,x:number,z:number,ground:(x
       const colors=new Float32Array(p.count*3);
       for(let i=0;i<p.count;i++){
         const v=new THREE.Vector3().fromBufferAttribute(p,i).applyMatrix4(object.matrixWorld);
-        const nx=(v.x+1)/5.5,nz=(v.z+9)/5.5,ny=v.y/Math.max(size.y*scale,.001);
+        const nx=(v.x+1)/5.5,nz=(v.z+6)/5.5,ny=v.y/Math.max(size.y*scale,.001);
         // Two irregular crimson patches leave most of the original ice blue.
         const a=Math.hypot((nx-.4)/.5,(nz+.1)/.65,(ny-.55)/.8);
         const b=Math.hypot((nx+.55)/.38,(nz-.4)/.5,(ny-.3)/.65);
@@ -116,12 +116,12 @@ export function createRootsIceCave(walls:THREE.Group,x:number,z:number,ground:(x
     const original=new THREE.Box3().setFromObject(model),size=original.getSize(new THREE.Vector3());
     model.scale.multiplyScalar(7.5/Math.max(size.y,.001));model.updateMatrixWorld(true);
     const box=new THREE.Box3().setFromObject(model),center=box.getCenter(new THREE.Vector3());
-    model.position.add(new THREE.Vector3(.5-center.x,-box.min.y,-7.5-center.z));
+    model.position.add(new THREE.Vector3(.5-center.x,-box.min.y,-9-center.z));
     model.name='Волшебница у багровой чаши';
     model.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}});
     root.add(model);root.updateMatrixWorld(true);
-    sorceressBounds=new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(x+.5,floor+3,z-7.5),new THREE.Vector3(2.4,6,2.4));
-    const light=new THREE.PointLight('#c0c8ed',18,12,2);light.position.set(.5,6,-3.5);root.add(light);
+    sorceressBounds=new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(x+.5,floor+3,z-9),new THREE.Vector3(2.4,6,2.4));
+    const light=new THREE.PointLight('#c0c8ed',18,12,2);light.position.set(.5,6,-5);root.add(light);
   };
   return {root,inside,groundY,blocked,camera,addIceberg,addSorceress};
 }
