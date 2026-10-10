@@ -9,6 +9,20 @@ export function createRootsIceCave(walls:THREE.Group,x:number,z:number,ground:(x
   const room=createLakeDescendingCave(walls,ground);
   room.root.position.set(0,3,16.25);room.root.scale.x=.65;
   root.add(room.root);root.updateMatrixWorld(true);
+  const entranceY=ground(x,z+16.25);
+  const entranceLocalY=entranceY-floor-3;
+  // Join the passage mouth to the exterior snow; keep the chamber floor in place.
+  room.root.traverse(o=>{
+    if(!(o instanceof THREE.Mesh))return;
+    const p=o.geometry.getAttribute('position');
+    if(p.count!==4)return;
+    if(p.getX(0)===0&&p.getX(2)===12){
+      p.setY(0,entranceLocalY);p.setY(1,entranceLocalY);
+    }else if(Math.abs(p.getX(0)+.7)<.001&&p.getY(0)<0){
+      p.setY(0,entranceLocalY-.2);
+    }else return;
+    p.needsUpdate=true;o.geometry.computeVertexNormals();o.geometry.computeBoundingBox();o.geometry.computeBoundingSphere();
+  });
   // Sink the low mountain apron into the sampled terrain without lowering its peaks.
   const inverse=new THREE.Matrix4();
   room.root.traverse(o=>{
@@ -35,7 +49,11 @@ export function createRootsIceCave(walls:THREE.Group,x:number,z:number,ground:(x
     }
   };
   const inside=room.inside;
-  const groundY=(px:number,pz:number)=>{const y=room.groundY(px,pz);return y===undefined?undefined:y+floor;};
+  const groundY=(px:number,pz:number)=>{
+    if(!inside(px,pz))return undefined;
+    const p=room.root.worldToLocal(new THREE.Vector3(px,floor,pz));
+    return p.x<12?THREE.MathUtils.lerp(entranceY,floor,THREE.MathUtils.clamp(p.x/12,0,1)):floor;
+  };
   let sorceressBounds:THREE.Box3|undefined;
   const blocked=(px:number,pz:number)=>{
     if(sorceressBounds&&px>sorceressBounds.min.x&&px<sorceressBounds.max.x&&pz>sorceressBounds.min.z&&pz<sorceressBounds.max.z)return true;
@@ -48,7 +66,7 @@ export function createRootsIceCave(walls:THREE.Group,x:number,z:number,ground:(x
     }
     return false;
   };
-  const camera=(px:number,pz:number)=>room.camera(px,pz).add(new THREE.Vector3(0,floor,0));
+  const camera=(px:number,pz:number)=>new THREE.Vector3(px,(groundY(px,pz)??floor)+4.8,pz+7);
   const addIceberg=(iceberg:THREE.Group)=>{
     iceberg.name='Малый багровый айсберг — место будущего осколка';
     const bounds=new THREE.Box3().setFromObject(iceberg),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
@@ -98,12 +116,12 @@ export function createRootsIceCave(walls:THREE.Group,x:number,z:number,ground:(x
     const original=new THREE.Box3().setFromObject(model),size=original.getSize(new THREE.Vector3());
     model.scale.multiplyScalar(7.5/Math.max(size.y,.001));model.updateMatrixWorld(true);
     const box=new THREE.Box3().setFromObject(model),center=box.getCenter(new THREE.Vector3());
-    model.position.add(new THREE.Vector3(6-center.x,-box.min.y,-8-center.z));
+    model.position.add(new THREE.Vector3(3-center.x,-box.min.y,-9-center.z));
     model.name='Волшебница у багровой чаши';
     model.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}});
     root.add(model);root.updateMatrixWorld(true);
-    sorceressBounds=new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(x+6,floor+3,z-8),new THREE.Vector3(2.4,6,2.4));
-    const light=new THREE.PointLight('#c0c8ed',18,12,2);light.position.set(5,6,-3);root.add(light);
+    sorceressBounds=new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(x+3,floor+3,z-9),new THREE.Vector3(2.4,6,2.4));
+    const light=new THREE.PointLight('#c0c8ed',18,12,2);light.position.set(3,6,-4);root.add(light);
   };
   return {root,inside,groundY,blocked,camera,addIceberg,addSorceress};
 }
