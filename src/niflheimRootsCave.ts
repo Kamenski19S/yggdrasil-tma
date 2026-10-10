@@ -116,12 +116,12 @@ export function createRootsIceCave(walls:THREE.Group,x:number,z:number,ground:(x
     const original=new THREE.Box3().setFromObject(model),size=original.getSize(new THREE.Vector3());
     model.scale.multiplyScalar(7.5/Math.max(size.y,.001));model.updateMatrixWorld(true);
     const box=new THREE.Box3().setFromObject(model),center=box.getCenter(new THREE.Vector3());
-    model.position.add(new THREE.Vector3(3-center.x,-box.min.y,-9-center.z));
+    model.position.add(new THREE.Vector3(.5-center.x,-box.min.y,-12-center.z));
     model.name='Волшебница у багровой чаши';
     model.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}});
     root.add(model);root.updateMatrixWorld(true);
-    sorceressBounds=new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(x+3,floor+3,z-9),new THREE.Vector3(2.4,6,2.4));
-    const light=new THREE.PointLight('#c0c8ed',18,12,2);light.position.set(3,6,-4);root.add(light);
+    sorceressBounds=new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(x+.5,floor+3,z-12),new THREE.Vector3(2.4,6,2.4));
+    const light=new THREE.PointLight('#c0c8ed',18,12,2);light.position.set(.5,6,-8);root.add(light);
   };
   return {root,inside,groundY,blocked,camera,addIceberg,addSorceress};
 }
