@@ -481,10 +481,10 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     },()=>{})).catch(()=>{});
 
     const loadRootsAsset=(file:string)=>cachedGlbBuffer(`${BASE}img/models/${file}`).then(buffer=>new Promise<THREE.Group>((resolve,reject)=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,asset=>resolve(asset.scene),reject)));
-    Promise.allSettled([loadRootsAsset('Ice_Cave_2_Optimized.glb'),loadRootsAsset('Ice_Roof_Slab.glb')]).then(results=>{
+    Promise.allSettled([loadRootsAsset('Niflheim_Snow_Mountain_Lite.glb')]).then(results=>{
       const loaded=results.filter((r):r is PromiseFulfilledResult<THREE.Group>=>r.status==='fulfilled').map(r=>r.value);
-      if(!alive||loaded.length!==2){loaded.forEach(disposeObject);if(!alive)textures.forEach(t=>t.dispose());return;}
-      rootsSpace=createRootsIceCave(loaded[0],loaded[1],rootsLocation.x,rootsLocation.z,niflGroundY);scene.add(rootsSpace.root);
+      if(!alive||loaded.length!==1){loaded.forEach(disposeObject);if(!alive)textures.forEach(t=>t.dispose());return;}
+      rootsSpace=createRootsIceCave(loaded[0],rootsLocation.x,rootsLocation.z,niflGroundY);scene.add(rootsSpace.root);
       const space=rootsSpace;
       loadRootsAsset('Ice_Cave_1_Optimized.glb').then(iceberg=>{
         if(!alive){disposeObject(iceberg);textures.forEach(t=>t.dispose());return;}
