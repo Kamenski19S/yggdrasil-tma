@@ -36,7 +36,9 @@ export function createRootsIceCave(walls:THREE.Group,x:number,z:number,ground:(x
   };
   const inside=room.inside;
   const groundY=(px:number,pz:number)=>{const y=room.groundY(px,pz);return y===undefined?undefined:y+floor;};
+  let sorceressBounds:THREE.Box3|undefined;
   const blocked=(px:number,pz:number)=>{
+    if(sorceressBounds&&px>sorceressBounds.min.x&&px<sorceressBounds.max.x&&pz>sorceressBounds.min.z&&pz<sorceressBounds.max.z)return true;
     if(room.blocked({x:px,z:pz},{x:px+.01,z:pz}))return true;
     const lx=px-x,lz=pz-z,ix=Math.floor(lx/cell),iz=Math.floor(lz/cell);
     for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)for(const id of buckets.get(`${ix+dx},${iz+dz}`)??[]){
@@ -91,5 +93,17 @@ export function createRootsIceCave(walls:THREE.Group,x:number,z:number,ground:(x
     });
     root.add(iceberg);
   };
-  return {root,inside,groundY,blocked,camera,addIceberg};
+  const addSorceress=(model:THREE.Group)=>{
+    model.updateMatrixWorld(true);
+    const original=new THREE.Box3().setFromObject(model),size=original.getSize(new THREE.Vector3());
+    model.scale.multiplyScalar(7.5/Math.max(size.y,.001));model.updateMatrixWorld(true);
+    const box=new THREE.Box3().setFromObject(model),center=box.getCenter(new THREE.Vector3());
+    model.position.add(new THREE.Vector3(6-center.x,-box.min.y,-8-center.z));
+    model.name='Волшебница у багровой чаши';
+    model.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}});
+    root.add(model);root.updateMatrixWorld(true);
+    sorceressBounds=new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(x+6,floor+3,z-8),new THREE.Vector3(2.4,6,2.4));
+    const light=new THREE.PointLight('#c0c8ed',18,12,2);light.position.set(5,6,-3);root.add(light);
+  };
+  return {root,inside,groundY,blocked,camera,addIceberg,addSorceress};
 }
