@@ -125,7 +125,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       return toY!==undefined&&toY-(fromY??raisedSnowY(from.x,from.z))>.85;
     };
     const walkingY=(x:number,z:number)=>lakeCave?.groundY(x,z)??towerEntrance.current?.groundY(x,z)??stairGroundY(x,z)??lakeBridgeY(x,z)??hallSpace?.groundY(x,z)??memorySpace?.groundY(x,z)??forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??rootsSpace?.groundY(x,z)??raisedSnowY(x,z);
-    const terrainY=(x:number,z:number)=>lakeCave?.terrainY(x,z)??towerEntrance.current?.groundY(x,z)??hallSpace?.terrainY(x,z)??memorySpace?.terrainY(x,z)??forgeSpace?.terrainY(x,z)??(caveSpace?.inside(x,z)?caveSpace.floor-.06:(rootsSpace?.groundY(x,z)??niflGroundY(x,z)));
+    const terrainY=(x:number,z:number)=>lakeCave?.terrainY(x,z)??towerEntrance.current?.groundY(x,z)??hallSpace?.terrainY(x,z)??memorySpace?.terrainY(x,z)??forgeSpace?.terrainY(x,z)??(caveSpace?.inside(x,z)?caveSpace.floor-.06:(rootsSpace?.inside(x,z)?rootsSpace.groundY(x,z)!-.65:niflGroundY(x,z)));
     const crystalMaterials:THREE.MeshStandardMaterial[]=[];
     const crystalHalos:THREE.Sprite[]=[];
     const snowCanvas=document.createElement('canvas');snowCanvas.width=snowCanvas.height=128;
@@ -143,18 +143,14 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     const carveRootsTerrain=(objects:THREE.Object3D[])=>{
       for(const object of objects){
         if(!rootsSpace||!(object instanceof THREE.Mesh)||!object.parent)continue;
-        const geo=object.geometry,p=geo.getAttribute('position'),idx=geo.getIndex(),keep:number[]=[];
-        object.updateMatrixWorld(true);
-        for(let i=0;i<(idx?.count??p.count);i+=3){
-          const ids=[0,1,2].map(k=>idx?idx.getX(i+k):i+k);
-          const center=new THREE.Vector3();
-          for(const id of ids)center.add(new THREE.Vector3().fromBufferAttribute(p,id).applyMatrix4(object.matrixWorld));
-          center.multiplyScalar(1/3);
-          if(!rootsSpace.inside(center.x,center.z))keep.push(...ids);
+        const geo=object.geometry,p=geo.getAttribute('position');
+        // Keep complete triangles at the doorway and tuck the terrain beneath the chamber floor.
+        for(let i=0;i<p.count;i++){
+          const x=p.getX(i),z=p.getZ(i);
+          if(rootsSpace.inside(x,z))p.setY(i,terrainY(x,z));
         }
-        geo.setIndex(keep);geo.computeBoundingSphere();
+        p.needsUpdate=true;geo.computeVertexNormals();geo.computeBoundingBox();geo.computeBoundingSphere();
       }
-
     };
     new GLTFLoader().load(`${BASE}img/models/Terrain_Optimized.glb`,asset=>{
       if(!alive){asset.scene.traverse((o:any)=>{if(!o.isMesh)return;o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)v.dispose();m.dispose();}});return;}
