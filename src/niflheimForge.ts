@@ -40,7 +40,7 @@ export function createNiflheimForge(x:number,z:number,floor:number,ground:(x:num
   const east=bridge.localToWorld(new THREE.Vector3(0,0,0)),west=bridge.localToWorld(new THREE.Vector3(0,0,12));
   const nearY=ground(east.x,east.z)-floor+.12,farY=ground(west.x,west.z)-floor+.12;
   const sourceDeckY=(z:number)=>{const t=THREE.MathUtils.clamp(z/12,0,1),i=t*(bridgeHeights.length-1),a=Math.min(bridgeHeights.length-2,Math.floor(i));return THREE.MathUtils.lerp(bridgeHeights[a],bridgeHeights[a+1],i-a);};
-  const deckY=(z:number)=>sourceDeckY(z)+THREE.MathUtils.lerp(nearY,farY,THREE.MathUtils.clamp(z/12,0,1))+.04;
+  const deckY=(z:number)=>sourceDeckY(z)*1.35+THREE.MathUtils.lerp(nearY,farY,THREE.MathUtils.clamp(z/12,0,1))+.04;
   let alive=true;
   cachedGlbBuffer(`${BASE}img/models/Niflheim_Medieval_Bridge.glb`).then(buffer=>new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parse(buffer,`${BASE}img/models/`,asset=>{
     if(!alive){asset.scene.traverse((o:any)=>{if(!o.isMesh)return;o.geometry.dispose();for(const material of Array.isArray(o.material)?o.material:[o.material]){for(const value of Object.values(material))if(value instanceof THREE.Texture)value.dispose();material.dispose();}});return;}
@@ -59,7 +59,7 @@ export function createNiflheimForge(x:number,z:number,floor:number,ground:(x:num
       const positions=geometry.getAttribute('position');
       for(let i=0;i<positions.count;i++){
         const longitudinal=(positions.getZ(i)+1)*6;
-        positions.setXYZ(i,positions.getX(i)*10,(positions.getY(i)+.32716738)*10+THREE.MathUtils.lerp(nearY,farY,longitudinal/12)+.04,longitudinal);
+        positions.setXYZ(i,positions.getX(i)*14,(positions.getY(i)+.32716738)*13.5+THREE.MathUtils.lerp(nearY,farY,longitudinal/12)+.04,longitudinal);
       }
       positions.needsUpdate=true;geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();
       const mesh=new THREE.Mesh(geometry,o.material);mesh.castShadow=true;mesh.receiveShadow=true;prepared.add(mesh);
@@ -71,9 +71,9 @@ export function createNiflheimForge(x:number,z:number,floor:number,ground:(x:num
   return {root,world:(px:number,py:number,pz:number)=>root.localToWorld(new THREE.Vector3(px,py,pz)),
     inside(px:number,pz:number){const p=local(px,pz);return Math.abs(p.x)<6.5&&p.z<0&&p.z>-15;},
     canEnter(px:number,pz:number){const p=local(px,pz);return Math.abs(p.x)<4&&p.z<-1&&p.z>-5.5;},
-    terrainY(px:number,pz:number){const b=bridgeLocal(px,pz);if(Math.abs(b.x)<1.85&&b.z>=0&&b.z<=12)return Math.min(ground(px,pz),floor+deckY(b.z)-.09);const p=local(px,pz);return Math.abs(p.x)<6.5&&p.z<0&&p.z>-15?floor-.06:Math.abs(p.x)<5&&p.z>=0&&p.z<=14.5?floor-.08:undefined;},
-    groundY(px:number,pz:number){const b=bridgeLocal(px,pz);if(Math.abs(b.x)<1.85&&b.z>=0&&b.z<=12)return floor+deckY(b.z);const p=local(px,pz);if(Math.abs(p.x)<5&&p.z>=0&&p.z<=14.5)return floor+.015;return Math.abs(p.x)<6.5&&p.z<0&&p.z>-15?floor:undefined;},
-    blocked(px:number,pz:number){const b=bridgeLocal(px,pz);if(b.z>.25&&b.z<11.75&&Math.abs(b.x)>1.65&&Math.abs(b.x)<4.7)return true;const p=local(px,pz);return (Math.abs(p.x)>6&&Math.abs(p.x)<12&&p.z<2.6&&p.z>-17.6)||(Math.abs(p.x)<12&&p.z<-14.5&&p.z>-18)||(Math.abs(p.x)>3.7&&Math.abs(p.x)<7.1&&Math.abs(p.z-.1)<1.5)||(p.x>-7&&p.x<-1.5&&p.z<-8&&p.z>-13.5)||(Math.abs(p.x-1)<3.2&&Math.abs(p.z+6.8)<2.4)||(p.x>3.8&&p.x<8.4&&p.z<-9&&p.z>-15);},
+    terrainY(px:number,pz:number){const b=bridgeLocal(px,pz);if(Math.abs(b.x)<2.6&&b.z>=0&&b.z<=12)return Math.min(ground(px,pz),floor+deckY(b.z)-.09);const p=local(px,pz);return Math.abs(p.x)<6.5&&p.z<0&&p.z>-15?floor-.06:Math.abs(p.x)<5&&p.z>=0&&p.z<=14.5?floor-.08:undefined;},
+    groundY(px:number,pz:number){const b=bridgeLocal(px,pz);if(Math.abs(b.x)<2.6&&b.z>=0&&b.z<=12)return floor+deckY(b.z);const p=local(px,pz);if(Math.abs(p.x)<5&&p.z>=0&&p.z<=14.5)return floor+.015;return Math.abs(p.x)<6.5&&p.z<0&&p.z>-15?floor:undefined;},
+    blocked(px:number,pz:number){const b=bridgeLocal(px,pz);if(b.z>.25&&b.z<11.75&&Math.abs(b.x)>2.2&&Math.abs(b.x)<6.6)return true;const p=local(px,pz);return (Math.abs(p.x)>6&&Math.abs(p.x)<12&&p.z<2.6&&p.z>-17.6)||(Math.abs(p.x)<12&&p.z<-14.5&&p.z>-18)||(Math.abs(p.x)>3.7&&Math.abs(p.x)<7.1&&Math.abs(p.z-.1)<1.5)||(p.x>-7&&p.x<-1.5&&p.z<-8&&p.z>-13.5)||(Math.abs(p.x-1)<3.2&&Math.abs(p.z+6.8)<2.4)||(p.x>3.8&&p.x<8.4&&p.z<-9&&p.z>-15);},
     dispose(){alive=false;},
     update(time:number){flames.forEach((f,i)=>{f.scale.y=1+(i%3)*.25+Math.sin(time*7+i*1.8)*.13;});light.intensity=100+Math.sin(time*8)*8;}};
 }

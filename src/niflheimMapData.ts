@@ -103,3 +103,11 @@ export const moveThroughNiflEntrance=(from:{x:number;z:number},x:number,z:number
   }
   return clampNiflPosition(current.x,current.z);
 };
+
+// Bank barriers follow the same river centre lines used by the visible ribbons.
+export const niflRiverBlocked=(x:number,z:number)=>{
+  const frozen=NIFL_RIVERS[0];
+  const nearFind=[.72,.53,.34].some(t=>{const p=frozen[Math.floor((frozen.length-1)*t)];return Math.hypot(x-p.x,z-p.z)<NIFL_RIVER_WIDTHS[0]/2+1.5;});
+  if(nearFind)return false;
+  return NIFL_RIVERS.some((river,index)=>river.slice(1).some((b,i)=>riverDistance(x,z,river[i],b)<NIFL_RIVER_WIDTHS[index]/2+.55));
+};
