@@ -1,3 +1,4 @@
+import {applyMemoryEvent} from './niflheimMemoryQuest';
 import { VIKA_STORY, HERO_PROFILE_CSS } from './vikaStory';
 import {WOOD_TRADES,exchangeWood,forgeAshCost} from './woodEconomy';
 import { REPAIR_RESIDENTS, REPAIR_GOODS, REPAIR_PROJECTS, type RepairResident, nextRepairJob, residentRepairIntro, repaired, repairKey, workKey, canPrepareRepair, prepareRepair, canRestore, restoreLocation } from './locationRepairs';
@@ -593,7 +594,7 @@ const [roadT, setRoadT] = useState(0.06);
       {screen.t === "realm" && (() => {
   const realm = REALMS.find(r => r.id === screen.id)!;
 
-  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D onEnterUnderground={position=>{niflheimReturn.current={...position};go({t:"underground"});}} initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")} onOpenMill={()=>{setMillRealm("niflheim");go({t:"mill"});}} inventory={{potions:save.potions,runes:save.runes,equippedRune:save.equippedRune,lootCounts:save.lootCounts,runeLevels:save.forgeLevels,hp:Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp()),maxHp:(heroDef?.hp??100)+gearHp(),frostGuard:save.frostGuard,potionBoosts:save.potionBoosts,onUsePotion:useInventoryPotion,onEquipRune:equipInventoryRune,onFuseRune:fuseInventoryRune}} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")}/></React.Suspense>;
+  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D questDone={save.done} onMemoryEvent={event=>setSave(s=>applyMemoryEvent(s,event))} onEnterUnderground={position=>{niflheimReturn.current={...position};go({t:"underground"});}} initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")} onOpenMill={()=>{setMillRealm("niflheim");go({t:"mill"});}} inventory={{potions:save.potions,runes:save.runes,equippedRune:save.equippedRune,lootCounts:save.lootCounts,runeLevels:save.forgeLevels,hp:Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp()),maxHp:(heroDef?.hp??100)+gearHp(),frostGuard:save.frostGuard,potionBoosts:save.potionBoosts,onUsePotion:useInventoryPotion,onEquipRune:equipInventoryRune,onFuseRune:fuseInventoryRune}} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")}/></React.Suspense>;
 
   if (realm.id === "midgard") {
     if (!heroDef) return null;

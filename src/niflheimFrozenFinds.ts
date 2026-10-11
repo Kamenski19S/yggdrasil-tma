@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {NIFL_RIVERS,niflGroundY} from './niflheimMapData';
+import {MEMORY_FINDS} from './niflheimMemoryQuest';
 
 export function addFrozenRiverFinds(scene:THREE.Scene){
   const wood=new THREE.MeshStandardMaterial({color:'#5d3b27',roughness:1});
@@ -22,10 +23,10 @@ export function addFrozenRiverFinds(scene:THREE.Scene){
   add(tablet,new THREE.BoxGeometry(1.65,.2,2.1),stone,0,.12,0);
   const canvas=document.createElement('canvas');canvas.width=canvas.height=128;const ctx=canvas.getContext('2d')!;ctx.clearRect(0,0,128,128);ctx.font='bold 94px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#b7e3ef';ctx.fillText('ᛚ',64,65);
   const rune=add(tablet,new THREE.PlaneGeometry(1.1,1.5),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(canvas),transparent:true,depthWrite:false}),0,.23,0);rune.rotation.x=-Math.PI/2;
-  const river=NIFL_RIVERS[0];
   groups.forEach((group,i)=>{
-    const p=river[Math.floor((river.length-1)*[.72,.53,.34][i])];group.position.set(p.x,niflGroundY(p.x,p.z)+.18,p.z);group.rotation.y=[.3,-.5,.2][i];scene.add(group);
+    const p=NIFL_RIVERS[0][Math.floor((NIFL_RIVERS[0].length-1)*MEMORY_FINDS[i].t)];group.position.set(p.x,niflGroundY(p.x,p.z)+.18,p.z);group.rotation.y=[.3,-.5,.2][i];scene.add(group);
     // Local translucent ice crust keeps the clues visibly trapped in the ice.
     const crust=add(group,new THREE.CircleGeometry(2.05,24),new THREE.MeshBasicMaterial({color:'#a9dcea',transparent:true,opacity:.13,depthWrite:false,side:THREE.DoubleSide}),0,.55,0);crust.rotation.x=-Math.PI/2;
   });
+  return {near(x:number,z:number,found:string[]){return MEMORY_FINDS.find((f,i)=>!found.includes(f.id)&&Math.hypot(x-groups[i].position.x,z-groups[i].position.z)<4);},update(found:string[]){groups.forEach((g,i)=>g.visible=!found.includes(MEMORY_FINDS[i].id));}};
 }
