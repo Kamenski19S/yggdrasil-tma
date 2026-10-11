@@ -1,3 +1,4 @@
+import {installNiflheimBridge} from './niflheimMedievalBridge';
 import {createCombatEffects} from './combatEffects';
 import {addEntranceTorches} from './niflheimEntranceTorches';
 import {MeshoptDecoder} from 'three/examples/jsm/libs/meshopt_decoder.module.js';
@@ -99,8 +100,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
     let memoryGiant:ReturnType<typeof createNiflheimGiant>|undefined;
     let hallSpace:ReturnType<typeof createForgottenNamesHall>|undefined;
     let rootsSpace:ReturnType<typeof createRootsIceCave>|undefined;
-    let sourceIceBounds:THREE.Box3|undefined;
-    const sourceIceBlocked=(x:number,z:number)=>!!sourceIceBounds&&x>sourceIceBounds.min.x&&x<sourceIceBounds.max.x&&z>sourceIceBounds.min.z&&z<sourceIceBounds.max.z;
+    const rootsBridge=installNiflheimBridge(scene,{x:-24,z:-31.75},{x:-4,z:-31.75},niflGroundY,refreshShadows);
     let lakeBridgeDeck:number|undefined;
     const lakeBridgeY=(x:number,z:number)=>lakeBridgeDeck!==undefined&&Math.abs(x+72)<3.7&&z>=-12&&z<=23?lakeBridgeDeck:undefined;
     let platformBounds:THREE.Box3|undefined,wellObstacle:{x:number;z:number;radius:number}|undefined;
@@ -125,8 +125,8 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       const toY=stairGroundY(next.x,next.z),fromY=stairGroundY(from.x,from.z);
       return toY!==undefined&&toY-(fromY??raisedSnowY(from.x,from.z))>.85;
     };
-    const walkingY=(x:number,z:number)=>lakeCave?.groundY(x,z)??towerEntrance.current?.groundY(x,z)??stairGroundY(x,z)??lakeBridgeY(x,z)??hallSpace?.groundY(x,z)??memorySpace?.groundY(x,z)??forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??rootsSpace?.groundY(x,z)??raisedSnowY(x,z);
-    const terrainY=(x:number,z:number)=>lakeCave?.terrainY(x,z)??towerEntrance.current?.groundY(x,z)??hallSpace?.terrainY(x,z)??memorySpace?.terrainY(x,z)??forgeSpace?.terrainY(x,z)??(caveSpace?.inside(x,z)?caveSpace.floor-.06:(rootsSpace?.inside(x,z)?rootsSpace.groundY(x,z)!-.65:niflGroundY(x,z)));
+    const walkingY=(x:number,z:number)=>rootsBridge.groundY(x,z)??lakeCave?.groundY(x,z)??towerEntrance.current?.groundY(x,z)??stairGroundY(x,z)??lakeBridgeY(x,z)??hallSpace?.groundY(x,z)??memorySpace?.groundY(x,z)??forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??rootsSpace?.groundY(x,z)??raisedSnowY(x,z);
+    const terrainY=(x:number,z:number)=>rootsBridge.terrainY(x,z)??lakeCave?.terrainY(x,z)??towerEntrance.current?.groundY(x,z)??hallSpace?.terrainY(x,z)??memorySpace?.terrainY(x,z)??forgeSpace?.terrainY(x,z)??(caveSpace?.inside(x,z)?caveSpace.floor-.06:(rootsSpace?.inside(x,z)?rootsSpace.groundY(x,z)!-.65:niflGroundY(x,z)));
     const crystalMaterials:THREE.MeshStandardMaterial[]=[];
     const crystalHalos:THREE.Sprite[]=[];
     const snowCanvas=document.createElement('canvas');snowCanvas.width=snowCanvas.height=128;
@@ -292,7 +292,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       if(!alive){disposeObject(asset.scene);textures.forEach(t=>t.dispose());return;}
       const cluster=asset.scene;cluster.name='Багровый лёд Хвергельмира';cluster.position.set(NIFL_SOURCE.x,niflGroundY(NIFL_SOURCE.x,NIFL_SOURCE.z)+.12,NIFL_SOURCE.z);
       cluster.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});scene.add(cluster);cluster.updateMatrixWorld(true);
-      sourceIceBounds=new THREE.Box3().setFromObject(cluster).expandByScalar(.65);refreshShadows();
+      refreshShadows();
     },()=>{})).catch(()=>{});
 
 
@@ -610,7 +610,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       velocityX=THREE.MathUtils.lerp(velocityX,isMoving?dx/length:0,steer);velocityZ=THREE.MathUtils.lerp(velocityZ,isMoving?dz/length:0,steer);
       if(!paused.current&&!document.hidden){const from=position.current,next=moveThroughNiflEntrance(from,from.x+velocityX*8.5*dt,from.z+velocityZ*8.5*dt);
         const candidate=caveSpace?caveSpace.move(from,next):next;
-        if(!(niflRiverBlocked(candidate.x,candidate.z)&&forgeSpace?.groundY(candidate.x,candidate.z)===undefined&&lakeBridgeY(candidate.x,candidate.z)===undefined&&!rootsSpace?.inside(candidate.x,candidate.z)&&!lakeCave?.inside(candidate.x,candidate.z))&&!entranceSupports.some(b=>candidate.x>b.min.x&&candidate.x<b.max.x&&candidate.z>b.min.z&&candidate.z<b.max.z)&&!dryRockBounds.some(b=>candidate.x>b.min.x&&candidate.x<b.max.x&&candidate.z>b.min.z&&candidate.z<b.max.z)&&!lakeCave?.blocked(from,candidate)&&!towerEntrance.current?.blocked(from,candidate)&&!platformBlocked(from,candidate)&&!hallSpace?.blocked(candidate.x,candidate.z)&&!memorySpace?.blocked(candidate.x,candidate.z)&&!memoryGiant?.blocked(candidate.x,candidate.z)&&!sourceIceBlocked(candidate.x,candidate.z)&&!rootsSpace?.blocked(candidate.x,candidate.z)&&!giant?.blocked(candidate.x,candidate.z)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
+        if(!(niflRiverBlocked(candidate.x,candidate.z)&&rootsBridge.groundY(candidate.x,candidate.z)===undefined&&forgeSpace?.groundY(candidate.x,candidate.z)===undefined&&lakeBridgeY(candidate.x,candidate.z)===undefined&&!rootsSpace?.inside(candidate.x,candidate.z)&&!lakeCave?.inside(candidate.x,candidate.z))&&!entranceSupports.some(b=>candidate.x>b.min.x&&candidate.x<b.max.x&&candidate.z>b.min.z&&candidate.z<b.max.z)&&!dryRockBounds.some(b=>candidate.x>b.min.x&&candidate.x<b.max.x&&candidate.z>b.min.z&&candidate.z<b.max.z)&&!lakeCave?.blocked(from,candidate)&&!towerEntrance.current?.blocked(from,candidate)&&!platformBlocked(from,candidate)&&!hallSpace?.blocked(candidate.x,candidate.z)&&!memorySpace?.blocked(candidate.x,candidate.z)&&!memoryGiant?.blocked(candidate.x,candidate.z)&&!rootsBridge.blocked(candidate.x,candidate.z)&&!rootsSpace?.blocked(candidate.x,candidate.z)&&!giant?.blocked(candidate.x,candidate.z)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
       if(isMoving){const target=Math.atan2(velocityX,velocityZ),difference=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y));hero.rotation.y+=difference*(1-Math.exp(-dt*14));cameraDir.x=Math.sin(hero.rotation.y);cameraDir.z=Math.cos(hero.rotation.y);}
       const walking=!paused.current&&!document.hidden&&Math.hypot(velocityX,velocityZ)>.08;
       moving=walking;
@@ -650,7 +650,7 @@ export default function Niflheim3D({initialPosition,onRemember,onForge,onOpenMil
       wellGlowSprites.forEach((sprite,i)=>{(sprite.material as THREE.SpriteMaterial).opacity=.54+.12*Math.sin(performance.now()*.0017+i*2);});
       renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
-    return()=>{combatEffects.dispose();towerEntrance.current?.dispose();towerEntrance.current=null;attackAction.current=null;guardUntil.current=0;alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});rivers.dispose();forgeSpace?.dispose();mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());sun.shadow.dispose();renderer.dispose();renderer.domElement.remove();};
+    return()=>{rootsBridge.dispose();combatEffects.dispose();towerEntrance.current?.dispose();towerEntrance.current=null;attackAction.current=null;guardUntil.current=0;alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});rivers.dispose();forgeSpace?.dispose();mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());sun.shadow.dispose();renderer.dispose();renderer.domElement.remove();};
   },[weapon,shieldAsset,shieldEquipped]);
   const steerStick=(event:React.PointerEvent<HTMLButtonElement>)=>{
     if(pointerId.current!==event.pointerId)return;
