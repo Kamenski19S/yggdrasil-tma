@@ -134,6 +134,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
     const lakeBridgeY=(x:number,z:number)=>lakeBridgeDeck!==undefined&&Math.abs(x+72)<3.05&&z>=-12&&z<=(bridgeRepair?.ready()?29.5:22.65)?lakeBridgeDeck:undefined;
     let platformBounds:THREE.Box3|undefined,wellObstacle:{x:number;z:number;radius:number}|undefined;
     let nornsWellObstacle:{x:number;z:number;radius:number}|undefined;
+    let wandererObstacle:{x:number;z:number;radius:number}|undefined;
     let foundationSnow:{x:number;z:number;halfX:number;halfZ:number;height:number}|undefined;
     const wellGlowSprites:THREE.Sprite[]=[];
     const raisedSnowY=(x:number,z:number)=>{
@@ -153,6 +154,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
     const platformBlocked=(from:{x:number;z:number},next:{x:number;z:number})=>{
       if(wellObstacle&&Math.hypot(next.x-wellObstacle.x,next.z-wellObstacle.z)<wellObstacle.radius)return true;
       if(nornsWellObstacle&&Math.hypot(next.x-nornsWellObstacle.x,next.z-nornsWellObstacle.z)<nornsWellObstacle.radius)return true;
+      if(wandererObstacle&&Math.hypot(next.x-wandererObstacle.x,next.z-wandererObstacle.z)<wandererObstacle.radius)return true;
       const toY=stairGroundY(next.x,next.z),fromY=stairGroundY(from.x,from.z);
       return toY!==undefined&&toY-(fromY??raisedSnowY(from.x,from.z))>.85;
     };
@@ -311,7 +313,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
         }).catch(()=>{});
       }
       // The former lookout is now the dry riverbed; leave its channel unobstructed.
-      if(l.kind!=='source'&&l.id!=='roots'&&l.id!=='threeNornsWell'){
+      if(l.kind!=='source'&&l.id!=='roots'&&l.id!=='threeNornsWell'&&l.id!=='nineWorldStranger'){
         const marker=mesh(new THREE.OctahedronGeometry(.5),glow,l.x+3,niflGroundY(l.x+3,l.z+3)+2.8,l.z+3);marker.name=`Location ${index+1}: ${l.name}`;
       }
     });
@@ -381,6 +383,50 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
         nornsWellObstacle={x:niflNornsX,z:niflNornsZ,radius:norns.radius};
         refreshShadows();
       }).catch(()=>{if(alive)setStatus('Не удалось загрузить Колодец трёх норн.');});
+    // The same Nine-Worlds Wanderer as in Midgard; load only when Vika
+    // approaches this part of the map to spare mobile startup bandwidth.
+    const wandererX=44,wandererZ=-80;
+    let wandererLoading=false,wandererPresent=false;
+    const loadWanderer=()=>{
+      if(wandererLoading||wandererPresent)return;
+      wandererLoading=true;
+      cachedGlbBuffer(`${BASE}img/models/hit2_stranger_mobile.glb`)
+        .then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`))
+        .then(asset=>{
+          if(!alive){disposeObject(asset.scene);return;}
+          const model=asset.scene;
+          model.updateWorldMatrix(true,true);
+          const first=new THREE.Box3().setFromObject(model);
+          const size=first.getSize(new THREE.Vector3());
+          if(first.isEmpty()||size.y<.001)throw new Error('Empty stranger GLB');
+          model.scale.multiplyScalar(2.65/size.y);
+          model.rotation.y=.72;
+          model.updateWorldMatrix(true,true);
+          const box=new THREE.Box3().setFromObject(model),center=box.getCenter(new THREE.Vector3());
+          model.position.set(-center.x,-box.min.y,-center.z);
+          const root=new THREE.Group();
+          root.name='Странница девяти миров';
+          root.position.set(wandererX,niflGroundY(wandererX,wandererZ),wandererZ);
+          model.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;}});
+          root.add(model);
+          const labelCanvas=document.createElement('canvas');labelCanvas.width=512;labelCanvas.height=96;
+          const ctx=labelCanvas.getContext('2d');
+          if(ctx){
+            ctx.font='bold 38px Georgia,serif';ctx.textAlign='center';ctx.textBaseline='middle';
+            ctx.shadowColor='#163048';ctx.shadowBlur=9;ctx.fillStyle='#e8f8ff';
+            ctx.fillText('Странница',256,48);
+            const tex=new THREE.CanvasTexture(labelCanvas);tex.colorSpace=THREE.SRGBColorSpace;
+            const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false}));
+            label.position.set(0,3.12,0);label.scale.set(3.3,.62,1);root.add(label);
+          }
+          const halo=new THREE.Mesh(new THREE.TorusGeometry(.75,.035,5,40),
+            new THREE.MeshBasicMaterial({color:0x96d7f4,transparent:true,opacity:.68,depthWrite:false}));
+          halo.rotation.x=-Math.PI/2;halo.position.y=.07;root.add(halo);
+          scene.add(root);
+          wandererObstacle={x:wandererX,z:wandererZ,radius:.75};
+          wandererPresent=true;refreshShadows();
+        }).catch(error=>console.warn('[NIFL WANDERER] Load failed',error));
+    };
     const rootsLocation=NIFL_LOCATIONS.find(l=>l.id==='roots')!;
     const wellSiteX=NIFL_SOURCE.x-22,wellSiteZ=NIFL_SOURCE.z-34;
     cachedGlbBuffer(`${BASE}img/models/Niflheim_Well_Assembly.glb?v=staircase-only-4`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
@@ -667,6 +713,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
       const next=now<attackUntil?attack:moving?walk:idle;
       if(next&&next!==currentAction){currentAction?.fadeOut(.16);next.reset();next.enabled=true;next.setEffectiveWeight(1);next.setEffectiveTimeScale(1);next.fadeIn(.16).play();currentAction=next;}
       const pos=position.current;
+      if(!wandererLoading&&!wandererPresent&&Math.hypot(pos.x-wandererX,pos.z-wandererZ)<60)loadWanderer();
       if(previousFindCount!==questRef.current.found.length){previousFindCount=questRef.current.found.length;memoryFinds.update(questRef.current.found.map(f=>f.id));refreshShadows();}
       if(sourceBasin.update(dt,now*.001,questRef.current.restored,questRef.current.step))refreshShadows();
       if(towerEntrance.current?.update(dt)){
@@ -706,7 +753,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
         const seal=drySeals.find(r=>!questRef.current.seals.some(s=>s.id===r.id)&&Math.hypot(pos.x-r.position.x,pos.z-r.position.z)<6);
         const bridgePart=questRef.current.bridgeStarted&&!questRef.current.bridgeRestored?bridgeRepair?.near(pos.x,pos.z,questRef.current.bridgeParts):undefined;
         const nearQuest=bridgePart?'bridge:find:'+bridgePart.id:bridgeRepair&&Math.abs(pos.x+72)<8&&(Math.abs(pos.z-27)<8||Math.abs(pos.z+12)<8)?'bridge':seal?'seal:'+seal.id:find?'find:'+find.id:rootsSpace&&Math.hypot(pos.x-10.5,pos.z+57)<7?'girl':Math.hypot(pos.x-NIFL_SOURCE.x,pos.z-NIFL_SOURCE.z)<13?'source':'';
-        setQuestNear(prev=>prev===nearQuest?prev:nearQuest);const l=NIFL_LOCATIONS.reduce((a,b)=>Math.hypot(pos.x-a.x,pos.z-a.z)<Math.hypot(pos.x-b.x,pos.z-b.z)?a:b);const id=lakeCave?.inside(pos.x,pos.z)?'snowMountain':towerEntrance.current?.canEnter(pos.x,pos.z)?'nidhogg':forgeSpace?.canEnter(pos.x,pos.z)?'forge':l.id!=='forge'&&l.id!=='nidhogg'&&Math.hypot(pos.x-l.x,pos.z-l.z)<9?l.id:'';if(id!==currentNear){currentNear=id;setNear(id);}}
+        setQuestNear(prev=>prev===nearQuest?prev:nearQuest);const l=NIFL_LOCATIONS.filter(item=>item.id!=='nineWorldStranger'||wandererPresent).reduce((a,b)=>Math.hypot(pos.x-a.x,pos.z-a.z)<Math.hypot(pos.x-b.x,pos.z-b.z)?a:b);const id=lakeCave?.inside(pos.x,pos.z)?'snowMountain':towerEntrance.current?.canEnter(pos.x,pos.z)?'nidhogg':forgeSpace?.canEnter(pos.x,pos.z)?'forge':l.id!=='forge'&&l.id!=='nidhogg'&&Math.hypot(pos.x-l.x,pos.z-l.z)<9?l.id:'';if(id!==currentNear){currentNear=id;setNear(id);}}
       wellGlowSprites.forEach((sprite,i)=>{(sprite.material as THREE.SpriteMaterial).opacity=.54+.12*Math.sin(performance.now()*.0017+i*2);});
       renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
@@ -740,7 +787,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
     {questDialog&&<div className="nifl-overlay"><section className="nifl-panel nifl-quest-panel" role="dialog" aria-modal="true" aria-label={questDialog==='bridge'?'Восстановление переправы':questDialog==='seal'?'Печати пересохшего русла':questDialog==='girl'?'Три осколка памяти':'Печать Хвергельмира'}><button className="nifl-close" onClick={()=>setQuestDialog(null)}>Закрыть</button><h3>{questDialog==='bridge'?'Восстановление переправы':questDialog==='seal'?'Печати пересохшего русла':questDialog==='girl'?'Три осколка памяти':'Хвергельмир'}</h3>
       {questDialog==='bridge'?<>{quest.bridgeRestored?<p>Последний пролёт восстановлен. Теперь мост соединяет оба берега.</p>:<><p>Найди три камня опоры на берегах озера и вернись к переправе. Они помогут восстановить утраченный пролёт.</p><ul>{BRIDGE_PARTS.map(p=><li key={p.id}>{quest.bridgeParts.includes(p.id)?'✓':'○'} {p.name}</li>)}</ul>{!quest.bridgeStarted?<button onClick={()=>emitMemory('bridge:start')}>Принять задание</button>:quest.bridgeParts.length===3?<button onClick={()=>{emitMemory('bridge:repair');setQuestDialog(null);setStatus('Последний пролёт восстанавливается…');}}>Восстановить мост</button>:<p>Собрано: {quest.bridgeParts.length}/3. Ищи светлые камни у берегов озера.</p>}</>}</>:questDialog==='seal'?<><p>Три печати удерживают пересохшее русло. Прочитай смысл знака, чтобы снять его. Иса — лёд, Наутиз — скованность, Хагалаз — разрушение.</p><p>Что удерживает этот камень?</p>{DRY_SEALS.map(r=><button key={r.id} onClick={()=>{if(questNear==='seal:'+r.id){emitMemory(('seal:'+r.id) as MemoryEvent);setQuestDialog(null);setStatus(quest.seals.length===2?'Все три печати сняты. Русло свободно, но вода вернётся только после победы над драконом.':'Печать растворяется. Камень больше не удерживает русло.');}else setQuestMessage('Знак не отозвался. Попробуй прочитать его ещё раз.');}}>{r.meaning}</button>)}{questMessage&&<p role="status">{questMessage}</p>}<p>Снято печатей: {quest.seals.length}/3. Вода вернётся после победы над драконом.</p></>:questDialog==='girl'?<>{quest.restored?<p>«Источник вновь свободен. Но корни ещё помнят боль. Найди Нидхёгга под разрушенной башней — твой путь продолжается».</p>:quest.ready?<p>«Пусть сначала вернётся память — Ансуз ᚨ. Затем потечёт вода — Лагуз ᛚ. И вслед за ней пробудится жизнь — Беркана ᛒ. Повтори этот порядок у Хвергельмира».</p>:<><p>«Воды Нифльхейма помнят то, что забыли даже боги. Найди три утраченные вещи, и река откроет тебе свою тайну».</p><ul>{MEMORY_FINDS.map(f=><li key={f.id}>{quest.found.some(g=>g.id===f.id)?'✓':'○'} {f.name}</li>)}</ul><p>Ищи в замёрзшем западном русле. Найденные вещи хранятся в задании.</p>{quest.found.length===3?<button onClick={()=>emitMemory('handover')}>Показать три осколка</button>:!quest.started?<button onClick={()=>emitMemory('start')}>Принять задание</button>:<p>Найдено: {quest.found.length}/3. Я буду ждать у чаши.</p>}</>}</>:quest.restored?<><p>Багровый лёд рассыпался. В каменной чаше вновь светится голубая вода.</p><p>Награда получена: {MEMORY_REWARD} Капель бессмертия и эликсир северного мха.</p><p>Из глубины доносится шёпот: «Вода вспомнила путь… А ты вспомнишь, кто тревожит корни?»</p></>:!quest.ready?<p>Печать не отвечает. {quest.found.length===3?'Покажи три осколка девушке у чаши.':'Сначала найди девушку у чаши и собери три осколка памяти в замёрзшем русле.'}</p>:<><p>Активируй три знака в порядке, который назвала девушка. Память → вода → жизнь.</p><p>Активировано: {quest.step}/3</p><div className="nifl-rune-choices">{[SOURCE_RUNES[1],SOURCE_RUNES[2],SOURCE_RUNES[0]].map(r=><button key={r.id} onClick={()=>{const correct=r.id===SOURCE_RUNES[quest.step].id;emitMemory(('rune:'+r.id) as MemoryEvent);setQuestMessage(correct?'Знак отозвался голубым светом.':'Порядок нарушен. Печать погасила знаки — начни снова.');if(correct&&quest.step===2){setQuestDialog(null);setStatus('Хвергельмир пробуждается! +60 Капель бессмертия и эликсир северного мха.');}}}><span>{r.symbol}</span>{r.name}</button>)}</div>{questMessage&&<p role="status">{questMessage}</p>}</>}
     </section></div>}
-    {nearest&&!questNear&&<div className="nifl-near"><b>{nearest.name}</b><button onClick={()=>{clearInput();if(nearest.id==='nidhogg'){if(!doorOpening&&towerEntrance.current?.canEnter(position.current.x,position.current.z)){setDoorOpening(true);towerEntrance.current.open();setStatus('Дверь башни открывается…');}}else if(nearest.id==='forge'){remember.current({...position.current});onForge({...position.current});}else setSelected(nearest.id);}}>{nearest.id==='nidhogg'?(doorOpening?'Дверь открывается…':'Открыть дверь башни'):nearest.id==='forge'?'Войти в кузницу':'Осмотреть'}</button></div>}
+    {nearest&&!questNear&&<div className="nifl-near"><b>{nearest.name}</b><button onClick={()=>{clearInput();if(nearest.id==='nidhogg'){if(!doorOpening&&towerEntrance.current?.canEnter(position.current.x,position.current.z)){setDoorOpening(true);towerEntrance.current.open();setStatus('Дверь башни открывается…');}}else if(nearest.id==='forge'){remember.current({...position.current});onForge({...position.current});}else setSelected(nearest.id);}}>{nearest.id==='nidhogg'?(doorOpening?'Дверь открывается…':'Открыть дверь башни'):nearest.id==='forge'?'Войти в кузницу':nearest.id==='nineWorldStranger'?'Поговорить':'Осмотреть'}</button></div>}
     {mapOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Карта Нифльхейма"><button className="nifl-close" onClick={()=>setMapOpen(false)}>Закрыть</button><h3>Карта Нифльхейма</h3><p className="nifl-map-legend">Три русла: живое, замёрзшее и пересохшее · два озера · источник Хвергельмир. Нажми на номер или название локации.</p>
       <svg viewBox="0 0 130 160" aria-label="Реки и локации Нифльхейма">
         {NIFL_ROUTES.map((route,i)=>{const a=NIFL_LOCATIONS.find(l=>l.id===route[0])!,b=NIFL_LOCATIONS.find(l=>l.id===route[1])!;return <line key={i} x1={a.x/NIFL_SCALE+65} y1={a.z/NIFL_SCALE+80} x2={b.x/NIFL_SCALE+65} y2={b.z/NIFL_SCALE+80} stroke="#8a9eab" strokeWidth="1" strokeDasharray="2 2"/>;})}
@@ -772,6 +819,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
       <p className="nifl-map-legend">Волшебница у багровой чаши: <a href="https://sketchfab.com/3d-models/dark-fantasy-sorceress-crystal-staff-a307ea3800d748c487d26235bb43ecc0" target="_blank" rel="noopener noreferrer">Dark Fantasy Sorceress, Crystal Staff — Pigcraft</a>, CC BY 4.0. Оптимизирована геометрия, сжаты текстуры и данные; изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Парящий шар: <a href="https://sketchfab.com/3d-models/magic-orb-cdd88b96333c491ebc17043088aae633" target="_blank" rel="noopener noreferrer">Magic Orb — reddification</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Оставлен один анимированный шар с металлическим креплением, уменьшены текстуры и масштаб.</p>
       <p className="nifl-map-legend">Кристалл на столе: <a href="https://sketchfab.com/3d-models/crystals-from-space-557ff4a9f4b74ff1a367d7cc7fc77e24" target="_blank" rel="noopener noreferrer">Crystals From Space — Grenade_Apple</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Сохранена вся группа кристаллов, уменьшены текстуры, изменены масштаб и размещение.</p>
+      <p className="nifl-map-legend">Странница девяти миров: <a href="https://sketchfab.com/3d-models/hit2-female-swordsman-bfc0c40414ce4e37bea0567ce4a36792" target="_blank" rel="noopener noreferrer">HIT2 Female swordsman — enzohao</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры; сохранены скелет и геометрия. В Нифльхейме встречается возле колодца норн.</p>
       <p className="nifl-map-legend">Колодец трёх норн: та же оригинальная игровая модель <code>Midgard_Well_Three_Norns_V1_YUP.glb</code>, что и в Мидгарде. Для Нифльхейма увеличена высота, камень покрыт холодным оттенком, свечение заменено на ледяное голубое; колодец остаётся непроходимым.</p>
       <p className="nifl-map-legend">Водная спираль: <a href="https://sketchfab.com/3d-models/water-splash-spiral-282e1a5d84f5472281e72f35987775e7" target="_blank" rel="noopener noreferrer">Water Splash Spiral — Will VFX</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Упрощена геометрия, обновлён материал воды, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Незнакомец на озере: <a href="https://sketchfab.com/3d-models/elegant-vampire-lord-6a158cd2bf564c41b965259a6b7708ee" target="_blank" rel="noopener noreferrer">Elegant Vampire Lord — Galaxy Abundant</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Упрощена геометрия, изменены масштаб и размещение.</p>

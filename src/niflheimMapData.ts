@@ -1,5 +1,5 @@
 import terrainHeights from './niflheimTerrainHeights.json';
-export type NiflLocation={id:string;name:string;x:number;z:number;kind:'gate'|'shelter'|'river'|'cave'|'root'|'source'|'lair'|'lake'|'bridge'|'hall'|'lookout'|'forge'|'mountain'|'well';text:string};
+export type NiflLocation={id:string;name:string;x:number;z:number;kind:'gate'|'shelter'|'river'|'cave'|'root'|'source'|'lair'|'lake'|'bridge'|'hall'|'lookout'|'forge'|'mountain'|'well'|'wanderer';text:string};
 export const NIFL_SCALE=2;
 export const NIFL_SOURCE={x:0,z:-49*NIFL_SCALE,rx:8*NIFL_SCALE,rz:7*NIFL_SCALE};
 export const NIFL_LOCATIONS:NiflLocation[]=([
@@ -17,7 +17,8 @@ export const NIFL_LOCATIONS:NiflLocation[]=([
   {id:'forge',name:'Кузница хранителей',x:-9,z:45,kind:'forge',text:'В скальной пещере горит горн великана-кузнеца. Здесь можно выбрать золотой меч и золотой щит и укрепить снаряжение.'},
   {id:'snowMountain',name:'Снежная гора',x:-43,z:48,kind:'mountain',text:'За заснеженной аркой открывается просторный каменный зал. Здесь тихо: под сводом горы укрываются от ледяного ветра.'},
   {id:'lookout',name:'Пересохшее русло',x:-18,z:-62,kind:'lookout',text:'Третья река ушла на северо-запад и пересохла. На дне глубокого русла остались трещины; древние корни нависают над пустым ложем.'},
-  {id:'threeNornsWell',name:'Колодец трёх норн',x:18,z:-42.5,kind:'well',text:'Древний колодец судьбы стоит среди льдов Нифльхейма. Три нити норн тянутся под крышей; холодный свет воды хранит память о путях девяти миров.'}
+  {id:'threeNornsWell',name:'Колодец трёх норн',x:18,z:-42.5,kind:'well',text:'Древний колодец судьбы стоит среди льдов Нифльхейма. Три нити норн тянутся под крышей; холодный свет воды хранит память о путях девяти миров.'},
+  {id:'nineWorldStranger',name:'Странница девяти миров',x:22,z:-40,kind:'wanderer',text:'«Ты уже видела нити судьбы, Вика. Но лёд скрывает память живых, а голос у разрушенной башни может обмануть. Ищи ответ у Хвергельмира. Мы встретимся снова». Она так и не называет своего имени.'}
 ] as NiflLocation[]).map(l=>({...l,x:l.x*NIFL_SCALE,z:l.z*NIFL_SCALE}));
 // One centreline drives both the carved bed and its water/ice surface.
 const smoothRiver=(points:{x:number;z:number}[])=>{
