@@ -87,8 +87,11 @@ export function createNiflheimGiant(model:THREE.Group,space:{world(x:number,y:nu
     if(!rising&&!standing&&space.inside(pos.x,pos.z)&&Math.hypot(pos.x-seat.x,pos.z-seat.z)<11)rising=true;
     if(rising){elapsed=Math.min(2.8,elapsed+dt);const t=elapsed/2.8;pose(t*t*(3-2*t));if(elapsed===2.8){rising=false;standing=true;}return true;}
     return false;
-  },blocked(x:number,z:number){
-    const dx=x-seat.x,dz=z-seat.z,along=dx*front.x+dz*front.z,across=dx*front.z-dz*front.x;
-    return Math.abs(across)<4.6&&along>-3.2&&along<(standing?4.2:3.4);
+  },blocked(x:number,z:number,from?:{x:number;z:number}){
+    const edge=(px:number,pz:number)=>{const dx=px-seat.x,dz=pz-seat.z,along=dx*front.x+dz*front.z,across=dx*front.z-dz*front.x;return Math.max(Math.abs(across)-4.6,-3.2-along,along-(standing?4.2:3.4));};
+    const next=edge(x,z);if(next>=0)return false;
+    // Rising can enlarge the footprint around Vika; always allow movement out of it.
+    if(from){const previous=edge(from.x,from.z);if(previous<0&&next>=previous-1e-7)return false;}
+    return true;
   }};
 }
