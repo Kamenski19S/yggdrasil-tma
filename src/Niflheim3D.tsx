@@ -1,3 +1,4 @@
+import {createMemoryTable} from './niflheimMemoryTable';
 import {memoryQuest,DRY_SEALS,MEMORY_FINDS,SOURCE_RUNES,MEMORY_REWARD,type MemoryEvent} from './niflheimMemoryQuest';
 import {createHvergelmir} from './niflheimHvergelmir';
 import {lakeBridgeBlocked} from './niflheimLakeBridgeCollision';
@@ -115,6 +116,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
     let caveSpace:ReturnType<typeof createCaveSpace>|undefined;
     let forgeSpace:ReturnType<typeof createNiflheimForge>|undefined;
     let giant:ReturnType<typeof createNiflheimGiant>|undefined;
+    let memoryTable:ReturnType<typeof createMemoryTable>|undefined;
     let memorySpace:ReturnType<typeof createMemoryIgloo>|undefined;
     let memoryGiant:ReturnType<typeof createNiflheimGiant>|undefined;
     let hallSpace:ReturnType<typeof createForgottenNamesHall>|undefined;
@@ -524,6 +526,8 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
       if(!alive){disposeObject(asset.scene);textures.forEach(t=>t.dispose());return;}
       memorySpace=createMemoryIgloo(asset.scene,memoryLocation.x,memoryLocation.z,niflGroundY);
       const space=memorySpace;scene.add(space.model,space.base);
+      memoryTable=createMemoryTable(scene,space.world);const table=memoryTable;
+      for(const file of ['Niflheim_Memory_Flame.glb','Niflheim_Memory_Capsule.glb'])cachedGlbBuffer(`${BASE}img/models/${file}`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{if(!alive){disposeObject(asset.scene);return;}if(file.includes('Flame'))table.addFlame(asset.scene,asset.animations);else table.addCapsule(asset.scene);refreshShadows();}).catch(()=>{if(alive)setStatus('Не удалось загрузить предметы на столе памяти.');});
       scene.traverse((o:any)=>{if(o.name==='Niflheim terrain'&&o.isMesh){const p=o.geometry.getAttribute('position');for(let i=0;i<p.count;i++)p.setY(i,terrainY(p.getX(i),p.getZ(i)));p.needsUpdate=true;o.geometry.computeVertexNormals();o.geometry.computeBoundingSphere();}});
       const light=new THREE.PointLight('#c8e2ff',65,45,2);light.position.set(memoryLocation.x,space.floor+13,memoryLocation.z-20);scene.add(light);
       cachedGlbBuffer(`${BASE}img/models/Niflheim_Giant_Optimized.glb`).then(buffer=>new GLTFLoader().parse(buffer,`${BASE}img/models/`,asset=>{
@@ -631,7 +635,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
       velocityX=THREE.MathUtils.lerp(velocityX,isMoving?dx/length:0,steer);velocityZ=THREE.MathUtils.lerp(velocityZ,isMoving?dz/length:0,steer);
       if(!paused.current&&!document.hidden){const from=position.current,next=moveThroughNiflEntrance(from,from.x+velocityX*8.5*dt,from.z+velocityZ*8.5*dt);
         const candidate=caveSpace?caveSpace.move(from,next):next;
-        if(!(niflRiverBlocked(candidate.x,candidate.z)&&venetianBridges.groundY(candidate.x,candidate.z)===undefined&&rootsBridge.groundY(candidate.x,candidate.z)===undefined&&forgeSpace?.groundY(candidate.x,candidate.z)===undefined&&lakeBridgeY(candidate.x,candidate.z)===undefined&&!rootsSpace?.inside(candidate.x,candidate.z)&&!lakeCave?.inside(candidate.x,candidate.z))&&!entranceSupports.some(b=>candidate.x>b.min.x&&candidate.x<b.max.x&&candidate.z>b.min.z&&candidate.z<b.max.z)&&!dryRockBounds.some(b=>candidate.x>b.min.x&&candidate.x<b.max.x&&candidate.z>b.min.z&&candidate.z<b.max.z)&&!lakeCave?.blocked(from,candidate)&&!towerEntrance.current?.blocked(from,candidate)&&!sourceBasin.blocked(from,candidate)&&!lakeBridgeBlocked(from,candidate,lakeBridgeDeck!==undefined)&&!platformBlocked(from,candidate)&&!hallSpace?.blocked(candidate.x,candidate.z)&&!memorySpace?.blocked(candidate.x,candidate.z)&&!memoryGiant?.blocked(candidate.x,candidate.z)&&!venetianBridges.blocked(candidate.x,candidate.z)&&!rootsBridge.blocked(candidate.x,candidate.z)&&!rootsSpace?.blocked(candidate.x,candidate.z)&&!giant?.blocked(candidate.x,candidate.z)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
+        if(!(niflRiverBlocked(candidate.x,candidate.z)&&venetianBridges.groundY(candidate.x,candidate.z)===undefined&&rootsBridge.groundY(candidate.x,candidate.z)===undefined&&forgeSpace?.groundY(candidate.x,candidate.z)===undefined&&lakeBridgeY(candidate.x,candidate.z)===undefined&&!rootsSpace?.inside(candidate.x,candidate.z)&&!lakeCave?.inside(candidate.x,candidate.z))&&!entranceSupports.some(b=>candidate.x>b.min.x&&candidate.x<b.max.x&&candidate.z>b.min.z&&candidate.z<b.max.z)&&!dryRockBounds.some(b=>candidate.x>b.min.x&&candidate.x<b.max.x&&candidate.z>b.min.z&&candidate.z<b.max.z)&&!lakeCave?.blocked(from,candidate)&&!towerEntrance.current?.blocked(from,candidate)&&!sourceBasin.blocked(from,candidate)&&!lakeBridgeBlocked(from,candidate,lakeBridgeDeck!==undefined)&&!platformBlocked(from,candidate)&&!hallSpace?.blocked(candidate.x,candidate.z)&&!memorySpace?.blocked(candidate.x,candidate.z)&&!memoryTable?.blocked(candidate.x,candidate.z)&&!memoryGiant?.blocked(candidate.x,candidate.z)&&!venetianBridges.blocked(candidate.x,candidate.z)&&!rootsBridge.blocked(candidate.x,candidate.z)&&!rootsSpace?.blocked(candidate.x,candidate.z)&&!giant?.blocked(candidate.x,candidate.z)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
       if(isMoving){const target=Math.atan2(velocityX,velocityZ),difference=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y));hero.rotation.y+=difference*(1-Math.exp(-dt*14));cameraDir.x=Math.sin(hero.rotation.y);cameraDir.z=Math.cos(hero.rotation.y);}
       const walking=!paused.current&&!document.hidden&&Math.hypot(velocityX,velocityZ)>.08;
       moving=walking;
@@ -645,7 +649,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
         undergroundCallback.current({...returnPosition});return;
       }
       hero.position.set(pos.x,walkingY(pos.x,pos.z),pos.z);
-      shieldBones.forEach((b,i)=>b.quaternion.copy(shieldBase[i]));mixer?.update(dt);lakeCave?.update(dt);
+      shieldBones.forEach((b,i)=>b.quaternion.copy(shieldBase[i]));mixer?.update(dt);lakeCave?.update(dt);memoryTable?.update(dt,now*.001);
       shieldBones.forEach((b,i)=>shieldBase[i].copy(b.quaternion));
       if(guardUntil.current>now&&guardUntil.current!==lastGuardFx){lastGuardFx=guardUntil.current;combatEffects.block();}
       combatEffects.update(now);
@@ -678,7 +682,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
       wellGlowSprites.forEach((sprite,i)=>{(sprite.material as THREE.SpriteMaterial).opacity=.54+.12*Math.sin(performance.now()*.0017+i*2);});
       renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
-    return()=>{sourceBasin.dispose();venetianBridges.dispose();rootsBridge.dispose();combatEffects.dispose();towerEntrance.current?.dispose();towerEntrance.current=null;attackAction.current=null;guardUntil.current=0;alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});rivers.dispose();forgeSpace?.dispose();mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());sun.shadow.dispose();renderer.dispose();renderer.domElement.remove();};
+    return()=>{memoryTable?.dispose();sourceBasin.dispose();venetianBridges.dispose();rootsBridge.dispose();combatEffects.dispose();towerEntrance.current?.dispose();towerEntrance.current=null;attackAction.current=null;guardUntil.current=0;alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});rivers.dispose();forgeSpace?.dispose();mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());sun.shadow.dispose();renderer.dispose();renderer.domElement.remove();};
   },[weapon,shieldAsset,shieldEquipped]);
   const steerStick=(event:React.PointerEvent<HTMLButtonElement>)=>{
     if(pointerId.current!==event.pointerId)return;
