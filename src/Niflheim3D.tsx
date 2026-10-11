@@ -1,4 +1,5 @@
 import {createBridgeRepair,BRIDGE_PARTS} from './niflheimBridgeRepair';
+import {createRealmNornsWell,NIFLHEIM_NORNS_STYLE} from './realmNornsWell';
 import {installGuardianStones} from './niflheimGuardianStones';
 import {createMemoryTable} from './niflheimMemoryTable';
 import {memoryQuest,DRY_SEALS,MEMORY_FINDS,SOURCE_RUNES,MEMORY_REWARD,type MemoryEvent} from './niflheimMemoryQuest';
@@ -132,6 +133,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
     let waterSpiral:THREE.Group|undefined;
     const lakeBridgeY=(x:number,z:number)=>lakeBridgeDeck!==undefined&&Math.abs(x+72)<3.05&&z>=-12&&z<=(bridgeRepair?.ready()?29.5:22.65)?lakeBridgeDeck:undefined;
     let platformBounds:THREE.Box3|undefined,wellObstacle:{x:number;z:number;radius:number}|undefined;
+    let nornsWellObstacle:{x:number;z:number;radius:number}|undefined;
     let foundationSnow:{x:number;z:number;halfX:number;halfZ:number;height:number}|undefined;
     const wellGlowSprites:THREE.Sprite[]=[];
     const raisedSnowY=(x:number,z:number)=>{
@@ -150,6 +152,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
     };
     const platformBlocked=(from:{x:number;z:number},next:{x:number;z:number})=>{
       if(wellObstacle&&Math.hypot(next.x-wellObstacle.x,next.z-wellObstacle.z)<wellObstacle.radius)return true;
+      if(nornsWellObstacle&&Math.hypot(next.x-nornsWellObstacle.x,next.z-nornsWellObstacle.z)<nornsWellObstacle.radius)return true;
       const toY=stairGroundY(next.x,next.z),fromY=stairGroundY(from.x,from.z);
       return toY!==undefined&&toY-(fromY??raisedSnowY(from.x,from.z))>.85;
     };
@@ -367,6 +370,17 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
       }
       refreshShadows();
     }).catch(()=>{if(alive)setStatus('Не удалось загрузить разрушенную башню.');});
+    // One shared model in every world: same Well of Three Norns as Midgard,
+    // taller and frost-blue in Niflheim. Clear of the tower doorway and its rubble.
+    const niflNornsX=36,niflNornsZ=-85;
+    cachedGlbBuffer(`${BASE}img/models/Midgard_Well_Three_Norns_V1_YUP.glb`)
+      .then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`))
+      .then(asset=>{
+        if(!alive){disposeObject(asset.scene);return;}
+        const norns=createRealmNornsWell(scene,asset.scene,niflNornsX,niflNornsZ,niflGroundY,`${BASE}img/models/`,NIFLHEIM_NORNS_STYLE);
+        nornsWellObstacle={x:niflNornsX,z:niflNornsZ,radius:norns.radius};
+        refreshShadows();
+      }).catch(()=>{if(alive)setStatus('Не удалось загрузить Колодец трёх норн.');});
     const rootsLocation=NIFL_LOCATIONS.find(l=>l.id==='roots')!;
     const wellSiteX=NIFL_SOURCE.x-22,wellSiteZ=NIFL_SOURCE.z-34;
     cachedGlbBuffer(`${BASE}img/models/Niflheim_Well_Assembly.glb?v=staircase-only-4`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
@@ -733,6 +747,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
         {NIFL_RIVERS.map((river,i)=><polyline key={i} points={river.map(p=>`${p.x/NIFL_SCALE+65},${p.z/NIFL_SCALE+80}`).join(' ')} fill="none" stroke={i===2?"#82766b":"#78b2cf"} strokeWidth={i===0?4:3} strokeDasharray={i===2?"2 1":undefined}/>)}
         {NIFL_LAKES.map((l,i)=><ellipse key={i} cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} rx={l.rx/NIFL_SCALE} ry={l.rz/NIFL_SCALE} fill="#9ecbdf"/>)}<ellipse cx="65" cy="31" rx="8" ry="7" fill="#347c9d"/>
         {NIFL_LOCATIONS.map((l,i)=><g key={l.id} role="button" tabIndex={0} aria-label={l.name} onClick={()=>setSelected(l.id)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelected(l.id);}}} style={{cursor:'pointer'}}><circle cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} r="5.5" fill="#fff" stroke="#526f82" strokeWidth=".6"/><text x={l.x/NIFL_SCALE+65} y={l.z/NIFL_SCALE+81.5} textAnchor="middle" fontSize="4" fill="#203e52">{i+1}</text></g>)}
+        <g aria-label="Колодец трёх норн"><circle cx={36/NIFL_SCALE+65} cy={-85/NIFL_SCALE+80} r="3.7" fill="#79c7e8" stroke="#fff" strokeWidth=".8"/><text x={36/NIFL_SCALE+65} y={-85/NIFL_SCALE+81.6} fontSize="4.1" fill="#15384e" textAnchor="middle">Н</text></g>
         <circle cx={mapPoint(position.current.x,position.current.z).x} cy={mapPoint(position.current.x,position.current.z).y} r="2.5" fill="#d29d30" stroke="#fff" strokeWidth=".8"/>
       </svg><div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><button key={l.id} onClick={()=>setSelected(l.id)}>{i+1}. {l.name}</button>)}</div><p className="nifl-map-legend">Золотая точка — Вика. Западное русло покрыто льдом, восточная река течёт, северо-западное русло пересохло.</p><p className="nifl-map-legend">Входные врата: <a href="https://sketchfab.com/3d-models/stone-arch-565793eb6528447c97223cfaf278d3f6" target="_blank" rel="noopener noreferrer">Stone Arch — Teranox</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения: сжатие текстур, уменьшение высоты и размещение.</p>
       <p className="nifl-map-legend">Факелы входных врат: <a href="https://sketchfab.com/3d-models/torch-a3b8085436d14977a69f965859d96575" target="_blank" rel="noopener noreferrer">Torch — DJMaesen</a>, CC BY 4.0. Текстуры сжаты в WebP; геометрия сохранена, изменены масштаб и размещение.</p>
@@ -758,6 +773,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
       <p className="nifl-map-legend">Волшебница у багровой чаши: <a href="https://sketchfab.com/3d-models/dark-fantasy-sorceress-crystal-staff-a307ea3800d748c487d26235bb43ecc0" target="_blank" rel="noopener noreferrer">Dark Fantasy Sorceress, Crystal Staff — Pigcraft</a>, CC BY 4.0. Оптимизирована геометрия, сжаты текстуры и данные; изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Парящий шар: <a href="https://sketchfab.com/3d-models/magic-orb-cdd88b96333c491ebc17043088aae633" target="_blank" rel="noopener noreferrer">Magic Orb — reddification</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Оставлен один анимированный шар с металлическим креплением, уменьшены текстуры и масштаб.</p>
       <p className="nifl-map-legend">Кристалл на столе: <a href="https://sketchfab.com/3d-models/crystals-from-space-557ff4a9f4b74ff1a367d7cc7fc77e24" target="_blank" rel="noopener noreferrer">Crystals From Space — Grenade_Apple</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Сохранена вся группа кристаллов, уменьшены текстуры, изменены масштаб и размещение.</p>
+      <p className="nifl-map-legend">Колодец трёх норн: та же оригинальная игровая модель <code>Midgard_Well_Three_Norns_V1_YUP.glb</code>, что и в Мидгарде. Для Нифльхейма увеличена высота, камень покрыт холодным оттенком, свечение заменено на ледяное голубое; колодец остаётся непроходимым.</p>
       <p className="nifl-map-legend">Водная спираль: <a href="https://sketchfab.com/3d-models/water-splash-spiral-282e1a5d84f5472281e72f35987775e7" target="_blank" rel="noopener noreferrer">Water Splash Spiral — Will VFX</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Упрощена геометрия, обновлён материал воды, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Незнакомец на озере: <a href="https://sketchfab.com/3d-models/elegant-vampire-lord-6a158cd2bf564c41b965259a6b7708ee" target="_blank" rel="noopener noreferrer">Elegant Vampire Lord — Galaxy Abundant</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Упрощена геометрия, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Камни приюта: <a href="https://sketchfab.com/3d-models/portal-3279b8d99fe244059c40a66e8aa39590" target="_blank" rel="noopener noreferrer">Portal — DJMaesen</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения: уменьшены текстуры и размер, изменены масштаб и размещение; добавлены руны, убран центральный круг.</p>
