@@ -1,0 +1,5 @@
+Kenney Particle Pack — Kenney
+https://kenney.nl/assets/particle-pack
+License: CC0 1.0
+https://creativecommons.org/publicdomain/zero/1.0/
+flare_01.png and star_04.png resized to 128px and converted to WebP.
