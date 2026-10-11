@@ -20,6 +20,6 @@ export function createMemoryIgloo(model:THREE.Group,x:number,z:number,ground:(x:
   const base=new THREE.Mesh(new THREE.CircleGeometry(18.615,64),new THREE.MeshStandardMaterial({color:'#cfdee6',roughness:.95}));base.rotation.x=-Math.PI/2;base.position.set(x,floor,centreZ);base.receiveShadow=true;base.name='Пол ледяного дома';
   return {model,base,floor,inside,blocked,terrainY,groundY:(wx:number,wz:number)=>inside(wx,wz)?floor:undefined,
     world:(px:number,py:number,pz:number)=>new THREE.Vector3(x+px,floor+py,centreZ+pz+6),
-    camera:(wx:number,wz:number)=>{const p=local(wx,wz);const cz=Math.min(13.6,p.z+10),cx=THREE.MathUtils.clamp(p.x,-6,6);return new THREE.Vector3(x+cx,floor+10,centreZ+cz);}
+    camera:(wx:number,wz:number)=>{const p=local(wx,wz);if(p.z>11)return new THREE.Vector3(x,floor+7.5,centreZ+p.z+12);const cz=Math.min(9,p.z+9),cx=THREE.MathUtils.clamp(p.x,-5,5);return new THREE.Vector3(x+cx,floor+8,centreZ+cz);}
   };
 }
