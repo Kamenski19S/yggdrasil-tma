@@ -140,7 +140,13 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   const gatherActionRef=useRef<((id:string)=>void)|null>(null);
   const [villageGateOpen, setVillageGateOpen] = useState(false);
   const [creditsOpen,setCreditsOpen]=useState(false);
-  inventoryPauseRef.current=inventoryOpen||mapOpen||creditsOpen||guideOpen;
+  const [strangerOpen,setStrangerOpen]=useState(false);
+  const [strangerStep,setStrangerStep]=useState(0);
+  const [strangerMet,setStrangerMet]=useState(()=>{
+    try{return window.localStorage.getItem('yggdrasil:stranger:midgard:met')==='1';}
+    catch{return false;}
+  });
+  inventoryPauseRef.current=inventoryOpen||mapOpen||creditsOpen||guideOpen||strangerOpen;
   const villageGateOpenRef = useRef(false);
   const [rearGateOpen,setRearGateOpen]=useState(false);
   const rearGateOpenRef=useRef(false);
@@ -3642,6 +3648,30 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     scene.add(threeThreads);
     objects.push(threeThreads);
     addCircleCollider(threeThreadsX,threeThreadsZ,3.4,.1);
+    // The Wanderer of Nine Worlds appears in Midgard when her shared GLB
+    // is installed. Failure to load leaves the current game unchanged.
+    const wandererX=47,wandererZ=-18;
+    let wandererPresent=false;
+    loadGlbWithFolderFallback('hit2_stranger_mobile.glb',(asset:any)=>{
+      if(!glbTreesAlive)return;
+      const model=asset.scene as THREE.Object3D;
+      model.updateMatrixWorld(true);
+      const original=new THREE.Box3().setFromObject(model);
+      const originalSize=original.getSize(new THREE.Vector3());
+      if(original.isEmpty()||originalSize.y<.001)return;
+      model.scale.multiplyScalar(2.6/originalSize.y);
+      model.updateMatrixWorld(true);
+      const box=new THREE.Box3().setFromObject(model);
+      const centre=box.getCenter(new THREE.Vector3());
+      model.position.set(wandererX-centre.x,groundY(wandererX,wandererZ)-box.min.y,wandererZ-centre.z);
+      model.rotation.y=Math.PI*.23;
+      model.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;}});
+      scene.add(model);
+      wandererPresent=true;
+      addCircleCollider(wandererX,wandererZ,.53,.05);
+      renderer.shadowMap.needsUpdate=true;
+    },'Nine Worlds Wanderer',()=>console.warn('[STRANGER] Model must be uploaded to public/img/models/hit2_stranger_mobile.glb'));
+
     // Treasure chest beside the Well of the Three Norns.
     // Keep it anchored to this exact world point; the source GLB has an offset pivot.
     const rubyChestX=63,rubyChestZ=-31;
@@ -4805,6 +4835,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     homeActionRef.current=setHomeMode;
 
     const destinations=[
+      {id:"nineWorldStranger",label:"Незнакомка у колодца норн",x:47,z:-18,r:3.7},
       {id:"chaosGate:north",label:"Врата хаоса · Северный мост",x:NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.6,z:NORTH_BRIDGE_Z,r:8.5},
       ...CHAOS_GATES.filter(g=>g.location).map(g=>({id:'chaosGate:'+g.id,label:'Врата хаоса · '+g.name,x:g.x,z:g.z,r:7.5})),
       // Door points sit on the front side of each house rather than at its
@@ -5194,7 +5225,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         if(Math.hypot(q.x-restX,q.z-restZ)<1.75*HOME_SCALE){found="Кровать героя";foundId="heroRest";}
         else if(q.z>heroHomeZ+1.72*HOME_SCALE){found="Дверь — выйти из дома";foundId="heroHomeExit";}
       } else {
-        for(const d of destinations){if(d.id.startsWith('chaosGate:')&&clearedGatesRef.current.has(d.id.slice(10)))continue;if(Math.hypot(q.x-d.x,q.z-d.z)<d.r){found=d.label;foundId=d.id;break;}}
+        for(const d of destinations){if(d.id==='nineWorldStranger'&&!wandererPresent)continue;if(d.id.startsWith('chaosGate:')&&clearedGatesRef.current.has(d.id.slice(10)))continue;if(Math.hypot(q.x-d.x,q.z-d.z)<d.r){found=d.label;foundId=d.id;break;}}
         const sealedNearby=CHAOS_GATES.filter(g=>g.location&&!clearedGatesRef.current.has(g.id)&&Math.hypot(q.x-g.centerX,q.z-g.centerZ)<g.radius+2).sort((a,b)=>Math.hypot(q.x-a.centerX,q.z-a.centerZ)-a.radius-(Math.hypot(q.x-b.centerX,q.z-b.centerZ)-b.radius))[0];
         if(sealedNearby){found='Врата хаоса · '+sealedNearby.name;foundId='chaosGate:'+sealedNearby.id;}
         let nearest=2.35;
@@ -5362,6 +5393,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       <div className="mid3d-map-title">Авторы и лицензии</div>
       <p><b>Вика (Валькирия) — главный персонаж</b> — модель персонажа создана <a href="https://t.me/Devolik13" target="_blank" rel="noopener noreferrer">@Devolik13</a> (Telegram).</p>
       <p>Отдельная благодарность автору за создание Вики и вклад в развитие Yggdrasil Runes.</p>
+      <p><b>Странница девяти миров (HIT2 Female swordsman)</b> — <a href="https://sketchfab.com/enzohao" target="_blank" rel="noopener noreferrer">enzohao</a>, <a href="https://sketchfab.com/3d-models/hit2-female-swordsman-bfc0c40414ce4e37bea0567ce4a36792" target="_blank" rel="noopener noreferrer">оригинальная модель</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Для мобильной игры уменьшены текстуры, сохранены геометрия и скелет.</p>
       <p><b>Ultimate Modular Men Pack — защитники Мидгарда</b> — модели и исходные анимации созданы <a href="https://quaternius.com/" target="_blank" rel="noopener noreferrer">Quaternius</a>. <a href="https://quaternius.com/packs/ultimatemodularcharacters.html" target="_blank" rel="noopener noreferrer">Источник коллекции</a>. Лицензия: <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener noreferrer">CC0</a>.</p>
       <p>Благодарность автору: спасибо Quaternius за качественную бесплатную коллекцию персонажей и анимаций, которую можно использовать и изменять в игровых проектах.</p>
       <p><b>Ultimate Stylized Nature Pack — деревья, кусты, растения и камни Мидгарда</b> — модели и текстуры созданы <a href="https://quaternius.com/" target="_blank" rel="noopener noreferrer">Quaternius</a>. <a href="https://quaternius.com/packs/ultimatestylizednature.html" target="_blank" rel="noopener noreferrer">Источник коллекции</a>. Лицензия: <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener noreferrer">CC0</a>.</p>
@@ -5450,12 +5482,13 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       <div className="whisper-reward-icon">ᚾ</div><div className="whisper-reward-name">Испытание не пройдено</div><p>{whisperLog}</p>
       <button className="whisper-close" onClick={whisperReplay?()=>beginGuardianRematch(activeGuardian.id):()=>beginLocationEncounter(activeGuardian.id)}>Попробовать ещё раз</button>
     </div>}
-    {near&&!doorNotice&&!ritualOpen&&!forestEventOpen&&whisperPhase==="closed"&&(()=>{
+    {near&&!doorNotice&&!ritualOpen&&!forestEventOpen&&!strangerOpen&&whisperPhase==="closed"&&(()=>{
       const [label,id]=near.split("|");
       if(id.startsWith('gather:')){
         const kind=GATHER_SPOTS.find(spot=>spot.id===id.slice(7))?.kind;
         return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{kind==='wood'?'Вика возьмёт лёгкий рабочий топор. Древесина нужна плотнику.':kind==='herbs'?'Вика нагнётся и соберёт травы для Сигрид.':'Срежь ветки для плотника Бьёрна.'}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>gatherActionRef.current?.(id.slice(7))}>{kind==='herbs'?'Нагнуться и собрать':kind==='wood'?'Срубить':'Срезать ветки'}</button></div>;
       }
+      if(id==="nineWorldStranger")return <div className="mid3d-ui mid3d-interact"><b>Незнакомка девяти миров</b><span>{strangerMet?"Она помнит вашу первую встречу и всё ещё хранит свою тайну.":"Воительница с мечом ждёт у колодца. Кажется, она знает, зачем Вика пришла."}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setStrangerStep(strangerMet?1:0);setStrangerOpen(true);}}>Поговорить</button></div>;
       if(id==="forge")return <div className="mid3d-ui mid3d-door-prompt"><b>Дверь кузницы</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>forgeActionRef.current?.()}>Открыть ручку</button></div>;
       const selectedGate=id.startsWith('chaosGate:')?CHAOS_GATES.find(g=>g.id===id.slice(10)):gateForLocation(id);
       if(selectedGate&&!clearedGatesRef.current.has(selectedGate.id))return <div className="mid3d-ui mid3d-interact"><b>Врата хаоса · {selectedGate.name}</b><span>Путь запечатан. Нужны руны и {selectedGate.cost} капель бессмертия.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on('chaosGate:'+selectedGate.id,{x:state.current.x,z:state.current.z})}>Снять заклинание</button></div>;
@@ -5494,6 +5527,12 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       const angelicLocked=id==='angelicChest'&&!guardianResolved.includes('hoddmimir');
       return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{id==='forestCache'&&!northBridgeRepaired?'Защитное кольцо спадёт после ремонта Северного моста':id==='nornsChest'&&!eventDone?'Сначала выбери нить у колодца Норн':angelicLocked?'Серебряная печать откроется после последнего испытания Мидгарда.':id==='angelicChest'?'Серебряный свет пробивается сквозь резьбу сундука':villageGate?(selectedGateOpen?"Створки открыты, тяжёлый засов снят":"Ворота заперты большим деревянным засовом"):home?(id==="heroHome"?"Дверь заперта только от непрошеных гостей":"Ты у выхода"):whisper?(whisperResolved?"Камень помнит завершённое испытание":"Из янтарного света доносится древний вопрос"):"Ты достаточно близко"}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{if(id==="powerCircle")setRitualOpen(true);else if(id==="threeThreads")setForestEventOpen(true);else if(id==="heroHome")homeActionRef.current?.(true);else if(id==="heroHomeExit")homeActionRef.current?.(false);else if(id==="gate"||id==="gateRear")gateActionRef.current?.(id);else if(id==="whisperStone"&&!whisperResolved)beginWhisperEncounter();else on(id,{x:state.current.x,z:state.current.z});}}>{id==='forestCache'&&!northBridgeRepaired?'Осмотреть печать':id==='nornsChest'&&!eventDone?'Осмотреть сундук':angelicLocked?'Осмотреть печать':id==='forestCache'||id==='nornsChest'||id==='angelicChest'?'Открыть сундук':villageGate?(selectedGateOpen?"Закрыть ворота и поставить засов":"Снять засов и открыть ворота"):home?(id==="heroHome"?"Открыть дверь и войти":"Выйти наружу"):whisper?(whisperResolved?"Прикоснуться к камню":"Слушать шёпот"):"Взаимодействовать"}</button></div>;
     })()}
+    {strangerOpen&&whisperPhase==="closed"&&<div className="mid3d-ui whisper-cloud" role="dialog" aria-modal="true" aria-label="Разговор со странницей девяти миров" onPointerDown={e=>e.stopPropagation()} style={{zIndex:25}}>
+      <h3>Странница девяти миров</h3>
+      <p>{strangerStep===0?"«У колодца норн сходятся нити, которых не видят даже боги. Ты уже коснулась одной из них, Вика».":strangerStep===1?"«Тьма не рушит врата — она путает путь. Ищи руны, слушай тех, кто помнит древние имена, и не сдавайся после первой ошибки».":"«Мы встретимся снова. В каждом из девяти миров я оставлю тебе знак. Когда тьма придёт за тобой, мой меч окажется рядом». "}</p>
+      {strangerStep<2?<button className="whisper-close" onClick={()=>setStrangerStep(step=>step+1)}>{strangerStep===0?"Спросить о тьме":"Спросить о следующих мирах"}</button>:<button className="whisper-close" onClick={()=>{setStrangerOpen(false);setStrangerMet(true);try{window.localStorage.setItem('yggdrasil:stranger:midgard:met','1');}catch{}}}>Продолжить путь</button>}
+      {strangerStep<2&&<button className="whisper-close" onClick={()=>setStrangerOpen(false)}>Пока уйти</button>}
+    </div>}
     {whisperPhase==="closed"&&<><div className="mid3d-ui mid3d-joy" ref={joy}><img className="mid3d-control-art" src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/><div className="mid3d-knob" ref={knob}/></div>
     <button className="mid3d-ui mid3d-block" disabled={!gear.includes('shield')} aria-label="Блок щитом" title="Блок щитом" onPointerDown={e=>e.stopPropagation()} onClick={()=>{shieldActionRef.current?.();if('vibrate' in navigator)navigator.vibrate(15);}}><img className="mid3d-control-art" src={`${BASE}img/models/ui_shield.png`} alt="" draggable={false}/></button>
     <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" title="Удар оружием" onPointerDown={e=>e.stopPropagation()} onClick={()=>{attackActionRef.current?.();if("vibrate" in navigator)navigator.vibrate(12);}}><img className="mid3d-control-art" src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></button>
