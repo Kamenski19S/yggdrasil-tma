@@ -3648,29 +3648,64 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     scene.add(threeThreads);
     objects.push(threeThreads);
     addCircleCollider(threeThreadsX,threeThreadsZ,3.4,.1);
-    // The Wanderer of Nine Worlds appears in Midgard when her shared GLB
-    // is installed. Failure to load leaves the current game unchanged.
-    const wandererX=47,wandererZ=-18;
+    // Nine-world Wanderer: a clear spot on the right-hand approach to the
+    // Three Norns well. Place the model relative to a pivot anchored in the
+    // terrain so its original Sketchfab transforms cannot move it away.
+    const wandererX=64,wandererZ=-22;
     let wandererPresent=false;
     loadGlbWithFolderFallback('hit2_stranger_mobile.glb',(asset:any)=>{
       if(!glbTreesAlive)return;
       const model=asset.scene as THREE.Object3D;
-      model.updateMatrixWorld(true);
+      model.updateWorldMatrix(true,true);
       const original=new THREE.Box3().setFromObject(model);
       const originalSize=original.getSize(new THREE.Vector3());
-      if(original.isEmpty()||originalSize.y<.001)return;
-      model.scale.multiplyScalar(2.6/originalSize.y);
-      model.updateMatrixWorld(true);
-      const box=new THREE.Box3().setFromObject(model);
-      const centre=box.getCenter(new THREE.Vector3());
-      model.position.set(wandererX-centre.x,groundY(wandererX,wandererZ)-box.min.y,wandererZ-centre.z);
+      if(original.isEmpty()||originalSize.y<.001){
+        console.warn('[NINE WORLD WANDERER] Invalid model bounds');return;
+      }
+      model.scale.multiplyScalar(2.65/originalSize.y);
       model.rotation.y=Math.PI*.23;
+      model.updateWorldMatrix(true,true);
+      const fitted=new THREE.Box3().setFromObject(model);
+      const centre=fitted.getCenter(new THREE.Vector3());
+      model.position.set(-centre.x,-fitted.min.y,-centre.z);
+      const pivot=new THREE.Group();
+      pivot.name='Странница девяти миров';
+      pivot.position.set(wandererX,groundY(wandererX,wandererZ),wandererZ);
       model.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;}});
-      scene.add(model);
+      pivot.add(model);
+
+      // A small gold nameplate and rune circle keep her recognizable on
+      // a mobile screen, without replacing the actual character model.
+      const labelCanvas=document.createElement('canvas');
+      labelCanvas.width=512;labelCanvas.height=96;
+      const ctx=labelCanvas.getContext('2d');
+      if(ctx){
+        ctx.font='bold 38px Georgia,serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.shadowColor='#100f12';ctx.shadowBlur=9;
+        ctx.fillStyle='#ffe5a5';ctx.fillText('Странница',256,48);
+        const labelTex=new THREE.CanvasTexture(labelCanvas);
+        labelTex.colorSpace=THREE.SRGBColorSpace;
+        const label=new THREE.Sprite(new THREE.SpriteMaterial({
+          map:labelTex,transparent:true,depthWrite:false,depthTest:true
+        }));
+        label.position.set(0,3.12,0);
+        label.scale.set(3.3,.62,1);
+        pivot.add(label);
+      }
+      const runeRing=new THREE.Mesh(
+        new THREE.TorusGeometry(.75,.035,5,40),
+        new THREE.MeshBasicMaterial({color:0xd4b574,transparent:true,opacity:.65,depthWrite:false})
+      );
+      runeRing.rotation.x=-Math.PI/2;
+      runeRing.position.y=.07;
+      pivot.add(runeRing);
+      scene.add(pivot);
       wandererPresent=true;
-      addCircleCollider(wandererX,wandererZ,.53,.05);
+      addCircleCollider(wandererX,wandererZ,.68,.05);
       renderer.shadowMap.needsUpdate=true;
-    },'Nine Worlds Wanderer',()=>console.warn('[STRANGER] Model must be uploaded to public/img/models/hit2_stranger_mobile.glb'));
+      console.info('[NINE WORLD WANDERER] placed',wandererX,wandererZ,'height',originalSize.y);
+    },'Nine Worlds Wanderer',()=>console.warn('[STRANGER] Model unavailable at public/img/models/hit2_stranger_mobile.glb'));
 
     // Treasure chest beside the Well of the Three Norns.
     // Keep it anchored to this exact world point; the source GLB has an offset pivot.
@@ -4835,7 +4870,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     homeActionRef.current=setHomeMode;
 
     const destinations=[
-      {id:"nineWorldStranger",label:"Незнакомка у колодца норн",x:47,z:-18,r:3.7},
+      {id:"nineWorldStranger",label:"Странница девяти миров",x:64,z:-22,r:4.5},
       {id:"chaosGate:north",label:"Врата хаоса · Северный мост",x:NORTH_BRIDGE_X+BRIDGE_SPAN/2+1.6,z:NORTH_BRIDGE_Z,r:8.5},
       ...CHAOS_GATES.filter(g=>g.location).map(g=>({id:'chaosGate:'+g.id,label:'Врата хаоса · '+g.name,x:g.x,z:g.z,r:7.5})),
       // Door points sit on the front side of each house rather than at its
