@@ -1,3 +1,4 @@
+import {createCombatEffects} from './combatEffects';
 import {MidgardGuide,MIDGARD_GUIDE_CSS} from './MidgardGuide';
 import {REPEAT_ASH_CHANCE} from './woodEconomy';
 import {attachGuardianCape} from './guardianCape';
@@ -93,6 +94,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   const cameraDir = useRef({ x: 0, z: 1 });
   const insideHomeRef = useRef(false);
   const homeActionRef = useRef<((inside:boolean)=>void)|null>(null);
+  const combatImpactRef=useRef<((blocked:boolean,target?:THREE.Object3D)=>void)|null>(null);
   const attackActionRef = useRef<(()=>void)|null>(null);
   const repairedRef=useRef(new Set(repairedLocations));repairedRef.current=new Set(repairedLocations);
   const clearedGatesRef=useRef(new Set(chaosCleared));clearedGatesRef.current=new Set(chaosCleared);
@@ -231,6 +233,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         let damage=Math.max(1,Math.ceil((raw-whisperStats.defense)*(shielded?(gear.includes('shield')?.3:.6):1)));
         if(potionBoostsRef.current.luck>0){if(potionDodges(potionBoostsRef.current.luck,Math.random()))damage=0;consumeBoostRef.current('luck');}
         if(damage>0&&!shielded&&frostGuardRef.current>0){damage=Math.max(1,Math.ceil(damage*.5));frostGuardRef.current--;onFrostGuardHit();}
+        if(damage>0)combatImpactRef.current?.(shielded);
         const next=Math.max(0,currentHp-damage);
         setWhisperHeroHp(next);setWhisperShield(false);setWhisperBusy(false);
         if(next<=0){setWhisperLog(spec.name+" оказался сильнее. Испытание можно повторить.");setWhisperPhaseSafe("defeat");}
@@ -286,6 +289,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         setWhisperLog("Удар не пробивает защиту "+spec.name+". Сила героя "+whisperStats.power+"/5, требуется "+spec.requiredPower+"/5. Нужна закалка оружия и экипировки.");
       }
       const next=Math.max(0,whisperGuardHp-damage);
+      if(damage>0&&guardVisualRef.current)combatImpactRef.current?.(false,guardVisualRef.current);
       setWhisperGuardHp(next);guardHitAtRef.current=performance.now();
       if(next<=0){
         guardDefeatedRef.current=true;guardDeathActionRef.current?.();
@@ -4422,6 +4426,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     // on screen while the selected character is still loading.
     const hero=new THREE.Group();
     scene.add(hero);
+    const combatEffects=createCombatEffects(scene,hero);
+    combatImpactRef.current=(blocked,target)=>{if(blocked)combatEffects.block();else combatEffects.hit(target??hero);};
 
     let heroAnim:any=null;
     let attackStartedAt=-10000;
@@ -4469,11 +4475,12 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     attackActionRef.current=()=>{
       const now=performance.now();
       if(now-attackStartedAt<650)return;
-      attackStartedAt=now;
+      attackStartedAt=now;combatEffects.slash();
       const target=bandits.filter(b=>b.alerted&&b.hp>0&&Math.hypot(hero.position.x-b.actor.position.x,hero.position.z-b.actor.position.z)<4.0).sort((a,b)=>Math.hypot(hero.position.x-a.actor.position.x,hero.position.z-a.actor.position.z)-Math.hypot(hero.position.x-b.actor.position.x,hero.position.z-b.actor.position.z))[0];
       if(target&&!banditVictoryRef.current){
         const damage=boostedPotionDamage(equippedRuneRef.current==='uruzStrength'?2:1,potionBoostsRef.current.attack);
         if(potionBoostsRef.current.attack>0)consumeBoostRef.current('attack');
+        if(damage>0)combatEffects.hit(target.actor);
         target.hp=Math.max(0,target.hp-damage);
         target.enemyHitAt=0;
         setBanditOpponent({id:target.spec.id,name:target.spec.name,hp:target.hp,maxHp:target.spec.hp});
@@ -4502,7 +4509,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     };
 
     shieldActionRef.current=()=>{
-      if(gear.includes('shield'))shieldRaiseUntilRef.current=performance.now()+1250;
+      if(gear.includes('shield')){shieldRaiseUntilRef.current=performance.now()+1250;combatEffects.block();}
     };
     let bendStartedAt=-10000,chopUntil=0;
     bendActionRef.current=()=>{
@@ -4977,6 +4984,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
           if(!banditVictoryRef.current&&!encounterLocked&&!inventoryPauseRef.current&&Math.hypot(q.x-preview.actor.position.x,q.z-preview.actor.position.z)<7.2){
             const guarding=shieldRaiseUntilRef.current>now&&gear.includes('shield');
             const damage=Math.max(1,preview.spec.damage-banditDefenseRef.current);
+            if(guarding)combatEffects.block();else combatEffects.hit(hero);
             banditDamageRef.current(guarding?Math.max(1,Math.ceil(damage*.25)):damage,guarding);
           }
         }
@@ -5058,9 +5066,9 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         }
         const impact=attackActive?Math.max(0,1-Math.abs(attackP-.57)/.17):0;
         attackGlowMats.forEach(m=>{m.emissiveIntensity=attackActive ? .22+impact*2.45 : .05;});
-        strikeSlash.visible=impact>0;
-        strikeBolt.visible=skin==="valkyrie"&&impact>0;
-        strikeSparks.visible=skin!=="valkyrie"&&impact>0;
+        strikeSlash.visible=false;
+        strikeBolt.visible=false;
+        strikeSparks.visible=false;
         const fxScale=.78+impact*(.44+h.str*.026);
         strikeSlash.scale.setScalar(fxScale);
         strikeMat.opacity=impact*.9;
@@ -5068,7 +5076,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         strikeBolt.scale.setScalar(.76+impact*(.52+h.str*.018));
         sparkMat.opacity=impact*.96;
         strikeSparks.scale.setScalar(.45+impact*(1.05+h.str*.035));
-        strikeLight.intensity=impact*(1.35+h.str*.16);
+        strikeLight.intensity=0;
         if(heroAnim.mode==="clips"){
           const transition=(next:THREE.AnimationAction|null,fade=.16)=>{
             if(!next||heroAnim.current===next)return;
@@ -5292,11 +5300,12 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         m.rotation.z += Math.sin(now*0.00018+i)*0.00008;
       });
       for(const g of chaosVisuals)g.visual.update(dt,clearedGatesRef.current.has(g.id),now,q.x,q.z);
+      combatEffects.update(now);
       renderer.render(scene,camera);raf=requestAnimationFrame(loop);
     };
     raf=requestAnimationFrame(loop);
 
-    return()=>{midgardBoundary.meshes.forEach(mesh=>mesh.dispose());chaosVisuals.forEach(g=>g.visual.dispose());if(chaosBase){const textures=new Set<THREE.Texture>();chaosBase.scene.traverse((o:any)=>{o.geometry?.dispose();if(o.material)for(const m of [].concat(o.material) as any[]){for(const value of Object.values(m))if(value instanceof THREE.Texture)textures.add(value);m.dispose();}});textures.forEach(t=>t.dispose());}window.clearTimeout(banditVictoryTimer);rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;buildingTextures.dispose();pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();deerFurTexture?.dispose();nornsStoneTexture?.dispose();nornsColumnTexture?.dispose();furTextures.forEach(texture=>texture.dispose());lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;guardAttackActionRef.current=null;guardHitActionRef.current=null;guardDeathActionRef.current=null;guardIdleActionRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;shieldActionRef.current=null;forgeActionRef.current=null;villageDoorActionRef.current=null;};
+    return()=>{combatEffects.dispose();combatImpactRef.current=null;midgardBoundary.meshes.forEach(mesh=>mesh.dispose());chaosVisuals.forEach(g=>g.visual.dispose());if(chaosBase){const textures=new Set<THREE.Texture>();chaosBase.scene.traverse((o:any)=>{o.geometry?.dispose();if(o.material)for(const m of [].concat(o.material) as any[]){for(const value of Object.values(m))if(value instanceof THREE.Texture)textures.add(value);m.dispose();}});textures.forEach(t=>t.dispose());}window.clearTimeout(banditVictoryTimer);rememberPosition({x:state.current.x,z:state.current.z});glbTreesAlive=false;buildingTextures.dispose();pendingForgeStone.dispose();pendingElderBrick.dispose();pendingHomeBrick.dispose();pendingHomeRoof.dispose();pendingStoneTexture.dispose();pendingBrickTexture.dispose();glbTreeInstances.forEach((tree)=>scene.remove(tree));glbTreeInstances.length=0;cancelAnimationFrame(raf);observer.disconnect();renderer.domElement.removeEventListener("pointerup",click);ripples.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});currentStreaks.forEach(r=>{r.mesh.geometry.dispose();(r.mesh.material as THREE.Material).dispose();});groundTexture.dispose();woodTex.dispose();roofTex.dispose();mimirGoldTexture?.dispose();mimirWaterTexture?.dispose();deerFurTexture?.dispose();nornsStoneTexture?.dispose();nornsColumnTexture?.dispose();furTextures.forEach(texture=>texture.dispose());lightPoolTex.dispose();lightPoolMat.dispose();lightPools.forEach(m=>{m.geometry.dispose();(m.material as THREE.Material).dispose();});renderer.dispose();moteGeo.dispose();moteMat.dispose();scene.traverse((o:any)=>{if(o.isMesh||o.isLine||o.isPoints){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.domElement.remove();guardVisualRef.current=null;guardAttackActionRef.current=null;guardHitActionRef.current=null;guardDeathActionRef.current=null;guardIdleActionRef.current=null;homeActionRef.current=null;gateActionRef.current=null;attackActionRef.current=null;shieldActionRef.current=null;forgeActionRef.current=null;villageDoorActionRef.current=null;};
   },[h.id,skin,weapon,gear.join(','),gearLevels.armor,gearLevels.helmet,gearLevels.boots,shieldAsset,eventDone,rememberPosition,northBridgeRepaired]);
 
   const joyMove=(e:React.PointerEvent)=>{const a=joy.current,b=knob.current;if(!a||!b)return;const r=a.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=48;let x=e.clientX-cx,y=e.clientY-cy;const l=Math.hypot(x,y);if(l>max){x=x/l*max;y=y/l*max;}b.style.transform=`translate(${x}px,${y}px)`;state.current.dx=x/max;state.current.dz=y/max;};
