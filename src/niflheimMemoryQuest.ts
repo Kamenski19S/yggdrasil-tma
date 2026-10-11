@@ -6,15 +6,16 @@ export const MEMORY_FINDS=[
 ];
 export const SOURCE_RUNES=[{id:'ansuz',symbol:'ᚨ',name:'Ансуз — память'},{id:'laguz',symbol:'ᛚ',name:'Лагуз — вода'},{id:'berkano',symbol:'ᛒ',name:'Беркана — жизнь'}];
 export const DRY_SEALS=[{id:'isa',symbol:'ᛁ',name:'Иса',meaning:'Лёд'},{id:'nauthiz',symbol:'ᚾ',name:'Наутиз',meaning:'Скованность'},{id:'hagalaz',symbol:'ᚺ',name:'Хагалаз',meaning:'Разрушение'}];
-export type MemoryEvent=`seal:${string}`|'start'|'handover'|`find:${string}`|`rune:${string}`;
+export type MemoryEvent='bridge:start'|'bridge:repair'|`bridge:find:${string}`|`seal:${string}`|'start'|'handover'|`find:${string}`|`rune:${string}`;
 export const MEMORY_REWARD=60;
 export function memoryQuest(done:string[]){
   const has=(id:string)=>done.includes(PREFIX+id);
   const found=MEMORY_FINDS.filter(f=>has(f.id));
-  return {seals:DRY_SEALS.filter(r=>done.includes('niflheim:dry:'+r.id)),started:has('started'),found,ready:has('ready'),restored:has('restored'),step:has('rune:laguz')?2:has('rune:ansuz')?1:0};
+  return {bridgeStarted:done.includes('niflheim:bridge:started'),bridgeParts:['west','east','north'].filter(id=>done.includes('niflheim:bridge:part:'+id)),bridgeRestored:done.includes('niflheim:bridge:restored'),seals:DRY_SEALS.filter(r=>done.includes('niflheim:dry:'+r.id)),started:has('started'),found,ready:has('ready'),restored:has('restored'),step:has('rune:laguz')?2:has('rune:ansuz')?1:0};
 }
 /** The parent saves each transition; the final transition and reward are atomic and idempotent. */
 export function applyMemoryEvent<T extends {done:string[];immortalityDrops:number;potions:string[];lootCounts:Record<string,number>}>(save:T,event:MemoryEvent):T{
+  if(event.startsWith('bridge:')){const prefix='niflheim:bridge:',q=memoryQuest(save.done);let flag='';if(event==='bridge:start')flag=prefix+'started';else if(event.startsWith('bridge:find:')&&q.bridgeStarted&&!q.bridgeRestored){const id=event.slice(12);if(['west','east','north'].includes(id))flag=prefix+'part:'+id;}else if(event==='bridge:repair'&&q.bridgeStarted&&q.bridgeParts.length===3)flag=prefix+'restored';return flag&&!save.done.includes(flag)?{...save,done:[...save.done,flag]}:save;}
   if(event.startsWith('seal:')){const id=event.slice(5),flag='niflheim:dry:'+id;return DRY_SEALS.some(r=>r.id===id)&&!save.done.includes(flag)?{...save,done:[...save.done,flag]}:save;}
   const q=memoryQuest(save.done);if(q.restored)return save;
   const add=(...ids:string[])=>({...save,done:[...new Set([...save.done,...ids.map(id=>PREFIX+id)])]});
