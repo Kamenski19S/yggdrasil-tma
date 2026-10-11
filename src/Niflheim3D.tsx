@@ -311,7 +311,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
         }).catch(()=>{});
       }
       // The former lookout is now the dry riverbed; leave its channel unobstructed.
-      if(l.kind!=='source'&&l.id!=='roots'){
+      if(l.kind!=='source'&&l.id!=='roots'&&l.id!=='threeNornsWell'){
         const marker=mesh(new THREE.OctahedronGeometry(.5),glow,l.x+3,niflGroundY(l.x+3,l.z+3)+2.8,l.z+3);marker.name=`Location ${index+1}: ${l.name}`;
       }
     });
@@ -747,7 +747,6 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
         {NIFL_RIVERS.map((river,i)=><polyline key={i} points={river.map(p=>`${p.x/NIFL_SCALE+65},${p.z/NIFL_SCALE+80}`).join(' ')} fill="none" stroke={i===2?"#82766b":"#78b2cf"} strokeWidth={i===0?4:3} strokeDasharray={i===2?"2 1":undefined}/>)}
         {NIFL_LAKES.map((l,i)=><ellipse key={i} cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} rx={l.rx/NIFL_SCALE} ry={l.rz/NIFL_SCALE} fill="#9ecbdf"/>)}<ellipse cx="65" cy="31" rx="8" ry="7" fill="#347c9d"/>
         {NIFL_LOCATIONS.map((l,i)=><g key={l.id} role="button" tabIndex={0} aria-label={l.name} onClick={()=>setSelected(l.id)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelected(l.id);}}} style={{cursor:'pointer'}}><circle cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} r="5.5" fill="#fff" stroke="#526f82" strokeWidth=".6"/><text x={l.x/NIFL_SCALE+65} y={l.z/NIFL_SCALE+81.5} textAnchor="middle" fontSize="4" fill="#203e52">{i+1}</text></g>)}
-        <g aria-label="Колодец трёх норн"><circle cx={36/NIFL_SCALE+65} cy={-85/NIFL_SCALE+80} r="3.7" fill="#79c7e8" stroke="#fff" strokeWidth=".8"/><text x={36/NIFL_SCALE+65} y={-85/NIFL_SCALE+81.6} fontSize="4.1" fill="#15384e" textAnchor="middle">Н</text></g>
         <circle cx={mapPoint(position.current.x,position.current.z).x} cy={mapPoint(position.current.x,position.current.z).y} r="2.5" fill="#d29d30" stroke="#fff" strokeWidth=".8"/>
       </svg><div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><button key={l.id} onClick={()=>setSelected(l.id)}>{i+1}. {l.name}</button>)}</div><p className="nifl-map-legend">Золотая точка — Вика. Западное русло покрыто льдом, восточная река течёт, северо-западное русло пересохло.</p><p className="nifl-map-legend">Входные врата: <a href="https://sketchfab.com/3d-models/stone-arch-565793eb6528447c97223cfaf278d3f6" target="_blank" rel="noopener noreferrer">Stone Arch — Teranox</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения: сжатие текстур, уменьшение высоты и размещение.</p>
       <p className="nifl-map-legend">Факелы входных врат: <a href="https://sketchfab.com/3d-models/torch-a3b8085436d14977a69f965859d96575" target="_blank" rel="noopener noreferrer">Torch — DJMaesen</a>, CC BY 4.0. Текстуры сжаты в WebP; геометрия сохранена, изменены масштаб и размещение.</p>

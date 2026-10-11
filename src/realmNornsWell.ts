@@ -5,6 +5,7 @@ import * as THREE from 'three';
 export type RealmNornsWellStyle = {
   horizontalScale: number;
   heightScale: number;
+  columnExtensionFactor?: number;
   stone: THREE.ColorRepresentation;
   columns: THREE.ColorRepresentation;
   moss: THREE.ColorRepresentation;
@@ -14,6 +15,7 @@ export type RealmNornsWellStyle = {
 export const NIFLHEIM_NORNS_STYLE: RealmNornsWellStyle = {
   horizontalScale: .94,
   heightScale: 1.43,
+  columnExtensionFactor: 1.5,
   stone: '#b6d2e0',
   columns: '#dfebf5',
   moss: '#9ab9c7',
@@ -46,6 +48,37 @@ export function createRealmNornsWell(
   columnTexture.wrapT=THREE.ClampToEdgeWrapping;
   const stoneMaterial = new THREE.MeshStandardMaterial({name:'Norns Frozen Stone',map:stoneTexture,color:style.stone,roughness:.94,side:THREE.DoubleSide});
   const columnMaterial = new THREE.MeshStandardMaterial({name:'Norns Frost Marble',map:columnTexture,color:style.columns,roughness:.82,side:THREE.DoubleSide});
+  // Extend ONLY the six fluted shafts by 50%. The stone bases and well stay
+  // where they are; move capitals and the complete roof above the taller shafts.
+  // Reshape the hanging threads continuously so their lower ends remain attached.
+  const shaftBottom=1.155,shaftTop=3.805;
+  const extensionFactor=Math.max(1,style.columnExtensionFactor??1);
+  const roofLift=(shaftTop-shaftBottom)*(extensionFactor-1);
+  if(roofLift>0){
+    model.traverse(object=>{
+      if(!(object instanceof THREE.Mesh))return;
+      const name=object.name;
+      const shaft=/^PillarShaft_\d+$/.test(name);
+      const thread=/^Thread_\d+_\d+$/.test(name);
+      if(shaft||thread){
+        const geometry=object.geometry.clone();
+        const positions=geometry.getAttribute('position');
+        for(let i=0;i<positions.count;i++){
+          const y=positions.getY(i);
+          const offset=shaft?(y-shaftBottom)*(extensionFactor-1):
+            THREE.MathUtils.clamp((y-1.9)/(3.85-1.9),0,1)*roofLift;
+          positions.setY(i,y+offset);
+        }
+        positions.needsUpdate=true;
+        geometry.computeVertexNormals();
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
+        object.geometry=geometry;
+      }else if(/^(PillarCap_|PillarMoss_|Roof_|RoofRock_|RoofMoss_)/.test(name)){
+        object.position.y+=roofLift;
+      }
+    });
+  }
   model.scale.set(style.horizontalScale,style.heightScale,style.horizontalScale);
   model.rotation.y = .18;
   model.updateMatrixWorld(true);
