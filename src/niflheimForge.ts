@@ -38,13 +38,14 @@ export function createNiflheimForge(x:number,z:number,floor:number,ground:(x:num
   add(box,stone,0,-.24,7,10,.45,15);add(box,snow,0,-.025,7,10,.08,15);
   // Widen the deck, gate openings and side towers together; keep the bank-to-bank span.
   const bridgeWidthScale=1.3,bridgeHeightScale=1.15;
+  const bridgeSink=.4,gateClearanceScale=2.2;
   const bridgeWalkHalfWidth=2.6*bridgeWidthScale,bridgeClearHalfWidth=2.2*bridgeWidthScale;
   const bridgeOuterHalfWidth=6.6*bridgeWidthScale;
   const bridge=new THREE.Group();bridge.name='Поперечный мост через реку';bridge.position.set(4,0,14);bridge.rotation.y=Math.PI/2;bridge.scale.z=5/3;root.add(bridge);root.updateMatrixWorld(true);
   const east=bridge.localToWorld(new THREE.Vector3(0,0,0)),west=bridge.localToWorld(new THREE.Vector3(0,0,12));
   const nearY=ground(east.x,east.z)-floor+.12,farY=ground(west.x,west.z)-floor+.12;
   const sourceDeckY=(z:number)=>{const t=THREE.MathUtils.clamp(z/12,0,1),i=t*(bridgeHeights.length-1),a=Math.min(bridgeHeights.length-2,Math.floor(i));return THREE.MathUtils.lerp(bridgeHeights[a],bridgeHeights[a+1],i-a);};
-  const deckY=(z:number)=>sourceDeckY(z)*1.35*bridgeHeightScale+THREE.MathUtils.lerp(nearY,farY,THREE.MathUtils.clamp(z/12,0,1))+.04;
+  const deckY=(z:number)=>sourceDeckY(z)*1.35*bridgeHeightScale+THREE.MathUtils.lerp(nearY,farY,THREE.MathUtils.clamp(z/12,0,1))+.04-bridgeSink;
   let alive=true;
   cachedGlbBuffer(`${BASE}img/models/Niflheim_Medieval_Bridge.glb`).then(buffer=>new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parse(buffer,`${BASE}img/models/`,asset=>{
     if(!alive){asset.scene.traverse((o:any)=>{if(!o.isMesh)return;o.geometry.dispose();for(const material of Array.isArray(o.material)?o.material:[o.material]){for(const value of Object.values(material))if(value instanceof THREE.Texture)value.dispose();material.dispose();}});return;}
@@ -63,7 +64,13 @@ export function createNiflheimForge(x:number,z:number,floor:number,ground:(x:num
       const positions=geometry.getAttribute('position');
       for(let i=0;i<positions.count;i++){
         const longitudinal=(positions.getZ(i)+1)*6;
-        positions.setXYZ(i,positions.getX(i)*14*bridgeWidthScale,(positions.getY(i)+.32716738)*13.5*bridgeHeightScale+THREE.MathUtils.lerp(nearY,farY,longitudinal/12)+.04,longitudinal);
+        // Stretch the gate above the deck, so lowering the bridge cannot shrink its opening.
+        const sourceDeck=sourceDeckY(longitudinal)*1.35*bridgeHeightScale;
+        const modelY=(positions.getY(i)+.32716738)*13.5*bridgeHeightScale;
+        const aboveDeck=Math.max(0,modelY-sourceDeck);
+        // Raise the opening and pillars; translate upper ornamentation without stretching it.
+        const gateLift=Math.min(aboveDeck,8)*(gateClearanceScale-1);
+        positions.setXYZ(i,positions.getX(i)*14*bridgeWidthScale,modelY+gateLift+THREE.MathUtils.lerp(nearY,farY,longitudinal/12)+.04-bridgeSink,longitudinal);
       }
       positions.needsUpdate=true;geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();
       const mesh=new THREE.Mesh(geometry,o.material);mesh.castShadow=true;mesh.receiveShadow=true;prepared.add(mesh);
