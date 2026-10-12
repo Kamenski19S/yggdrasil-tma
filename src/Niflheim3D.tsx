@@ -8,6 +8,7 @@ import {lakeBridgeBlocked} from './niflheimLakeBridgeCollision';
 import {createVenetianBridges} from './niflheimVenetianBridges';
 import {installNiflheimBridge} from './niflheimMedievalBridge';
 import {createCombatEffects} from './combatEffects';
+import {createNiflheimGlowTrails} from './niflheimGlowTrails';
 import {prepareNineWorldStranger} from './nineWorldStranger';
 import {addEntranceTorches} from './niflheimEntranceTorches';
 import {MeshoptDecoder} from 'three/examples/jsm/libs/meshopt_decoder.module.js';
@@ -160,6 +161,14 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
       return toY!==undefined&&toY-(fromY??raisedSnowY(from.x,from.z))>.85;
     };
     const walkingY=(x:number,z:number)=>venetianBridges.groundY(x,z)??rootsBridge.groundY(x,z)??lakeCave?.groundY(x,z)??towerEntrance.current?.groundY(x,z)??stairGroundY(x,z)??lakeBridgeY(x,z)??hallSpace?.groundY(x,z)??memorySpace?.groundY(x,z)??forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??rootsSpace?.groundY(x,z)??raisedSnowY(x,z);
+    // Magical navigation follows the map's main destinations. Broken river
+    // crossings are deliberately left dark until a walkable bridge exists.
+    const glowTrails=createNiflheimGlowTrails(scene,walkingY,(x,z)=>
+      !niflRiverBlocked(x,z)||
+      venetianBridges.groundY(x,z)!==undefined||
+      rootsBridge.groundY(x,z)!==undefined||
+      lakeBridgeY(x,z)!==undefined
+    );
     const terrainY=(x:number,z:number)=>venetianBridges.terrainY(x,z)??rootsBridge.terrainY(x,z)??lakeCave?.terrainY(x,z)??towerEntrance.current?.groundY(x,z)??hallSpace?.terrainY(x,z)??memorySpace?.terrainY(x,z)??forgeSpace?.terrainY(x,z)??(caveSpace?.inside(x,z)?caveSpace.floor-.06:(rootsSpace?.inside(x,z)?rootsSpace.groundY(x,z)!-.65:niflGroundY(x,z)));
     const crystalMaterials:THREE.MeshStandardMaterial[]=[];
     const crystalHalos:THREE.Sprite[]=[];
@@ -432,16 +441,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
             const delta=Math.atan2(Math.sin(desired-root.rotation.y),Math.cos(desired-root.rotation.y));
             root.rotation.y+=delta*Math.min(1,dt*3.5);
           };
-          const labelCanvas=document.createElement('canvas');labelCanvas.width=512;labelCanvas.height=96;
-          const ctx=labelCanvas.getContext('2d');
-          if(ctx){
-            ctx.font='bold 38px Georgia,serif';ctx.textAlign='center';ctx.textBaseline='middle';
-            ctx.shadowColor='#163048';ctx.shadowBlur=9;ctx.fillStyle='#e8f8ff';
-            ctx.fillText('Странница',256,48);
-            const tex=new THREE.CanvasTexture(labelCanvas);tex.colorSpace=THREE.SRGBColorSpace;
-            const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false}));
-            label.position.set(0,targetHeight+.44,0);label.scale.set(3.3,.62,1);root.add(label);
-          }
+          // No floating label; her identity appears when Vika approaches.
           const halo=new THREE.Mesh(new THREE.TorusGeometry(.75,.035,5,40),
             new THREE.MeshBasicMaterial({color:0x96d7f4,transparent:true,opacity:.68,depthWrite:false}));
           halo.rotation.x=-Math.PI/2;halo.position.y=.07;root.add(halo);
@@ -706,7 +706,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
       const idleClip=findClip('idle','sword_idle')||gltf.animations[0],walkClip=findClip('walk_loop','walk')||idleClip;
       const attackClip=findClip('sword_attack','attack');if(attackClip)attack=mixer.clipAction(attackClip);
       attackAction.current=()=>{if(paused.current||!attack||performance.now()<attackUntil)return;clearInput();combatEffects.slash();currentAction?.fadeOut(.08);attack.reset().setLoop(THREE.LoopOnce,1);attack.clampWhenFinished=true;attack.setEffectiveWeight(1);attack.fadeIn(.05).play();currentAction=attack;attackUntil=performance.now()+Math.max(650,attack.getClip().duration*1000);};
-      if(idleClip)idle=mixer.clipAction(idleClip);if(walkClip)walk=mixer.clipAction(walkClip);idle?.play();currentAction=idle;setStatus('');
+      if(idleClip)idle=mixer.clipAction(idleClip);if(walkClip)walk=mixer.clipAction(walkClip);idle?.play();currentAction=idle;setStatus('Сияние Нифльхейма ведёт тех, кто готов узнать его тайны.');
     },()=>{if(alive)setStatus('Не удалось загрузить Вику. Выйди на Древо и войди снова.');})).catch(()=>{if(alive)setStatus('Не удалось загрузить Вику. Выйди на Древо и войди снова.');});
     const entranceZ=65*NIFL_SCALE,entranceY=niflGroundY(0,entranceZ);
     cachedGlbBuffer(`${BASE}img/models/Niflheim_Rune_Entrance.glb`).then(buffer=>new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
@@ -750,6 +750,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
       shieldBones.forEach((b,i)=>shieldBase[i].copy(b.quaternion));
       if(guardUntil.current>now&&guardUntil.current!==lastGuardFx){lastGuardFx=guardUntil.current;combatEffects.block();}
       combatEffects.update(now);
+      glowTrails.update(now);
       const remaining=guardUntil.current-now,lift=shieldEquipped&&remaining>0?Math.min(THREE.MathUtils.clamp((1250-remaining)/170,0,1),THREE.MathUtils.clamp(remaining/260,0,1)):0;
       if(lift>0){const upper=shieldBones[0],lower=shieldBones[1];if(upper){upper.rotateX(-lift*1.9);upper.rotateY(-lift);upper.rotateZ(lift*1.1);}lower?.rotateX(-lift*.3);}
       if(giant?.update(dt,pos,!paused.current&&!document.hidden))refreshShadows();
@@ -782,7 +783,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
       wellGlowSprites.forEach((sprite,i)=>{(sprite.material as THREE.SpriteMaterial).opacity=.54+.12*Math.sin(performance.now()*.0017+i*2);});
       renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
-    return()=>{memoryTable?.dispose();sourceBasin.dispose();venetianBridges.dispose();rootsBridge.dispose();combatEffects.dispose();towerEntrance.current?.dispose();towerEntrance.current=null;attackAction.current=null;guardUntil.current=0;alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});rivers.dispose();forgeSpace?.dispose();mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());sun.shadow.dispose();renderer.dispose();renderer.domElement.remove();};
+    return()=>{glowTrails.dispose();memoryTable?.dispose();sourceBasin.dispose();venetianBridges.dispose();rootsBridge.dispose();combatEffects.dispose();towerEntrance.current?.dispose();towerEntrance.current=null;attackAction.current=null;guardUntil.current=0;alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});rivers.dispose();forgeSpace?.dispose();mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());sun.shadow.dispose();renderer.dispose();renderer.domElement.remove();};
   },[weapon,shieldAsset,shieldEquipped]);
   const steerStick=(event:React.PointerEvent<HTMLButtonElement>)=>{
     if(pointerId.current!==event.pointerId)return;
