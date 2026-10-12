@@ -50,10 +50,10 @@ export function createNidhoggEncounter(model:THREE.Group,clips:THREE.AnimationCl
         const angle=Math.min(time/8,1)*Math.PI*2;
         anchor.position.set(14*Math.sin(angle),12+Math.sin(angle)*1.2,-31-9*Math.cos(angle));
         anchor.rotation.y=Math.atan2(14*Math.cos(angle),11*Math.sin(angle));anchor.rotation.z=-.08;
-        if(time>=8){phase='landing';time=0;onPhase('Дракон опускается перед Викой…');}
+        if(time>=8){phase='landing';time=0;onPhase('Дракон опускается перед Vicki…');}
       }else{
         const t=smooth(time/3.5);anchor.position.lerpVectors(air,landing,t);anchor.rotation.z*=Math.exp(-dt*5);anchor.rotation.y=THREE.MathUtils.lerp(Math.PI/2,0,t);
-        if(time>=3.5){phase='seated';anchor.position.copy(landing);anchor.rotation.set(0,0,0);change(sit??stand);updateCollision();onPhase('Нидхёгг сел перед Викой.');}
+        if(time>=3.5){phase='seated';anchor.position.copy(landing);anchor.rotation.set(0,0,0);change(sit??stand);updateCollision();onPhase('Нидхёгг сел перед Vicki.');}
       }
     }
   };
