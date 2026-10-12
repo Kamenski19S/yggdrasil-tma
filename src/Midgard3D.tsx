@@ -5406,7 +5406,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       </button>
     </div>}
     {banditOpponent&&whisperPhase==="closed"&&<div className="mid3d-ui" style={{top:80,left:"50%",transform:"translateX(-50%)",width:"min(calc(100% - 120px),290px)",padding:"8px 12px",borderRadius:12,background:"#fff",border:"1px solid #d9d9d9",color:"#111",pointerEvents:"none",zIndex:12}}>
-      <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}><span>Вика</span><span>{banditHeroHp}/{whisperStats.maxHp}</span></div>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}><span>Vicki</span><span>{banditHeroHp}/{whisperStats.maxHp}</span></div>
       <div style={{height:5,background:"#382b29",borderRadius:6,overflow:"hidden",marginBottom:6}}><div style={{height:"100%",width:`${Math.max(0,banditHeroHp/whisperStats.maxHp*100)}%`,background:"#72c46e",transition:"width .25s"}}/></div>
       <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}><span>{banditOpponent.name}</span><span>{banditOpponent.hp}/{banditOpponent.maxHp}</span></div>
       <div style={{height:5,background:"#382b29",borderRadius:6,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.max(0,banditOpponent.hp/banditOpponent.maxHp*100)}%`,background:"#e45244",transition:"width .25s"}}/></div>
@@ -5425,7 +5425,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         onClose={()=>setMapOpen(false)} onCredits={()=>{setMapOpen(false);setCreditsOpen(true);}}/>
     </div>}
     {inventoryOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}><div className="mid3d-map-panel" style={{background:"linear-gradient(145deg,#1b271c,#0e1712)",color:"#fff2d8",borderColor:"#987346"}}>
-      <div className="mid3d-map-title" style={{color:"#f5d28a"}}>🎒 Запас Вики</div>
+      <div className="mid3d-map-title" style={{color:"#f5d28a"}}>🎒 Запас Vicki</div>
       <div className="mid3d-map-sub" style={{color:"#c3b7a2"}}>Здоровье: {banditHeroHp}/{whisperStats.maxHp} · Ледяная защита: {frostGuard} уд.</div>
       {Object.values(repairStock).some(n=>n>0)&&<div className="inventory-section"><h3>🔧 Припасы для восстановления</h3><div className="inventory-list">{Object.entries(repairStock).filter(([,n])=>n>0).map(([id,n])=><div key={id} className="inventory-item"><span className="inventory-symbol">📦</span><span className="inventory-detail"><b>{REPAIR_GOODS[id as keyof typeof REPAIR_GOODS]||id} · {n}</b><small>Для ремонта локаций после снятия печатей хаоса</small></span></div>)}</div></div>}
       <div className="inventory-section"><h3>🌿 Материалы</h3><div className="inventory-list"><div className="inventory-item"><span className="inventory-symbol">🪵</span><span className="inventory-detail"><b>Древесина · {stock.wood}</b><small>Плотнику Бьёрну нужно 3</small></span></div><div className="inventory-item"><span className="inventory-symbol">🌱</span><span className="inventory-detail"><b>Ветки · {stock.twigs}</b><small>Плотнику Бьёрну нужно 3</small></span></div><div className="inventory-item"><span className="inventory-symbol">🌿</span><span className="inventory-detail"><b>Травы · {stock.herbs}</b><small>Травнице Сигрид нужно 4</small></span></div><div className="inventory-item"><span className="inventory-symbol">🪵✨</span><span className="inventory-detail"><b>Ясеневая древесина · {stock.ashWood}</b><small>У Поверженного ясеня каждые 15 минут и в наградах стража Рощи Ясеня</small></span></div></div></div>
@@ -5435,8 +5435,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     </div></div>}
     {creditsOpen&&<div className="mid3d-map-shade" onPointerDown={e=>e.stopPropagation()}><div className="mid3d-map-panel">
       <div className="mid3d-map-title">Авторы и лицензии</div>
-      <p><b>Вика (Валькирия) — главный персонаж</b> — модель персонажа создана <a href="https://t.me/Devolik13" target="_blank" rel="noopener noreferrer">@Devolik13</a> (Telegram).</p>
-      <p>Отдельная благодарность автору за создание Вики и вклад в развитие Yggdrasil Runes.</p>
+      <p><b>Vicki (Валькирия) — главный персонаж</b> — модель персонажа создана <a href="https://t.me/Devolik13" target="_blank" rel="noopener noreferrer">@Devolik13</a> (Telegram).</p>
+      <p>Отдельная благодарность автору за создание Vicki и вклад в развитие Yggdrasil Runes.</p>
       <p><b>Странница девяти миров (HIT2 Female swordsman)</b> — <a href="https://sketchfab.com/enzohao" target="_blank" rel="noopener noreferrer">enzohao</a>, <a href="https://sketchfab.com/3d-models/hit2-female-swordsman-bfc0c40414ce4e37bea0567ce4a36792" target="_blank" rel="noopener noreferrer">оригинальная модель</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Для мобильной игры уменьшены текстуры, сохранены геометрия и скелет.</p>
       <p><b>Ultimate Modular Men Pack — защитники Мидгарда</b> — модели и исходные анимации созданы <a href="https://quaternius.com/" target="_blank" rel="noopener noreferrer">Quaternius</a>. <a href="https://quaternius.com/packs/ultimatemodularcharacters.html" target="_blank" rel="noopener noreferrer">Источник коллекции</a>. Лицензия: <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener noreferrer">CC0</a>.</p>
       <p>Благодарность автору: спасибо Quaternius за качественную бесплатную коллекцию персонажей и анимаций, которую можно использовать и изменять в игровых проектах.</p>
@@ -5530,9 +5530,9 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       const [label,id]=near.split("|");
       if(id.startsWith('gather:')){
         const kind=GATHER_SPOTS.find(spot=>spot.id===id.slice(7))?.kind;
-        return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{kind==='wood'?'Вика возьмёт лёгкий рабочий топор. Древесина нужна плотнику.':kind==='herbs'?'Вика нагнётся и соберёт травы для Сигрид.':'Срежь ветки для плотника Бьёрна.'}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>gatherActionRef.current?.(id.slice(7))}>{kind==='herbs'?'Нагнуться и собрать':kind==='wood'?'Срубить':'Срезать ветки'}</button></div>;
+        return <div className="mid3d-ui mid3d-interact"><b>{label}</b><span>{kind==='wood'?'Vicki возьмёт лёгкий рабочий топор. Древесина нужна плотнику.':kind==='herbs'?'Vicki нагнётся и соберёт травы для Сигрид.':'Срежь ветки для плотника Бьёрна.'}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>gatherActionRef.current?.(id.slice(7))}>{kind==='herbs'?'Нагнуться и собрать':kind==='wood'?'Срубить':'Срезать ветки'}</button></div>;
       }
-      if(id==="nineWorldStranger")return <div className="mid3d-ui mid3d-interact"><b>Незнакомка девяти миров</b><span>{strangerMet?"Она помнит вашу первую встречу и всё ещё хранит свою тайну.":"Воительница с мечом ждёт у колодца. Кажется, она знает, зачем Вика пришла."}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setStrangerStep(strangerMet?1:0);setStrangerOpen(true);}}>Поговорить</button></div>;
+      if(id==="nineWorldStranger")return <div className="mid3d-ui mid3d-interact"><b>Незнакомка девяти миров</b><span>{strangerMet?"Она помнит вашу первую встречу и всё ещё хранит свою тайну.":"Воительница с мечом ждёт у колодца. Кажется, она знает, зачем Vicki пришла."}</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{stopJoy();setStrangerStep(strangerMet?1:0);setStrangerOpen(true);}}>Поговорить</button></div>;
       if(id==="forge")return <div className="mid3d-ui mid3d-door-prompt"><b>Дверь кузницы</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>forgeActionRef.current?.()}>Открыть ручку</button></div>;
       const selectedGate=id.startsWith('chaosGate:')?CHAOS_GATES.find(g=>g.id===id.slice(10)):gateForLocation(id);
       if(selectedGate&&!clearedGatesRef.current.has(selectedGate.id))return <div className="mid3d-ui mid3d-interact"><b>Врата хаоса · {selectedGate.name}</b><span>Путь запечатан. Нужны руны и {selectedGate.cost} капель бессмертия.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>on('chaosGate:'+selectedGate.id,{x:state.current.x,z:state.current.z})}>Снять заклинание</button></div>;
@@ -5543,8 +5543,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       if(id==="heroHome")return <div className="mid3d-ui mid3d-door-prompt"><b>Дом героя</b><button onPointerDown={e=>e.stopPropagation()} onClick={()=>homeActionRef.current?.(true)}>Открыть ручку</button></div>;
       if(id==="heroRest")return <div className="mid3d-ui mid3d-interact"><b>Кровать героя</b><span>Безопасный отдых после похода полностью восстанавливает здоровье.</span><button onPointerDown={e=>e.stopPropagation()} onClick={()=>{
         const max=whisperStats.maxHp;
-        if(banditHpRef.current>=max){setDoorNotice("Вика уже полностью отдохнула.");return;}
-        banditHpRef.current=max;setBanditHeroHp(max);onFieldHpChange(max);setDoorNotice("Вика отдохнула дома. Здоровье полностью восстановлено.");
+        if(banditHpRef.current>=max){setDoorNotice("Vicki уже полностью отдохнула.");return;}
+        banditHpRef.current=max;setBanditHeroHp(max);onFieldHpChange(max);setDoorNotice("Vicki отдохнула дома. Здоровье полностью восстановлено.");
       }}>Отдохнуть</button></div>;
       const guardianSpec=MIDGARD_GUARDIANS[id];
       const guardianDone=guardianResolved.includes(id);
@@ -5573,7 +5573,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     })()}
     {strangerOpen&&whisperPhase==="closed"&&<div className="mid3d-ui whisper-cloud" role="dialog" aria-modal="true" aria-label="Разговор со странницей девяти миров" onPointerDown={e=>e.stopPropagation()} style={{zIndex:25}}>
       <h3>Странница девяти миров</h3>
-      <p>{strangerStep===0?"«У колодца норн сходятся нити, которых не видят даже боги. Ты уже коснулась одной из них, Вика».":strangerStep===1?"«Тьма не рушит врата — она путает путь. Ищи руны, слушай тех, кто помнит древние имена, и не сдавайся после первой ошибки».":"«Мы встретимся снова. В каждом из девяти миров я оставлю тебе знак. Когда тьма придёт за тобой, мой меч окажется рядом». "}</p>
+      <p>{strangerStep===0?"«У колодца норн сходятся нити, которых не видят даже боги. Ты уже коснулась одной из них, Vicki».":strangerStep===1?"«Тьма не рушит врата — она путает путь. Ищи руны, слушай тех, кто помнит древние имена, и не сдавайся после первой ошибки».":"«Мы встретимся снова. В каждом из девяти миров я оставлю тебе знак. Когда тьма придёт за тобой, мой меч окажется рядом». "}</p>
       {strangerStep<2?<button className="whisper-close" onClick={()=>setStrangerStep(step=>step+1)}>{strangerStep===0?"Спросить о тьме":"Спросить о следующих мирах"}</button>:<button className="whisper-close" onClick={()=>{setStrangerOpen(false);setStrangerMet(true);try{window.localStorage.setItem('yggdrasil:stranger:midgard:met','1');}catch{}}}>Продолжить путь</button>}
       {strangerStep<2&&<button className="whisper-close" onClick={()=>setStrangerOpen(false)}>Пока уйти</button>}
     </div>}
