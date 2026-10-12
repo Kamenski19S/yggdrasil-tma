@@ -64,7 +64,7 @@ export function installTowerEntrance(scene:THREE.Scene,tower:THREE.Object3D,stan
     return geometry;
   };
   const makeDoor=(z:number,sealed:boolean)=>{
-    const assembly=new THREE.Group();assembly.name=sealed?'Серебряная дверь у границы':'Серебряная дверь — вход Вики';assembly.position.set(center.x,floor,z);if(sealed)assembly.rotation.y=Math.PI;root.add(assembly);
+    const assembly=new THREE.Group();assembly.name=sealed?'Серебряная дверь у границы':'Серебряная дверь — вход Vicki';assembly.position.set(center.x,floor,z);if(sealed)assembly.rotation.y=Math.PI;root.add(assembly);
     const frame=new THREE.Mesh(new THREE.ExtrudeGeometry(frameShape,{depth:.38,bevelEnabled:false,curveSegments:48}),stone);frame.position.z=-.3;frame.castShadow=frame.receiveShadow=true;assembly.add(frame);
     const frameArt=new THREE.Mesh(artwork(frameShape),art);frameArt.position.z=.085;assembly.add(frameArt);
     const hinge=new THREE.Group();hinge.position.x=-halfWidth;assembly.add(hinge);
