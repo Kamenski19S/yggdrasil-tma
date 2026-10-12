@@ -3699,25 +3699,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         pivot.rotation.y+=delta*Math.min(1,dt*3.5);
       };
 
-      // A small gold nameplate and rune circle keep her recognizable on
-      // a mobile screen, without replacing the actual character model.
-      const labelCanvas=document.createElement('canvas');
-      labelCanvas.width=512;labelCanvas.height=96;
-      const ctx=labelCanvas.getContext('2d');
-      if(ctx){
-        ctx.font='bold 38px Georgia,serif';
-        ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.shadowColor='#100f12';ctx.shadowBlur=9;
-        ctx.fillStyle='#ffe5a5';ctx.fillText('Странница',256,48);
-        const labelTex=new THREE.CanvasTexture(labelCanvas);
-        labelTex.colorSpace=THREE.SRGBColorSpace;
-        const label=new THREE.Sprite(new THREE.SpriteMaterial({
-          map:labelTex,transparent:true,depthWrite:false,depthTest:true
-        }));
-        label.position.set(0,targetHeight+.44,0);
-        label.scale.set(3.3,.62,1);
-        pivot.add(label);
-      }
+      // No overhead nameplate: her name stays in the interaction dialogue.
       const runeRing=new THREE.Mesh(
         new THREE.TorusGeometry(.75,.035,5,40),
         new THREE.MeshBasicMaterial({color:0xd4b574,transparent:true,opacity:.65,depthWrite:false})
