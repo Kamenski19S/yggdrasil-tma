@@ -60,6 +60,8 @@ const FIRST_WAVE_MS=45*1000; // First encounter is quickly visible for a new pla
 const MAX_ACTIVE_SHADOWS=3;
 const SHADOW_LIFETIME_MS=130*1000;
 const SHADOW_MAX_HP=51;
+// One visible size for each species, regardless of spawn point or building.
+const ROLE_HEIGHT={orc:4.1,troll:5.0,undead:5.2} as const;
 
 export function installNiflheimRiggedEnemies(
  scene:THREE.Scene,spots:Spot[],isAlive:()=>boolean,
@@ -76,13 +78,13 @@ export function installNiflheimRiggedEnemies(
   const commonShadowMaterials=new Map<THREE.Material,THREE.Material>();
   const winterOrcMaterials=new Map<THREE.Material,THREE.Material>();
 
-  const mountActor=(root:THREE.Group,role:Role,asset:Asset,height:number):Actor=>{
+  const mountActor=(root:THREE.Group,role:Role,asset:Asset):Actor=>{
     const model=cloneSkeleton(asset.scene) as THREE.Group;
     model.name='Niflheim '+role+' rigged character';
     model.updateMatrixWorld(true);
     const bounds=new THREE.Box3().setFromObject(model);
     const span=Math.max(.001,bounds.max.y-bounds.min.y),center=bounds.getCenter(new THREE.Vector3());
-    const holder=new THREE.Group();holder.scale.setScalar(height/span);
+    const holder=new THREE.Group();holder.scale.setScalar(ROLE_HEIGHT[role]/span);
     model.position.set(-center.x,-bounds.min.y,-center.z);
     holder.add(model);root.add(holder);
     model.traverse(o=>{
@@ -123,6 +125,23 @@ export function installNiflheimRiggedEnemies(
     const idle=clip?mixer.clipAction(clip):null;
     idle?.play();
     const actor={model,root,mixer,role,static:true,clips:asset.animations,idle,current:idle,actionUntil:0} satisfies Actor;
+    // Match the soles to the local walking surface, not the height of the
+    // imported scene's pivot or armour bounding box. Especially important
+    // for animated orcs whose pivot is near the waist.
+    mixer.update(0);
+    if(role==='orc'){
+      const feet=['Bip001_L_Foot_075','Bip001_R_Foot_082']
+        .map(name=>model.getObjectByName(name)).filter((b):b is THREE.Object3D=>!!b);
+      if(feet.length){
+        root.updateWorldMatrix(true,true);
+        const footY=Math.min(...feet.map(b=>b.getWorldPosition(new THREE.Vector3()).y));
+        const rootX=root.getWorldPosition(new THREE.Vector3()).x;
+        const rootZ=root.getWorldPosition(new THREE.Vector3()).z;
+        const delta=ground(rootX,rootZ)+.18-footY;
+        // Guard against malformed animation rigs: never jump several metres.
+        if(Number.isFinite(delta)&&Math.abs(delta)<5)root.position.y+=delta;
+      }
+    }
     actors.push(actor);return actor;
   };
 
@@ -154,29 +173,53 @@ export function installNiflheimRiggedEnemies(
   const readGuard=(id:string)=>{try{return Number(localStorage.getItem('yggdrasil-niflheim-guard-'+id))||0;}catch{return 0;}};
   const createGuard=(id:string,role:'orc'|'troll',holder:THREE.Group,actor:Actor)=>{
     const isTroll=role==='troll',maxHp=isTroll?165:98,attack=isTroll?15:9;
-    const bar=makeBar(holder,isTroll?8.1:5.6,isTroll?'#c9a4ec':'#e58b7f');
+    const bar=makeBar(holder,ROLE_HEIGHT[role]+.55,isTroll?'#c9a4ec':'#e58b7f');
     const origin=holder.getWorldPosition(new THREE.Vector3()),next=readGuard(id);
     const guard:Guard={id,actor,root:holder,origin,role,hp:maxHp,maxHp,attack,lastAttack:0,lastHit:0,deadAt:0,respawnAt:next,bar};
     holder.visible=next<=Date.now();guards.push(guard);
   };
-  const attachTrollAxe=(model:THREE.Group)=>{
-    // The old carried weapon must not remain visible underneath the new axe.
-    model.traverse(o=>{if(o.name==='Weapon'||o.name==='Weapon_Weapon1_0')o.visible=false;});
-    cachedGlbBuffer(`${BASE}img/models/Axe_Double.glb`)
-      .then(buffer=>loader.parseAsync(buffer,`${BASE}img/models/`))
-      .then(asset=>{
-        if(!isAlive())return;
-        const hand=model.getObjectByName('Wrist_R_0241')||model.getObjectByName('FKIKMixWrist_R');
-        if(!hand)return;
-        const axe=asset.scene;axe.name='Секира ледяного тролля';
-        axe.updateMatrixWorld(true);
-        const bounds=new THREE.Box3().setFromObject(axe);
-        const height=Math.max(.001,bounds.max.y-bounds.min.y),center=bounds.getCenter(new THREE.Vector3());
-        axe.position.set(-center.x,-bounds.min.y,-center.z);
-        const grip=new THREE.Group();grip.scale.setScalar(16/height);
-        grip.rotation.set(Math.PI/2,0,-Math.PI/2);
-        grip.add(axe);hand.add(grip);
-      }).catch(()=>{ /* The troll remains visible if its axe is unavailable. */ });
+  // Load one optimized axe and clone it; geometry/materials are shared.
+  const axeTemplate=cachedGlbBuffer(`${BASE}img/models/Axe_Double.glb`)
+    .then(buffer=>loader.parseAsync(buffer,`${BASE}img/models/`))
+    .then(asset=>asset.scene)
+    .catch(()=>null);
+  const attachGuardWeapon=(actor:Actor)=>{
+    const model=actor.model,role=actor.role;
+    if(role==='undead')return;
+    if(role==='orc'){
+      // Source Axe_07 is skinned with the wrong bind offsets; otherwise it
+      // floats across the waist instead of staying inside the closed fist.
+      model.traverse(o=>{
+        const mesh=o as THREE.Mesh;
+        if(mesh.isMesh&&(o.name==='Object_25'||mesh.geometry?.name?.includes('Axe_07')))o.visible=false;
+      });
+    }
+    axeTemplate.then(template=>{
+      if(!isAlive()||!template)return;
+      model.updateMatrixWorld(true);
+      const hand=model.getObjectByName(role==='orc'?'Bip001_R_Hand_017':'Wrist_L_0262');
+      if(!hand){console.warn('No fist bone for',role);return;}
+      const axe=template.clone(true);
+      axe.name=role==='orc'?'Секира орка в правой руке':'Секира гоблина в левой руке';
+      axe.updateMatrixWorld(true);
+      const box=new THREE.Box3().setFromObject(axe),size=box.getSize(new THREE.Vector3());
+      if(size.y<.0001)return;
+      const center=box.getCenter(new THREE.Vector3());
+      // Keep grip at the bottom of the axe shaft, facing forward.
+      axe.position.x-=center.x;
+      axe.position.y-=box.min.y+size.y*.14;
+      axe.position.z-=center.z;
+      const grip=new THREE.Group();
+      grip.name='Крепление оружия к кисти';
+      grip.rotation.set(Math.PI/2,0,role==='orc'?-Math.PI/2:Math.PI/2);
+      hand.add(grip);
+      hand.updateWorldMatrix(true,false);
+      const worldScale=hand.getWorldScale(new THREE.Vector3());
+      const absoluteScale=Math.max(.0001,(Math.abs(worldScale.x)+Math.abs(worldScale.y)+Math.abs(worldScale.z))/3);
+      const weaponLength=role==='orc'?2.35:2.15;
+      grip.scale.setScalar(Math.min(500,weaponLength/(size.y*absoluteScale)));
+      grip.add(axe);
+    });
   };
 
   // Persist the wave's clock across re-entry: leaving the world never resets it.
@@ -198,11 +241,11 @@ export function installNiflheimRiggedEnemies(
     const root=new THREE.Group();root.name='Тень забытых '+(id+1)+' — '+site.place;
     root.position.set(site.x,ground(site.x,site.z),site.z);
     root.visible=false;scene.add(root);
-    const actor=mountActor(root,'undead',asset,6.2);actor.static=false;
+    const actor=mountActor(root,'undead',asset);actor.static=false;
     const background=new THREE.Mesh(new THREE.BoxGeometry(2.15,.17,.07),new THREE.MeshBasicMaterial({color:'#251526',depthTest:false}));
-    background.position.y=7.1;root.add(background);
+    background.position.y=ROLE_HEIGHT.undead+.55;root.add(background);
     const bar=new THREE.Mesh(new THREE.BoxGeometry(2.1,.14,.09),new THREE.MeshBasicMaterial({color:'#b47fdd',depthTest:false}));
-    bar.position.y=7.1;bar.position.z=.06;root.add(bar);
+    bar.position.y=ROLE_HEIGHT.undead+.55;bar.position.z=.06;root.add(bar);
     shadows.push({id,site,root,actor,healthBar:bar,hp:SHADOW_MAX_HP+id*9,active:false,used:false,born:0,lastBite:0,lastHit:0});
   };
   const fadeOut=(shadow:Shadow,defeated:boolean)=>{
@@ -248,19 +291,19 @@ export function installNiflheimRiggedEnemies(
           if(expected[spot.id]!==role)continue;
           const holder=new THREE.Group();holder.name='Страж '+spot.id;
           spot.root.add(holder);
-          const actor=mountActor(holder,role,asset,role==='troll'?7.2:4.8);
+          const actor=mountActor(holder,role,asset);
           createGuard(spot.id,role as 'orc'|'troll',holder,actor);
-          if(role==='troll')attachTrollAxe(actor.model);
+          attachGuardWeapon(actor);
           // No temporary geometric stand-ins: all five guardian slots contain rigs only.
         }
         for(const site of NIFLHEIM_EXTRA_GUARDS){
           if(site.role!==role)continue;
           const root=new THREE.Group();
           root.name=site.place+': '+(role==='orc'?'орк-страж':'ледяной тролль');
-          root.position.set(site.x,ground(site.x,site.z)+.35,site.z);scene.add(root);
-          const actor=mountActor(root,role,asset,role==='troll'?7.2:site.id==='forgeOrc'||site.id==='hallOrc'?4.15:4.8);
+          root.position.set(site.x,ground(site.x,site.z),site.z);scene.add(root);
+          const actor=mountActor(root,role,asset);
           createGuard(site.id,role,root,actor);
-          if(role==='troll')attachTrollAxe(actor.model);
+          attachGuardWeapon(actor);
           extras.push(root);
         }
         if(role==='undead')NIFLHEIM_SHADOW_SITES.forEach((site,id)=>createShadow(id,site,asset));
@@ -294,7 +337,7 @@ export function installNiflheimRiggedEnemies(
         if(guard.respawnAt>Date.now())continue;
         if(!guard.root.visible){
           guard.root.visible=true;guard.hp=guard.maxHp;
-          if(guard.root.parent===scene)guard.root.position.copy(guard.origin);
+          if(guard.root.parent===scene)guard.root.position.set(guard.origin.x,ground(guard.origin.x,guard.origin.z),guard.origin.z);
           else guard.root.position.set(0,0,0);
           guard.bar.scale.x=1;guard.bar.position.x=0;guard.respawnAt=0;
         }
@@ -317,7 +360,7 @@ export function installNiflheimRiggedEnemies(
           const step=Math.min(dist-4.6,(guard.role==='troll'?1.05:1.5)*dt);
           const nx=place.x+(hero.x-place.x)/dist*step,nz=place.z+(hero.z-place.z)/dist*step;
           if(Math.hypot(nx-guard.origin.x,nz-guard.origin.z)<4.2&&canSpawn(nx,nz)){
-            if(guard.root.parent===scene)guard.root.position.set(nx,ground(nx,nz)+.35,nz);
+            if(guard.root.parent===scene)guard.root.position.set(nx,ground(nx,nz),nz);
             else{guard.root.position.x+=nx-place.x;guard.root.position.z+=nz-place.z;}
           }
         }

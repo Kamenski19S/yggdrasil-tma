@@ -8,11 +8,18 @@ const PREFIX='niflheim:dragon:';
 export const NIFL_ICE=[{id:'gate',x:11,z:116,name:'У входных врат'},{id:'forge',x:-33,z:105,name:'У кузницы великана'},{id:'shelter',x:22,z:108,name:'У дороги к приюту хранителей'}] as const;
 export const NIFL_OBSIDIAN=[{id:'west',x:-23,z:-16,name:'Западная жила'},{id:'east',x:24,z:-24,name:'Восточная жила'},{id:'depths',x:-18,z:-54,name:'Глубокая жила'}] as const;
 export const NIFL_CRAFTS:{id:HeroWeapon;name:string;steel:number;drops:number;need:'ice'|'obsidian'|'ember'}[]=[
-  {id:'swordStar',name:'Меч звёздного серебра',steel:1,drops:12,need:'ice'},
-  {id:'axeGiant',name:'Секира ледяного великана',steel:1,drops:16,need:'ice'},
-  {id:'hammerRune',name:'Молот древних рун',steel:2,drops:20,need:'ember'},
-  {id:'bladeObsidian',name:'Обсидиановый клинок',steel:2,drops:24,need:'obsidian'}
+  {id:'swordStar',name:'Меч звёздного серебра',steel:6,drops:150,need:'ice'},
+  {id:'axeGiant',name:'Секира ледяного великана',steel:8,drops:200,need:'ice'},
+  {id:'hammerRune',name:'Молот древних рун',steel:10,drops:260,need:'ember'},
+  {id:'bladeObsidian',name:'Обсидиановый клинок',steel:12,drops:300,need:'obsidian'}
 ];
+export function niflCraftUnlocked(progress:ReturnType<typeof dragonProgress>,recipe:typeof NIFL_CRAFTS[number]):boolean{
+ // Finding components OR liberating the associated site unlocks a blueprint.
+ // No unreachable three-fragment requirement for ordinary weapon crafting.
+ if(recipe.need==='ice')return progress.ice.length>0||progress.liberation.has('snowMountain')||progress.liberation.has('frozenRiver');
+ if(recipe.need==='obsidian')return progress.obsidian.length>0||progress.liberation.has('namesHall');
+ return progress.ember||progress.liberation.has('threeNornsWell');
+}
 export type DragonEvent='tower:unseal'|'first'|'ember'|'forge'|'defeat'|'supply:rune'|'supply:potion'|'supply:steel'|`ice:${string}`|`obsidian:${string}`|`craft:${string}`;
 export function dragonProgress(done:readonly string[]){
  const has=(key:string)=>done.includes(PREFIX+key);
@@ -74,10 +81,11 @@ export function applyDragonQuestEvent(save:Save,event:DragonEvent):Save{
  }
  if(event.startsWith('craft:')){
   const recipe=NIFL_CRAFTS.find(r=>r.id===event.slice(6));
-  if(!recipe||save.ownedWeapons.includes(recipe.id)||save.runeSteel<recipe.steel||save.immortalityDrops<recipe.drops)return save;
-  if(recipe.need==='ice'&&p.ice.length!==3||recipe.need==='obsidian'&&p.obsidian.length!==3||recipe.need==='ember'&&!p.ember)return save;
+  if(!recipe||!niflCraftUnlocked(p,recipe)||save.runeSteel<recipe.steel||save.immortalityDrops<recipe.drops)return save;
+  // Repeating a blueprint makes a real spare copy for the shared crafting hall.
   return {...save,runeSteel:save.runeSteel-recipe.steel,immortalityDrops:save.immortalityDrops-recipe.drops,
-   ownedWeapons:[...save.ownedWeapons,recipe.id],lootCounts:{...save.lootCounts,[recipe.id]:1}};
+   ownedWeapons:[...new Set([...save.ownedWeapons,recipe.id])],
+   lootCounts:{...save.lootCounts,[recipe.id]:(save.lootCounts[recipe.id]||0)+1}};
  }
  if(event==='supply:steel'&&p.ember&&save.immortalityDrops>=10){
   return {...save,immortalityDrops:save.immortalityDrops-10,runeSteel:save.runeSteel+1};

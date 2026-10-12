@@ -1,5 +1,5 @@
 import {applyMemoryEvent} from './niflheimMemoryQuest';
-import {applyDragonQuestEvent,dragonProgress,NIFL_CRAFTS,type DragonEvent} from './niflheimDragonQuest';
+import {applyDragonQuestEvent,dragonProgress,NIFL_CRAFTS,niflCraftUnlocked,type DragonEvent} from './niflheimDragonQuest';
 import {applyLiberationEvent,liberationProgress,type LiberationEvent} from './niflheimLiberation';
 import { VIKA_STORY, HERO_PROFILE_CSS } from './vikaStory';
 import {WOOD_TRADES,exchangeWood,forgeAshCost} from './woodEconomy';
@@ -1215,8 +1215,9 @@ const [roadT, setRoadT] = useState(0.06);
               {q.forged&&<p>✅ «Погибель Нидхёгга» выкована. {q.defeated?'Дракон повержен, его чешуя хранится среди трофеев.':'Вернись в логово — чешуя дракона уязвима лишь после освобождения всего Нифльхейма.'}</p>}
               <h4 style={{margin:"12px 0 6px"}}>Особые рецепты</h4>
               {NIFL_CRAFTS.map(recipe=><div key={recipe.id} style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",marginBottom:7}}>
-                <span>{recipe.name} · ⚙️{recipe.steel} · 💧{recipe.drops}</span>
-                <button disabled={save.ownedWeapons.includes(recipe.id)||save.runeSteel<recipe.steel||save.immortalityDrops<recipe.drops||(recipe.need==='ice'&&q.ice.length<3)||(recipe.need==='obsidian'&&q.obsidian.length<3)||(recipe.need==='ember'&&!q.ember)} onClick={()=>rewards(('craft:'+recipe.id) as DragonEvent,recipe.name+' выкован!')}>{save.ownedWeapons.includes(recipe.id)?'Создано':'Выковать'}</button>
+                <span>{recipe.name} · ⚙️{recipe.steel} · 💧{recipe.drops} · экземпляров: {Math.max(0,save.lootCounts[recipe.id]||0)}</span>
+                <button disabled={!niflCraftUnlocked(q,recipe)||save.runeSteel<recipe.steel||save.immortalityDrops<recipe.drops}
+                  onClick={()=>rewards(('craft:'+recipe.id) as DragonEvent,recipe.name+' выкован!')}>{!niflCraftUnlocked(q,recipe)?'Чертёж закрыт':'Выковать'}</button>
               </div>)}
               <h4 style={{margin:"12px 0 6px"}}>Руны и эликсиры Нифльхейма</h4>
               <p>Не нужно возвращаться за припасами в Мидгард: руны можно получать за 8 капель, эликсир жизни — за 6, а руническую сталь — за 10 капель после пробуждения горна. Руны выдаются по кругу из полного набора.</p>
@@ -1327,6 +1328,29 @@ const [roadT, setRoadT] = useState(0.06);
             <button className="btn gold" disabled={!craftReady} onClick={performCraft}>{selectedCraftRecipe?"Создать: "+lootDisplayName(selectedCraftRecipe.result):"Выбери рецепт"}</button>
 
             <div className="steel-wallet">⚙️ Руническая сталь: <b>{save.runeSteel}</b></div>
+
+            <div className="steel-section">
+              <h3>❄️ Новое оружие Нифльхейма</h3>
+              <p>Чертежи открываются при исследовании и освобождении локаций Нифльхейма. На изготовление расходуются только руническая сталь и Капли бессмертия; уже найденные уникальные артефакты остаются при Vicki. Каждый крафт создаёт настоящий экземпляр оружия, включая повторные копии.</p>
+              <div className="steel-list">{NIFL_CRAFTS.map(recipe=>{
+                const progress=dragonProgress(save.done);
+                const unlocked=niflCraftUnlocked(progress,recipe);
+                const ready=unlocked&&save.runeSteel>=recipe.steel&&save.immortalityDrops>=recipe.drops;
+                const count=Math.max(0,Number(save.lootCounts[recipe.id])||0);
+                return <div key={recipe.id} className={'steel-recipe'+(!unlocked?' locked':'')}>
+                  <span><b>{weaponDisplayIcon(recipe.id)} {recipe.name}</b>
+                    <small>{unlocked?('⚙️ '+recipe.steel+' стали + 💧 '+recipe.drops+' Капель · готово: '+count+' шт.'):
+                      (recipe.need==='ice'?'Открой схему: ледяной осколок или Снежная гора':
+                       recipe.need==='obsidian'?'Открой схему: обсидиан или Зал забытых имён':
+                       'Открой схему: древний горн или Колодец трёх норн')}</small>
+                  </span>
+                  <button disabled={!ready} onClick={()=>{
+                    setSave(prev=>applyDragonQuestEvent(prev,('craft:'+recipe.id) as DragonEvent));
+                    haptic('success');say(recipe.name+' создан! Оружие появилось в общем инвентаре.');
+                  }}>{!unlocked?'Чертёж закрыт':ready?'Создать':'Недостаточно ресурсов'}</button>
+                </div>;
+              })}</div>
+            </div>
 
             <div className="steel-section">
               <h3>⚒ Разбор лишнего оружия</h3>
