@@ -3655,11 +3655,13 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     const wandererX=64,wandererZ=-22;
     let wandererPresent=false;
     let wandererIdle:((now:number)=>void)|null=null;
+    let wandererTurn:((dt:number,x:number,z:number)=>void)|null=null;
     loadGlbWithFolderFallback('hit2_stranger_mobile.glb',(asset:any)=>{
       if(!glbTreesAlive)return;
       const model=asset.scene as THREE.Object3D;
-      // Face the Wanderer towards Vika at the well, rather than showing her back.
-      model.rotation.y=Math.PI*1.03;
+      // Keep the character aligned with the scabbards. Turn the shared pivot
+      // towards Vika rather than guessing a fixed angle from screenshots.
+      model.rotation.y=0;
       const prepared=prepareNineWorldStranger(model);
       const originalSize=prepared.bodyBounds.getSize(new THREE.Vector3());
       if(prepared.bodyBounds.isEmpty()||originalSize.y<.001){
@@ -3683,7 +3685,20 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       pivot.position.set(wandererX,groundY(wandererX,wandererZ),wandererZ);
       model.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;}});
       pivot.add(model);
-      pivot.add(makeNineWorldStrangerScabbards(targetHeight,model.rotation.y));
+      pivot.add(makeNineWorldStrangerScabbards(targetHeight,0));
+      // The original GLB faces along +Z. A neutral front-left angle is used
+      // while Vika is far away; when she approaches, the Wanderer turns to
+      // face her naturally so dialogue works from either side of the well.
+      const visitorDistance=Math.hypot(state.current.x-wandererX,state.current.z-wandererZ);
+      pivot.rotation.y=visitorDistance<9
+        ?Math.atan2(state.current.x-wandererX,state.current.z-wandererZ)
+        :-Math.PI*.20;
+      wandererTurn=(dt:number,x:number,z:number)=>{
+        if(Math.hypot(x-wandererX,z-wandererZ)>8)return;
+        const desired=Math.atan2(x-wandererX,z-wandererZ);
+        const delta=Math.atan2(Math.sin(desired-pivot.rotation.y),Math.cos(desired-pivot.rotation.y));
+        pivot.rotation.y+=delta*Math.min(1,dt*3.5);
+      };
 
       // A small gold nameplate and rune circle keep her recognizable on
       // a mobile screen, without replacing the actual character model.
@@ -5378,6 +5393,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       });
       for(const g of chaosVisuals)g.visual.update(dt,clearedGatesRef.current.has(g.id),now,q.x,q.z);
       wandererIdle?.(now);
+      wandererTurn?.(dt,q.x,q.z);
       combatEffects.update(now);
       renderer.render(scene,camera);raf=requestAnimationFrame(loop);
     };
