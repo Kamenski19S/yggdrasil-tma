@@ -12,7 +12,7 @@ export const NIFL_CRAFTS:{id:HeroWeapon;name:string;steel:number;drops:number;ne
   {id:'hammerRune',name:'Молот древних рун',steel:2,drops:20,need:'ember'},
   {id:'bladeObsidian',name:'Обсидиановый клинок',steel:2,drops:24,need:'obsidian'}
 ];
-export type DragonEvent='tower:unseal'|'first'|'ember'|'forge'|'defeat'|'supply:rune'|'supply:potion'|`ice:${string}`|`obsidian:${string}`|`craft:${string}`;
+export type DragonEvent='tower:unseal'|'first'|'ember'|'forge'|'defeat'|'supply:rune'|'supply:potion'|'supply:steel'|`ice:${string}`|`obsidian:${string}`|`craft:${string}`;
 export function dragonProgress(done:readonly string[]){
  const has=(key:string)=>done.includes(PREFIX+key);
  const ice=NIFL_ICE.filter(p=>has('ice:'+p.id));
@@ -76,6 +76,9 @@ export function applyDragonQuestEvent(save:Save,event:DragonEvent):Save{
   if(recipe.need==='ice'&&p.ice.length!==3||recipe.need==='obsidian'&&p.obsidian.length!==3||recipe.need==='ember'&&!p.ember)return save;
   return {...save,runeSteel:save.runeSteel-recipe.steel,immortalityDrops:save.immortalityDrops-recipe.drops,
    ownedWeapons:[...save.ownedWeapons,recipe.id],lootCounts:{...save.lootCounts,[recipe.id]:1}};
+ }
+ if(event==='supply:steel'&&p.ember&&save.immortalityDrops>=10){
+  return {...save,immortalityDrops:save.immortalityDrops-10,runeSteel:save.runeSteel+1};
  }
  if(event==='supply:rune'&&save.immortalityDrops>=8){
   const count=Number(save.lootCounts.niflheimRunePurchase)||0;

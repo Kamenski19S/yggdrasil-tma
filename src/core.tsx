@@ -226,7 +226,8 @@ export function styleNiflheimWeapon(root:THREE.Object3D,id:HeroWeapon){
   const tint=hues[id];if(!tint)return;
   root.traverse(o=>{if(!(o instanceof THREE.Mesh))return;
     const array=Array.isArray(o.material);
-    const materials=(array?o.material:[o.material]).map(original=>{
+    const originals:THREE.Material[]=Array.isArray(o.material)?o.material:[o.material];
+    const materials=originals.map(original=>{
       const mat=original.clone();
       if(mat instanceof THREE.MeshStandardMaterial){
         mat.color.lerp(new THREE.Color(tint),id==='swordNidhogg'?.58:.7);

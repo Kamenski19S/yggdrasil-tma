@@ -15,6 +15,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
   const [hp,setHp]=useState(100);
   const [dragonHp,setDragonHp]=useState(100);
   const attackRef=useRef<()=>void>(()=>{});
+  const healRef=useRef<(amount:number)=>void>(()=>{});
   const shieldRef=useRef<()=>void>(()=>{});
   const progressRef=useRef(dragonProgress(questDone));progressRef.current=dragonProgress(questDone);
   const eventRef=useRef(onDragonEvent);eventRef.current=onDragonEvent;
@@ -45,6 +46,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     let mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,current:THREE.AnimationAction|undefined,dragonMixer:THREE.AnimationMixer|undefined;
     let dragonBounds:THREE.Box3|undefined,encounter:ReturnType<typeof createNidhoggEncounter>|undefined;
     let heroReady=false,heroLife=100,dragonLife=100,lastStrike=0,lastBite=0,guardUntil=0,lastHud=0,strikeCount=0,metSent=false,beaten=false;
+    healRef.current=(amount:number)=>{heroLife=Math.min(100,heroLife+amount);setHp(heroLife);};
     attackRef.current=()=>{
       const boss=encounter;
       if(!boss||beaten||progressRef.current.defeated){setStatus('Дракон уже повержен.');return;}
@@ -216,7 +218,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
       camera.position.lerp(flightCamera,1-Math.exp(-dt*4));camera.lookAt(flightTarget);
       const near=Math.abs(pos.x)<5&&pos.z>20;if(near!==wasNear){wasNear=near;setNearExit(near);}renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
-    return()=>{attackRef.current=()=>{};shieldRef.current=()=>{};alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',reset);document.removeEventListener('visibilitychange',reset);reset();mixer?.stopAllAction();dragonMixer?.stopAllAction();dispose(scene);assets.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();};
+    return()=>{attackRef.current=()=>{};healRef.current=()=>{};shieldRef.current=()=>{};alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',reset);document.removeEventListener('visibilitychange',reset);reset();mixer?.stopAllAction();dragonMixer?.stopAllAction();dispose(scene);assets.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();};
   },[weapon,shieldAsset,shieldEquipped]);
   const steer=(e:React.PointerEvent<HTMLButtonElement>)=>{if(pointer.current!==e.pointerId)return;const rect=e.currentTarget.getBoundingClientRect(),r=rect.width*.36;let x=(e.clientX-rect.left-rect.width/2)/r,z=(e.clientY-rect.top-rect.height/2)/r;const length=Math.hypot(x,z);if(length>1){x/=length;z/=length;}analog.current={x,z};if(knob.current)knob.current.style.transform=`translate(${x*r}px,${z*r}px)`;};
   return <div style={{position:'relative',flex:1,minHeight:0,overflow:'hidden',background:'#121d24',touchAction:'none'}}>
@@ -231,7 +233,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     </div>
     <button className="mid3d-ui mid3d-strike" aria-label="Ударить Нидхёгга" onClick={()=>attackRef.current()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></button>
     <button className="mid3d-ui mid3d-block" aria-label="Прикрыться щитом" disabled={!shieldEquipped} onClick={()=>shieldRef.current()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_shield.png`} alt="" draggable={false}/></button>
-    {potions.length>0&&<button onClick={()=>{const potion=potions.includes('lifeElixir')?'lifeElixir':potions.includes('northernMoss')?'northernMoss':potions.includes('hoddmimirElixir')?'hoddmimirElixir':'';if(potion&&hp<100&&onUsePotion(potion,hp)){setHp(v=>Math.min(100,v+(potion==='northernMoss'?30:100)));setStatus('Эликсир восстановил силы Vicki.');}}} style={{position:'absolute',right:12,top:152,padding:9,background:'#20313c',color:'#eaf6ff',border:'1px solid #accade',borderRadius:8}}>🧪 Лечение</button>}
+    {potions.length>0&&<button onClick={()=>{const potion=potions.includes('lifeElixir')?'lifeElixir':potions.includes('northernMoss')?'northernMoss':potions.includes('hoddmimirElixir')?'hoddmimirElixir':'';if(potion&&hp<100&&onUsePotion(potion,hp)){healRef.current(potion==='northernMoss'?30:100);setStatus('Эликсир восстановил силы Vicki.');}}} style={{position:'absolute',right:12,top:152,padding:9,background:'#20313c',color:'#eaf6ff',border:'1px solid #accade',borderRadius:8}}>🧪 Лечение</button>}
     {nearOre&&<div style={{position:'absolute',bottom:112,left:'50%',transform:'translateX(-50%)',padding:9,background:'#171d2deb',color:'#ebdfff',borderRadius:10,zIndex:7,textAlign:'center'}}><div>Обсидиан бездны · {NIFL_OBSIDIAN.find(p=>p.id===nearOre)?.name}</div><button onClick={()=>{eventRef.current(('obsidian:'+nearOre) as DragonEvent);setStatus('Обсидиан бездны получен. Вернись к великану с тремя залежами.');setNearOre('');}} style={{padding:'8px 12px',marginTop:6}}>🌑 Собрать</button></div>}
     {nearDragon&&!progressRef.current.forged&&<div style={{position:'absolute',bottom:110,left:'50%',transform:'translateX(-50%)',padding:10,background:'#1b273aeb',color:'#fff',borderRadius:8,zIndex:7,textAlign:'center'}}>Чешуя дракона восстанавливается! <button onClick={()=>{clear();exit.current();}} style={{marginLeft:6}}>Отступить к кузнецу</button></div>}
     <div style={{position:'absolute',left:12,bottom:4,fontSize:10,color:'#aebac2',maxWidth:'55%'}}>Пещера: <a href="https://sketchfab.com/3d-models/dark-side-cave-e6347843eec64b408157dabfb8b196b2" target="_blank" rel="noopener noreferrer" style={{color:'inherit'}}>diaspora</a> · CC BY 4.0 · уменьшены текстуры, изменены масштаб и высота.</div>

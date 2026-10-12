@@ -1217,9 +1217,10 @@ const [roadT, setRoadT] = useState(0.06);
                 <button disabled={save.ownedWeapons.includes(recipe.id)||save.runeSteel<recipe.steel||save.immortalityDrops<recipe.drops||(recipe.need==='ice'&&q.ice.length<3)||(recipe.need==='obsidian'&&q.obsidian.length<3)||(recipe.need==='ember'&&!q.ember)} onClick={()=>rewards(('craft:'+recipe.id) as DragonEvent,recipe.name+' выкован!')}>{save.ownedWeapons.includes(recipe.id)?'Создано':'Выковать'}</button>
               </div>)}
               <h4 style={{margin:"12px 0 6px"}}>Руны и эликсиры Нифльхейма</h4>
-              <p>Не нужно возвращаться за припасами в Мидгард: руны можно получать за 8 капель, а эликсир жизни — за 6. Руны выдаются по кругу из полного набора.</p>
+              <p>Не нужно возвращаться за припасами в Мидгард: руны можно получать за 8 капель, эликсир жизни — за 6, а руническую сталь — за 10 капель после пробуждения горна. Руны выдаются по кругу из полного набора.</p>
               <button disabled={save.immortalityDrops<8} onClick={()=>rewards('supply:rune','Кузнец передал новую руну.')}>ᛉ Руна · 8 💧</button>{' '}
-              <button disabled={save.immortalityDrops<6} onClick={()=>rewards('supply:potion','Эликсир жизни получен.')}>🧪 Эликсир жизни · 6 💧</button>
+              <button disabled={save.immortalityDrops<6} onClick={()=>rewards('supply:potion','Эликсир жизни получен.')}>🧪 Эликсир жизни · 6 💧</button>{' '}
+              <button disabled={!q.ember||save.immortalityDrops<10} onClick={()=>rewards('supply:steel','Руническая сталь получена.')}>⚙️ Руническая сталь · 10 💧</button>
             </section>;
           })()}
           <div className="forge-group-title">Экипировка</div>
