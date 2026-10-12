@@ -7,7 +7,7 @@ import {BASE,cachedGlbBuffer,WEAPON_ASSET,textureSteelOnWeapon,type HeroWeapon} 
 export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEquipped}:{onBack:()=>void;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean}){
   const mount=useRef<HTMLDivElement>(null),analog=useRef({x:0,z:0}),pointer=useRef<number|null>(null),knob=useRef<HTMLSpanElement>(null);
   const exit=useRef(onBack);exit.current=onBack;
-  const [status,setStatus]=useState('Вика спускается под разрушенную башню…');
+  const [status,setStatus]=useState('Vicki спускается под разрушенную башню…');
   const [nearExit,setNearExit]=useState(true);
   const clear=()=>{analog.current={x:0,z:0};pointer.current=null;if(knob.current)knob.current.style.transform='translate(0,0)';};
   useEffect(()=>{
@@ -126,7 +126,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
       const hand=bone('RightHand'),arm=bone('LeftForeArm');if(hand)equip(weapon==='default'?'Sword.glb':WEAPON_ASSET[weapon],hand,false);if(arm&&shieldEquipped)equip(shieldAsset,arm,true);
       mixer=new THREE.AnimationMixer(model);const idleClip=THREE.AnimationClip.findByName(gltf.animations,'idle')||THREE.AnimationClip.findByName(gltf.animations,'sword_idle')||gltf.animations[0];const walkClip=THREE.AnimationClip.findByName(gltf.animations,'walk_loop')||THREE.AnimationClip.findByName(gltf.animations,'walk')||idleClip;
       if(idleClip)idle=mixer.clipAction(idleClip);if(walkClip)walk=mixer.clipAction(walkClip);idle?.play();current=idle;heroReady=true;setStatus('');
-    }).catch(()=>{if(alive)setStatus('Не удалось загрузить Вику. Вернись в Нифльхейм и попробуй снова.');});
+    }).catch(()=>{if(alive)setStatus('Не удалось загрузить Vicki. Вернись в Нифльхейм и попробуй снова.');});
     load('European_Dragon_Optimized.glb').then(gltf=>{
       if(!alive){dispose(gltf.scene);assets.forEach(t=>t.dispose());return;}
       encounter=createNidhoggEncounter(gltf.scene,gltf.animations,groundAt,()=>{});
@@ -158,7 +158,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     <div ref={mount} style={{position:'absolute',inset:0}}/>
     <div className="mid3d-ui mid3d-top"><button className="mid3d-top-btn" onClick={()=>{clear();exit.current();}} aria-label="Вернуться в Нифльхейм"><img className="mid3d-top-button-art" src={`${BASE}img/models/home_button.png`} alt=""/></button><div className="mid3d-realm-title" style={{color:'#e9eff4'}}>Подземелье Нидхёгга</div></div>
     {status&&<div role="status" style={{position:'absolute',top:85,left:12,right:12,color:'#fff',textAlign:'center',background:'#18232be6',padding:10,borderRadius:8}}>{status}</div>}
-    <button className="mid3d-ui mid3d-joy" style={{padding:0,userSelect:'none'}} aria-label="Управление Викой" onPointerDown={e=>{e.preventDefault();pointer.current=e.pointerId;e.currentTarget.setPointerCapture(e.pointerId);steer(e);}} onPointerMove={steer} onPointerUp={clear} onPointerCancel={clear} onLostPointerCapture={clear}><img style={{width:'100%',height:'100%',pointerEvents:'none'}} src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/><span className="mid3d-knob" ref={knob}/></button>
+    <button className="mid3d-ui mid3d-joy" style={{padding:0,userSelect:'none'}} aria-label="Управление Vicki" onPointerDown={e=>{e.preventDefault();pointer.current=e.pointerId;e.currentTarget.setPointerCapture(e.pointerId);steer(e);}} onPointerMove={steer} onPointerUp={clear} onPointerCancel={clear} onLostPointerCapture={clear}><img style={{width:'100%',height:'100%',pointerEvents:'none'}} src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/><span className="mid3d-knob" ref={knob}/></button>
     <div style={{position:'absolute',left:12,bottom:4,fontSize:10,color:'#aebac2',maxWidth:'55%'}}>Пещера: <a href="https://sketchfab.com/3d-models/dark-side-cave-e6347843eec64b408157dabfb8b196b2" target="_blank" rel="noopener noreferrer" style={{color:'inherit'}}>diaspora</a> · CC BY 4.0 · уменьшены текстуры, изменены масштаб и высота.</div>
     <div style={{position:'absolute',right:12,bottom:4,fontSize:10,color:'#aebac2',maxWidth:'40%'}}>Кристаллы: <a href="https://sketchfab.com/3d-models/magic-crystals-f20b3376ef9a4dff8ad27f1402087c52" target="_blank" rel="noopener noreferrer" style={{color:'inherit'}}>Enn Shtyka</a> · CC BY 4.0 · уменьшены текстуры и масштаб.</div>
     {nearExit&&<button onClick={()=>{clear();exit.current();}} style={{position:'absolute',right:16,bottom:25,padding:'12px 16px',background:'#171e25',color:'#e4c78c',border:'2px solid #b39150',borderRadius:10}}>Открыть дверь · Нифльхейм</button>}
