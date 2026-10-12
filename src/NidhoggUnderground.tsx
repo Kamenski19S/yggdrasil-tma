@@ -5,7 +5,7 @@ import {dragonProgress,NIFL_OBSIDIAN,type DragonEvent} from './niflheimDragonQue
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {BASE,cachedGlbBuffer,WEAPON_ASSET,textureSteelOnWeapon,styleNiflheimWeapon,type HeroWeapon} from './core';
 
-export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEquipped,questDone,onDragonEvent,potions,onUsePotion}:{onBack:()=>void;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;questDone:string[];onDragonEvent:(event:DragonEvent)=>void;potions:string[];onUsePotion:(id:string,currentHpOverride?:number)=>boolean}){
+export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEquipped,whirlpoolHeart,questDone,onDragonEvent,potions,onUsePotion}:{onBack:()=>void;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;whirlpoolHeart:boolean;questDone:string[];onDragonEvent:(event:DragonEvent)=>void;potions:string[];onUsePotion:(id:string,currentHpOverride?:number)=>boolean}){
   const mount=useRef<HTMLDivElement>(null),analog=useRef({x:0,z:0}),pointer=useRef<number|null>(null),knob=useRef<HTMLSpanElement>(null);
   const exit=useRef(onBack);exit.current=onBack;
   const [status,setStatus]=useState('Vicki спускается под разрушенную башню…');
@@ -14,6 +14,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
   const [nearDragon,setNearDragon]=useState(false);
   const [hp,setHp]=useState(100);
   const [dragonHp,setDragonHp]=useState(100);
+  const [heartReady,setHeartReady]=useState(whirlpoolHeart);
   const attackRef=useRef<()=>void>(()=>{});
   const healRef=useRef<(amount:number)=>void>(()=>{});
   const shieldRef=useRef<()=>void>(()=>{});
@@ -45,7 +46,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     const hero=new THREE.Group();scene.add(hero);const pos={x:0,z:19};hero.rotation.y=Math.PI;
     let mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,current:THREE.AnimationAction|undefined,dragonMixer:THREE.AnimationMixer|undefined;
     let dragonBounds:THREE.Box3|undefined,encounter:ReturnType<typeof createNidhoggEncounter>|undefined;
-    let heroReady=false,heroLife=100,dragonLife=100,lastStrike=0,lastBite=0,guardUntil=0,lastHud=0,strikeCount=0,metSent=false,beaten=false;
+    let heroReady=false,heroLife=100,dragonLife=100,lastStrike=0,lastBite=0,guardUntil=0,lastHud=0,strikeCount=0,metSent=false,beaten=false,heartCharge=whirlpoolHeart?1:0;
     healRef.current=(amount:number)=>{heroLife=Math.min(100,heroLife+amount);setHp(heroLife);};
     attackRef.current=()=>{
       const boss=encounter;
@@ -206,6 +207,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
         if(distance<16&&now-lastBite>3200){
           lastBite=now;
           if(now<guardUntil){setStatus('Щит отразил удар Нидхёгга!');}
+          else if(heartCharge>0){heartCharge--;setHeartReady(false);setStatus('🌊 Сердце водоворота Морвейна поглотило удар Нидхёгга!');}
           else {
             heroLife=Math.max(0,heroLife-24);setHp(heroLife);
             setStatus('Нидхёгг атакует! -24 здоровья. Используй щит или отступи.');
@@ -236,6 +238,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
       <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>🐉 Нидхёгг: {progressRef.current.defeated?'побеждён':dragonHp+'/100'}</span>
       <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>🌑 Обсидиан: {progressRef.current.obsidian.length}/3</span>
       <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>❄️ Освобождено: {progressRef.current.liberation.count}/{progressRef.current.liberation.total}</span>
+      {whirlpoolHeart&&<span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>🌊 Сердце водоворота: {heartReady?'1 защита':'израсходовано'}</span>}
     </div>
     <button className="mid3d-ui mid3d-strike" aria-label="Ударить Нидхёгга" onClick={()=>attackRef.current()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></button>
     <button className="mid3d-ui mid3d-block" aria-label="Прикрыться щитом" disabled={!shieldEquipped} onClick={()=>shieldRef.current()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_shield.png`} alt="" draggable={false}/></button>
