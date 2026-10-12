@@ -361,7 +361,7 @@ export const loadSave = (): Save => {
     if (typeof s.forgeFreeUsed !== "boolean") s.forgeFreeUsed = false;
     // Keep legacy class IDs for their earned stats and abilities; only identity changes.
     s.heroSkin = "valkyrie";
-    if(s.hero)s.hero={...s.hero,name:"Вика"};
+    if(s.hero)s.hero={...s.hero,name:"Vicki"};
     if (!Object.prototype.hasOwnProperty.call(WEAPON_POWER,s.heroWeapon)|| (s.heroWeapon!=="default"&&!s.ownedWeapons.includes(s.heroWeapon))) s.heroWeapon = "default";
     // Artifacts represent worlds truly completed in the current progression.
     // Old prototype quiz runs could leave stale realm IDs in saves, so rebuild
