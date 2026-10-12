@@ -3,6 +3,7 @@ import * as THREE from 'three';
 // The source GLB has a valid skeleton, but no animation clips. Its two long
 // drawn swords are separate skinned meshes in the exported T-pose.
 export function prepareNineWorldStranger(model: THREE.Object3D) {
+  // Weapon meshes are hidden: no extra swords, scabbards or spears.
   const swordNames = new Set(['Object_14', 'Object_16']);
   let swordsHidden = 0;
   model.traverse(object => {
@@ -72,43 +73,4 @@ export function prepareNineWorldStranger(model: THREE.Object3D) {
   };
 
   return { bodyBounds, swordsHidden, idle };
-}
-
-// Two low-cost leather scabbards. The exported unsheathed blades remain hidden;
-// the hilts are visible above each sheath for a clear neutral silhouette.
-export function makeNineWorldStrangerScabbards(height: number, facingY: number) {
-  const scabbards = new THREE.Group();
-  scabbards.rotation.y = facingY;
-  const leather = new THREE.MeshStandardMaterial({ color: 0x47231d, roughness: .82 });
-  const trim = new THREE.MeshStandardMaterial({ color: 0xaa8542, metalness: .6, roughness: .37 });
-  const handle = new THREE.MeshStandardMaterial({ color: 0x21191c, roughness: .78 });
-  const silver = new THREE.MeshStandardMaterial({ color: 0xbfc5ce, metalness: .75, roughness: .3 });
-
-  for (const side of [-1, 1]) {
-    const sheath = new THREE.Group();
-    sheath.position.set(side * height * .135, height * .48, .11);
-    sheath.rotation.z = side * .14;
-    const length = height * .265;
-    const tube = new THREE.Mesh(new THREE.CylinderGeometry(.073, .035, length, 8), leather);
-    tube.position.y = -length * .5;
-    sheath.add(tube);
-    const tip = new THREE.Mesh(new THREE.ConeGeometry(.053, .14, 8), trim);
-    tip.rotation.z = Math.PI;
-    tip.position.y = -length - .055;
-    sheath.add(tip);
-    const hilt = new THREE.Mesh(new THREE.CylinderGeometry(.041, .041, .37, 8), handle);
-    hilt.position.y = .205;
-    sheath.add(hilt);
-    const crossguard = new THREE.Mesh(new THREE.BoxGeometry(.26, .055, .10), silver);
-    crossguard.position.y = .02;
-    sheath.add(crossguard);
-    const pommel = new THREE.Mesh(new THREE.SphereGeometry(.067, 8, 6), trim);
-    pommel.position.y = .42;
-    sheath.add(pommel);
-    const collar = new THREE.Mesh(new THREE.CylinderGeometry(.082, .082, .09, 8), trim);
-    collar.position.y = -.075;
-    sheath.add(collar);
-    scabbards.add(sheath);
-  }
-  return scabbards;
 }
