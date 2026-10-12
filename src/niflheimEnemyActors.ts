@@ -226,7 +226,7 @@ export function installNiflheimRiggedEnemies(
           const holder=new THREE.Group();holder.name='Страж '+spot.id;
           spot.root.add(holder);
           const actor=mountActor(holder,role,asset,role==='troll'?7.2:4.8);
-          createGuard(spot.id,role,holder,actor);
+          createGuard(spot.id,role as 'orc'|'troll',holder,actor);
           if(role==='troll')attachTrollAxe(actor.model);
           // No temporary geometric stand-ins: all five guardian slots contain rigs only.
         }
@@ -271,7 +271,8 @@ export function installNiflheimRiggedEnemies(
         if(guard.respawnAt>Date.now())continue;
         if(!guard.root.visible){
           guard.root.visible=true;guard.hp=guard.maxHp;
-          guard.root.position.set(guard.root.position.x,guard.root.position.y,guard.root.position.z);
+          if(guard.root.parent===scene)guard.root.position.copy(guard.origin);
+          else guard.root.position.set(0,0,0);
           guard.bar.scale.x=1;guard.bar.position.x=0;guard.respawnAt=0;
         }
         const place=guard.root.getWorldPosition(new THREE.Vector3());
