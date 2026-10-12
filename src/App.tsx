@@ -32,7 +32,7 @@ export function App() {
   const [selectedArtifact,setSelectedArtifact]=useState("");
   const [pick, setPick] = useState("viking");
   const [heroTab,setHeroTab]=useState<"equipment"|"story">("equipment");
-  const [pickName, setPickName] = useState("Вика");
+  const [pickName, setPickName] = useState("Vicki");
   const [toast, setToast] = useState("");
   const [repairDialog,setRepairDialog]=useState<string|null>(null);
   const [chaosDialog,setChaosDialog]=useState<string|null>(null);
@@ -181,7 +181,7 @@ const [roadT, setRoadT] = useState(0.06);
   const watchGain = () => Math.floor(Math.min(12, (Date.now() - save.watch) / 3600000) * 3);
   const collectWatch = () => { const g = watchGain(); if (g <= 0) { say("Дозор только начался — Капли бессмертия ещё собираются."); return; } setSave(s => ({ ...s, immortalityDrops: s.immortalityDrops + g, watch: Date.now() })); haptic("success"); say("Дозор завершён: +" + g + " Капель бессмертия"); };
   const claimGift = () => { if (save.gift === today()) return; const d = save.gift ? Math.round((Date.parse(today()) - Date.parse(save.gift)) / 86400000) : 99; const next = d <= 2 ? (save.streak % 7) + 1 : 1; const rew = LADDER[next - 1]; setSave(s => ({ ...s, immortalityDrops: s.immortalityDrops + rew, gift: today(), streak: next })); haptic("success"); say("Дар Древа, день " + next + ": +" + rew + " ✨"); };
-  const confirmHero = () => { if (!pick || !pickName) return; setSave(s => ({ ...s, hero: { id: pick, name: "Вика" },heroSkin:"valkyrie" })); haptic("success"); say("Путь начинается, " + pickName + "!"); setScreen({ t: "tree" }); };
+  const confirmHero = () => { if (!pick || !pickName) return; setSave(s => ({ ...s, hero: { id: pick, name: "Vicki" },heroSkin:"valkyrie" })); haptic("success"); say("Путь начинается, " + pickName + "!"); setScreen({ t: "tree" }); };
   const heroDef = save.hero ? HEROES.find(h => h.id === save.hero!.id)! : null;
   const forgeItems = [
     {id:"default",icon:"⚔️",name:"Меч валькирии",kind:"weapon",owned:true},
@@ -466,7 +466,7 @@ const [roadT, setRoadT] = useState(0.06);
   };
   const banditKnockout=()=>{
     setSave(s=>({...s,immortalityDrops:Math.max(0,s.immortalityDrops-5),fieldHp:(heroDef?.hp||100)+gearHp()}));
-    haptic();say('Рунический удар разбойника сбил Вику с ног. Древо вернуло её к началу пути (−5 Капель бессмертия).');
+    haptic();say('Рунический удар разбойника сбил Vicki с ног. Древо вернуло её к началу пути (−5 Капель бессмертия).');
   };
   const fightAct = (id: string, kind: "hit" | "rune" | "shield" | "restore") => {
     if (over) return;
@@ -549,7 +549,7 @@ const [roadT, setRoadT] = useState(0.06);
 
       {screen.t === "choose" && (
         <div className="scroll choose-screen">
-          <div className="card center choose-intro"><BgImg name="hero_valkyrie.jpg" className="hface"/><div className="qhead2">Вика · Валькирия</div><p className="dim">Мидгард нуждается в твоей помощи. Освободи свой дом от тёмных печатей и найди источник хаоса.</p></div>
+          <div className="card center choose-intro"><BgImg name="hero_valkyrie.jpg" className="hface"/><div className="qhead2">Vicki · Валькирия</div><p className="dim">Мидгард нуждается в твоей помощи. Освободи свой дом от тёмных печатей и найди источник хаоса.</p></div>
           <button className="btn gold" disabled={!pick || !pickName} onClick={confirmHero}>Вступить на путь</button>
         </div>
       )}
@@ -714,7 +714,7 @@ const [roadT, setRoadT] = useState(0.06);
       if (id === "port") {
         const maxHp=(heroDef?.hp||100)+gearHp(),currentHp=Math.min(maxHp,save.fieldHp??maxHp);
         const now=Date.now(),readyAt=save.locationCooldowns.riverBridge||0;
-        if(currentHp>=maxHp){say("У реки спокойно. Вика уже полностью здорова — отдых сейчас не нужен.");return;}
+        if(currentHp>=maxHp){say("У реки спокойно. Vicki уже полностью здорова — отдых сейчас не нужен.");return;}
         if(now<readyAt){
           const mins=Math.max(1,Math.ceil((readyAt-now)/60000));
           say(`Ты уже отдыхал у реки. Следующая передышка будет доступна примерно через ${mins} мин.`);return;
@@ -1113,8 +1113,8 @@ const [roadT, setRoadT] = useState(0.06);
         <div className="scroll">
           <style>{HERO_PROFILE_CSS}</style>
           <div className="card hero-profile">
-            <header className="hero-profile-header"><span className="hface"><BgImg name="hero_valkyrie.jpg" className="himg"/></span><div><h2>Вика</h2><p>Валькирия · защитница Мидгарда</p></div></header>
-            <div className="hero-profile-tabs" role="tablist" aria-label="Разделы героя"><button role="tab" aria-selected={heroTab==='equipment'} onClick={()=>setHeroTab('equipment')}>Снаряжение и навыки</button><button role="tab" aria-selected={heroTab==='story'} onClick={()=>setHeroTab('story')}>История Вики</button></div>
+            <header className="hero-profile-header"><span className="hface"><BgImg name="hero_valkyrie.jpg" className="himg"/></span><div><h2>Vicki</h2><p>Валькирия · защитница Мидгарда</p></div></header>
+            <div className="hero-profile-tabs" role="tablist" aria-label="Разделы героя"><button role="tab" aria-selected={heroTab==='equipment'} onClick={()=>setHeroTab('equipment')}>Снаряжение и навыки</button><button role="tab" aria-selected={heroTab==='story'} onClick={()=>setHeroTab('story')}>История Vicki</button></div>
             {heroTab==='story'?<section className="hero-story" role="tabpanel">{VIKA_STORY.map((chapter,index)=>index===0||save.done.includes('world:complete:midgard')?<details key={chapter.id} open={index===0}><summary>{chapter.title}</summary>{chapter.text.split('\n\n').map((p,i)=><p key={i}>{p}</p>)}</details>:<p key={chapter.id} className="story-locked">Продолжение «За вратами Мидгарда» откроется после завершения Мидгарда.</p>)}</section>:<section role="tabpanel">
             <div className="stats">
               <div className="stat"><b>⚔ {heroDef.str}</b><span>сила</span></div>
