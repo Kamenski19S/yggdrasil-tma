@@ -4,7 +4,7 @@ import {RUNE_CATALOG} from './world';
 // Quest flags are part of the existing shared nine-world save (Save.done).
 // Never make the first dragon encounter lethal or consume the unique collectibles.
 const PREFIX='niflheim:dragon:';
-export const NIFL_ICE=[{id:'gate',x:11,z:116,name:'У входных врат'},{id:'forge',x:-33,z:105,name:'У кузницы великана'},{id:'shelter',x:54,z:98,name:'У приюта хранителей'}] as const;
+export const NIFL_ICE=[{id:'gate',x:11,z:116,name:'У входных врат'},{id:'forge',x:-33,z:105,name:'У кузницы великана'},{id:'shelter',x:22,z:108,name:'У дороги к приюту хранителей'}] as const;
 export const NIFL_OBSIDIAN=[{id:'west',x:-23,z:-16,name:'Западная жила'},{id:'east',x:24,z:-24,name:'Восточная жила'},{id:'depths',x:-18,z:-54,name:'Глубокая жила'}] as const;
 export const NIFL_CRAFTS:{id:HeroWeapon;name:string;steel:number;drops:number;need:'ice'|'obsidian'|'ember'}[]=[
   {id:'swordStar',name:'Меч звёздного серебра',steel:1,drops:12,need:'ice'},
