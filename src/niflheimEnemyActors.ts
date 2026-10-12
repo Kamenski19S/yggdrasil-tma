@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {clone as cloneSkeleton} from 'three/examples/jsm/utils/SkeletonUtils.js';
 import {BASE,cachedGlbBuffer,type HeroWeapon} from './core';
+import {normalizeOrcAnimations,retargetOrcAnimationsToShieldTroll} from './niflheimRigRetarget';
 
 /**
  * Niflheim combat actors. One decoded GLB per species, SkeletonUtils clones
@@ -126,7 +127,7 @@ export function installNiflheimRiggedEnemies(
   };
 
   const playAction=(actor:Actor,type:'attack'|'hurt'|'death',now:number)=>{
-    if(actor.role!=='orc')return;
+    if(actor.role==='undead')return;
     const pattern=type==='attack'?/LIGHT_ATTACK|ATTACK_CRIT/i:type==='hurt'?/DAMAGED/i:/DEATH/i;
     const clip=actor.clips.find(c=>pattern.test(c.name));if(!clip)return;
     const action=actor.mixer.clipAction(clip);
@@ -134,9 +135,15 @@ export function installNiflheimRiggedEnemies(
     action.setLoop(THREE.LoopOnce,1);action.clampWhenFinished=false;
     actor.actionUntil=now+clip.duration*1000;
   };
-  const resetAction=(actor:Actor,now:number)=>{
-    if(now<actor.actionUntil||actor.current===actor.idle)return;
-    actor.current?.fadeOut(.12);actor.idle?.reset().fadeIn(.12).play();actor.current=actor.idle;
+  const resetAction=(actor:Actor,now:number,moving=false)=>{
+    if(now<actor.actionUntil)return;
+    const clip=moving?actor.clips.find(c=>c.name==='ANM_WALK'):undefined;
+    const desired=clip?actor.mixer.clipAction(clip):actor.idle;
+    if(!desired||actor.current===desired)return;
+    actor.current?.fadeOut(.12);
+    desired.reset().fadeIn(.12).play();
+    if(clip)desired.setLoop(THREE.LoopRepeat,Infinity);
+    actor.current=desired;
   };
   const makeBar=(root:THREE.Group,y:number,tint:string)=>{
     const bg=new THREE.Mesh(new THREE.PlaneGeometry(2.5,.21),new THREE.MeshBasicMaterial({color:'#23212e',depthTest:false,side:THREE.DoubleSide}));
@@ -211,12 +218,28 @@ export function installNiflheimRiggedEnemies(
     notify('🌑 Из тумана возникла Тень забытых у '+shadow.site.place+'!');
   };
 
-  // Models are fetched once each; animation and skeleton clones use shared data.
-  (['orc','troll','undead'] as const).forEach(role=>{
-    cachedGlbBuffer(`${BASE}img/models/${NIFLHEIM_RIGGED_ASSETS[role]}`)
-      .then(buffer=>loader.parseAsync(buffer,`${BASE}img/models/`))
-      .then(asset=>{
-        if(!isAlive())return;
+  // Decode once per species; fix orc timeline offsets and retarget four clips
+  // onto the shield troll's EXISTING skin before making any animation clones.
+  const loads=(['orc','troll','undead'] as const).map(async role=>{
+    try{
+      const buffer=await cachedGlbBuffer(`${BASE}img/models/${NIFLHEIM_RIGGED_ASSETS[role]}`);
+      const asset=await loader.parseAsync(buffer,`${BASE}img/models/`);
+      return {role,asset};
+    }catch(error){console.warn('Niflheim actor unavailable',role,error);return null;}
+  });
+  Promise.all(loads).then(records=>{
+    if(!isAlive())return;
+    const byRole=new Map(records.filter((x):x is NonNullable<typeof x>=>x!==null).map(x=>[x.role,x.asset] as const));
+    const orc=byRole.get('orc'),troll=byRole.get('troll');
+    if(orc)normalizeOrcAnimations(orc);
+    if(orc&&troll){
+      try{
+        if(retargetOrcAnimationsToShieldTroll(orc,troll))
+          console.info('Shield troll: orc walk/attack/hurt/death retargeted to original skeleton');
+      }catch(error){console.warn('Troll retarget failed; original rig preserved',error);}
+    }
+    for(const role of ['orc','troll','undead'] as const){
+      const asset=byRole.get(role);if(!asset)continue;
         for(const spot of spots){
           const expected:Record<string,Role>={
             memoryCave:'orc',roots:'orc',namesHall:'orc',
@@ -241,8 +264,8 @@ export function installNiflheimRiggedEnemies(
           extras.push(root);
         }
         if(role==='undead')NIFLHEIM_SHADOW_SITES.forEach((site,id)=>createShadow(id,site,asset));
-      }).catch(error=>console.warn('Niflheim enemy model unavailable:',role,error));
-  });
+    }
+  }).catch(error=>console.warn('Niflheim rigged loading failed',error));
 
   return {
     tick(dt:number,now:number,hero:{x:number;z:number},shielded:boolean,paused:boolean){
@@ -258,7 +281,7 @@ export function installNiflheimRiggedEnemies(
         if(actor.static){
           if(actor.root.visible){
             const p=actor.root.getWorldPosition(new THREE.Vector3());
-            if(Math.hypot(p.x-hero.x,p.z-hero.z)<75){actor.mixer.update(Math.min(dt,.05));resetAction(actor,now);}
+            if(Math.hypot(p.x-hero.x,p.z-hero.z)<75){actor.mixer.update(Math.min(dt,.05));}
           }
         }
       }
@@ -277,9 +300,9 @@ export function installNiflheimRiggedEnemies(
         }
         const place=guard.root.getWorldPosition(new THREE.Vector3());
         const dist=Math.hypot(place.x-hero.x,place.z-hero.z);
-        if(dist>24)continue;
+        if(dist>24){resetAction(guard.actor,now);continue;}
         guard.root.rotation.y=Math.atan2(hero.x-place.x,hero.z-place.z);
-        if(guard.role==='troll'){
+        if(guard.role==='troll'&&!guard.actor.clips.some(c=>c.name==='ANM_LIGHT_ATTACK_2')){
           // The supplied troll has only one imported clip. A short procedural
           // body lunge makes its heavy blow readable without replacing its rig.
           const t=now-guard.lastAttack;
@@ -288,7 +311,9 @@ export function installNiflheimRiggedEnemies(
           guard.actor.model.rotation.z=.1*strike;
         }
         // Local chase radius keeps a guard at its building instead of letting it roam through walls.
-        if(dist>4.6&&dist<14){
+        const walking=dist>4.6&&dist<14;
+        resetAction(guard.actor,now,walking);
+        if(walking){
           const step=Math.min(dist-4.6,(guard.role==='troll'?1.05:1.5)*dt);
           const nx=place.x+(hero.x-place.x)/dist*step,nz=place.z+(hero.z-place.z)/dist*step;
           if(Math.hypot(nx-guard.origin.x,nz-guard.origin.z)<4.2&&canSpawn(nx,nz)){
