@@ -1,8 +1,78 @@
 import * as THREE from 'three';
 
+/**
+ * The exported character costume contains a 956-triangle cloth cape. Its
+ * weights are exclusively attached to Bone_cape* joints, but the cloth shares
+ * a skinned mesh with the dress. Cull those triangles instead of hiding the
+ * entire costume or altering the original GLB.
+ */
+function removeWandererCape(model: THREE.Object3D) {
+  const costume=model.getObjectByName('Object_9') as THREE.SkinnedMesh | undefined;
+  if(!costume?.isSkinnedMesh)return 0;
+
+  const capeJoints=new Set<number>();
+  costume.skeleton.bones.forEach((bone,index)=>{
+    if(/^Bone_cape/i.test(bone.name))capeJoints.add(index);
+  });
+  if(capeJoints.size===0)return 0;
+
+  const original=costume.geometry;
+  const skinIndex=original.getAttribute('skinIndex');
+  const skinWeight=original.getAttribute('skinWeight');
+  const positions=original.getAttribute('position');
+  if(!skinIndex||!skinWeight||!positions)return 0;
+
+  // The source cape has full (1.0) cape-bone weights at all of its vertices,
+  // whereas the dress, hair and body have none. A >0.5 test cleanly splits
+  // those triangles without cutting holes in the character's clothing.
+  const capeVertex=new Uint8Array(positions.count);
+  for(let v=0;v<positions.count;v++){
+    const bones=[skinIndex.getX(v),skinIndex.getY(v),skinIndex.getZ(v),skinIndex.getW(v)];
+    const weights=[skinWeight.getX(v),skinWeight.getY(v),skinWeight.getZ(v),skinWeight.getW(v)];
+    let capeWeight=0;
+    for(let k=0;k<4;k++)if(capeJoints.has(bones[k]))capeWeight+=weights[k];
+    if(capeWeight>.5)capeVertex[v]=1;
+  }
+
+  const sourceIndex=original.index;
+  const groups=original.groups.length
+    ?original.groups
+    :[{start:0,count:sourceIndex?.count??positions.count,materialIndex:0}];
+  const kept:number[]=[];
+  const newGroups:Array<{start:number;count:number;materialIndex:number}>=[];
+  let removed=0;
+  for(const group of groups){
+    const start=kept.length;
+    for(let i=group.start;i+2<group.start+group.count;i+=3){
+      const a=sourceIndex?sourceIndex.getX(i):i;
+      const b=sourceIndex?sourceIndex.getX(i+1):i+1;
+      const c=sourceIndex?sourceIndex.getX(i+2):i+2;
+      if(capeVertex[a]||capeVertex[b]||capeVertex[c]){
+        removed++;continue;
+      }
+      kept.push(a,b,c);
+    }
+    newGroups.push({start,count:kept.length-start,materialIndex:group.materialIndex});
+  }
+
+  if(removed>0){
+    const clean=original.clone();
+    clean.setIndex(kept);
+    clean.clearGroups();
+    if(original.groups.length){
+      for(const group of newGroups)clean.addGroup(group.start,group.count,group.materialIndex);
+    }
+    clean.computeBoundingSphere();
+    costume.geometry=clean;
+    console.info('[NINE WORLD WANDERER] Removed cape triangles:',removed);
+  }
+  return removed;
+}
+
 // The source GLB has a valid skeleton, but no animation clips. Its two long
 // drawn swords are separate skinned meshes in the exported T-pose.
 export function prepareNineWorldStranger(model: THREE.Object3D) {
+  removeWandererCape(model);
   // Weapon meshes are hidden: no extra swords, scabbards or spears.
   const swordNames = new Set(['Object_14', 'Object_16']);
   let swordsHidden = 0;
