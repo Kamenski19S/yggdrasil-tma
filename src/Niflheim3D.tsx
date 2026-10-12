@@ -5,7 +5,7 @@ import {createMemoryTable} from './niflheimMemoryTable';
 import {memoryQuest,DRY_SEALS,MEMORY_FINDS,SOURCE_RUNES,MEMORY_REWARD,type MemoryEvent} from './niflheimMemoryQuest';
 import {dragonProgress,NIFL_ICE,type DragonEvent} from './niflheimDragonQuest';
 import {liberationProgress,LIBERATION_TRIALS,trialById,COMBAT_TRIALS,type LiberationEvent} from './niflheimLiberation';
-import {installNiflheimRiggedEnemies} from './niflheimEnemyActors';
+import {installNiflheimRiggedEnemies,NIFLHEIM_SHADOW_SITES,NIFLHEIM_EXTRA_GUARDS} from './niflheimEnemyActors';
 import {createHvergelmir} from './niflheimHvergelmir';
 import {lakeBridgeBlocked} from './niflheimLakeBridgeCollision';
 import {createVenetianBridges} from './niflheimVenetianBridges';
@@ -369,7 +369,14 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
       scene.add(root);guardianRoots.push({id:trial.id,root});
     }
     const riggedEnemies=installNiflheimRiggedEnemies(scene,guardianRoots,()=>alive,niflGroundY,setStatus,
-      loss=>{const state=sharedInventoryRef.current;healthCallback.current(Math.max(20,state.hp-loss));},
+      loss=>{
+        const state=sharedInventoryRef.current;
+        if(state.hp<=loss){
+          healthCallback.current(Math.max(28,Math.round(state.maxHp*.35)));
+          position.current={x:0,z:125};
+          setStatus('Vicki отступила к вратам Нифльхейма. Прогресс сохранён.');
+        }else healthCallback.current(state.hp-loss);
+      },
       ()=>libCallback.current('shadow:defeated'),
       (x,z)=>!niflRiverBlocked(x,z)&&x>-95&&x<95&&z>-105&&z<125);
     // Three unique everlasting-ice fragments mark safe snow near major locations.
@@ -1013,6 +1020,9 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
         <small>{liberation.has(t.id)?'Освобождено':t.intro}</small>
         {!liberation.has(t.id)&&<button onClick={()=>enterTrial(t.id)}>Продолжить задание</button>}
       </div>)}</div>
+      <h4 style={{margin:'14px 0 6px'}}>🌑 Защитники Нифльхейма</h4>
+      <p className="nifl-map-legend">15 участков появления Теней. Новая волна — каждые 15 минут; одновременно атакуют не более трёх, чтобы не перегружать телефон. После победы Тени исчезают до следующей волны. Орки охраняют важные проходы, тролли — магические рубежи.</p>
+      <p className="nifl-map-legend">Стражи: {NIFLHEIM_EXTRA_GUARDS.length + 5} мест (включая сюжетных). Тени: {NIFLHEIM_SHADOW_SITES.length} точек.</p>
       <h4 style={{margin:'14px 0 6px'}}>🧭 Локации на карте</h4>
       <div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><button key={l.id} onClick={()=>{setMapOpen(false);setSelected(l.id);}}>{liberation.has(l.id)?'✓':'○'} {i+1}. {l.name}</button>)}</div><p className="nifl-map-legend">🧛 Морвейн: {liberation.vampireFreed?'✓ освобождён':'○ водоворот у Приюта хранителей'}.</p><p className="nifl-map-legend">Золотая точка — Vicki. Западное русло покрыто льдом, восточная река течёт, северо-западное русло пересохло.</p><p className="nifl-map-legend">Входные врата: <a href="https://sketchfab.com/3d-models/stone-arch-565793eb6528447c97223cfaf278d3f6" target="_blank" rel="noopener noreferrer">Stone Arch — Teranox</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения: сжатие текстур, уменьшение высоты и размещение.</p>
       <p className="nifl-map-legend">Факелы входных врат: <a href="https://sketchfab.com/3d-models/torch-a3b8085436d14977a69f965859d96575" target="_blank" rel="noopener noreferrer">Torch — DJMaesen</a>, CC BY 4.0. Текстуры сжаты в WebP; геометрия сохранена, изменены масштаб и размещение.</p>
