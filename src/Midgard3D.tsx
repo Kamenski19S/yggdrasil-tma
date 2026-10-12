@@ -2,6 +2,7 @@ import {createCombatEffects} from './combatEffects';
 import {MidgardGuide,MIDGARD_GUIDE_CSS} from './MidgardGuide';
 import {REPEAT_ASH_CHANCE} from './woodEconomy';
 import {attachGuardianCape} from './guardianCape';
+import { prepareNineWorldStranger, makeNineWorldStrangerScabbards } from './nineWorldStranger';
 import {REPAIR_GOODS} from './locationRepairs';
 import { CHAOS_GATES, chaosKey, gateForLocation } from './chaosProgression';
 import { createChaosGate } from './chaosGate';
@@ -3653,26 +3654,35 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     // terrain so its original Sketchfab transforms cannot move it away.
     const wandererX=64,wandererZ=-22;
     let wandererPresent=false;
+    let wandererIdle:((now:number)=>void)|null=null;
     loadGlbWithFolderFallback('hit2_stranger_mobile.glb',(asset:any)=>{
       if(!glbTreesAlive)return;
       const model=asset.scene as THREE.Object3D;
-      model.updateWorldMatrix(true,true);
-      const original=new THREE.Box3().setFromObject(model);
-      const originalSize=original.getSize(new THREE.Vector3());
-      if(original.isEmpty()||originalSize.y<.001){
-        console.warn('[NINE WORLD WANDERER] Invalid model bounds');return;
-      }
-      model.scale.multiplyScalar(3.55/originalSize.y);
       model.rotation.y=Math.PI*.23;
+      const prepared=prepareNineWorldStranger(model);
+      const originalSize=prepared.bodyBounds.getSize(new THREE.Vector3());
+      if(prepared.bodyBounds.isEmpty()||originalSize.y<.001){
+        console.warn('[NINE WORLD WANDERER] Invalid character bounds');return;
+      }
+      // Fit the BODY, not the separate, outstretched sword meshes.
+      // Allow for a slight camera-distance difference beside the player.
+      const targetHeight=4.85;
+      model.scale.multiplyScalar(targetHeight/originalSize.y);
       model.updateWorldMatrix(true,true);
-      const fitted=new THREE.Box3().setFromObject(model);
+      const fitted=new THREE.Box3();
+      model.traverse((o:any)=>{
+        if(o.isMesh&&o.visible)fitted.union(new THREE.Box3().setFromObject(o));
+      });
+      if(fitted.isEmpty())return;
       const centre=fitted.getCenter(new THREE.Vector3());
       model.position.set(-centre.x,-fitted.min.y,-centre.z);
+      wandererIdle=prepared.idle;
       const pivot=new THREE.Group();
       pivot.name='Странница девяти миров';
       pivot.position.set(wandererX,groundY(wandererX,wandererZ),wandererZ);
       model.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;}});
       pivot.add(model);
+      pivot.add(makeNineWorldStrangerScabbards(targetHeight,model.rotation.y));
 
       // A small gold nameplate and rune circle keep her recognizable on
       // a mobile screen, without replacing the actual character model.
@@ -3689,7 +3699,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         const label=new THREE.Sprite(new THREE.SpriteMaterial({
           map:labelTex,transparent:true,depthWrite:false,depthTest:true
         }));
-        label.position.set(0,3.98,0);
+        label.position.set(0,targetHeight+.44,0);
         label.scale.set(3.3,.62,1);
         pivot.add(label);
       }
@@ -3702,9 +3712,9 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       pivot.add(runeRing);
       scene.add(pivot);
       wandererPresent=true;
-      addCircleCollider(wandererX,wandererZ,.88,.05);
+      addCircleCollider(wandererX,wandererZ,.95,.05);
       renderer.shadowMap.needsUpdate=true;
-      console.info('[NINE WORLD WANDERER] placed',wandererX,wandererZ,'height',originalSize.y);
+      console.info('[NINE WORLD WANDERER] posed',wandererX,wandererZ,'height',targetHeight,'swords hidden',prepared.swordsHidden);
     },'Nine Worlds Wanderer',()=>console.warn('[STRANGER] Model unavailable at public/img/models/hit2_stranger_mobile.glb'));
 
     // Treasure chest beside the Well of the Three Norns.
@@ -5366,6 +5376,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         m.rotation.z += Math.sin(now*0.00018+i)*0.00008;
       });
       for(const g of chaosVisuals)g.visual.update(dt,clearedGatesRef.current.has(g.id),now,q.x,q.z);
+      wandererIdle?.(now);
       combatEffects.update(now);
       renderer.render(scene,camera);raf=requestAnimationFrame(loop);
     };
