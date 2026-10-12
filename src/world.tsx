@@ -728,7 +728,7 @@ export type WhisperCombatStats={maxHp:number;attack:number;runeAttack:number;def
 
 
 export const POTION_CATALOG=[
-  {id:'lifeElixir',name:'Эликсир жизни',effect:'Полностью восстанавливает здоровье Вики',symbol:'❤️'},
+  {id:'lifeElixir',name:'Эликсир жизни',effect:'Полностью восстанавливает здоровье Vicki',symbol:'❤️'},
   {id:'northernMoss',name:'Эликсир северного мха',effect:'Восстанавливает 30 здоровья',symbol:'🌿'},
   {id:'frostDraught',name:'Морозный настой',effect:'Два следующих удара без щита слабее вдвое',symbol:'❄️'},
   {id:'hoddmimirElixir',name:'Эликсир Ходдмимира',effect:'Полностью восстанавливает здоровье и даёт защиту от двух следующих ударов',symbol:'✨'},
