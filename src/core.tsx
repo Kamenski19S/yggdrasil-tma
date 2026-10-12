@@ -199,11 +199,11 @@ export type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" 
 export type HeroSkin = "viking" | "valkyrie";
 
 
-export type HeroWeapon = "default"|"sword2"|"swordBig"|"swordGolden"|"knife"|"dagger2"|"axe"|"axeSmall"|"axeDouble"|"mace"|"hammerDouble"|"spear"|"claymore"|"scythe";
+export type HeroWeapon = "default"|"sword2"|"swordBig"|"swordGolden"|"swordNidhogg"|"swordStar"|"axeGiant"|"hammerRune"|"bladeObsidian"|"knife"|"dagger2"|"axe"|"axeSmall"|"axeDouble"|"mace"|"hammerDouble"|"spear"|"claymore"|"scythe";
 
 
 export const WEAPON_POWER:Record<HeroWeapon,number>={
-  default:0,sword2:2,swordBig:4,swordGolden:6,
+  default:0,sword2:2,swordBig:4,swordGolden:6,swordNidhogg:10,swordStar:7,axeGiant:7,hammerRune:7,bladeObsidian:8,
   knife:1,dagger2:2,axe:3,axeSmall:2,axeDouble:5,
   mace:2,hammerDouble:5,spear:3,claymore:5,scythe:4
 };
@@ -211,11 +211,33 @@ export const WEAPON_POWER:Record<HeroWeapon,number>={
 
 export const WEAPON_ASSET:Record<Exclude<HeroWeapon,"default">,string>={
   sword2:'Sword_2.glb',swordBig:'Sword_Big.glb',swordGolden:'Sword_Golden.glb',
+  swordNidhogg:'Sword_Golden.glb',swordStar:'Sword_Big.glb',axeGiant:'Axe_Double.glb',hammerRune:'Hammer_Double.glb',bladeObsidian:'Claymore.glb',
   knife:'Dagger.glb',dagger2:'Dagger_2.glb',axe:'Axe.glb',axeSmall:'Axe_Small.glb',axeDouble:'Axe_Double.glb',
   mace:'Hammer_Small.glb',hammerDouble:'Hammer_Double.glb',spear:'Spear.glb',claymore:'Claymore.glb',scythe:'Scythe.glb'
 };
 
 
+// A cheap material transformation: keep the original GLB and its animations.
+export function styleNiflheimWeapon(root:THREE.Object3D,id:HeroWeapon){
+  const hues:Partial<Record<HeroWeapon,string>>={
+    swordNidhogg:'#8bb0d7',swordStar:'#d8ebff',axeGiant:'#a6d1f4',
+    hammerRune:'#8db7d8',bladeObsidian:'#342d4c'
+  };
+  const tint=hues[id];if(!tint)return;
+  root.traverse(o=>{if(!(o instanceof THREE.Mesh))return;
+    const array=Array.isArray(o.material);
+    const materials=(array?o.material:[o.material]).map(original=>{
+      const mat=original.clone();
+      if(mat instanceof THREE.MeshStandardMaterial){
+        mat.color.lerp(new THREE.Color(tint),id==='swordNidhogg'?.58:.7);
+        mat.emissive.set(id==='bladeObsidian'?'#29193c':'#2474b6');
+        mat.emissiveIntensity=id==='swordNidhogg'?.32:.18;mat.metalness=.75;
+      }
+      return mat;
+    });
+    o.material=array?materials:materials[0];
+  });
+}
 export type GearId="armor"|"shield"|"helmet"|"boots";
 
 

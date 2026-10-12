@@ -1,4 +1,5 @@
 import {applyMemoryEvent} from './niflheimMemoryQuest';
+import {applyDragonQuestEvent,dragonProgress,NIFL_CRAFTS,type DragonEvent} from './niflheimDragonQuest';
 import { VIKA_STORY, HERO_PROFILE_CSS } from './vikaStory';
 import {WOOD_TRADES,exchangeWood,forgeAshCost} from './woodEconomy';
 import { REPAIR_RESIDENTS, REPAIR_GOODS, REPAIR_PROJECTS, type RepairResident, nextRepairJob, residentRepairIntro, repaired, repairKey, workKey, canPrepareRepair, prepareRepair, canRestore, restoreLocation } from './locationRepairs';
@@ -188,6 +189,11 @@ const [roadT, setRoadT] = useState(0.06);
     {id:"sword2",icon:"⚔️",name:"Меч II",kind:"weapon",owned:save.ownedWeapons.includes("sword2")},
     {id:"swordBig",icon:"⚔️",name:"Большой меч",kind:"weapon",owned:save.ownedWeapons.includes("swordBig")},
     {id:"swordGolden",icon:"⚔️",name:"Золотой меч",kind:"weapon",owned:save.ownedWeapons.includes("swordGolden")},
+    {id:"swordNidhogg",icon:"⚔️",name:"Погибель Нидхёгга",kind:"weapon",owned:save.ownedWeapons.includes("swordNidhogg")},
+    {id:"swordStar",icon:"⚔️",name:"Меч звёздного серебра",kind:"weapon",owned:save.ownedWeapons.includes("swordStar")},
+    {id:"axeGiant",icon:"🪓",name:"Секира ледяного великана",kind:"weapon",owned:save.ownedWeapons.includes("axeGiant")},
+    {id:"hammerRune",icon:"🔨",name:"Молот древних рун",kind:"weapon",owned:save.ownedWeapons.includes("hammerRune")},
+    {id:"bladeObsidian",icon:"🗡️",name:"Обсидиановый клинок",kind:"weapon",owned:save.ownedWeapons.includes("bladeObsidian")},
     {id:"knife",icon:"🗡️",name:"Боевой кинжал",kind:"weapon",owned:save.ownedWeapons.includes("knife")},
     {id:"dagger2",icon:"🗡️",name:"Кинжал II",kind:"weapon",owned:save.ownedWeapons.includes("dagger2")},
     {id:"axe",icon:"🪓",name:"Северный топор",kind:"weapon",owned:save.ownedWeapons.includes("axe")},
@@ -233,7 +239,6 @@ const [roadT, setRoadT] = useState(0.06);
   const forgeLimit=(weaponOrShield:boolean)=>forgeRealm==="niflheim"?(weaponOrShield?20:15):(weaponOrShield?10:5);
   const forgeCost=(id:string)=>save.forgeFreeUsed?2+forgeLevel(id==='shield'?shieldForgeKey(save.shieldAsset):id)*2:0;
   const improveForgeItem=(item:typeof forgeItems[number])=>{
-    if(forgeRealm==="niflheim"&&((item.kind==="weapon"&&item.id!=="swordGolden")||(item.id==="shield"&&save.shieldAsset!=="Shield_Celtic_Golden.glb"))){say("Для Нифльхейма нужны золотой меч и золотой щит.");return;}
     if(!item.owned){say("Этот предмет ещё нужно получить в награду за испытание.");return;}
     const key=item.id==='shield'?shieldForgeKey(save.shieldAsset):item.id;
     const level=forgeLevel(key);
@@ -247,7 +252,6 @@ const [roadT, setRoadT] = useState(0.06);
     say((cost===0?"Первая ковка бесплатна. ":"")+item.name+": закалка +1");
   };
   const chooseForgeWeapon=(asset:string,name:string,id:string)=>{
-    if(forgeRealm==="niflheim"&&id!=="swordGolden"&&asset!=="Shield_Celtic_Golden.glb"){say("Это снаряжение Мидгарда не действует в Нифльхейме.");return;}
     if(asset.startsWith('Shield_')){
       if(!save.ownedShields.includes(asset)){say(name+' ещё не получен. Щиты будут открываться за испытания.');return;}
       const already=save.shieldAsset===asset&&equipped('shield');
@@ -579,7 +583,7 @@ const [roadT, setRoadT] = useState(0.06);
       )}
 
 
-      {screen.t === "underground" && <React.Suspense fallback={<div className="content">Спуск под башню…</div>}><NidhoggUnderground weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")} onBack={()=>go({t:"realm",id:"niflheim"})}/></React.Suspense>}
+      {screen.t === "underground" && <React.Suspense fallback={<div className="content">Спуск под башню…</div>}><NidhoggUnderground questDone={save.done} onDragonEvent={(event:DragonEvent)=>setSave(s=>applyDragonQuestEvent(s,event))} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")} potions={save.potions} onUsePotion={useInventoryPotion} onBack={()=>go({t:"realm",id:"niflheim"})}/></React.Suspense>}
       {screen.t === "mill" && (
         <MillScene
           stored={save.millStored}
@@ -594,7 +598,7 @@ const [roadT, setRoadT] = useState(0.06);
       {screen.t === "realm" && (() => {
   const realm = REALMS.find(r => r.id === screen.id)!;
 
-  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D questDone={save.done} onMemoryEvent={event=>setSave(s=>applyMemoryEvent(s,event))} onEnterUnderground={position=>{niflheimReturn.current={...position};go({t:"underground"});}} initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")} onOpenMill={()=>{setMillRealm("niflheim");go({t:"mill"});}} inventory={{potions:save.potions,runes:save.runes,equippedRune:save.equippedRune,lootCounts:save.lootCounts,runeLevels:save.forgeLevels,hp:Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp()),maxHp:(heroDef?.hp??100)+gearHp(),frostGuard:save.frostGuard,potionBoosts:save.potionBoosts,onUsePotion:useInventoryPotion,onEquipRune:equipInventoryRune,onFuseRune:fuseInventoryRune}} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")}/></React.Suspense>;
+  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D questDone={save.done} onMemoryEvent={event=>setSave(s=>applyMemoryEvent(s,event))} onDragonEvent={(event:DragonEvent)=>setSave(s=>applyDragonQuestEvent(s,event))} onEnterUnderground={position=>{niflheimReturn.current={...position};go({t:"underground"});}} initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")} onOpenMill={()=>{setMillRealm("niflheim");go({t:"mill"});}} inventory={{potions:save.potions,runes:save.runes,equippedRune:save.equippedRune,lootCounts:save.lootCounts,runeLevels:save.forgeLevels,hp:Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp()),maxHp:(heroDef?.hp??100)+gearHp(),frostGuard:save.frostGuard,potionBoosts:save.potionBoosts,onUsePotion:useInventoryPotion,onEquipRune:equipInventoryRune,onFuseRune:fuseInventoryRune}} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")}/></React.Suspense>;
 
   if (realm.id === "midgard") {
     if (!heroDef) return null;
@@ -1191,10 +1195,33 @@ const [roadT, setRoadT] = useState(0.06);
             ? "Следующая закалка оплачивается Каплями бессмертия. Цена растёт вместе с уровнем предмета."
             : "Дар кузнеца: первое улучшение любого доступного предмета бесплатно."}</div>
           <div className="forge-group-title">{forgeRealm==="niflheim"?"Оружие для Нифльхейма":"Стена оружия Вёлунда"}</div>
-          {forgeRealm==="niflheim"&&<div className="forge-note">Из оружия Мидгарда здесь подходят золотой меч и золотой щит. Получи их в Мидгарде; новое оружие Нифльхейма появится по мере освобождения хранителей.</div>}
+          {forgeRealm==="niflheim"&&<div className="forge-note">Оружие Мидгарда остаётся доступным. Новые клинки и секиры куются по рецептам хранителей. Для победы над Нидхёггом потребуется особое преобразование золотого меча.</div>}
           <ForgeWeaponWall niflheim={forgeRealm==="niflheim"} owned={save.ownedWeapons} ownedShields={save.ownedShields} selected={save.heroWeapon} selectedShield={equipped('shield')?save.shieldAsset:null} onChoose={chooseForgeWeapon}/>
           <div className="forge-equipped"><span>В руке: {save.heroWeapon==='default'?('Меч валькирии'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} · сила +{WEAPON_POWER[save.heroWeapon]} · закалка +{forgeLevel(save.heroWeapon)}</span>
-            <button disabled={forgeLevel(save.heroWeapon)>=forgeLimit(true)||(forgeRealm==="niflheim"&&save.heroWeapon!=="swordGolden")} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=forgeLimit(true)?'Максимум +'+forgeLimit(true):<>Закалить {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/>{forgeAshCost(true,forgeLevel(save.heroWeapon),!save.forgeFreeUsed)>0?" + ясень ×1":""}</>:'бесплатно'}</>}</button></div>
+            <button disabled={forgeLevel(save.heroWeapon)>=forgeLimit(true)} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=forgeLimit(true)?'Максимум +'+forgeLimit(true):<>Закалить {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/>{forgeAshCost(true,forgeLevel(save.heroWeapon),!save.forgeFreeUsed)>0?" + ясень ×1":""}</>:'бесплатно'}</>}</button></div>
+          {forgeRealm==="niflheim"&&(()=>{
+            const q=dragonProgress(save.done);
+            const canForge=q.met&&q.ember&&q.ice.length===3&&q.obsidian.length===3&&save.runeSteel>=2&&save.runes.includes('tiwazValor')&&save.ownedWeapons.includes('swordGolden')&&!q.forged;
+            const rewards=(event:DragonEvent,notice:string)=>{setSave(s=>applyDragonQuestEvent(s,event));say(notice);haptic('success');};
+            return <section className="forge-note" style={{padding:14,margin:"12px 0",background:"#172431",border:"1px solid #b9c4d2",borderRadius:10,color:"#e3f0ff"}}>
+              <h3 style={{color:"#e5c587",margin:"0 0 8px"}}>⚒️ Память древней кузницы</h3>
+              <p>{q.met?'Великан вспоминает ковку, способную сокрушить чешую Нидхёгга.':'Спустись в логово после снятия печати башни. Первая встреча с драконом откроет древний рецепт.'}</p>
+              <p>💎 Осколки вечного льда: {q.ice.length}/3 · 🌑 Обсидиан бездны: {q.obsidian.length}/3 · ⚙️ Руническая сталь: {save.runeSteel}</p>
+              <p>🔥 Сердце древнего пламени: {q.ember?'получено':'не пробуждено'} · ᛏ Тейваз: {save.runes.includes('tiwazValor')?'есть':'нет'}</p>
+              {!q.ember&&q.met&&<button onClick={()=>rewards('ember','Горн восстановлен: сердце древнего пламени, 2 рунические стали, Тейваз и эликсир жизни!')}>🔥 Восстановить горн по памяти Хвергельмира</button>}
+              {q.ember&&!q.forged&&<><p>«Золото Мидгарда помнит твою первую победу. Дай мне лёд и обсидиан — я создам Погибель Нидхёгга».</p><button disabled={!canForge} onClick={()=>rewards('forge','Золотой меч преобразован в «Погибель Нидхёгга»! Новый клинок в руке Vicki.')}>⚔️ Преобразить золотой меч (3 льда · 3 обсидиана · 2 стали · ᛏ)</button></>}
+              {q.forged&&<p>✅ «Погибель Нидхёгга» выкована. {q.defeated?'Дракон повержен, его чешуя хранится среди трофеев.':'Вернись в логово — теперь чешуя дракона уязвима.'}</p>}
+              <h4 style={{margin:"12px 0 6px"}}>Особые рецепты</h4>
+              {NIFL_CRAFTS.map(recipe=><div key={recipe.id} style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",marginBottom:7}}>
+                <span>{recipe.name} · ⚙️{recipe.steel} · 💧{recipe.drops}</span>
+                <button disabled={save.ownedWeapons.includes(recipe.id)||save.runeSteel<recipe.steel||save.immortalityDrops<recipe.drops||(recipe.need==='ice'&&q.ice.length<3)||(recipe.need==='obsidian'&&q.obsidian.length<3)||(recipe.need==='ember'&&!q.ember)} onClick={()=>rewards(('craft:'+recipe.id) as DragonEvent,recipe.name+' выкован!')}>{save.ownedWeapons.includes(recipe.id)?'Создано':'Выковать'}</button>
+              </div>)}
+              <h4 style={{margin:"12px 0 6px"}}>Руны и эликсиры Нифльхейма</h4>
+              <p>Не нужно возвращаться за припасами в Мидгард: руны можно получать за 8 капель, а эликсир жизни — за 6. Руны выдаются по кругу из полного набора.</p>
+              <button disabled={save.immortalityDrops<8} onClick={()=>rewards('supply:rune','Кузнец передал новую руну.')}>ᛉ Руна · 8 💧</button>{' '}
+              <button disabled={save.immortalityDrops<6} onClick={()=>rewards('supply:potion','Эликсир жизни получен.')}>🧪 Эликсир жизни · 6 💧</button>
+            </section>;
+          })()}
           <div className="forge-group-title">Экипировка</div>
           <div className="forge-grid">{gear.map(forgeButton)}</div>
                     <div className="forge-note"><b>Закалка действует в бою.</b> Оружие усиливает обычный удар; броня и шлем добавляют здоровье и снижают урон; щит крепче держит защиту; улучшенные сапоги помогают быстрее восстановить энергию.</div>

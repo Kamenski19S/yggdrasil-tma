@@ -1,14 +1,23 @@
 import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
 import {createNidhoggEncounter} from './nidhoggEncounter';
+import {dragonProgress,NIFL_OBSIDIAN,type DragonEvent} from './niflheimDragonQuest';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
-import {BASE,cachedGlbBuffer,WEAPON_ASSET,textureSteelOnWeapon,type HeroWeapon} from './core';
+import {BASE,cachedGlbBuffer,WEAPON_ASSET,textureSteelOnWeapon,styleNiflheimWeapon,type HeroWeapon} from './core';
 
-export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEquipped}:{onBack:()=>void;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean}){
+export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEquipped,questDone,onDragonEvent,potions,onUsePotion}:{onBack:()=>void;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;questDone:string[];onDragonEvent:(event:DragonEvent)=>void;potions:string[];onUsePotion:(id:string,currentHpOverride?:number)=>boolean}){
   const mount=useRef<HTMLDivElement>(null),analog=useRef({x:0,z:0}),pointer=useRef<number|null>(null),knob=useRef<HTMLSpanElement>(null);
   const exit=useRef(onBack);exit.current=onBack;
   const [status,setStatus]=useState('Vicki спускается под разрушенную башню…');
   const [nearExit,setNearExit]=useState(true);
+  const [nearOre,setNearOre]=useState('');
+  const [nearDragon,setNearDragon]=useState(false);
+  const [hp,setHp]=useState(100);
+  const [dragonHp,setDragonHp]=useState(100);
+  const attackRef=useRef<()=>void>(()=>{});
+  const shieldRef=useRef<()=>void>(()=>{});
+  const progressRef=useRef(dragonProgress(questDone));progressRef.current=dragonProgress(questDone);
+  const eventRef=useRef(onDragonEvent);eventRef.current=onDragonEvent;
   const clear=()=>{analog.current={x:0,z:0};pointer.current=null;if(knob.current)knob.current.style.transform='translate(0,0)';};
   useEffect(()=>{
     const host=mount.current;if(!host)return;
@@ -35,9 +44,40 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     const hero=new THREE.Group();scene.add(hero);const pos={x:0,z:19};hero.rotation.y=Math.PI;
     let mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,current:THREE.AnimationAction|undefined,dragonMixer:THREE.AnimationMixer|undefined;
     let dragonBounds:THREE.Box3|undefined,encounter:ReturnType<typeof createNidhoggEncounter>|undefined;
-    let heroReady=false;
+    let heroReady=false,heroLife=100,dragonLife=100,lastStrike=0,lastBite=0,guardUntil=0,lastHud=0,strikeCount=0,metSent=false,beaten=false;
+    attackRef.current=()=>{
+      const boss=encounter;
+      if(!boss||beaten||progressRef.current.defeated){setStatus('Дракон уже повержен.');return;}
+      const distance=Math.hypot(pos.x-boss.anchor.position.x,pos.z-boss.anchor.position.z);
+      if(!heroReady||boss.flying||distance>22){setStatus('Подойди к Нидхёггу после его приземления.');return;}
+      if(performance.now()-lastStrike<650)return;lastStrike=performance.now();
+      if(!progressRef.current.forged||weapon!=='swordNidhogg'){
+        dragonLife=Math.max(90,dragonLife-5);setDragonHp(Math.ceil(dragonLife));
+        setStatus('Золотой меч царапает чешую, но раны мгновенно затягиваются! Нужна ковка у великана.');return;
+      }
+      const damage=++strikeCount%5===0?27:18;
+      dragonLife=Math.max(0,dragonLife-damage);setDragonHp(Math.ceil(dragonLife));
+      setStatus('Погибель Нидхёгга разбивает древнюю чешую! Урон '+damage+'.');
+      if(dragonLife<=0){
+        beaten=true;boss.anchor.visible=false;dragonBounds=undefined;
+        eventRef.current('defeat');
+        setNearDragon(false);setStatus('Нидхёгг повержен! Чешуя дракона, руна, эликсиры и 45 капель бессмертия получены.');
+      }
+    };
+    shieldRef.current=()=>{if(shieldEquipped){guardUntil=performance.now()+1400;setStatus('Щит поднят: следующий удар дракона будет заблокирован.');}else setStatus('Сначала надень щит в кузнице.');};
     const flightCamera=new THREE.Vector3(),flightTarget=new THREE.Vector3();
     const terrainMeshes:THREE.Mesh[]=[];
+    // Three deposits can be visited before the final fight, along the side walls.
+    const oreMarkers=NIFL_OBSIDIAN.map((place,index)=>{
+      const group=new THREE.Group();group.name='Обсидиан бездны: '+place.name;
+      const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(1.55,1),
+        new THREE.MeshStandardMaterial({color:'#22202e',metalness:.58,roughness:.31,emissive:'#231536',emissiveIntensity:.43}));
+      stone.rotation.set(.15,index*.7,.12);group.add(stone);
+      const mark=new THREE.Mesh(new THREE.OctahedronGeometry(.32),
+        new THREE.MeshBasicMaterial({color:'#c4b2f5'}));mark.position.y=1.4;group.add(mark);
+      group.position.set(place.x,0,place.z);scene.add(group);
+      return {id:place.id,group};
+    });
     const crystalGroups:THREE.Group[]=[],crystalBounds:THREE.Box3[]=[];
     const seatCrystals=()=>{crystalBounds.length=0;for(const group of crystalGroups){group.position.y=groundAt(group.position.x,group.position.z)-.05;group.updateMatrixWorld(true);crystalBounds.push(new THREE.Box3().setFromObject(group).expandByScalar(.5));}};
     const groundRay=new THREE.Raycaster(),groundOrigin=new THREE.Vector3(),groundDown=new THREE.Vector3(0,-1,0);
@@ -117,7 +157,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
       const bone=(suffix:string)=>{let found:THREE.Object3D|undefined;model.traverse(o=>{if(o.name.replace(/[^a-zA-Z0-9]/g,'').endsWith(suffix))found=o;});return found;};
       const equip=(file:string,parent:THREE.Object3D,isShield:boolean)=>load(file).then(asset=>{
         if(!alive){dispose(asset.scene);assets.forEach(t=>t.dispose());return;}
-        const item=asset.scene;textureSteelOnWeapon(item,file);if(isShield&&file==='Shield_Round.glb')item.scale.z=.22;
+        const item=asset.scene;textureSteelOnWeapon(item,file);if(!isShield)styleNiflheimWeapon(item,weapon);if(isShield&&file==='Shield_Round.glb')item.scale.z=.22;
         item.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(item),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
         const span=isShield?Math.max(size.x,size.y,size.z):size.y;if(span<.001){dispose(item);return;}
         item.position.set(-center.x,isShield?-center.y:-bounds.min.y,-center.z);
@@ -133,25 +173,50 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
       // Side lighting keeps the original scales visible instead of filling the silhouette.
       const dragonGlow=new THREE.PointLight('#9bc8ff',32,18,2);dragonGlow.position.set(-6,8,6);encounter.anchor.add(dragonGlow);
       scene.add(encounter.anchor);dragonMixer=encounter.mixer;dragonBounds=encounter.collision;
+      if(progressRef.current.defeated){encounter.anchor.visible=false;dragonBounds=undefined;beaten=true;}
     }).catch(()=>{if(alive)setStatus('Дракон пока не загрузился. Выход из подземелья доступен.');});
     const keys=new Set<string>();const down=(e:KeyboardEvent)=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key)){e.preventDefault();keys.add(e.key);}};const up=(e:KeyboardEvent)=>keys.delete(e.key);const reset=()=>{keys.clear();clear();};
     window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',reset);document.addEventListener('visibilitychange',reset);
     const resize=()=>{const w=host.clientWidth,h=host.clientHeight;if(w&&h){renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}};const observer=new ResizeObserver(resize);observer.observe(host);resize();camera.position.set(0,10,32);
-    let wasNear=true;
+    let wasNear=true,nearOreRef='',nearDragonRef=false,oreGroundReady=false;
     const frame=(now:number)=>{
       if(!alive)return;const dt=Math.min((now-previous)/1000,.05);previous=now;
       let dx=0,dz=0;if(!document.hidden){dx=analog.current.x+(keys.has('d')||keys.has('ArrowRight')?1:0)-(keys.has('a')||keys.has('ArrowLeft')?1:0);dz=analog.current.z+(keys.has('s')||keys.has('ArrowDown')?1:0)-(keys.has('w')||keys.has('ArrowUp')?1:0);}
-      const length=Math.hypot(dx,dz);let moving=false;if(length>.08&&!encounter?.flying){dx/=Math.max(1,length);dz/=Math.max(1,length);const x=THREE.MathUtils.clamp(pos.x+dx*8.5*dt,-31,31),z=THREE.MathUtils.clamp(pos.z+dz*8.5*dt,-65,24.5);const blocked=crystalBounds.some(b=>x>b.min.x&&x<b.max.x&&z>b.min.z&&z<b.max.z)||(!encounter?.flying&&dragonBounds&&x>dragonBounds.min.x&&x<dragonBounds.max.x&&z>dragonBounds.min.z&&z<dragonBounds.max.z);if(!blocked){moving=Math.hypot(x-pos.x,z-pos.z)>.001;pos.x=x;pos.z=z;}const target=Math.atan2(dx,dz);hero.rotation.y+=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y))*(1-Math.exp(-dt*14));}
+      const length=Math.hypot(dx,dz);let moving=false;if(length>.08&&!(encounter?.flying&&!beaten)){dx/=Math.max(1,length);dz/=Math.max(1,length);const x=THREE.MathUtils.clamp(pos.x+dx*8.5*dt,-31,31),z=THREE.MathUtils.clamp(pos.z+dz*8.5*dt,-65,24.5);const blocked=crystalBounds.some(b=>x>b.min.x&&x<b.max.x&&z>b.min.z&&z<b.max.z)||(!encounter?.flying&&dragonBounds&&x>dragonBounds.min.x&&x<dragonBounds.max.x&&z>dragonBounds.min.z&&z<dragonBounds.max.z);if(!blocked){moving=Math.hypot(x-pos.x,z-pos.z)>.001;pos.x=x;pos.z=z;}const target=Math.atan2(dx,dz);hero.rotation.y+=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y))*(1-Math.exp(-dt*14));}
       if(pos.x!==groundX||pos.z!==groundZ){groundY=groundAt(pos.x,pos.z);groundX=pos.x;groundZ=pos.z;}
-      const action=moving?walk:idle;if(action&&action!==current){current?.fadeOut(.15);action.reset().fadeIn(.15).play();current=action;}mixer?.update(dt);encounter?.update(document.hidden?0:dt,pos,heroReady&&terrainMeshes.length>0);hero.position.set(pos.x,groundY,pos.z);
-      const flying=encounter?.flying;
+      if(!oreGroundReady&&terrainMeshes.length){oreMarkers.forEach(marker=>{marker.group.position.y=groundAt(marker.group.position.x,marker.group.position.z)+1.2;});oreGroundReady=true;}
+      oreMarkers.forEach(marker=>{marker.group.visible=!progressRef.current.has('obsidian:'+marker.id);marker.group.rotation.y+=dt*.16;});
+      const deposit=progressRef.current.met?NIFL_OBSIDIAN.find(place=>!progressRef.current.has('obsidian:'+place.id)&&Math.hypot(pos.x-place.x,pos.z-place.z)<5.5):undefined;
+      if((deposit?.id||'')!==nearOreRef) {nearOreRef=deposit?.id||'';setNearOre(nearOreRef);}
+      const atDragon=!!encounter&&!beaten&&!progressRef.current.defeated&&!encounter.flying&&Math.hypot(pos.x-encounter.anchor.position.x,pos.z-encounter.anchor.position.z)<22;
+      if(atDragon!==nearDragonRef){nearDragonRef=atDragon;setNearDragon(atDragon);}
+      if(encounter&&!metSent&&!progressRef.current.met&&Math.hypot(pos.x+8,pos.z+35)<27){
+        metSent=true;eventRef.current('first');
+        setStatus('Встреча с Нидхёггом! Его чешуя восстанавливается. Найди обсидиан и вернись к кузнецу.');
+      }
+      if(encounter&&!beaten&&!progressRef.current.defeated&&progressRef.current.met&&!encounter.flying){
+        const distance=Math.hypot(pos.x-encounter.anchor.position.x,pos.z-encounter.anchor.position.z);
+        if(distance<16&&now-lastBite>3200){
+          lastBite=now;
+          if(now<guardUntil){setStatus('Щит отразил удар Нидхёгга!');}
+          else {
+            heroLife=Math.max(0,heroLife-24);setHp(heroLife);
+            setStatus('Нидхёгг атакует! -24 здоровья. Используй щит или отступи.');
+            if(heroLife<=0){heroLife=100;setHp(100);pos.x=0;pos.z=19;dragonLife=100;setDragonHp(100);setStatus('Vicki отступила к выходу. Попробуй позже — твой прогресс сохранён.');}
+          }
+        }
+      }
+      if(!progressRef.current.forged&&dragonLife<100){dragonLife=Math.min(100,dragonLife+dt*12);}
+      if(now-lastHud>450){lastHud=now;setDragonHp(Math.ceil(dragonLife));}
+      const action=moving?walk:idle;if(action&&action!==current){current?.fadeOut(.15);action.reset().fadeIn(.15).play();current=action;}mixer?.update(dt);if(!beaten)encounter?.update(document.hidden?0:dt,pos,heroReady&&terrainMeshes.length>0);hero.position.set(pos.x,groundY,pos.z);
+      const flying=!beaten&&encounter?.flying;
       flightCamera.set(pos.x*.4,flying?21:groundY+10,pos.z+(flying?25:16));
       flightTarget.set(pos.x,groundY+3.5,pos.z-8);
       if(flying)flightTarget.lerp(encounter!.anchor.position,.6);
       camera.position.lerp(flightCamera,1-Math.exp(-dt*4));camera.lookAt(flightTarget);
       const near=Math.abs(pos.x)<5&&pos.z>20;if(near!==wasNear){wasNear=near;setNearExit(near);}renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
-    return()=>{alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',reset);document.removeEventListener('visibilitychange',reset);reset();mixer?.stopAllAction();dragonMixer?.stopAllAction();dispose(scene);assets.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();};
+    return()=>{attackRef.current=()=>{};shieldRef.current=()=>{};alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',reset);document.removeEventListener('visibilitychange',reset);reset();mixer?.stopAllAction();dragonMixer?.stopAllAction();dispose(scene);assets.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();};
   },[weapon,shieldAsset,shieldEquipped]);
   const steer=(e:React.PointerEvent<HTMLButtonElement>)=>{if(pointer.current!==e.pointerId)return;const rect=e.currentTarget.getBoundingClientRect(),r=rect.width*.36;let x=(e.clientX-rect.left-rect.width/2)/r,z=(e.clientY-rect.top-rect.height/2)/r;const length=Math.hypot(x,z);if(length>1){x/=length;z/=length;}analog.current={x,z};if(knob.current)knob.current.style.transform=`translate(${x*r}px,${z*r}px)`;};
   return <div style={{position:'relative',flex:1,minHeight:0,overflow:'hidden',background:'#121d24',touchAction:'none'}}>
@@ -159,6 +224,16 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     <div className="mid3d-ui mid3d-top"><button className="mid3d-top-btn" onClick={()=>{clear();exit.current();}} aria-label="Вернуться в Нифльхейм"><img className="mid3d-top-button-art" src={`${BASE}img/models/home_button.png`} alt=""/></button><div className="mid3d-realm-title" style={{color:'#e9eff4'}}>Подземелье Нидхёгга</div></div>
     {status&&<div role="status" style={{position:'absolute',top:85,left:12,right:12,color:'#fff',textAlign:'center',background:'#18232be6',padding:10,borderRadius:8}}>{status}</div>}
     <button className="mid3d-ui mid3d-joy" style={{padding:0,userSelect:'none'}} aria-label="Управление Vicki" onPointerDown={e=>{e.preventDefault();pointer.current=e.pointerId;e.currentTarget.setPointerCapture(e.pointerId);steer(e);}} onPointerMove={steer} onPointerUp={clear} onPointerCancel={clear} onLostPointerCapture={clear}><img style={{width:'100%',height:'100%',pointerEvents:'none'}} src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/><span className="mid3d-knob" ref={knob}/></button>
+    <div style={{position:'absolute',top:75,left:12,right:12,pointerEvents:'none',display:'flex',gap:8,flexWrap:'wrap',justifyContent:'center',color:'#f2f7ff',fontSize:12,textShadow:'0 1px 3px #000'}}>
+      <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>❤️ Vicki: {hp}/100</span>
+      <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>🐉 Нидхёгг: {progressRef.current.defeated?'побеждён':dragonHp+'/100'}</span>
+      <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>🌑 Обсидиан: {progressRef.current.obsidian.length}/3</span>
+    </div>
+    <button className="mid3d-ui mid3d-strike" aria-label="Ударить Нидхёгга" onClick={()=>attackRef.current()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></button>
+    <button className="mid3d-ui mid3d-block" aria-label="Прикрыться щитом" disabled={!shieldEquipped} onClick={()=>shieldRef.current()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_shield.png`} alt="" draggable={false}/></button>
+    {potions.length>0&&<button onClick={()=>{const potion=potions.includes('lifeElixir')?'lifeElixir':potions.includes('northernMoss')?'northernMoss':potions.includes('hoddmimirElixir')?'hoddmimirElixir':'';if(potion&&hp<100&&onUsePotion(potion,hp)){setHp(v=>Math.min(100,v+(potion==='northernMoss'?30:100)));setStatus('Эликсир восстановил силы Vicki.');}}} style={{position:'absolute',right:12,top:152,padding:9,background:'#20313c',color:'#eaf6ff',border:'1px solid #accade',borderRadius:8}}>🧪 Лечение</button>}
+    {nearOre&&<div style={{position:'absolute',bottom:112,left:'50%',transform:'translateX(-50%)',padding:9,background:'#171d2deb',color:'#ebdfff',borderRadius:10,zIndex:7,textAlign:'center'}}><div>Обсидиан бездны · {NIFL_OBSIDIAN.find(p=>p.id===nearOre)?.name}</div><button onClick={()=>{eventRef.current(('obsidian:'+nearOre) as DragonEvent);setStatus('Обсидиан бездны получен. Вернись к великану с тремя залежами.');setNearOre('');}} style={{padding:'8px 12px',marginTop:6}}>🌑 Собрать</button></div>}
+    {nearDragon&&!progressRef.current.forged&&<div style={{position:'absolute',bottom:110,left:'50%',transform:'translateX(-50%)',padding:10,background:'#1b273aeb',color:'#fff',borderRadius:8,zIndex:7,textAlign:'center'}}>Чешуя дракона восстанавливается! <button onClick={()=>{clear();exit.current();}} style={{marginLeft:6}}>Отступить к кузнецу</button></div>}
     <div style={{position:'absolute',left:12,bottom:4,fontSize:10,color:'#aebac2',maxWidth:'55%'}}>Пещера: <a href="https://sketchfab.com/3d-models/dark-side-cave-e6347843eec64b408157dabfb8b196b2" target="_blank" rel="noopener noreferrer" style={{color:'inherit'}}>diaspora</a> · CC BY 4.0 · уменьшены текстуры, изменены масштаб и высота.</div>
     <div style={{position:'absolute',right:12,bottom:4,fontSize:10,color:'#aebac2',maxWidth:'40%'}}>Кристаллы: <a href="https://sketchfab.com/3d-models/magic-crystals-f20b3376ef9a4dff8ad27f1402087c52" target="_blank" rel="noopener noreferrer" style={{color:'inherit'}}>Enn Shtyka</a> · CC BY 4.0 · уменьшены текстуры и масштаб.</div>
     {nearExit&&<button onClick={()=>{clear();exit.current();}} style={{position:'absolute',right:16,bottom:25,padding:'12px 16px',background:'#171e25',color:'#e4c78c',border:'2px solid #b39150',borderRadius:10}}>Открыть дверь · Нифльхейм</button>}
