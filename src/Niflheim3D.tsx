@@ -8,6 +8,7 @@ import {lakeBridgeBlocked} from './niflheimLakeBridgeCollision';
 import {createVenetianBridges} from './niflheimVenetianBridges';
 import {installNiflheimBridge} from './niflheimMedievalBridge';
 import {createCombatEffects} from './combatEffects';
+import {prepareNineWorldStranger} from './nineWorldStranger';
 import {addEntranceTorches} from './niflheimEntranceTorches';
 import {MeshoptDecoder} from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import {fitRuneEntrance,runeEntranceSupports} from './niflheimRuneEntrance';
@@ -387,6 +388,8 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
     // approaches this part of the map to spare mobile startup bandwidth.
     const wandererX=44,wandererZ=-80;
     let wandererLoading=false,wandererPresent=false;
+    let wandererIdle:((now:number)=>void)|null=null;
+    let wandererTurn:((dt:number,x:number,z:number)=>void)|null=null;
     const loadWanderer=()=>{
       if(wandererLoading||wandererPresent)return;
       wandererLoading=true;
@@ -395,20 +398,40 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
         .then(asset=>{
           if(!alive){disposeObject(asset.scene);return;}
           const model=asset.scene;
+          model.rotation.y=0;
+          // Share Midgard's unarmed natural standing pose and subtle idle.
+          const prepared=prepareNineWorldStranger(model);
+          const body=prepared.bodyBounds,size=body.getSize(new THREE.Vector3());
+          if(body.isEmpty()||size.y<.001)throw new Error('Empty stranger GLB');
+          // Vika is 6.1 units in Niflheim. Keep the Wanderer proportionally
+          // tall like the 4.85-unit version seen beside Vika in Midgard.
+          const targetHeight=7.4;
+          model.scale.multiplyScalar(targetHeight/size.y);
           model.updateWorldMatrix(true,true);
-          const first=new THREE.Box3().setFromObject(model);
-          const size=first.getSize(new THREE.Vector3());
-          if(first.isEmpty()||size.y<.001)throw new Error('Empty stranger GLB');
-          model.scale.multiplyScalar(2.65/size.y);
-          model.rotation.y=.72;
-          model.updateWorldMatrix(true,true);
-          const box=new THREE.Box3().setFromObject(model),center=box.getCenter(new THREE.Vector3());
-          model.position.set(-center.x,-box.min.y,-center.z);
+          const fitted=new THREE.Box3();
+          model.traverse(o=>{
+            if(o instanceof THREE.Mesh&&o.visible)fitted.union(new THREE.Box3().setFromObject(o));
+          });
+          if(fitted.isEmpty())throw new Error('Wanderer has no visible body');
+          const centre=fitted.getCenter(new THREE.Vector3());
+          model.position.set(-centre.x,-fitted.min.y,-centre.z);
           const root=new THREE.Group();
           root.name='Странница девяти миров';
           root.position.set(wandererX,niflGroundY(wandererX,wandererZ),wandererZ);
-          model.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;}});
+          // Static shadow map: do not leave ghost silhouettes as she turns.
+          model.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=false;o.receiveShadow=true;o.frustumCulled=false;}});
           root.add(model);
+          wandererIdle=prepared.idle;
+          const visitor=position.current;
+          root.rotation.y=Math.hypot(visitor.x-wandererX,visitor.z-wandererZ)<9
+            ?Math.atan2(visitor.x-wandererX,visitor.z-wandererZ)
+            :-Math.PI*.20;
+          wandererTurn=(dt:number,x:number,z:number)=>{
+            if(Math.hypot(x-wandererX,z-wandererZ)>8)return;
+            const desired=Math.atan2(x-wandererX,z-wandererZ);
+            const delta=Math.atan2(Math.sin(desired-root.rotation.y),Math.cos(desired-root.rotation.y));
+            root.rotation.y+=delta*Math.min(1,dt*3.5);
+          };
           const labelCanvas=document.createElement('canvas');labelCanvas.width=512;labelCanvas.height=96;
           const ctx=labelCanvas.getContext('2d');
           if(ctx){
@@ -417,13 +440,13 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
             ctx.fillText('Странница',256,48);
             const tex=new THREE.CanvasTexture(labelCanvas);tex.colorSpace=THREE.SRGBColorSpace;
             const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false}));
-            label.position.set(0,3.12,0);label.scale.set(3.3,.62,1);root.add(label);
+            label.position.set(0,targetHeight+.44,0);label.scale.set(3.3,.62,1);root.add(label);
           }
           const halo=new THREE.Mesh(new THREE.TorusGeometry(.75,.035,5,40),
             new THREE.MeshBasicMaterial({color:0x96d7f4,transparent:true,opacity:.68,depthWrite:false}));
           halo.rotation.x=-Math.PI/2;halo.position.y=.07;root.add(halo);
           scene.add(root);
-          wandererObstacle={x:wandererX,z:wandererZ,radius:.75};
+          wandererObstacle={x:wandererX,z:wandererZ,radius:.95};
           wandererPresent=true;refreshShadows();
         }).catch(error=>console.warn('[NIFL WANDERER] Load failed',error));
     };
@@ -721,6 +744,8 @@ export default function Niflheim3D({questDone,onMemoryEvent,initialPosition,onRe
         undergroundCallback.current({...returnPosition});return;
       }
       hero.position.set(pos.x,walkingY(pos.x,pos.z),pos.z);
+      wandererIdle?.(now);
+      wandererTurn?.(dt,pos.x,pos.z);
       shieldBones.forEach((b,i)=>b.quaternion.copy(shieldBase[i]));mixer?.update(dt);lakeCave?.update(dt);memoryTable?.update(dt,now*.001);
       shieldBones.forEach((b,i)=>shieldBase[i].copy(b.quaternion));
       if(guardUntil.current>now&&guardUntil.current!==lastGuardFx){lastGuardFx=guardUntil.current;combatEffects.block();}
