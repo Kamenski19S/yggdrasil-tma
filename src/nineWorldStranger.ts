@@ -52,7 +52,7 @@ function removeWandererCape(model: THREE.Object3D) {
       }
       kept.push(a,b,c);
     }
-    newGroups.push({start,count:kept.length-start,materialIndex:group.materialIndex});
+    newGroups.push({start,count:kept.length-start,materialIndex:group.materialIndex??0});
   }
 
   if(removed>0){
