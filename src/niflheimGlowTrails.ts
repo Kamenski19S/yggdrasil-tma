@@ -36,11 +36,11 @@ export function createNiflheimGlowTrails(
   if(ribbonCtx){
     const gradient=ribbonCtx.createLinearGradient(0,0,64,0);
     gradient.addColorStop(0,'rgba(73,174,230,0)');
-    gradient.addColorStop(.16,'rgba(93,191,250,.04)');
-    gradient.addColorStop(.34,'rgba(115,214,255,.15)');
-    gradient.addColorStop(.50,'rgba(220,249,255,.39)');
-    gradient.addColorStop(.66,'rgba(115,214,255,.15)');
-    gradient.addColorStop(.84,'rgba(93,191,250,.04)');
+    gradient.addColorStop(.16,'rgba(93,191,250,.025)');
+    gradient.addColorStop(.34,'rgba(115,214,255,.09)');
+    gradient.addColorStop(.50,'rgba(155,224,250,.17)');
+    gradient.addColorStop(.66,'rgba(115,214,255,.09)');
+    gradient.addColorStop(.84,'rgba(93,191,250,.025)');
     gradient.addColorStop(1,'rgba(73,174,230,0)');
     ribbonCtx.fillStyle=gradient;ribbonCtx.fillRect(0,0,64,8);
   }
@@ -48,8 +48,8 @@ export function createNiflheimGlowTrails(
   ribbonTexture.colorSpace=THREE.SRGBColorSpace;
   ribbonTexture.wrapS=ribbonTexture.wrapT=THREE.ClampToEdgeWrapping;
   const ribbonMaterial=new THREE.MeshBasicMaterial({
-    map:ribbonTexture,transparent:true,opacity:.78,
-    depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,
+    map:ribbonTexture,transparent:true,opacity:.50,
+    depthWrite:false,side:THREE.DoubleSide,blending:THREE.NormalBlending,
     polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1
   });
 
@@ -87,7 +87,7 @@ export function createNiflheimGlowTrails(
       const segmentLength=Math.hypot(q.x-p.x,q.z-p.z);
       if(segmentLength<.001)continue;
       const nx=-(q.z-p.z)/segmentLength,nz=(q.x-p.x)/segmentLength;
-      const halfWidth=1.25;
+      const halfWidth=3.15;
       const base=vertices.length/3;
       for(const [point,side,v] of [[p,-1,0],[p,1,0],[q,-1,1],[q,1,1]] as const){
         vertices.push(point.x+nx*halfWidth*side,point.y,point.z+nz*halfWidth*side);
@@ -99,7 +99,7 @@ export function createNiflheimGlowTrails(
       if((i+routeIndex)%2===0){
         const group=(i+routeIndex)%3;
         const t=.25+.5*dustHash(routeIndex*137+i,5);
-        const drift=(dustHash(routeIndex*137+i,6)-.5)*1.45;
+        const drift=(dustHash(routeIndex*137+i,6)-.5)*4.4;
         sparklePositions[group].push(
           p.x+(q.x-p.x)*t+nx*drift,
           p.y+(q.y-p.y)*t+.08+.13*dustHash(routeIndex*137+i,7),
@@ -148,8 +148,8 @@ export function createNiflheimGlowTrails(
     const geometry=new THREE.BufferGeometry();
     geometry.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));
     const material=new THREE.PointsMaterial({
-      map:sparkleTexture,color:0xd8f7ff,size:i===0?.44:i===1?.33:.25,
-      sizeAttenuation:true,transparent:true,opacity:.40,
+      map:sparkleTexture,color:0xd8f7ff,size:i===0?.39:i===1?.29:.22,
+      sizeAttenuation:true,transparent:true,opacity:.25,
       depthWrite:false,blending:THREE.AdditiveBlending
     });
     const points=new THREE.Points(geometry,material);
@@ -183,9 +183,9 @@ export function createNiflheimGlowTrails(
   }
 
   const update=(time:number)=>{
-    ribbonMaterial.opacity=.72+.09*Math.sin(time*.0008);
+    ribbonMaterial.opacity=.42+.06*Math.sin(time*.0008);
     sparkleMaterials.forEach((mat,i)=>{
-      mat.opacity=.32+.28*(.5+.5*Math.sin(time*.0018+i*2.3));
+      mat.opacity=.16+.17*(.5+.5*Math.sin(time*.0018+i*2.3));
     });
     runeMaterial.opacity=.22+.08*(.5+.5*Math.sin(time*.0011));
   };
