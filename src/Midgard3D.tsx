@@ -3659,7 +3659,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       if(!glbTreesAlive)return;
       const model=asset.scene as THREE.Object3D;
       // Face the Wanderer towards Vika at the well, rather than showing her back.
-      model.rotation.y=Math.PI*1.23;
+      model.rotation.y=Math.PI*1.03;
       const prepared=prepareNineWorldStranger(model);
       const originalSize=prepared.bodyBounds.getSize(new THREE.Vector3());
       if(prepared.bodyBounds.isEmpty()||originalSize.y<.001){
