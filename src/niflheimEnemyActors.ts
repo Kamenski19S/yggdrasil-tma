@@ -66,6 +66,7 @@ export function installNiflheimRiggedEnemies(
   const shadows:Shadow[]=[];
   const extras:THREE.Group[]=[];
   const commonShadowMaterials=new Map<THREE.Material,THREE.Material>();
+  const winterOrcMaterials=new Map<THREE.Material,THREE.Material>();
 
   const mountActor=(root:THREE.Group,role:Role,asset:Asset,height:number):Actor=>{
     const model=cloneSkeleton(asset.scene) as THREE.Group;
@@ -79,6 +80,20 @@ export function installNiflheimRiggedEnemies(
     model.traverse(o=>{
       if(!(o instanceof THREE.Mesh))return;
       o.castShadow=role!=='undead';o.frustumCulled=true;
+      if(role==='orc'){
+        const tintWinter=(original:THREE.Material)=>{
+          const cached=winterOrcMaterials.get(original);if(cached)return cached;
+          const winter=original.clone();
+          if(winter instanceof THREE.MeshStandardMaterial){
+            // Preserve textures and PBR detail; tint armor and skin with frost hues.
+            winter.color.multiply(new THREE.Color('#a9c4de'));
+            winter.emissive.set('#132e40');winter.emissiveIntensity=.14;
+            winter.roughness=Math.max(.53,winter.roughness);
+          }
+          winterOrcMaterials.set(original,winter);return winter;
+        };
+        o.material=Array.isArray(o.material)?o.material.map(tintWinter):tintWinter(o.material);
+      }
       if(role==='undead'){
         const tint=(original:THREE.Material)=>{
           const cached=commonShadowMaterials.get(original);if(cached)return cached;
@@ -169,16 +184,15 @@ export function installNiflheimRiggedEnemies(
         if(!isAlive())return;
         for(const spot of spots){
           const expected:Record<string,Role>={
-            memoryCave:'orc',roots:'troll',namesHall:'undead',
-            snowMountain:'troll',threeNornsWell:'orc'
+            memoryCave:'orc',roots:'orc',namesHall:'orc',
+            snowMountain:'orc',threeNornsWell:'orc'
           };
           if(expected[spot.id]!==role)continue;
           const holder=new THREE.Group();holder.name='Страж '+spot.id;
           spot.root.add(holder);
           const actor=mountActor(holder,role,asset,role==='troll'?9.5:6.2);
           if(role==='troll')attachTrollAxe(actor.model);
-          // Hide temporary crystal stand-ins only after the real rig loads.
-          spot.root.children.forEach(c=>{if(c!==holder)c.visible=false;});
+          // No temporary geometric stand-ins: all five guardian slots contain rigs only.
         }
         for(const site of NIFLHEIM_EXTRA_GUARDS){
           if(site.role!==role)continue;
@@ -270,6 +284,7 @@ export function installNiflheimRiggedEnemies(
       shadows.forEach(s=>s.root.removeFromParent());
       extras.forEach(e=>e.removeFromParent());
       commonShadowMaterials.forEach(m=>m.dispose());
+      winterOrcMaterials.forEach(m=>m.dispose());
     }
   };
 }

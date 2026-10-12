@@ -354,18 +354,13 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
     scene.add(entrancePlaceholder);
     gates.push(entranceGate);
     const shelterPlaceholder=new THREE.Group();scene.add(shelterPlaceholder);
-    // Lightweight summoned sentinels; no new downloads or animation rigs.
+    // Quest guardians are now animated rigged orcs. No geometric/CSS stand-ins.
     const guardianRoots:{id:string;root:THREE.Group}[]=[];
     for(const trial of LIBERATION_TRIALS){
       if(!COMBAT_TRIALS.has(trial.id as any)||trial.id==='vampire')continue;
       const location=NIFL_LOCATIONS.find(l=>l.id===trial.id);if(!location)continue;
-      const root=new THREE.Group();root.name='Страж испытания: '+trial.title;
-      const shade=new THREE.MeshStandardMaterial({color:'#8b9cba',emissive:'#344d94',emissiveIntensity:.55,roughness:.54,transparent:true,opacity:.83});
-      const breast=new THREE.Mesh(new THREE.ConeGeometry(1.25,4.2,6),shade);breast.position.y=2.6;root.add(breast);
-      const skull=new THREE.Mesh(new THREE.IcosahedronGeometry(.77,0),new THREE.MeshStandardMaterial({color:'#cee9f8',emissive:'#4e92db',emissiveIntensity:.38}));skull.position.y=5.05;root.add(skull);
-      const halo=new THREE.Mesh(new THREE.TorusGeometry(1.28,.085,6,20),new THREE.MeshBasicMaterial({color:'#9ed6fb',transparent:true,opacity:.75}));
-      halo.rotation.x=Math.PI/2;halo.position.y=4.9;root.add(halo);
-      root.position.set(location.x,niflGroundY(location.x,location.z)+.4,location.z);
+      const root=new THREE.Group();root.name='Орк-страж: '+trial.title;
+      root.position.set(location.x,niflGroundY(location.x,location.z)+.35,location.z);
       scene.add(root);guardianRoots.push({id:trial.id,root});
     }
     const riggedEnemies=installNiflheimRiggedEnemies(scene,guardianRoots,()=>alive,niflGroundY,setStatus,
@@ -891,7 +886,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
       crystalMaterials.forEach(m=>{m.emissiveIntensity=1.35+Math.sin(now*.0017)*.12;});crystalHalos.forEach(h=>{(h.material as THREE.SpriteMaterial).opacity=.48+Math.sin(now*.0017)*.05;});
       drySeals.forEach(r=>{if(questRef.current.seals.some(s=>s.id===r.id))r.opacity=Math.max(0,r.opacity-dt/1.4);(r.mesh.material as THREE.MeshBasicMaterial).opacity=r.opacity;r.mesh.visible=r.opacity>0;});
       if(waterSpiral){waterSpiral.rotation.y+=dt*(liberationRef.current.vampireFreed?.075:.25);const target=liberationRef.current.vampireFreed?.68:1;waterSpiral.scale.setScalar(THREE.MathUtils.lerp(waterSpiral.scale.x,target,Math.min(1,dt*.8)));}
-      guardianRoots.forEach((entry,i)=>{entry.root.visible=!liberationRef.current.has(entry.id);entry.root.rotation.y+=dt*.16;entry.root.position.y=niflGroundY(entry.root.position.x,entry.root.position.z)+.4+Math.sin(now*.0018+i)*.22;});
+      guardianRoots.forEach(entry=>{entry.root.visible=!liberationRef.current.has(entry.id);});
       riggedEnemies.tick(dt,now,pos,guardUntil.current>now,paused.current||document.hidden);
       if(bridgeRepair?.update(dt,questRef.current.bridgeRestored,questRef.current.bridgeParts))refreshShadows();
       sourceRing.rotation.z+=dt*.12;gates.forEach(g=>{(g.material as THREE.MeshBasicMaterial).opacity=.78+Math.sin(now*.001)*.06;});
@@ -1005,26 +1000,26 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
         <button onClick={()=>{onFieldHpChange(battle.heroHp);setBattle(null);setStatus('Vicki отступила — бой можно повторить позже.');}}>🚪 Отступить</button>
       </div>
     </section></div>}
-    {mapOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Карта Нифльхейма"><button className="nifl-close" onClick={()=>setMapOpen(false)}>Закрыть</button><h3>Карта Нифльхейма</h3><p className="nifl-map-legend">❄️ Освобождение: {liberation.count}/{liberation.total}. {liberation.finished?'Нидхёгг утратил защиту мира!':'Заверши задания, чтобы ослабить Нидхёгга.'}</p><p className="nifl-map-legend">Три русла: живое, замёрзшее и пересохшее · два озера · источник Хвергельмир. Нажми на номер или название локации.</p>
+    {mapOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Карта Нифльхейма"><button className="nifl-close" onClick={()=>setMapOpen(false)}>Закрыть</button><h3>Карта Нифльхейма</h3><p className="nifl-map-legend">❄️ Освобождение: {liberation.count}/{liberation.total}. {liberation.finished?'Нидхёгг утратил защиту мира!':'Заверши задания, чтобы ослабить Нидхёгга.'}</p><p className="nifl-map-legend">Три русла: живое, замёрзшее и пересохшее · два озера · источник Хвергельмир. Карта служит только для ориентирования. Все задания выполняются непосредственно в Нифльхейме.</p>
       <svg viewBox="0 0 130 160" aria-label="Реки и локации Нифльхейма">
         {NIFL_ROUTES.map((route,i)=>{const a=NIFL_LOCATIONS.find(l=>l.id===route[0])!,b=NIFL_LOCATIONS.find(l=>l.id===route[1])!;return <line key={i} x1={a.x/NIFL_SCALE+65} y1={a.z/NIFL_SCALE+80} x2={b.x/NIFL_SCALE+65} y2={b.z/NIFL_SCALE+80} stroke="#8a9eab" strokeWidth="1" strokeDasharray="2 2"/>;})}
         {NIFL_RIVERS.map((river,i)=><polyline key={i} points={river.map(p=>`${p.x/NIFL_SCALE+65},${p.z/NIFL_SCALE+80}`).join(' ')} fill="none" stroke={i===2?"#82766b":"#78b2cf"} strokeWidth={i===0?4:3} strokeDasharray={i===2?"2 1":undefined}/>)}
         {NIFL_LAKES.map((l,i)=><ellipse key={i} cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} rx={l.rx/NIFL_SCALE} ry={l.rz/NIFL_SCALE} fill="#9ecbdf"/>)}<ellipse cx="65" cy="31" rx="8" ry="7" fill="#347c9d"/>
-        {NIFL_LOCATIONS.map((l,i)=><g key={l.id} role="button" tabIndex={0} aria-label={l.name} onClick={()=>setSelected(l.id)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelected(l.id);}}} style={{cursor:'pointer'}}><circle cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} r="5.5" fill="#fff" stroke="#526f82" strokeWidth=".6"/><text x={l.x/NIFL_SCALE+65} y={l.z/NIFL_SCALE+81.5} textAnchor="middle" fontSize="4" fill="#203e52">{i+1}</text></g>)}
+        {NIFL_LOCATIONS.map((l,i)=><g key={l.id} aria-label={l.name}><title>{l.name}</title><circle cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} r="5.5" fill="#fff" stroke="#526f82" strokeWidth=".6"/><text x={l.x/NIFL_SCALE+65} y={l.z/NIFL_SCALE+81.5} textAnchor="middle" fontSize="4" fill="#203e52">{i+1}</text></g>)}
         <circle cx={mapPoint(position.current.x,position.current.z).x} cy={mapPoint(position.current.x,position.current.z).y} r="2.5" fill="#d29d30" stroke="#fff" strokeWidth=".8"/>
       </svg>
       <h4 style={{margin:'14px 0 6px'}}>📜 Книга освобождения: {liberation.count}/{liberation.total}</h4>
-      <p className="nifl-map-legend">Все 13 испытаний здесь. Незавершённые показаны первыми. Нажми «Продолжить», чтобы открыть само задание, даже если проход к месту пока заблокирован. Прогресс сохраняется.</p>
+      <p className="nifl-map-legend">Здесь только список и состояние 13 испытаний. Завершить их нажатием на карту нельзя: подойди к соответствующей локации и взаимодействуй с предметами или стражами в самом мире.</p>
       <div className="nifl-task-book">{[...LIBERATION_TRIALS].sort((a,b)=>Number(liberation.has(a.id))-Number(liberation.has(b.id))).map((t,i)=><div key={t.id} className={'nifl-task-book-row'+(liberation.has(t.id)?' cleared':'')}>
         <b>{liberation.has(t.id)?'✓':'○'} {t.title}: {t.name}</b>
         <small>{liberation.has(t.id)?'Освобождено':t.intro}</small>
-        {!liberation.has(t.id)&&<button onClick={()=>enterTrial(t.id)}>Продолжить задание</button>}
+        {!liberation.has(t.id)&&<small>Найди это место на карте и отправляйся туда.</small>}
       </div>)}</div>
       <h4 style={{margin:'14px 0 6px'}}>🌑 Защитники Нифльхейма</h4>
       <p className="nifl-map-legend">15 участков появления Теней. Новая волна — каждые 15 минут; одновременно атакуют не более трёх, чтобы не перегружать телефон. После победы Тени исчезают до следующей волны. Орки охраняют важные проходы, тролли — магические рубежи.</p>
       <p className="nifl-map-legend">Стражи: {NIFLHEIM_EXTRA_GUARDS.length + 5} мест (включая сюжетных). Тени: {NIFLHEIM_SHADOW_SITES.length} точек.</p>
       <h4 style={{margin:'14px 0 6px'}}>🧭 Локации на карте</h4>
-      <div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><button key={l.id} onClick={()=>{setMapOpen(false);setSelected(l.id);}}>{liberation.has(l.id)?'✓':'○'} {i+1}. {l.name}</button>)}</div><p className="nifl-map-legend">🧛 Морвейн: {liberation.vampireFreed?'✓ освобождён':'○ водоворот у Приюта хранителей'}.</p><p className="nifl-map-legend">Золотая точка — Vicki. Западное русло покрыто льдом, восточная река течёт, северо-западное русло пересохло.</p><p className="nifl-map-legend">Входные врата: <a href="https://sketchfab.com/3d-models/stone-arch-565793eb6528447c97223cfaf278d3f6" target="_blank" rel="noopener noreferrer">Stone Arch — Teranox</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения: сжатие текстур, уменьшение высоты и размещение.</p>
+      <div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><div key={l.id} style={{padding:'7px 9px',background:'#edf2f6',border:'1px solid #d1dce3',borderRadius:7,fontSize:12}}>{liberation.has(l.id)?'✓':'○'} {i+1}. {l.name}</div>)}</div><p className="nifl-map-legend">🧛 Морвейн: {liberation.vampireFreed?'✓ освобождён':'○ водоворот у Приюта хранителей'}.</p><p className="nifl-map-legend">Золотая точка — Vicki. Западное русло покрыто льдом, восточная река течёт, северо-западное русло пересохло.</p><p className="nifl-map-legend">Входные врата: <a href="https://sketchfab.com/3d-models/stone-arch-565793eb6528447c97223cfaf278d3f6" target="_blank" rel="noopener noreferrer">Stone Arch — Teranox</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения: сжатие текстур, уменьшение высоты и размещение.</p>
       <p className="nifl-map-legend">Факелы входных врат: <a href="https://sketchfab.com/3d-models/torch-a3b8085436d14977a69f965859d96575" target="_blank" rel="noopener noreferrer">Torch — DJMaesen</a>, CC BY 4.0. Текстуры сжаты в WebP; геометрия сохранена, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Стены зала: <a href="https://sketchfab.com/3d-models/stone-bricks-beige-wall-set-8df474d0b8df453c87255a1758dde6e2" target="_blank" rel="noopener noreferrer">Stone bricks beige Wall-set — DADedits</a>, CC BY 4.0. Выделен прямой модуль, уменьшены текстуры, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Плиты и стол: <a href="https://sketchfab.com/3d-models/cave-rocks-4101c07c6a754f85962c6b516af4713a" target="_blank" rel="noopener noreferrer">Cave Rocks — Splanyic</a>, CC BY 4.0. Выделены каменные модули, уменьшены текстуры; из модулей собраны плиты и стол.</p>
@@ -1049,7 +1044,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
       <p className="nifl-map-legend">Парящий шар: <a href="https://sketchfab.com/3d-models/magic-orb-cdd88b96333c491ebc17043088aae633" target="_blank" rel="noopener noreferrer">Magic Orb — reddification</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Оставлен один анимированный шар с металлическим креплением, уменьшены текстуры и масштаб.</p>
       <p className="nifl-map-legend">Кристалл на столе: <a href="https://sketchfab.com/3d-models/crystals-from-space-557ff4a9f4b74ff1a367d7cc7fc77e24" target="_blank" rel="noopener noreferrer">Crystals From Space — Grenade_Apple</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Сохранена вся группа кристаллов, уменьшены текстуры, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Странница девяти миров: <a href="https://sketchfab.com/3d-models/hit2-female-swordsman-bfc0c40414ce4e37bea0567ce4a36792" target="_blank" rel="noopener noreferrer">HIT2 Female swordsman — enzohao</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры; сохранены скелет и геометрия. В Нифльхейме встречается возле колодца норн.</p>
-      <p className="nifl-map-legend">Охранник-орк: <a href="https://sketchfab.com/3d-models/low-poly-orc-62f1637181cb4f6aa38897f5b7ab5edf" target="_blank" rel="noopener noreferrer">Low-poly Orc — Riltariki</a>, CC BY 4.0. Оптимизирован GLB, сохранены кости и девять анимаций, материалы преобразованы в современный PBR.</p>
+      <p className="nifl-map-legend">Охранники-орки (в том числе заменившие геометрических стражей): <a href="https://sketchfab.com/3d-models/low-poly-orc-62f1637181cb4f6aa38897f5b7ab5edf" target="_blank" rel="noopener noreferrer">Low-poly Orc — Riltariki</a>, CC BY 4.0. Оптимизирован GLB, сохранены кости и девять анимаций, материалы преобразованы в современный PBR и тонированы в холодные оттенки Нифльхейма.</p>
       <p className="nifl-map-legend">Охранник-тролль: <a href="https://sketchfab.com/3d-models/rigged-and-animation-stylized-troll-6f7584d88b134785bf1916ca2523a07c" target="_blank" rel="noopener noreferrer">Rigged and animation stylized Troll — AlekseiPresnaykov</a>, CC BY 4.0. Текстуры сжаты, исходный скелет и анимация сохранены; оружие меняется на секиру.</p>
       <p className="nifl-map-legend">Тень забытых: <a href="https://sketchfab.com/3d-models/ancient-undead-egyptian-warrior-rigged-animated-250d1e5c12ae413884813bb25860ef9d" target="_blank" rel="noopener noreferrer">Ancient Undead Egyptian Warrior Rigged Animated — fabip</a>, CC BY 4.0. Текстура уменьшена, кости и анимация сохранены, затемнённый материал используется для призрачных нападений.</p>
       <p className="nifl-map-legend">Колодец трёх норн: та же оригинальная игровая модель <code>Midgard_Well_Three_Norns_V1_YUP.glb</code>, что и в Мидгарде. Для Нифльхейма увеличена высота, камень покрыт холодным оттенком, свечение заменено на ледяное голубое; колодец остаётся непроходимым.</p>
