@@ -2,7 +2,7 @@ import {createCombatEffects} from './combatEffects';
 import {MidgardGuide,MIDGARD_GUIDE_CSS} from './MidgardGuide';
 import {REPEAT_ASH_CHANCE} from './woodEconomy';
 import {attachGuardianCape} from './guardianCape';
-import { prepareNineWorldStranger, makeNineWorldStrangerScabbards } from './nineWorldStranger';
+import { prepareNineWorldStranger } from './nineWorldStranger';
 import {REPAIR_GOODS} from './locationRepairs';
 import { CHAOS_GATES, chaosKey, gateForLocation } from './chaosProgression';
 import { createChaosGate } from './chaosGate';
@@ -3659,7 +3659,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     loadGlbWithFolderFallback('hit2_stranger_mobile.glb',(asset:any)=>{
       if(!glbTreesAlive)return;
       const model=asset.scene as THREE.Object3D;
-      // Keep the character aligned with the scabbards. Turn the shared pivot
+      // Turn the entire unarmed character pivot
       // towards Vika rather than guessing a fixed angle from screenshots.
       model.rotation.y=0;
       const prepared=prepareNineWorldStranger(model);
@@ -3685,7 +3685,6 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       pivot.position.set(wandererX,groundY(wandererX,wandererZ),wandererZ);
       model.traverse((o:any)=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;}});
       pivot.add(model);
-      pivot.add(makeNineWorldStrangerScabbards(targetHeight,0));
       // The original GLB faces along +Z. A neutral front-left angle is used
       // while Vika is far away; when she approaches, the Wanderer turns to
       // face her naturally so dialogue works from either side of the well.
