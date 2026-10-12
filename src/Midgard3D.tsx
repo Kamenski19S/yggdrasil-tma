@@ -3662,7 +3662,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       if(original.isEmpty()||originalSize.y<.001){
         console.warn('[NINE WORLD WANDERER] Invalid model bounds');return;
       }
-      model.scale.multiplyScalar(2.65/originalSize.y);
+      model.scale.multiplyScalar(3.55/originalSize.y);
       model.rotation.y=Math.PI*.23;
       model.updateWorldMatrix(true,true);
       const fitted=new THREE.Box3().setFromObject(model);
@@ -3689,7 +3689,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         const label=new THREE.Sprite(new THREE.SpriteMaterial({
           map:labelTex,transparent:true,depthWrite:false,depthTest:true
         }));
-        label.position.set(0,3.12,0);
+        label.position.set(0,3.98,0);
         label.scale.set(3.3,.62,1);
         pivot.add(label);
       }
@@ -3702,7 +3702,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       pivot.add(runeRing);
       scene.add(pivot);
       wandererPresent=true;
-      addCircleCollider(wandererX,wandererZ,.68,.05);
+      addCircleCollider(wandererX,wandererZ,.88,.05);
       renderer.shadowMap.needsUpdate=true;
       console.info('[NINE WORLD WANDERER] placed',wandererX,wandererZ,'height',originalSize.y);
     },'Nine Worlds Wanderer',()=>console.warn('[STRANGER] Model unavailable at public/img/models/hit2_stranger_mobile.glb'));
