@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {BASE} from './core';
 import {NIFL_LOCATIONS,NIFL_ROUTES} from './niflheimMapData';
 
 // The same links as the Niflheim map, with short branches to newer landmarks.
@@ -28,27 +29,17 @@ export function createNiflheimGlowTrails(
   root.name='Сияющие пути Нифльхейма';
   scene.add(root);
 
-  // Paint the softness into a tiny in-memory texture, not a downloaded PNG.
-  // The pale core and almost invisible edges leave the snow visible below.
-  const ribbonCanvas=document.createElement('canvas');
-  ribbonCanvas.width=64;ribbonCanvas.height=8;
-  const ribbonCtx=ribbonCanvas.getContext('2d');
-  if(ribbonCtx){
-    const gradient=ribbonCtx.createLinearGradient(0,0,64,0);
-    gradient.addColorStop(0,'rgba(73,174,230,0)');
-    gradient.addColorStop(.16,'rgba(93,191,250,.025)');
-    gradient.addColorStop(.34,'rgba(115,214,255,.09)');
-    gradient.addColorStop(.50,'rgba(155,224,250,.17)');
-    gradient.addColorStop(.66,'rgba(115,214,255,.09)');
-    gradient.addColorStop(.84,'rgba(93,191,250,.025)');
-    gradient.addColorStop(1,'rgba(73,174,230,0)');
-    ribbonCtx.fillStyle=gradient;ribbonCtx.fillRect(0,0,64,8);
-  }
-  const ribbonTexture=new THREE.CanvasTexture(ribbonCanvas);
+  // Original soft silver-white magic dust, compressed to a tiny transparent WebP.
+  // Mirrored repetition hides seams as each route bends over the snow.
+  const ribbonTexture=new THREE.TextureLoader().load(
+    `${BASE}img/models/Niflheim_Magic_Dust_Trail.webp`
+  );
   ribbonTexture.colorSpace=THREE.SRGBColorSpace;
-  ribbonTexture.wrapS=ribbonTexture.wrapT=THREE.ClampToEdgeWrapping;
+  ribbonTexture.wrapS=THREE.ClampToEdgeWrapping;
+  ribbonTexture.wrapT=THREE.MirroredRepeatWrapping;
+  ribbonTexture.anisotropy=4;
   const ribbonMaterial=new THREE.MeshBasicMaterial({
-    map:ribbonTexture,transparent:true,opacity:.50,
+    map:ribbonTexture,transparent:true,opacity:.72,
     depthWrite:false,side:THREE.DoubleSide,blending:THREE.NormalBlending,
     polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1
   });
@@ -59,10 +50,28 @@ export function createNiflheimGlowTrails(
   const sparklePositions:number[][]=[[],[],[]];
   const runes:Array<{x:number;y:number;z:number}>=[];
   const locations=new Map(NIFL_LOCATIONS.map(l=>[l.id,l]));
+  // Put the glitter at the actual exterior entrances, not the buildings' centres.
+  // All numbers are world-space after NIFL_SCALE has been applied.
+  const doorways:Record<string,{x:number;z:number}>={
+    threshold:{x:0,z:127},
+    forge:{x:-18,z:96},                  // southern forecourt
+    shelter:{x:40,z:91},                 // snow-cave mouth
+    frozenRiver:{x:-17,z:49},
+    echoCave:{x:82,z:65},
+    memoryCave:{x:90,z:19},              // igloo passage
+    roots:{x:10,z:-31.75},              // root cave entrance
+    nidhogg:{x:62,z:-113},              // silver door of the collapsed tower
+    iceLake:{x:-55,z:10},               // accessible shore, not lake centre
+    crossing:{x:-72,z:27},              // north end of bridge
+    namesHall:{x:-76,z:-75},            // front arch
+    snowMountain:{x:-86,z:96},
+    threeNornsWell:{x:36,z:-79},
+    nineWorldStranger:{x:44,z:-78}
+  };
   const links:ReadonlyArray<readonly [string,string]>=[...NIFL_ROUTES,...EXTRA_LINKS] as Array<[string,string]>;
 
   for(const [routeIndex,[from,to]] of links.entries()){
-    const a=locations.get(from),b=locations.get(to);
+    const a=doorways[from]??locations.get(from),b=doorways[to]??locations.get(to);
     if(!a||!b)continue;
     const dx=b.x-a.x,dz=b.z-a.z;
     const length=Math.hypot(dx,dz);
@@ -87,11 +96,13 @@ export function createNiflheimGlowTrails(
       const segmentLength=Math.hypot(q.x-p.x,q.z-p.z);
       if(segmentLength<.001)continue;
       const nx=-(q.z-p.z)/segmentLength,nz=(q.x-p.x)/segmentLength;
-      const halfWidth=3.15;
+      const halfWidth=4.05;
       const base=vertices.length/3;
       for(const [point,side,v] of [[p,-1,0],[p,1,0],[q,-1,1],[q,1,1]] as const){
-        vertices.push(point.x+nx*halfWidth*side,point.y,point.z+nz*halfWidth*side);
-        uvs.push((side+1)/2,v);
+        const vx=point.x+nx*halfWidth*side,vz=point.z+nz*halfWidth*side;
+        vertices.push(vx,groundY(vx,vz)+.105,vz);
+        // Repeat once per ~15 metres, not once per tiny segment.
+        uvs.push((side+1)/2,((i-1+v)*length/count)/15);
       }
       indices.push(base,base+2,base+1,base+1,base+2,base+3);
 
@@ -183,7 +194,7 @@ export function createNiflheimGlowTrails(
   }
 
   const update=(time:number)=>{
-    ribbonMaterial.opacity=.42+.06*Math.sin(time*.0008);
+    ribbonMaterial.opacity=.68+.045*Math.sin(time*.0008);
     sparkleMaterials.forEach((mat,i)=>{
       mat.opacity=.16+.17*(.5+.5*Math.sin(time*.0018+i*2.3));
     });
