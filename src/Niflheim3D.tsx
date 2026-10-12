@@ -5,6 +5,7 @@ import {createMemoryTable} from './niflheimMemoryTable';
 import {memoryQuest,DRY_SEALS,MEMORY_FINDS,SOURCE_RUNES,MEMORY_REWARD,type MemoryEvent} from './niflheimMemoryQuest';
 import {dragonProgress,NIFL_ICE,type DragonEvent} from './niflheimDragonQuest';
 import {liberationProgress,LIBERATION_TRIALS,trialById,COMBAT_TRIALS,type LiberationEvent} from './niflheimLiberation';
+import {installNiflheimRiggedEnemies} from './niflheimEnemyActors';
 import {createHvergelmir} from './niflheimHvergelmir';
 import {lakeBridgeBlocked} from './niflheimLakeBridgeCollision';
 import {createVenetianBridges} from './niflheimVenetianBridges';
@@ -73,6 +74,9 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
   const dragon=dragonProgress(questDone),dragonRef=useRef(dragon);dragonRef.current=dragon;
   const dragonCallback=useRef(onDragonEvent);dragonCallback.current=onDragonEvent;
   const emitDragon=(event:DragonEvent)=>dragonCallback.current(event);
+  const libCallback=useRef(onLiberationEvent);libCallback.current=onLiberationEvent;
+  const healthCallback=useRef(onFieldHpChange);healthCallback.current=onFieldHpChange;
+  const sharedInventoryRef=useRef(inventory);sharedInventoryRef.current=inventory;
   const liberation=liberationProgress(questDone),liberationRef=useRef(liberation);liberationRef.current=liberation;
   const [nearTrial,setNearTrial]=useState('');
   const [trialOpen,setTrialOpen]=useState('');
@@ -364,6 +368,10 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
       root.position.set(location.x,niflGroundY(location.x,location.z)+.4,location.z);
       scene.add(root);guardianRoots.push({id:trial.id,root});
     }
+    const riggedEnemies=installNiflheimRiggedEnemies(scene,guardianRoots,()=>alive,niflGroundY,setStatus,
+      loss=>{const state=sharedInventoryRef.current;healthCallback.current(Math.max(20,state.hp-loss));},
+      ()=>libCallback.current('shadow:defeated'),
+      (x,z)=>!niflRiverBlocked(x,z)&&x>-95&&x<95&&z>-105&&z<125);
     // Three unique everlasting-ice fragments mark safe snow near major locations.
     const iceShape=new THREE.OctahedronGeometry(1.15,1);
     const iceDust=new THREE.MeshBasicMaterial({color:'#d9f3ff',transparent:true,opacity:.84});
@@ -807,7 +815,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
       mixer=new THREE.AnimationMixer(model);const findClip=(...names:string[])=>names.map(name=>THREE.AnimationClip.findByName(gltf.animations,name)).find(Boolean);
       const idleClip=findClip('idle','sword_idle')||gltf.animations[0],walkClip=findClip('walk_loop','walk')||idleClip;
       const attackClip=findClip('sword_attack','attack');if(attackClip)attack=mixer.clipAction(attackClip);
-      attackAction.current=()=>{if(paused.current||!attack||performance.now()<attackUntil)return;clearInput();combatEffects.slash();currentAction?.fadeOut(.08);attack.reset().setLoop(THREE.LoopOnce,1);attack.clampWhenFinished=true;attack.setEffectiveWeight(1);attack.fadeIn(.05).play();currentAction=attack;attackUntil=performance.now()+Math.max(650,attack.getClip().duration*1000);};
+      attackAction.current=()=>{if(paused.current||!attack||performance.now()<attackUntil)return;clearInput();combatEffects.slash();currentAction?.fadeOut(.08);attack.reset().setLoop(THREE.LoopOnce,1);attack.clampWhenFinished=true;attack.setEffectiveWeight(1);attack.fadeIn(.05).play();currentAction=attack;attackUntil=performance.now()+Math.max(650,attack.getClip().duration*1000);riggedEnemies.strikeShadow(position.current,weapon,performance.now());};
       if(idleClip)idle=mixer.clipAction(idleClip);if(walkClip)walk=mixer.clipAction(walkClip);idle?.play();currentAction=idle;setStatus('Сияние Нифльхейма ведёт тех, кто готов узнать его тайны.');
     },()=>{if(alive)setStatus('Не удалось загрузить Vicki. Выйди на Древо и войди снова.');})).catch(()=>{if(alive)setStatus('Не удалось загрузить Vicki. Выйди на Древо и войди снова.');});
     const entranceZ=65*NIFL_SCALE,entranceY=niflGroundY(0,entranceZ);
@@ -877,6 +885,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
       drySeals.forEach(r=>{if(questRef.current.seals.some(s=>s.id===r.id))r.opacity=Math.max(0,r.opacity-dt/1.4);(r.mesh.material as THREE.MeshBasicMaterial).opacity=r.opacity;r.mesh.visible=r.opacity>0;});
       if(waterSpiral){waterSpiral.rotation.y+=dt*(liberationRef.current.vampireFreed?.075:.25);const target=liberationRef.current.vampireFreed?.68:1;waterSpiral.scale.setScalar(THREE.MathUtils.lerp(waterSpiral.scale.x,target,Math.min(1,dt*.8)));}
       guardianRoots.forEach((entry,i)=>{entry.root.visible=!liberationRef.current.has(entry.id);entry.root.rotation.y+=dt*.16;entry.root.position.y=niflGroundY(entry.root.position.x,entry.root.position.z)+.4+Math.sin(now*.0018+i)*.22;});
+      riggedEnemies.tick(dt,now,pos,guardUntil.current>now,paused.current||document.hidden);
       if(bridgeRepair?.update(dt,questRef.current.bridgeRestored,questRef.current.bridgeParts))refreshShadows();
       sourceRing.rotation.z+=dt*.12;gates.forEach(g=>{(g.material as THREE.MeshBasicMaterial).opacity=.78+Math.sin(now*.001)*.06;});
       if(now-checkAt>180){checkAt=now;
@@ -895,7 +904,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
       wellGlowSprites.forEach((sprite,i)=>{(sprite.material as THREE.SpriteMaterial).opacity=.54+.12*Math.sin(performance.now()*.0017+i*2);});
       renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
-    return()=>{glowTrails.dispose();memoryTable?.dispose();sourceBasin.dispose();venetianBridges.dispose();rootsBridge.dispose();combatEffects.dispose();towerEntrance.current?.dispose();towerEntrance.current=null;attackAction.current=null;guardUntil.current=0;alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});rivers.dispose();forgeSpace?.dispose();mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());sun.shadow.dispose();renderer.dispose();renderer.domElement.remove();};
+    return()=>{riggedEnemies.dispose();glowTrails.dispose();memoryTable?.dispose();sourceBasin.dispose();venetianBridges.dispose();rootsBridge.dispose();combatEffects.dispose();towerEntrance.current?.dispose();towerEntrance.current=null;attackAction.current=null;guardUntil.current=0;alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});rivers.dispose();forgeSpace?.dispose();mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());sun.shadow.dispose();renderer.dispose();renderer.domElement.remove();};
   },[weapon,shieldAsset,shieldEquipped]);
   const steerStick=(event:React.PointerEvent<HTMLButtonElement>)=>{
     if(pointerId.current!==event.pointerId)return;
@@ -1030,6 +1039,9 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
       <p className="nifl-map-legend">Парящий шар: <a href="https://sketchfab.com/3d-models/magic-orb-cdd88b96333c491ebc17043088aae633" target="_blank" rel="noopener noreferrer">Magic Orb — reddification</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Оставлен один анимированный шар с металлическим креплением, уменьшены текстуры и масштаб.</p>
       <p className="nifl-map-legend">Кристалл на столе: <a href="https://sketchfab.com/3d-models/crystals-from-space-557ff4a9f4b74ff1a367d7cc7fc77e24" target="_blank" rel="noopener noreferrer">Crystals From Space — Grenade_Apple</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Сохранена вся группа кристаллов, уменьшены текстуры, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Странница девяти миров: <a href="https://sketchfab.com/3d-models/hit2-female-swordsman-bfc0c40414ce4e37bea0567ce4a36792" target="_blank" rel="noopener noreferrer">HIT2 Female swordsman — enzohao</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры; сохранены скелет и геометрия. В Нифльхейме встречается возле колодца норн.</p>
+      <p className="nifl-map-legend">Охранник-орк: <a href="https://sketchfab.com/3d-models/low-poly-orc-62f1637181cb4f6aa38897f5b7ab5edf" target="_blank" rel="noopener noreferrer">Low-poly Orc — Riltariki</a>, CC BY 4.0. Оптимизирован GLB, сохранены кости и девять анимаций, материалы преобразованы в современный PBR.</p>
+      <p className="nifl-map-legend">Охранник-тролль: <a href="https://sketchfab.com/3d-models/rigged-and-animation-stylized-troll-6f7584d88b134785bf1916ca2523a07c" target="_blank" rel="noopener noreferrer">Rigged and animation stylized Troll — AlekseiPresnaykov</a>, CC BY 4.0. Текстуры сжаты, исходный скелет и анимация сохранены; оружие меняется на секиру.</p>
+      <p className="nifl-map-legend">Тень забытых: <a href="https://sketchfab.com/3d-models/ancient-undead-egyptian-warrior-rigged-animated-250d1e5c12ae413884813bb25860ef9d" target="_blank" rel="noopener noreferrer">Ancient Undead Egyptian Warrior Rigged Animated — fabip</a>, CC BY 4.0. Текстура уменьшена, кости и анимация сохранены, затемнённый материал используется для призрачных нападений.</p>
       <p className="nifl-map-legend">Колодец трёх норн: та же оригинальная игровая модель <code>Midgard_Well_Three_Norns_V1_YUP.glb</code>, что и в Мидгарде. Для Нифльхейма увеличена высота, камень покрыт холодным оттенком, свечение заменено на ледяное голубое; колодец остаётся непроходимым.</p>
       <p className="nifl-map-legend">Водная спираль: <a href="https://sketchfab.com/3d-models/water-splash-spiral-282e1a5d84f5472281e72f35987775e7" target="_blank" rel="noopener noreferrer">Water Splash Spiral — Will VFX</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Упрощена геометрия, обновлён материал воды, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Незнакомец на озере: <a href="https://sketchfab.com/3d-models/elegant-vampire-lord-6a158cd2bf564c41b965259a6b7708ee" target="_blank" rel="noopener noreferrer">Elegant Vampire Lord — Galaxy Abundant</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Упрощена геометрия, изменены масштаб и размещение.</p>

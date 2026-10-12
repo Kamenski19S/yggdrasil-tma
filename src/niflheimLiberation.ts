@@ -48,7 +48,7 @@ export const LIBERATION_TRIALS=[
   outcome:'Память источника восстановлена.'}
 ] as const;
 export type TrialId=typeof LIBERATION_TRIALS[number]['id'];
-export type LiberationEvent=`victory:${string}`|`riddle:${string}`|`vampire:rune:${string}`|'vampire:reveal';
+export type LiberationEvent=`victory:${string}`|`riddle:${string}`|`vampire:rune:${string}`|'vampire:reveal'|'shadow:defeated';
 export const COMBAT_TRIALS=new Set<TrialId>(['memoryCave','vampire','roots','namesHall','snowMountain','threeNornsWell']);
 const complete=(done:readonly string[],id:string)=>done.includes(PREFIX+'cleared:'+id);
 export const trialById=(id:string)=>LIBERATION_TRIALS.find(t=>t.id===id);
@@ -78,6 +78,13 @@ export function liberationProgress(done:readonly string[]){
 export function applyLiberationEvent(save:Save,event:LiberationEvent):Save{
  const progress=liberationProgress(save.done);
  const addFlag=(flag:string)=>({...save,done:[...new Set([...save.done,PREFIX+flag])]});
+ if(event==='shadow:defeated'){
+  const count=(save.lootCounts.niflheimShadowVictories||0)+1;
+  const potion=count%2===0?'lifeElixir':'northernMoss';
+  return {...save,immortalityDrops:save.immortalityDrops+8,
+    potions:[...save.potions,potion],
+    lootCounts:{...save.lootCounts,niflheimShadowVictories:count,[potion]:(save.lootCounts[potion]||0)+1}};
+ }
  if(event.startsWith('vampire:rune:')){
   if(progress.vampireFreed||progress.vampireUnbound)return save;
   const expected=['laguz','ansuz','algiz'];
