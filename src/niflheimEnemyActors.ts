@@ -13,7 +13,7 @@ import {normalizeOrcAnimations,retargetOrcAnimationsToShieldTroll} from './niflh
 type Role='orc'|'troll'|'undead';
 type Spot={id:string;root:THREE.Group};
 type Asset={scene:THREE.Group;animations:THREE.AnimationClip[]};
-type Actor={model:THREE.Group;root:THREE.Group;mixer:THREE.AnimationMixer;role:Role;static:boolean;clips:THREE.AnimationClip[];idle:THREE.AnimationAction|null;current:THREE.AnimationAction|null;actionUntil:number};
+type Actor={model:THREE.Group;root:THREE.Group;mixer:THREE.AnimationMixer;role:Role;static:boolean;groundOffset:number;clips:THREE.AnimationClip[];idle:THREE.AnimationAction|null;current:THREE.AnimationAction|null;actionUntil:number};
 type Shadow={id:number;site:{x:number;z:number;place:string};root:THREE.Group;actor:Actor;healthBar:THREE.Mesh;hp:number;active:boolean;used:boolean;born:number;lastBite:number;lastHit:number};
 type Guard={id:string;actor:Actor;root:THREE.Group;origin:THREE.Vector3;role:'orc'|'troll';hp:number;maxHp:number;attack:number;lastAttack:number;lastHit:number;deadAt:number;respawnAt:number;bar:THREE.Mesh};
 type OnShadowHit=(damage:number)=>void;
@@ -124,7 +124,7 @@ export function installNiflheimRiggedEnemies(
       asset.animations[0];
     const idle=clip?mixer.clipAction(clip):null;
     idle?.play();
-    const actor={model,root,mixer,role,static:true,clips:asset.animations,idle,current:idle,actionUntil:0} satisfies Actor;
+    const actor={model,root,mixer,role,static:true,groundOffset:0,clips:asset.animations,idle,current:idle,actionUntil:0} satisfies Actor;
     // Match the soles to the local walking surface, not the height of the
     // imported scene's pivot or armour bounding box. Especially important
     // for animated orcs whose pivot is near the waist.
@@ -139,7 +139,7 @@ export function installNiflheimRiggedEnemies(
         const rootZ=root.getWorldPosition(new THREE.Vector3()).z;
         const delta=ground(rootX,rootZ)+.18-footY;
         // Guard against malformed animation rigs: never jump several metres.
-        if(Number.isFinite(delta)&&Math.abs(delta)<5)root.position.y+=delta;
+        if(Number.isFinite(delta)&&Math.abs(delta)<5){root.position.y+=delta;actor.groundOffset=delta;}
       }
     }
     actors.push(actor);return actor;
@@ -337,7 +337,7 @@ export function installNiflheimRiggedEnemies(
         if(guard.respawnAt>Date.now())continue;
         if(!guard.root.visible){
           guard.root.visible=true;guard.hp=guard.maxHp;
-          if(guard.root.parent===scene)guard.root.position.set(guard.origin.x,ground(guard.origin.x,guard.origin.z),guard.origin.z);
+          if(guard.root.parent===scene)guard.root.position.set(guard.origin.x,ground(guard.origin.x,guard.origin.z)+guard.actor.groundOffset,guard.origin.z);
           else guard.root.position.set(0,0,0);
           guard.bar.scale.x=1;guard.bar.position.x=0;guard.respawnAt=0;
         }
@@ -360,7 +360,7 @@ export function installNiflheimRiggedEnemies(
           const step=Math.min(dist-4.6,(guard.role==='troll'?1.05:1.5)*dt);
           const nx=place.x+(hero.x-place.x)/dist*step,nz=place.z+(hero.z-place.z)/dist*step;
           if(Math.hypot(nx-guard.origin.x,nz-guard.origin.z)<4.2&&canSpawn(nx,nz)){
-            if(guard.root.parent===scene)guard.root.position.set(nx,ground(nx,nz),nz);
+            if(guard.root.parent===scene)guard.root.position.set(nx,ground(nx,nz)+guard.actor.groundOffset,nz);
             else{guard.root.position.x+=nx-place.x;guard.root.position.z+=nz-place.z;}
           }
         }
