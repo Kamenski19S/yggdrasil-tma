@@ -584,7 +584,7 @@ const [roadT, setRoadT] = useState(0.06);
       )}
 
 
-      {screen.t === "underground" && <React.Suspense fallback={<div className="content">Спуск под башню…</div>}><NidhoggUnderground questDone={save.done} onDragonEvent={(event:DragonEvent)=>setSave(s=>applyDragonQuestEvent(s,event))} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")} whirlpoolHeart={!!save.lootCounts.whirlpoolHeart} potions={save.potions} onUsePotion={useInventoryPotion} onBack={()=>go({t:"realm",id:"niflheim"})}/></React.Suspense>}
+      {screen.t === "underground" && <React.Suspense fallback={<div className="content">Спуск под башню…</div>}><NidhoggUnderground questDone={save.done} onDragonEvent={(event:DragonEvent)=>setSave(s=>applyDragonQuestEvent(s,event))} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")} whirlpoolHeart={!!save.lootCounts.whirlpoolHeart||save.done.includes('niflheim:liberation:cleared:vampire')} potions={save.potions} onUsePotion={useInventoryPotion} onBack={()=>go({t:"realm",id:"niflheim"})}/></React.Suspense>}
       {screen.t === "mill" && (
         <MillScene
           stored={save.millStored}

@@ -8,10 +8,11 @@ export const SOURCE_RUNES=[{id:'ansuz',symbol:'ᚨ',name:'Ансуз — пам�
 export const DRY_SEALS=[{id:'isa',symbol:'ᛁ',name:'Иса',meaning:'Лёд'},{id:'nauthiz',symbol:'ᚾ',name:'Наутиз',meaning:'Скованность'},{id:'hagalaz',symbol:'ᚺ',name:'Хагалаз',meaning:'Разрушение'}];
 export type MemoryEvent='bridge:start'|'bridge:repair'|`bridge:find:${string}`|`seal:${string}`|'start'|'handover'|`find:${string}`|`rune:${string}`;
 export const MEMORY_REWARD=60;
+const hasReady=(done:readonly string[])=>done.includes(PREFIX+'ready');
 export function memoryQuest(done:string[]){
   const has=(id:string)=>done.includes(PREFIX+id);
   const found=MEMORY_FINDS.filter(f=>has(f.id));
-  return {bridgeStarted:done.includes('niflheim:bridge:started'),bridgeParts:['west','east','north'].filter(id=>done.includes('niflheim:bridge:part:'+id)),bridgeRestored:done.includes('niflheim:bridge:restored'),seals:DRY_SEALS.filter(r=>done.includes('niflheim:dry:'+r.id)),started:has('started'),found,ready:has('ready'),restored:has('restored'),step:has('rune:laguz')?2:has('rune:ansuz')?1:0};
+  return {bridgeStarted:done.includes('niflheim:bridge:started'),bridgeParts:['west','east','north'].filter(id=>done.includes('niflheim:bridge:part:'+id)),bridgeRestored:done.includes('niflheim:bridge:restored'),seals:DRY_SEALS.filter(r=>done.includes('niflheim:dry:'+r.id)),started:has('started'),found,ready:has('ready')||found.length===3,restored:has('restored'),step:has('rune:laguz')?2:has('rune:ansuz')?1:0};
 }
 /** The parent saves each transition; the final transition and reward are atomic and idempotent. */
 export function applyMemoryEvent<T extends {done:string[];immortalityDrops:number;potions:string[];lootCounts:Record<string,number>}>(save:T,event:MemoryEvent):T{
@@ -21,7 +22,7 @@ export function applyMemoryEvent<T extends {done:string[];immortalityDrops:numbe
   const add=(...ids:string[])=>({...save,done:[...new Set([...save.done,...ids.map(id=>PREFIX+id)])]});
   if(event==='start')return q.started?save:add('started');
   if(event.startsWith('find:')){const id=event.slice(5);return MEMORY_FINDS.some(f=>f.id===id)&&!q.found.some(f=>f.id===id)?add('started',id):save;}
-  if(event==='handover')return q.found.length===3&&!q.ready?add('ready'):save;
+  if(event==='handover')return q.found.length===3&&!hasReady(save.done)?add('ready'):save;
   if(event.startsWith('rune:')&&q.ready){
     const rune=event.slice(5);if(!SOURCE_RUNES.some(r=>r.id===rune))return save;
     if(rune!==SOURCE_RUNES[q.step].id)return {...save,done:save.done.filter(id=>!id.startsWith(PREFIX+'rune:'))};

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-export const BRIDGE_PARTS=[{id:'west',name:'Западный камень опоры',x:-84,z:28},{id:'east',name:'Восточный камень опоры',x:-62,z:31},{id:'north',name:'Северный камень опоры',x:-84,z:-13}];
+// Keep all three stones on the approach bank: never require crossing the broken bridge to repair it.
+export const BRIDGE_PARTS=[{id:'west',name:'Западный камень опоры',x:-84,z:-16},{id:'east',name:'Восточный камень опоры',x:-62,z:-16},{id:'north',name:'Северный камень опоры',x:-72,z:-22}];
 export function createBridgeRepair(scene:THREE.Scene,deck:number,ground:(x:number,z:number)=>number,restored:boolean){
  const extension=new THREE.Group();extension.position.set(-72,deck,22.65);scene.add(extension);const mat=new THREE.MeshStandardMaterial({color:'#88959a',roughness:.95});
  const slab=new THREE.Mesh(new THREE.BoxGeometry(6.1,.5,6.85),mat);slab.position.set(0,-.25,3.425);slab.receiveShadow=true;extension.add(slab);

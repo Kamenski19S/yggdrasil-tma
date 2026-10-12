@@ -55,7 +55,7 @@ export const trialById=(id:string)=>LIBERATION_TRIALS.find(t=>t.id===id);
 export function liberationProgress(done:readonly string[]){
  const found=['staff','medallion','tablet'].every(x=>done.includes('niflheim:memory:'+x));
  // Reuse the established quest's definitive find flags rather than duplicating items.
- const memoryFinds=done.filter(x=>x.startsWith('niflheim:memory:')).length;
+ const memoryFinds=['staff','medallion','tablet'].filter(x=>done.includes('niflheim:memory:'+x)).length;
  const bridge=done.includes('niflheim:bridge:restored');
  const dry=['isa','nauthiz','hagalaz'].every(x=>done.includes('niflheim:dry:'+x));
  const source=done.includes('niflheim:memory:restored');
@@ -100,7 +100,7 @@ export function applyLiberationEvent(save:Save,event:LiberationEvent):Save{
   if(!COMBAT_TRIALS.has(id as TrialId))return save;
   if(id==='vampire'&&!progress.vampireUnbound)return save;
   if(!progress.has(id))return reward(save,id,false);
-  if(id==='iceLake')return save; // the freed vampire never attacks again
+  if(id==='vampire')return save; // the freed vampire never attacks again
   // Ordinary guardians can be challenged again after 15 min. Smaller reward.
   const key=PREFIX+'repeat:'+id,now=Date.now();
   if((save.locationCooldowns[key]||0)>now)return save;
@@ -118,7 +118,7 @@ function reward(save:Save,id:string,repeat:boolean):Save{
  const lootCounts={...save.lootCounts,[rune]:(save.lootCounts[rune]||0)+1,
    [potion]:(save.lootCounts[potion]||0)+1,
    niflheimTrialRunes:(save.lootCounts.niflheimTrialRunes||0)+1,
-   ...(id==='iceLake'?{whirlpoolHeart:1}:{})};
+   ...(id==='vampire'?{whirlpoolHeart:1}:{})};
  return {...save,
   done:repeat?save.done:[...new Set([...save.done,prefix])],
   immortalityDrops:save.immortalityDrops+drops,runeSteel:save.runeSteel+steel,
