@@ -40,12 +40,12 @@ import {NIFL_SCALE,NIFL_SOURCE,NIFL_ENTRANCE_ARCS,NIFL_LOCATIONS,NIFL_RIVERS,NIF
 
 const hash=(x:number,z:number)=>{const n=Math.sin(x*127.1+z*311.7)*43758.5453;return n-Math.floor(n);};
 const CSS=`
-.nifl-quest-near,.nifl-quest-panel{background:#14212dee!important;color:#f0e1ba!important;border:1px solid #bda16b!important}.nifl-quest-panel{max-width:430px!important}.nifl-quest-panel button,.nifl-quest-near button{background:#172b3d!important;color:#f0e1ba!important;border:1px solid #bda16b!important}.nifl-rune-choices{display:flex;gap:8px}.nifl-rune-choices button{flex:1;min-width:0;font-size:11px!important}.nifl-rune-choices span{display:block;font-size:30px}.nifl-quest-progress{position:absolute;top:204px;left:12px;transform:none;font-size:10px;padding:4px 7px;color:#f0e1ba;background:#14212ddb;border:1px solid #bda16b;border-radius:8px;pointer-events:none;white-space:nowrap}
+.nifl-quest-near,.nifl-quest-panel{background:#14212dee!important;color:#f0e1ba!important;border:1px solid #bda16b!important}.nifl-quest-panel{max-width:430px!important}.nifl-quest-panel button,.nifl-quest-near button{background:#172b3d!important;color:#f0e1ba!important;border:1px solid #bda16b!important}.nifl-rune-choices{display:flex;gap:8px}.nifl-rune-choices button{flex:1;min-width:0;font-size:11px!important}.nifl-rune-choices span{display:block;font-size:30px}.nifl-quest-progress{position:absolute;bottom:63px;top:auto;left:10px;transform:none;font-size:10px;padding:4px 7px;color:#f0e1ba;background:#14212ddb;border:1px solid #bda16b;border-radius:8px;pointer-events:none;white-space:nowrap}
 
-.nifl-world{position:relative;flex:1;min-height:0;overflow:hidden;background:#9ab3c4;touch-action:none}.nifl-mount{position:absolute;inset:0}.nifl-mount canvas{display:block;width:100%;height:100%}.nifl-top{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;pointer-events:none}.nifl-top h2{margin:0;color:#eaf7ff;font-size:20px;text-shadow:0 2px 4px #143449}.nifl-top p{margin:4px 0;color:#eaf7ff;font-size:11px;text-shadow:0 1px 3px #143449}.nifl-top button{pointer-events:auto;background:#f9fcff;color:#253847;border:2px solid #b7c9d2;border-radius:10px;padding:10px;font:inherit;font-size:13px}.nifl-status{position:absolute;top:251px;left:12px;transform:none;padding:7px 12px;border-radius:9px;background:#fff;color:#253847;font-size:12px;text-align:center;max-width:45%}
+.nifl-world{position:relative;flex:1;min-height:0;overflow:hidden;background:#9ab3c4;touch-action:none}.nifl-mount{position:absolute;inset:0}.nifl-mount canvas{display:block;width:100%;height:100%}.nifl-top{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;pointer-events:none}.nifl-top h2{margin:0;color:#eaf7ff;font-size:20px;text-shadow:0 2px 4px #143449}.nifl-top p{margin:4px 0;color:#eaf7ff;font-size:11px;text-shadow:0 1px 3px #143449}.nifl-top button{pointer-events:auto;background:#f9fcff;color:#253847;border:2px solid #b7c9d2;border-radius:10px;padding:10px;font:inherit;font-size:13px}.nifl-status{position:absolute;bottom:12px;top:auto;left:10px;right:10px;transform:none;padding:6px 10px;border-radius:9px;background:#182b3de8;color:#f6e4bd;border:1px solid #ad915d;font-size:11px;text-align:center;max-width:none;z-index:6;pointer-events:none;line-height:1.4}
 .nifl-joystick{padding:0;user-select:none}.nifl-joystick img{width:100%;height:100%;pointer-events:none}.nifl-realm-title{display:flex;align-items:center;justify-content:center;height:58px;color:#eaf7ff!important;font-size:20px!important;text-shadow:0 2px 4px #143449}
 
-.nifl-near{position:absolute;top:215px;bottom:auto;right:12px;width:min(45%,190px);z-index:5;background:#fffffff2;color:#23313b;border:2px solid #b5c7d1;border-radius:13px;padding:10px}.nifl-near b{font-size:13px;display:block;line-height:1.4}.nifl-near button{width:100%;padding:9px 4px;margin-top:7px;border:1px solid #acbec9;border-radius:8px;background:#edf3f6;color:#23313b;font:inherit;font-size:12px}
+.nifl-near{position:absolute;bottom:64px;top:auto;right:10px;width:min(56%,218px);z-index:5;background:#fffffff2;color:#23313b;border:2px solid #b5c7d1;border-radius:13px;padding:10px}.nifl-near b{font-size:13px;display:block;line-height:1.4}.nifl-near button{width:100%;padding:9px 4px;margin-top:7px;border:1px solid #acbec9;border-radius:8px;background:#edf3f6;color:#23313b;font:inherit;font-size:12px}
 .nifl-overlay{position:absolute;inset:0;z-index:10;background:#142b3acc;display:flex;align-items:center;justify-content:center;padding:12px;touch-action:auto}.nifl-panel{background:#fff;color:#22323d;border:2px solid #bac8d0;border-radius:16px;padding:16px;width:100%;max-width:620px;max-height:94%;overflow:auto}.nifl-panel h3{margin:0 0 8px;font-size:20px}.nifl-panel p{font-size:14px;line-height:1.6}.nifl-panel button{background:#eef3f6;color:#22323d;border:1px solid #b3c4ce;border-radius:9px;padding:10px;font:inherit;font-size:13px}.nifl-close{float:right}.nifl-panel svg{display:block;width:100%;height:42vh;min-height:240px;background:#e7eff4;border-radius:12px;margin-top:12px}.nifl-map-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:12px 0}.nifl-map-list button{text-align:left;font-size:12px}.nifl-map-legend{font-size:12px!important;color:#536875}.nifl-task-book{display:grid;gap:8px}.nifl-task-book-row{background:#f0f5f8;border:1px solid #b7c9d2;border-radius:9px;padding:10px;display:flex;flex-direction:column;gap:5px}.nifl-task-book-row.cleared{opacity:.77}.nifl-task-book-row b{font-size:13px}.nifl-task-book-row small{font-size:12px;line-height:1.5}.nifl-task-book-row button{align-self:flex-start}.nifl-task-actions p{margin:6px 0}.nifl-task-actions button{max-width:100%}
 `;
 
@@ -63,12 +63,13 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
   const undergroundCallback=useRef(onEnterUnderground);undergroundCallback.current=onEnterUnderground;
   const [near,setNear]=useState('threshold');
   const [mapOpen,setMapOpen]=useState(false);
+  const [journalOpen,setJournalOpen]=useState(false);
   const [inventoryOpen,setInventoryOpen]=useState(false);
   const attackAction=useRef<(()=>void)|null>(null);
   const guardUntil=useRef(0);
   const [selected,setSelected]=useState('');
   const [status,setStatus]=useState('Vicki входит в Нифльхейм…');
-  const paused=useRef(false);paused.current=doorOpening||mapOpen||inventoryOpen||!!selected;
+  const paused=useRef(false);paused.current=doorOpening||mapOpen||journalOpen||inventoryOpen||!!selected;
   useEffect(()=>{if(!status)return;const timeout=window.setTimeout(()=>setStatus(''),5000);return()=>window.clearTimeout(timeout);},[status]);
   const quest=memoryQuest(questDone),questRef=useRef(quest);questRef.current=quest;
   const dragon=dragonProgress(questDone),dragonRef=useRef(dragon);dragonRef.current=dragon;
@@ -99,6 +100,11 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
   };
   const startTrialBattle=(id:string)=>{
     const trial=trialById(id);if(!trial||!('hp' in trial)||!('attack' in trial))return;
+    if(id!=='vampire'){
+      setTrialOpen('');setBattle(null);
+      setStatus('⚔️ Подойди к стражу и дерись в мире: атака оружием, щит и перемещение. Трофей попадёт в инвентарь.');
+      return;
+    }
     setTrialOpen('');setBattle({id,hp:trial.hp,maxHp:trial.hp,heroHp:Math.max(30,inventory.hp),energy:5,guard:false,runeCharge:2,log:'Встань на защиту Нифльхейма!'});
     clearInput();
   };
@@ -140,7 +146,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
   const [questDialog,setQuestDialog]=useState<'girl'|'source'|'seal'|'bridge'|'tower'|null>(null);
   const [questMessage,setQuestMessage]=useState('');
   const [sealTarget,setSealTarget]=useState('');
-  const modalActive=mapOpen||inventoryOpen||!!questDialog||!!trialOpen||!!battle||!!selected;
+  const modalActive=mapOpen||journalOpen||inventoryOpen||!!questDialog||!!trialOpen||!!battle||!!selected;
   paused.current=paused.current||!!questDialog||!!trialOpen||!!battle;
   const emitMemory=(event:MemoryEvent)=>{onMemoryEvent(event);};
   const info=NIFL_LOCATIONS.find(l=>l.id===selected);
@@ -360,19 +366,20 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
       if(!COMBAT_TRIALS.has(trial.id as any)||trial.id==='vampire')continue;
       const location=NIFL_LOCATIONS.find(l=>l.id===trial.id);if(!location)continue;
       const root=new THREE.Group();root.name='Орк-страж: '+trial.title;
-      root.position.set(location.x,niflGroundY(location.x,location.z)+.35,location.z);
+      const spawnOffset:Record<string,{x:number;z:number}>={memoryCave:{x:90,z:16},roots:{x:12,z:-38},namesHall:{x:-76,z:-90},snowMountain:{x:-86,z:86},threeNornsWell:{x:43,z:-78}};
+      const spawn=spawnOffset[trial.id]||location;
+      root.position.set(spawn.x,walkingY(spawn.x,spawn.z)+.15,spawn.z);
       scene.add(root);guardianRoots.push({id:trial.id,root});
     }
-    const riggedEnemies=installNiflheimRiggedEnemies(scene,guardianRoots,()=>alive,niflGroundY,setStatus,
+    const riggedEnemies=installNiflheimRiggedEnemies(scene,guardianRoots,()=>alive,walkingY,setStatus,
       loss=>{
         const state=sharedInventoryRef.current;
-        if(state.hp<=loss){
-          healthCallback.current(Math.max(28,Math.round(state.maxHp*.35)));
-          position.current={x:0,z:125};
-          setStatus('Vicki отступила к вратам Нифльхейма. Прогресс сохранён.');
-        }else healthCallback.current(state.hp-loss);
+        const hp=Math.max(1,state.hp-loss);
+        healthCallback.current(hp);
+        if(hp===1)setStatus('❤️ Здоровье на исходе! Используй эликсир или отступи. Без переноса к вратам.');
       },
-      ()=>libCallback.current('shadow:defeated'),
+      id=>libCallback.current(('shadow:defeated:'+id) as LiberationEvent),
+      (id,role)=>libCallback.current(('guardian:defeated:'+id+':'+role) as LiberationEvent),
       (x,z)=>!niflRiverBlocked(x,z)&&x>-95&&x<95&&z>-105&&z<125);
     // Three unique everlasting-ice fragments mark safe snow near major locations.
     const iceShape=new THREE.OctahedronGeometry(1.15,1);
@@ -817,7 +824,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
       mixer=new THREE.AnimationMixer(model);const findClip=(...names:string[])=>names.map(name=>THREE.AnimationClip.findByName(gltf.animations,name)).find(Boolean);
       const idleClip=findClip('idle','sword_idle')||gltf.animations[0],walkClip=findClip('walk_loop','walk')||idleClip;
       const attackClip=findClip('sword_attack','attack');if(attackClip)attack=mixer.clipAction(attackClip);
-      attackAction.current=()=>{if(paused.current||!attack||performance.now()<attackUntil)return;clearInput();combatEffects.slash();currentAction?.fadeOut(.08);attack.reset().setLoop(THREE.LoopOnce,1);attack.clampWhenFinished=true;attack.setEffectiveWeight(1);attack.fadeIn(.05).play();currentAction=attack;attackUntil=performance.now()+Math.max(650,attack.getClip().duration*1000);riggedEnemies.strikeShadow(position.current,weapon,performance.now());};
+      attackAction.current=()=>{if(paused.current||!attack||performance.now()<attackUntil)return;clearInput();combatEffects.slash();currentAction?.fadeOut(.08);attack.reset().setLoop(THREE.LoopOnce,1);attack.clampWhenFinished=true;attack.setEffectiveWeight(1);attack.fadeIn(.05).play();currentAction=attack;attackUntil=performance.now()+Math.max(650,attack.getClip().duration*1000);riggedEnemies.strikeEnemy(position.current,weapon,performance.now());};
       if(idleClip)idle=mixer.clipAction(idleClip);if(walkClip)walk=mixer.clipAction(walkClip);idle?.play();currentAction=idle;setStatus('Сияние Нифльхейма ведёт тех, кто готов узнать его тайны.');
     },()=>{if(alive)setStatus('Не удалось загрузить Vicki. Выйди на Древо и войди снова.');})).catch(()=>{if(alive)setStatus('Не удалось загрузить Vicki. Выйди на Древо и войди снова.');});
     const entranceZ=65*NIFL_SCALE,entranceY=niflGroundY(0,entranceZ);
@@ -886,7 +893,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
       crystalMaterials.forEach(m=>{m.emissiveIntensity=1.35+Math.sin(now*.0017)*.12;});crystalHalos.forEach(h=>{(h.material as THREE.SpriteMaterial).opacity=.48+Math.sin(now*.0017)*.05;});
       drySeals.forEach(r=>{if(questRef.current.seals.some(s=>s.id===r.id))r.opacity=Math.max(0,r.opacity-dt/1.4);(r.mesh.material as THREE.MeshBasicMaterial).opacity=r.opacity;r.mesh.visible=r.opacity>0;});
       if(waterSpiral){waterSpiral.rotation.y+=dt*(liberationRef.current.vampireFreed?.075:.25);const target=liberationRef.current.vampireFreed?.68:1;waterSpiral.scale.setScalar(THREE.MathUtils.lerp(waterSpiral.scale.x,target,Math.min(1,dt*.8)));}
-      guardianRoots.forEach(entry=>{entry.root.visible=!liberationRef.current.has(entry.id);});
+      // Quest completion does not hide the rigged guardians; combat cooldown controls their return.
       riggedEnemies.tick(dt,now,pos,guardUntil.current>now,paused.current||document.hidden);
       if(bridgeRepair?.update(dt,questRef.current.bridgeRestored,questRef.current.bridgeParts))refreshShadows();
       sourceRing.rotation.z+=dt*.12;gates.forEach(g=>{(g.material as THREE.MeshBasicMaterial).opacity=.78+Math.sin(now*.001)*.06;});
@@ -936,7 +943,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
       <b>{liberation.has(nearTrial)?'✓ ':''}{trialById(nearTrial)?.name}</b>
       <button onClick={()=>{clearInput();enterTrial(nearTrial);}}>{liberation.has(nearTrial)?COMBAT_TRIALS.has(nearTrial as any)&&nearTrial!=='vampire'?'Повторное испытание':'Освобождено':'Задание хранителей'}</button>
     </div>}
-    {!modalActive&&<button style={{position:'absolute',top:160,left:12,padding:'6px 9px',fontSize:11,zIndex:5,color:'#f4f4ea',background:'#152c3bdd',border:'1px solid #91a9b6',borderRadius:7}} onClick={()=>{clearInput();setMapOpen(true);}}>❄️ Задания: {liberation.count}/{liberation.total} · посмотреть все</button>}
+    {!modalActive&&<button aria-label="Журнал пройденных и оставшихся заданий" style={{position:'absolute',top:72,left:12,padding:'5px 9px',fontSize:11,zIndex:5,color:'#f4e3b7',background:'#152c3bdd',border:'1px solid #bda16b',borderRadius:7}} onClick={()=>{clearInput();setJournalOpen(true);}}>📜 {liberation.count}/{liberation.total} · Задания</button>}
 
     {quest.started&&!modalActive&&!quest.restored&&<div className="nifl-quest-progress">{quest.restored?'Хвергельмир восстановлен':quest.ready?'Печать: '+quest.step+'/3':'Осколки памяти: '+quest.found.length+'/3'}</div>}
     {questDialog&&<div className="nifl-overlay"><section className="nifl-panel nifl-quest-panel" role="dialog" aria-modal="true" aria-label={questDialog==='tower'?'Печать башни Нидхёгга':questDialog==='bridge'?'Восстановление переправы':questDialog==='seal'?'Печати пересохшего русла':questDialog==='girl'?'Три осколка памяти':'Печать Хвергельмира'}><button className="nifl-close" onClick={()=>setQuestDialog(null)}>Закрыть</button><h3>{questDialog==='tower'?'Печать башни Нидхёгга':questDialog==='bridge'?'Восстановление переправы':questDialog==='seal'?'Печати пересохшего русла':questDialog==='girl'?'Три осколка памяти':'Хвергельмир'}</h3>
@@ -1000,6 +1007,14 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
         <button onClick={()=>{onFieldHpChange(battle.heroHp);setBattle(null);setStatus('Vicki отступила — бой можно повторить позже.');}}>🚪 Отступить</button>
       </div>
     </section></div>}
+    {journalOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Журнал испытаний Нифльхейма">
+      <button className="nifl-close" onClick={()=>setJournalOpen(false)}>Закрыть</button>
+      <h3>📜 Задания Нифльхейма: {liberation.count}/{liberation.total}</h3>
+      <p>Только журнал. Все испытания проходят в 3D-мире, а не нажатием на список.</p>
+      <div className="nifl-task-book">{LIBERATION_TRIALS.map((t,i)=><div key={t.id} className={'nifl-task-book-row'+(liberation.has(t.id)?' cleared':'')}>
+        <b>{liberation.has(t.id)?'✅ Выполнено':'◻️ Осталось'} · {i+1}. {t.title}</b><small>{t.name}</small>
+      </div>)}</div>
+    </section></div>}
     {mapOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Карта Нифльхейма"><button className="nifl-close" onClick={()=>setMapOpen(false)}>Закрыть</button><h3>Карта Нифльхейма</h3><p className="nifl-map-legend">❄️ Освобождение: {liberation.count}/{liberation.total}. {liberation.finished?'Нидхёгг утратил защиту мира!':'Заверши задания, чтобы ослабить Нидхёгга.'}</p><p className="nifl-map-legend">Три русла: живое, замёрзшее и пересохшее · два озера · источник Хвергельмир. Карта служит только для ориентирования. Все задания выполняются непосредственно в Нифльхейме.</p>
       <svg viewBox="0 0 130 160" aria-label="Реки и локации Нифльхейма">
         {NIFL_ROUTES.map((route,i)=>{const a=NIFL_LOCATIONS.find(l=>l.id===route[0])!,b=NIFL_LOCATIONS.find(l=>l.id===route[1])!;return <line key={i} x1={a.x/NIFL_SCALE+65} y1={a.z/NIFL_SCALE+80} x2={b.x/NIFL_SCALE+65} y2={b.z/NIFL_SCALE+80} stroke="#8a9eab" strokeWidth="1" strokeDasharray="2 2"/>;})}
@@ -1008,16 +1023,9 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
         {NIFL_LOCATIONS.map((l,i)=><g key={l.id} aria-label={l.name}><title>{l.name}</title><circle cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} r="5.5" fill="#fff" stroke="#526f82" strokeWidth=".6"/><text x={l.x/NIFL_SCALE+65} y={l.z/NIFL_SCALE+81.5} textAnchor="middle" fontSize="4" fill="#203e52">{i+1}</text></g>)}
         <circle cx={mapPoint(position.current.x,position.current.z).x} cy={mapPoint(position.current.x,position.current.z).y} r="2.5" fill="#d29d30" stroke="#fff" strokeWidth=".8"/>
       </svg>
-      <h4 style={{margin:'14px 0 6px'}}>📜 Книга освобождения: {liberation.count}/{liberation.total}</h4>
-      <p className="nifl-map-legend">Здесь только список и состояние 13 испытаний. Завершить их нажатием на карту нельзя: подойди к соответствующей локации и взаимодействуй с предметами или стражами в самом мире.</p>
-      <div className="nifl-task-book">{[...LIBERATION_TRIALS].sort((a,b)=>Number(liberation.has(a.id))-Number(liberation.has(b.id))).map((t,i)=><div key={t.id} className={'nifl-task-book-row'+(liberation.has(t.id)?' cleared':'')}>
-        <b>{liberation.has(t.id)?'✓':'○'} {t.title}: {t.name}</b>
-        <small>{liberation.has(t.id)?'Освобождено':t.intro}</small>
-        {!liberation.has(t.id)&&<small>Найди это место на карте и отправляйся туда.</small>}
-      </div>)}</div>
       <h4 style={{margin:'14px 0 6px'}}>🌑 Защитники Нифльхейма</h4>
       <p className="nifl-map-legend">15 участков появления Теней. Новая волна — каждые 15 минут; одновременно атакуют не более трёх, чтобы не перегружать телефон. После победы Тени исчезают до следующей волны. Орки охраняют важные проходы, тролли — магические рубежи.</p>
-      <p className="nifl-map-legend">Стражи: {NIFLHEIM_EXTRA_GUARDS.length + 5} мест (включая сюжетных). Тени: {NIFLHEIM_SHADOW_SITES.length} точек.</p>
+      <p className="nifl-map-legend">Стражи: {NIFLHEIM_EXTRA_GUARDS.length + 5} мест (включая сюжетных и охрану зданий). Тени: {NIFLHEIM_SHADOW_SITES.length} точек.</p>
       <h4 style={{margin:'14px 0 6px'}}>🧭 Локации на карте</h4>
       <div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><div key={l.id} style={{padding:'7px 9px',background:'#edf2f6',border:'1px solid #d1dce3',borderRadius:7,fontSize:12}}>{liberation.has(l.id)?'✓':'○'} {i+1}. {l.name}</div>)}</div><p className="nifl-map-legend">🧛 Морвейн: {liberation.vampireFreed?'✓ освобождён':'○ водоворот у Приюта хранителей'}.</p><p className="nifl-map-legend">Золотая точка — Vicki. Западное русло покрыто льдом, восточная река течёт, северо-западное русло пересохло.</p><p className="nifl-map-legend">Входные врата: <a href="https://sketchfab.com/3d-models/stone-arch-565793eb6528447c97223cfaf278d3f6" target="_blank" rel="noopener noreferrer">Stone Arch — Teranox</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения: сжатие текстур, уменьшение высоты и размещение.</p>
       <p className="nifl-map-legend">Факелы входных врат: <a href="https://sketchfab.com/3d-models/torch-a3b8085436d14977a69f965859d96575" target="_blank" rel="noopener noreferrer">Torch — DJMaesen</a>, CC BY 4.0. Текстуры сжаты в WebP; геометрия сохранена, изменены масштаб и размещение.</p>

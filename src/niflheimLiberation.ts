@@ -48,7 +48,7 @@ export const LIBERATION_TRIALS=[
   outcome:'Память источника восстановлена.'}
 ] as const;
 export type TrialId=typeof LIBERATION_TRIALS[number]['id'];
-export type LiberationEvent=`victory:${string}`|`riddle:${string}`|`vampire:rune:${string}`|'vampire:reveal'|'shadow:defeated';
+export type LiberationEvent=`victory:${string}`|`riddle:${string}`|`vampire:rune:${string}`|'vampire:reveal'|`shadow:defeated:${number}`|`guardian:defeated:${string}:${'orc'|'troll'}`;
 export const COMBAT_TRIALS=new Set<TrialId>(['memoryCave','vampire','roots','namesHall','snowMountain','threeNornsWell']);
 const complete=(done:readonly string[],id:string)=>done.includes(PREFIX+'cleared:'+id);
 export const trialById=(id:string)=>LIBERATION_TRIALS.find(t=>t.id===id);
@@ -78,12 +78,56 @@ export function liberationProgress(done:readonly string[]){
 export function applyLiberationEvent(save:Save,event:LiberationEvent):Save{
  const progress=liberationProgress(save.done);
  const addFlag=(flag:string)=>({...save,done:[...new Set([...save.done,PREFIX+flag])]});
- if(event==='shadow:defeated'){
-  const count=(save.lootCounts.niflheimShadowVictories||0)+1;
-  const potion=count%2===0?'lifeElixir':'northernMoss';
-  return {...save,immortalityDrops:save.immortalityDrops+8,
+ if(event.startsWith('shadow:defeated:')){
+  const site=Number(event.slice('shadow:defeated:'.length));
+  if(!Number.isInteger(site)||site<0||site>14)return save;
+  const cooldownKey=PREFIX+'shadow:'+site,now=Date.now();
+  if((save.locationCooldowns[cooldownKey]||0)>now)return save;
+  const victoryCount=(save.lootCounts.niflheimShadowVictories||0)+1;
+  const drops=80+(site%5)*35;
+  const potion=site%3===0?'lifeElixir':'northernMoss';
+  const rune=RUNE_CATALOG[(site+victoryCount)%RUNE_CATALOG.length].id;
+  return {...save,immortalityDrops:save.immortalityDrops+drops,
+    runeSteel:save.runeSteel+(site>=10?1:0),
+    runes:site%3===2?[...new Set([...save.runes,rune])]:save.runes,
     potions:[...save.potions,potion],
-    lootCounts:{...save.lootCounts,niflheimShadowVictories:count,[potion]:(save.lootCounts[potion]||0)+1}};
+    locationCooldowns:{...save.locationCooldowns,[cooldownKey]:now+15*60*1000},
+    lootCounts:{...save.lootCounts,niflheimShadowVictories:victoryCount,
+      [potion]:(save.lootCounts[potion]||0)+1,
+      ...(site%3===2?{[rune]:(save.lootCounts[rune]||0)+1}:{})}};
+ }
+ if(event.startsWith('guardian:defeated:')){
+  const data=event.slice('guardian:defeated:'.length);
+  const split=data.lastIndexOf(':');
+  if(split<0)return save;
+  const id=data.slice(0,split),role=data.slice(split+1);
+  if(!['orc','troll'].includes(role)||!/^[-a-zA-Z0-9]+$/.test(id))return save;
+  const key=PREFIX+'guardian:reward:'+id,now=Date.now();
+  if((save.locationCooldowns[key]||0)>now)return save;
+  const firstFlag=PREFIX+'guardian:weapon:'+id;
+  const first=!save.done.includes(firstFlag);
+  const prize:Record<string,'swordStar'|'axeGiant'|'hammerRune'|'bladeObsidian'|'sword2'|'axeDouble'>={
+   memoryCave:'swordStar',roots:'axeGiant',namesHall:'bladeObsidian',
+   snowMountain:'hammerRune',threeNornsWell:'swordStar',
+   shelterOrc:'sword2',forgeOrc:'swordStar',towerOrc:'hammerRune',
+   crossingTroll:'axeGiant',rootsTroll:'axeDouble',
+   hallOrc:'bladeObsidian',memoryOrc:'swordStar',
+   mountainOrc:'axeGiant',echoOrc:'sword2'
+  };
+  const weapon=prize[id]||(role==='troll'?'axeGiant':'swordStar');
+  const potion=role==='troll'?'lifeElixir':'northernMoss';
+  const drops=role==='troll'?190:125;
+  const firstVictory=first?PREFIX+'cleared:'+id:'';
+  return {...save,
+    done:[...new Set([...save.done,...(first?[firstFlag]:[]),...(firstVictory&&trialById(id)?[firstVictory]:[])])],
+    immortalityDrops:save.immortalityDrops+drops,
+    runeSteel:save.runeSteel+(role==='troll'?2:1),
+    potions:[...save.potions,potion],
+    ownedWeapons:first?[...new Set([...save.ownedWeapons,weapon])]:save.ownedWeapons,
+    locationCooldowns:{...save.locationCooldowns,[key]:now+15*60*1000},
+    lootCounts:{...save.lootCounts,
+      [potion]:(save.lootCounts[potion]||0)+1,
+      ...(first?{[weapon]:(save.lootCounts[weapon]||0)+1}:{})}};
  }
  if(event.startsWith('vampire:rune:')){
   if(progress.vampireFreed||progress.vampireUnbound)return save;
