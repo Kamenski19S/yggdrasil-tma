@@ -53,6 +53,11 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
       const distance=Math.hypot(pos.x-boss.anchor.position.x,pos.z-boss.anchor.position.z);
       if(!heroReady||boss.flying||distance>22){setStatus('Подойди к Нидхёггу после его приземления.');return;}
       if(performance.now()-lastStrike<650)return;lastStrike=performance.now();
+      if(!progressRef.current.worldFreed){
+        dragonLife=100;setDragonHp(100);
+        setStatus('Магия остальных локаций защищает Нидхёгга! Освободи весь Нифльхейм ('+progressRef.current.liberation.count+'/'+progressRef.current.liberation.total+'), и тогда возвращайся.');
+        return;
+      }
       if(!progressRef.current.forged||weapon!=='swordNidhogg'){
         dragonLife=Math.max(90,dragonLife-5);setDragonHp(Math.ceil(dragonLife));
         setStatus('Золотой меч царапает чешую, но раны мгновенно затягиваются! Нужна ковка у великана.');return;
@@ -230,12 +235,13 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
       <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>❤️ Vicki: {hp}/100</span>
       <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>🐉 Нидхёгг: {progressRef.current.defeated?'побеждён':dragonHp+'/100'}</span>
       <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>🌑 Обсидиан: {progressRef.current.obsidian.length}/3</span>
+      <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>❄️ Освобождено: {progressRef.current.liberation.count}/{progressRef.current.liberation.total}</span>
     </div>
     <button className="mid3d-ui mid3d-strike" aria-label="Ударить Нидхёгга" onClick={()=>attackRef.current()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></button>
     <button className="mid3d-ui mid3d-block" aria-label="Прикрыться щитом" disabled={!shieldEquipped} onClick={()=>shieldRef.current()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_shield.png`} alt="" draggable={false}/></button>
     {potions.length>0&&<button onClick={()=>{const potion=potions.includes('lifeElixir')?'lifeElixir':potions.includes('northernMoss')?'northernMoss':potions.includes('hoddmimirElixir')?'hoddmimirElixir':'';if(potion&&hp<100&&onUsePotion(potion,hp)){healRef.current(potion==='northernMoss'?30:100);setStatus('Эликсир восстановил силы Vicki.');}}} style={{position:'absolute',right:12,top:152,padding:9,background:'#20313c',color:'#eaf6ff',border:'1px solid #accade',borderRadius:8}}>🧪 Лечение</button>}
     {nearOre&&<div style={{position:'absolute',bottom:112,left:'50%',transform:'translateX(-50%)',padding:9,background:'#171d2deb',color:'#ebdfff',borderRadius:10,zIndex:7,textAlign:'center'}}><div>Обсидиан бездны · {NIFL_OBSIDIAN.find(p=>p.id===nearOre)?.name}</div><button onClick={()=>{eventRef.current(('obsidian:'+nearOre) as DragonEvent);setStatus('Обсидиан бездны получен. Вернись к великану с тремя залежами.');setNearOre('');}} style={{padding:'8px 12px',marginTop:6}}>🌑 Собрать</button></div>}
-    {nearDragon&&!progressRef.current.forged&&<div style={{position:'absolute',bottom:110,left:'50%',transform:'translateX(-50%)',padding:10,background:'#1b273aeb',color:'#fff',borderRadius:8,zIndex:7,textAlign:'center'}}>Чешуя дракона восстанавливается! <button onClick={()=>{clear();exit.current();}} style={{marginLeft:6}}>Отступить к кузнецу</button></div>}
+    {nearDragon&&(!progressRef.current.forged||!progressRef.current.worldFreed)&&<div style={{position:'absolute',bottom:110,left:'50%',transform:'translateX(-50%)',padding:10,background:'#1b273aeb',color:'#fff',borderRadius:8,zIndex:7,textAlign:'center'}}>{progressRef.current.worldFreed?'Чешуя дракона восстанавливается! Нужен легендарный меч.':'Нидхёгг защищён печатями оставшихся локаций. Освободи весь Нифльхейм.'} <button onClick={()=>{clear();exit.current();}} style={{marginLeft:6}}>Отступить к кузнецу</button></div>}
     <div style={{position:'absolute',left:12,bottom:4,fontSize:10,color:'#aebac2',maxWidth:'55%'}}>Пещера: <a href="https://sketchfab.com/3d-models/dark-side-cave-e6347843eec64b408157dabfb8b196b2" target="_blank" rel="noopener noreferrer" style={{color:'inherit'}}>diaspora</a> · CC BY 4.0 · уменьшены текстуры, изменены масштаб и высота.</div>
     <div style={{position:'absolute',right:12,bottom:4,fontSize:10,color:'#aebac2',maxWidth:'40%'}}>Кристаллы: <a href="https://sketchfab.com/3d-models/magic-crystals-f20b3376ef9a4dff8ad27f1402087c52" target="_blank" rel="noopener noreferrer" style={{color:'inherit'}}>Enn Shtyka</a> · CC BY 4.0 · уменьшены текстуры и масштаб.</div>
     {nearExit&&<button onClick={()=>{clear();exit.current();}} style={{position:'absolute',right:16,bottom:25,padding:'12px 16px',background:'#171e25',color:'#e4c78c',border:'2px solid #b39150',borderRadius:10}}>Открыть дверь · Нифльхейм</button>}

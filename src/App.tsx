@@ -1,5 +1,6 @@
 import {applyMemoryEvent} from './niflheimMemoryQuest';
 import {applyDragonQuestEvent,dragonProgress,NIFL_CRAFTS,type DragonEvent} from './niflheimDragonQuest';
+import {applyLiberationEvent,liberationProgress,type LiberationEvent} from './niflheimLiberation';
 import { VIKA_STORY, HERO_PROFILE_CSS } from './vikaStory';
 import {WOOD_TRADES,exchangeWood,forgeAshCost} from './woodEconomy';
 import { REPAIR_RESIDENTS, REPAIR_GOODS, REPAIR_PROJECTS, type RepairResident, nextRepairJob, residentRepairIntro, repaired, repairKey, workKey, canPrepareRepair, prepareRepair, canRestore, restoreLocation } from './locationRepairs';
@@ -598,7 +599,7 @@ const [roadT, setRoadT] = useState(0.06);
       {screen.t === "realm" && (() => {
   const realm = REALMS.find(r => r.id === screen.id)!;
 
-  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D questDone={save.done} onMemoryEvent={event=>setSave(s=>applyMemoryEvent(s,event))} onDragonEvent={(event:DragonEvent)=>setSave(s=>applyDragonQuestEvent(s,event))} onEnterUnderground={position=>{niflheimReturn.current={...position};go({t:"underground"});}} initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")} onOpenMill={()=>{setMillRealm("niflheim");go({t:"mill"});}} inventory={{potions:save.potions,runes:save.runes,equippedRune:save.equippedRune,lootCounts:save.lootCounts,runeLevels:save.forgeLevels,hp:Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp()),maxHp:(heroDef?.hp??100)+gearHp(),frostGuard:save.frostGuard,potionBoosts:save.potionBoosts,onUsePotion:useInventoryPotion,onEquipRune:equipInventoryRune,onFuseRune:fuseInventoryRune}} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")}/></React.Suspense>;
+  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D questDone={save.done} onMemoryEvent={event=>setSave(s=>applyMemoryEvent(s,event))} onDragonEvent={(event:DragonEvent)=>setSave(s=>applyDragonQuestEvent(s,event))} onLiberationEvent={(event:LiberationEvent)=>setSave(s=>applyLiberationEvent(s,event))} onFieldHpChange={hp=>setSave(s=>({...s,fieldHp:hp}))} useBattlePotion={useInventoryPotion} locationCooldowns={save.locationCooldowns} onEnterUnderground={position=>{niflheimReturn.current={...position};go({t:"underground"});}} initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")} onOpenMill={()=>{setMillRealm("niflheim");go({t:"mill"});}} inventory={{potions:save.potions,runes:save.runes,equippedRune:save.equippedRune,lootCounts:save.lootCounts,runeLevels:save.forgeLevels,hp:Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp()),maxHp:(heroDef?.hp??100)+gearHp(),frostGuard:save.frostGuard,potionBoosts:save.potionBoosts,onUsePotion:useInventoryPotion,onEquipRune:equipInventoryRune,onFuseRune:fuseInventoryRune}} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")}/></React.Suspense>;
 
   if (realm.id === "midgard") {
     if (!heroDef) return null;
@@ -1201,16 +1202,17 @@ const [roadT, setRoadT] = useState(0.06);
             <button disabled={forgeLevel(save.heroWeapon)>=forgeLimit(true)} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=forgeLimit(true)?'Максимум +'+forgeLimit(true):<>Закалить {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/>{forgeAshCost(true,forgeLevel(save.heroWeapon),!save.forgeFreeUsed)>0?" + ясень ×1":""}</>:'бесплатно'}</>}</button></div>
           {forgeRealm==="niflheim"&&(()=>{
             const q=dragonProgress(save.done);
-            const canForge=q.met&&q.ember&&q.ice.length===3&&q.obsidian.length===3&&save.runeSteel>=2&&save.runes.includes('tiwazValor')&&save.ownedWeapons.includes('swordGolden')&&!q.forged;
+            const canForge=q.met&&q.ember&&q.ice.length===3&&q.obsidian.length===3&&save.runeSteel>=2&&save.runes.includes('tiwazValor')&&save.ownedWeapons.includes('swordGolden')&&q.worldFreed&&!q.forged;
             const rewards=(event:DragonEvent,notice:string)=>{setSave(s=>applyDragonQuestEvent(s,event));say(notice);haptic('success');};
             return <section className="forge-note" style={{padding:14,margin:"12px 0",background:"#172431",border:"1px solid #b9c4d2",borderRadius:10,color:"#e3f0ff"}}>
               <h3 style={{color:"#e5c587",margin:"0 0 8px"}}>⚒️ Память древней кузницы</h3>
               <p>{q.met?'Великан вспоминает ковку, способную сокрушить чешую Нидхёгга.':'Спустись в логово после снятия печати башни. Первая встреча с драконом откроет древний рецепт.'}</p>
               <p>💎 Осколки вечного льда: {q.ice.length}/3 · 🌑 Обсидиан бездны: {q.obsidian.length}/3 · ⚙️ Руническая сталь: {save.runeSteel}</p>
               <p>🔥 Сердце древнего пламени: {q.ember?'получено':'не пробуждено'} · ᛏ Тейваз: {save.runes.includes('tiwazValor')?'есть':'нет'}</p>
+              <p>❄️ Освобождение Нифльхейма: {q.liberation.count}/{q.liberation.total}. {q.worldFreed?'Все локации свободны. Финальная ковка открыта!':'Заверши остальные задания и освободи Морвейна, прежде чем перековывать золотой меч.'}</p>
               {!q.ember&&q.met&&<button onClick={()=>rewards('ember','Горн восстановлен: сердце древнего пламени, 2 рунические стали, Тейваз и эликсир жизни!')}>🔥 Восстановить горн по памяти Хвергельмира</button>}
               {q.ember&&!q.forged&&<><p>«Золото Мидгарда помнит твою первую победу. Дай мне лёд и обсидиан — я создам Погибель Нидхёгга».</p><button disabled={!canForge} onClick={()=>rewards('forge','Золотой меч преобразован в «Погибель Нидхёгга»! Новый клинок в руке Vicki.')}>⚔️ Преобразить золотой меч (3 льда · 3 обсидиана · 2 стали · ᛏ)</button></>}
-              {q.forged&&<p>✅ «Погибель Нидхёгга» выкована. {q.defeated?'Дракон повержен, его чешуя хранится среди трофеев.':'Вернись в логово — теперь чешуя дракона уязвима.'}</p>}
+              {q.forged&&<p>✅ «Погибель Нидхёгга» выкована. {q.defeated?'Дракон повержен, его чешуя хранится среди трофеев.':'Вернись в логово — чешуя дракона уязвима лишь после освобождения всего Нифльхейма.'}</p>}
               <h4 style={{margin:"12px 0 6px"}}>Особые рецепты</h4>
               {NIFL_CRAFTS.map(recipe=><div key={recipe.id} style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",marginBottom:7}}>
                 <span>{recipe.name} · ⚙️{recipe.steel} · 💧{recipe.drops}</span>

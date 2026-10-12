@@ -27,7 +27,7 @@ export function createNiflRiverGeometry(points:{x:number;z:number}[],width:numbe
   geometry.computeVertexNormals();return geometry;
 }
 
-export function addNiflheimRivers(scene:THREE.Scene,base:string){
+export function addNiflheimRivers(scene:THREE.Scene,base:string,healed=false){
   const canvas=document.createElement('canvas');canvas.width=canvas.height=512;
   const ctx=canvas.getContext('2d')!;
   const gradient=ctx.createLinearGradient(0,0,512,512);
@@ -114,6 +114,14 @@ export function addNiflheimRivers(scene:THREE.Scene,base:string){
     mesh.name=index===NIFL_DRY_RIVER?'Dry cracked riverbed':index===NIFL_LIVING_RIVER?'Living eastern river':'Frozen river';mesh.receiveShadow=true;scene.add(mesh);
     if(index===NIFL_LIVING_RIVER)living=mesh;
   });
+  // Only the final victory restores the dry river. Keep the existing bed and its texture beneath it.
+  if(healed){
+    const flow=new THREE.Mesh(createNiflRiverGeometry(NIFL_RIVERS[NIFL_DRY_RIVER],NIFL_RIVER_WIDTHS[NIFL_DRY_RIVER]*.83),water);
+    flow.name='Освобождённое русло Нифльхейма';
+    const position=flow.geometry.getAttribute('position');
+    for(let i=0;i<position.count;i++)position.setY(i,position.getY(i)+.19);
+    position.needsUpdate=true;flow.receiveShadow=true;scene.add(flow);
+  }
   const baseY=living?Float32Array.from(living.geometry.getAttribute('position').array).filter((_,i)=>i%3===1):new Float32Array();
   return {ice,water,update(seconds:number){
     time.value=seconds;if(flowTexture)flowTexture.offset.y=-seconds*.035;

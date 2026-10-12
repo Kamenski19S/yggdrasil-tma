@@ -4,6 +4,7 @@ import {installGuardianStones} from './niflheimGuardianStones';
 import {createMemoryTable} from './niflheimMemoryTable';
 import {memoryQuest,DRY_SEALS,MEMORY_FINDS,SOURCE_RUNES,MEMORY_REWARD,type MemoryEvent} from './niflheimMemoryQuest';
 import {dragonProgress,NIFL_ICE,type DragonEvent} from './niflheimDragonQuest';
+import {liberationProgress,LIBERATION_TRIALS,trialById,COMBAT_TRIALS,type LiberationEvent} from './niflheimLiberation';
 import {createHvergelmir} from './niflheimHvergelmir';
 import {lakeBridgeBlocked} from './niflheimLakeBridgeCollision';
 import {createVenetianBridges} from './niflheimVenetianBridges';
@@ -27,7 +28,7 @@ import {createNiflheimGiant} from './niflheimGiant';
 import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
-import {BASE,cachedGlbBuffer,WEAPON_ASSET,textureSteelOnWeapon,styleNiflheimWeapon,type HeroWeapon} from './core';
+import {BASE,cachedGlbBuffer,WEAPON_ASSET,WEAPON_POWER,textureSteelOnWeapon,styleNiflheimWeapon,type HeroWeapon} from './core';
 import {addEntranceIce} from './niflheimEntranceIce';
 import {addEntranceSnow} from './niflheimEntranceSnow';
 import {addEntranceVeil} from './niflheimEntranceVeil';
@@ -47,7 +48,7 @@ const CSS=`
 .nifl-overlay{position:absolute;inset:0;z-index:10;background:#142b3acc;display:flex;align-items:center;justify-content:center;padding:12px;touch-action:auto}.nifl-panel{background:#fff;color:#22323d;border:2px solid #bac8d0;border-radius:16px;padding:16px;width:100%;max-width:620px;max-height:94%;overflow:auto}.nifl-panel h3{margin:0 0 8px;font-size:20px}.nifl-panel p{font-size:14px;line-height:1.6}.nifl-panel button{background:#eef3f6;color:#22323d;border:1px solid #b3c4ce;border-radius:9px;padding:10px;font:inherit;font-size:13px}.nifl-close{float:right}.nifl-panel svg{display:block;width:100%;height:42vh;min-height:240px;background:#e7eff4;border-radius:12px;margin-top:12px}.nifl-map-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:12px 0}.nifl-map-list button{text-align:left;font-size:12px}.nifl-map-legend{font-size:12px!important;color:#536875}
 `;
 
-export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,initialPosition,onRemember,onForge,onOpenMill,onEnterUnderground,inventory,weapon,shieldAsset,shieldEquipped}:{questDone:string[];onMemoryEvent:(event:MemoryEvent)=>void;onDragonEvent:(event:DragonEvent)=>void;onEnterUnderground:(position:{x:number;z:number})=>void;onOpenMill:()=>void;inventory:Omit<React.ComponentProps<typeof InventorySection>,'kind'>;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;onForge:(position:{x:number;z:number})=>void;initialPosition:{x:number;z:number};onRemember:(position:{x:number;z:number})=>void}){
+export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLiberationEvent,onFieldHpChange,useBattlePotion,locationCooldowns,initialPosition,onRemember,onForge,onOpenMill,onEnterUnderground,inventory,weapon,shieldAsset,shieldEquipped}:{questDone:string[];onMemoryEvent:(event:MemoryEvent)=>void;onDragonEvent:(event:DragonEvent)=>void;onLiberationEvent:(event:LiberationEvent)=>void;onFieldHpChange:(hp:number)=>void;useBattlePotion:(id:string,hp:number)=>boolean;locationCooldowns:Record<string,number>;onEnterUnderground:(position:{x:number;z:number})=>void;onOpenMill:()=>void;inventory:Omit<React.ComponentProps<typeof InventorySection>,'kind'>;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;onForge:(position:{x:number;z:number})=>void;initialPosition:{x:number;z:number};onRemember:(position:{x:number;z:number})=>void}){
   const mount=useRef<HTMLDivElement>(null);
   const position=useRef(clampNiflPosition(initialPosition.x,initialPosition.z));
   const remember=useRef(onRemember);remember.current=onRemember;
@@ -72,10 +73,69 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,initia
   const dragon=dragonProgress(questDone),dragonRef=useRef(dragon);dragonRef.current=dragon;
   const dragonCallback=useRef(onDragonEvent);dragonCallback.current=onDragonEvent;
   const emitDragon=(event:DragonEvent)=>dragonCallback.current(event);
+  const liberation=liberationProgress(questDone),liberationRef=useRef(liberation);liberationRef.current=liberation;
+  const [nearTrial,setNearTrial]=useState('');
+  const [trialOpen,setTrialOpen]=useState('');
+  const [trialMessage,setTrialMessage]=useState('');
+  const [battle,setBattle]=useState<{id:string;hp:number;maxHp:number;heroHp:number;energy:number;guard:boolean;runeCharge:number;log:string}|null>(null);
+  const trialInfo=trialById(trialOpen);
+  const [libStatus,setLibStatus]=useState('');
+  const enterTrial=(id:string)=>{
+    const trial=trialById(id);if(!trial)return;
+    if((trial.id==='roots'||trial.id==='namesHall')&&!dragon.memoryRestored){setStatus('Сначала пробуди память Хвергельмира.');return;}
+    if(liberation.has(id)&&COMBAT_TRIALS.has(id as any)){
+      const key='niflheim:liberation:repeat:'+id;
+      const remaining=(locationCooldowns[key]||0)-Date.now();
+      if(id==='vampire'){setStatus('Морвейн свободен и больше не враждует с Vicki.');return;}
+      if(remaining>0){setStatus('Этот страж восстановит силы через '+Math.ceil(remaining/60000)+' мин.');return;}
+    }
+    if(liberation.has(id)&&!COMBAT_TRIALS.has(id as any)){setStatus('Эта локация уже освобождена.');return;}
+    setTrialMessage('');
+    if(trial.kind==='battle')startTrialBattle(trial.id);else setTrialOpen(id);
+  };
+  const startTrialBattle=(id:string)=>{
+    const trial=trialById(id);if(!trial||!('hp' in trial)||!('attack' in trial))return;
+    setTrialOpen('');setBattle({id,hp:trial.hp,maxHp:trial.hp,heroHp:Math.max(30,inventory.hp),energy:5,guard:false,runeCharge:2,log:'Встань на защиту Нифльхейма!'});
+    clearInput();
+  };
+  const battleAction=(type:'hit'|'shield'|'rune')=>{
+    if(!battle)return;
+    const trial=trialById(battle.id);if(!trial||!('attack' in trial))return;
+    if(type==='rune'&&(!inventory.equippedRune||battle.runeCharge<1))return;
+    if(type==='shield'&&!shieldEquipped){setBattle({...battle,log:'Для защиты сначала нужен щит.'});return;}
+    const guard=type==='shield';
+    const power=type==='hit'?11+WEAPON_POWER[weapon]:type==='rune'?21:0;
+    const enemyHp=Math.max(0,battle.hp-power);
+    if(enemyHp<=0){
+      setBattle(null);onLiberationEvent(('victory:'+battle.id) as LiberationEvent);
+      setLibStatus('✨ '+trial.outcome);setStatus('Победа! Получены Капли бессмертия, руна, эликсир и руническая сталь.');
+      return;
+    }
+    const incoming=guard?Math.max(2,Math.floor(trial.attack*.2)):trial.attack;
+    const heroHp=Math.max(0,battle.heroHp-incoming);
+    onFieldHpChange(heroHp>0?heroHp:Math.max(35,Math.round(inventory.maxHp*.4)));
+    if(heroHp<=0){
+      setBattle(null);setStatus('Vicki отступила. Локация ещё не освобождена, но находки сохранены.');return;
+    }
+    setBattle({...battle,hp:enemyHp,heroHp,guard,energy:type==='shield'?Math.min(5,battle.energy+1):Math.max(1,battle.energy-1),
+      runeCharge:type==='rune'?battle.runeCharge-1:battle.runeCharge,
+      log:guard?'Щит поглотил большую часть удара.':type==='rune'?'Руна рассекла морозную защиту.':'Удар оружием! Враг отвечает.'});
+  };
+  const healInBattle=()=>{
+    if(!battle)return;
+    const potion=['lifeElixir','northernMoss','hoddmimirElixir'].find(id=>inventory.potions.includes(id));
+    if(!potion){setBattle({...battle,log:'Лечебных эликсиров больше нет.'});return;}
+    if(battle.heroHp>=inventory.maxHp){setBattle({...battle,log:'Здоровье уже полное.'});return;}
+    if(useBattlePotion(potion,battle.heroHp)){
+      const heroHp=potion==='northernMoss'?Math.min(inventory.maxHp,battle.heroHp+30):inventory.maxHp;
+      setBattle({...battle,heroHp,log:'Эликсир восстановил здоровье.'});
+    }
+  };
+
   const [questNear,setQuestNear]=useState('');
   const [questDialog,setQuestDialog]=useState<'girl'|'source'|'seal'|'bridge'|'tower'|null>(null);
   const [questMessage,setQuestMessage]=useState('');
-  paused.current=paused.current||!!questDialog;
+  paused.current=paused.current||!!questDialog||!!trialOpen||!!battle;
   const emitMemory=(event:MemoryEvent)=>{onMemoryEvent(event);};
   const info=NIFL_LOCATIONS.find(l=>l.id===selected);
   const nearest=NIFL_LOCATIONS.find(l=>l.id===near);
@@ -267,7 +327,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,initia
       const rim=arc.map(p=>new THREE.Vector3(p.x,niflGroundY(p.x,p.z)+3.9,p.z));
       scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rim),new THREE.LineBasicMaterial({color:'#cef4ff',transparent:true,opacity:.8,depthWrite:false})));
     }
-    const rivers=addNiflheimRivers(scene,BASE),{ice,water}=rivers;
+    const rivers=addNiflheimRivers(scene,BASE,dragonRef.current.defeated),{ice,water}=rivers;
     const disc=(x:number,z:number,rx:number,rz:number,mat:THREE.Material)=>{const m=mesh(new THREE.CircleGeometry(1,48),mat,x,niflGroundY(x,z)+.08,z,rx,rz,1);m.rotation.x=-Math.PI/2;return m;};
     NIFL_LAKES.forEach(l=>{disc(l.x,l.z,l.rx,l.rz,ice);for(let i=0;i<7;i++){const a=i/7*6.28;mesh(rockGeo,stone,l.x+Math.cos(a)*(l.rx+1),.6,l.z+Math.sin(a)*(l.rz+1),1,.8,1);}});
     const smallLake=NIFL_LAKES[1];
@@ -288,6 +348,20 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,initia
     scene.add(entrancePlaceholder);
     gates.push(entranceGate);
     const shelterPlaceholder=new THREE.Group();scene.add(shelterPlaceholder);
+    // Lightweight summoned sentinels; no new downloads or animation rigs.
+    const guardianRoots:{id:string;root:THREE.Group}[]=[];
+    for(const trial of LIBERATION_TRIALS){
+      if(!COMBAT_TRIALS.has(trial.id as any)||trial.id==='vampire')continue;
+      const location=NIFL_LOCATIONS.find(l=>l.id===trial.id);if(!location)continue;
+      const root=new THREE.Group();root.name='Страж испытания: '+trial.title;
+      const shade=new THREE.MeshStandardMaterial({color:'#8b9cba',emissive:'#344d94',emissiveIntensity:.55,roughness:.54,transparent:true,opacity:.83});
+      const breast=new THREE.Mesh(new THREE.ConeGeometry(1.25,4.2,6),shade);breast.position.y=2.6;root.add(breast);
+      const skull=new THREE.Mesh(new THREE.IcosahedronGeometry(.77,0),new THREE.MeshStandardMaterial({color:'#cee9f8',emissive:'#4e92db',emissiveIntensity:.38}));skull.position.y=5.05;root.add(skull);
+      const halo=new THREE.Mesh(new THREE.TorusGeometry(1.28,.085,6,20),new THREE.MeshBasicMaterial({color:'#9ed6fb',transparent:true,opacity:.75}));
+      halo.rotation.x=Math.PI/2;halo.position.y=4.9;root.add(halo);
+      root.position.set(location.x,niflGroundY(location.x,location.z)+.4,location.z);
+      scene.add(root);guardianRoots.push({id:trial.id,root});
+    }
     // Three unique everlasting-ice fragments mark safe snow near major locations.
     const iceShape=new THREE.OctahedronGeometry(1.15,1);
     const iceDust=new THREE.MeshBasicMaterial({color:'#d9f3ff',transparent:true,opacity:.84});
@@ -744,7 +818,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,initia
     const down=(event:KeyboardEvent)=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(event.key)){event.preventDefault();input.current.add(event.key);}};
     const up=(event:KeyboardEvent)=>input.current.delete(event.key);
     const clear=clearInput;window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',clear);document.addEventListener('visibilitychange',clear);
-    let previous=performance.now(),checkAt=0,currentNear='',velocityX=0,velocityZ=0;const cameraDir={x:0,z:-1};
+    let previous=performance.now(),checkAt=0,currentNear='',nearTrialRef='',velocityX=0,velocityZ=0;const cameraDir={x:0,z:-1};
     camera.position.set(position.current.x,9,position.current.z+19);
     const frame=(now:number)=>{
       if(!alive)return;const flyoverDt=Math.min((now-previous)/1000,1),dt=Math.min(flyoverDt,.05);previous=now;
@@ -799,7 +873,8 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,initia
       else camera.lookAt(pos.x+cameraDir.x*1.9,hy+3,pos.z-10+cameraDir.z*1.9);
       crystalMaterials.forEach(m=>{m.emissiveIntensity=1.35+Math.sin(now*.0017)*.12;});crystalHalos.forEach(h=>{(h.material as THREE.SpriteMaterial).opacity=.48+Math.sin(now*.0017)*.05;});
       drySeals.forEach(r=>{if(questRef.current.seals.some(s=>s.id===r.id))r.opacity=Math.max(0,r.opacity-dt/1.4);(r.mesh.material as THREE.MeshBasicMaterial).opacity=r.opacity;r.mesh.visible=r.opacity>0;});
-      if(waterSpiral)waterSpiral.rotation.y+=dt*.25;
+      if(waterSpiral){waterSpiral.rotation.y+=dt*(liberationRef.current.vampireFreed?.075:.25);const target=liberationRef.current.vampireFreed?.68:1;waterSpiral.scale.setScalar(THREE.MathUtils.lerp(waterSpiral.scale.x,target,Math.min(1,dt*.8)));}
+      guardianRoots.forEach((entry,i)=>{entry.root.visible=!liberationRef.current.has(entry.id);entry.root.rotation.y+=dt*.16;entry.root.position.y=niflGroundY(entry.root.position.x,entry.root.position.z)+.4+Math.sin(now*.0018+i)*.22;});
       if(bridgeRepair?.update(dt,questRef.current.bridgeRestored,questRef.current.bridgeParts))refreshShadows();
       sourceRing.rotation.z+=dt*.12;gates.forEach(g=>{(g.material as THREE.MeshBasicMaterial).opacity=.78+Math.sin(now*.001)*.06;});
       if(now-checkAt>180){checkAt=now;
@@ -808,7 +883,13 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,initia
         const seal=drySeals.find(r=>!questRef.current.seals.some(s=>s.id===r.id)&&Math.hypot(pos.x-r.position.x,pos.z-r.position.z)<6);
         const bridgePart=questRef.current.bridgeStarted&&!questRef.current.bridgeRestored?bridgeRepair?.near(pos.x,pos.z,questRef.current.bridgeParts):undefined;
         const nearQuest=iceFragment?'ice:'+iceFragment.id:bridgePart?'bridge:find:'+bridgePart.id:bridgeRepair&&Math.abs(pos.x+72)<8&&(Math.abs(pos.z-27)<8||Math.abs(pos.z+12)<8)?'bridge':seal?'seal:'+seal.id:find?'find:'+find.id:rootsSpace&&Math.hypot(pos.x-10.5,pos.z+57)<7?'girl':Math.hypot(pos.x-NIFL_SOURCE.x,pos.z-NIFL_SOURCE.z)<13?'source':'';
-        setQuestNear(prev=>prev===nearQuest?prev:nearQuest);const l=NIFL_LOCATIONS.filter(item=>item.id!=='nineWorldStranger'||wandererPresent).reduce((a,b)=>Math.hypot(pos.x-a.x,pos.z-a.z)<Math.hypot(pos.x-b.x,pos.z-b.z)?a:b);const id=lakeCave?.inside(pos.x,pos.z)?'snowMountain':towerEntrance.current?.canEnter(pos.x,pos.z)?'nidhogg':forgeSpace?.canEnter(pos.x,pos.z)?'forge':l.id!=='forge'&&l.id!=='nidhogg'&&Math.hypot(pos.x-l.x,pos.z-l.z)<9?l.id:'';if(id!==currentNear){currentNear=id;setNear(id);}}
+        setQuestNear(prev=>prev===nearQuest?prev:nearQuest);
+        const shore={x:40,z:109};
+        const questLocation=Math.hypot(pos.x-shore.x,pos.z-shore.z)<10?'vampire':
+          LIBERATION_TRIALS.find(t=>t.id!=='vampire'&&Math.hypot(pos.x-(t.id==='iceLake'?-50:(NIFL_LOCATIONS.find(l=>l.id===t.id)?.x??900)),
+              pos.z-(t.id==='iceLake'?10:(NIFL_LOCATIONS.find(l=>l.id===t.id)?.z??900)))<13)?.id||'';
+        if(questLocation!==nearTrialRef){nearTrialRef=questLocation;setNearTrial(questLocation);}
+        const l=NIFL_LOCATIONS.filter(item=>item.id!=='nineWorldStranger'||wandererPresent).reduce((a,b)=>Math.hypot(pos.x-a.x,pos.z-a.z)<Math.hypot(pos.x-b.x,pos.z-b.z)?a:b);const id=lakeCave?.inside(pos.x,pos.z)?'snowMountain':towerEntrance.current?.canEnter(pos.x,pos.z)?'nidhogg':forgeSpace?.canEnter(pos.x,pos.z)?'forge':l.id!=='forge'&&l.id!=='nidhogg'&&Math.hypot(pos.x-l.x,pos.z-l.z)<9?l.id:'';if(id!==currentNear){currentNear=id;setNear(id);}}
       wellGlowSprites.forEach((sprite,i)=>{(sprite.material as THREE.SpriteMaterial).opacity=.54+.12*Math.sin(performance.now()*.0017+i*2);});
       renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
@@ -838,6 +919,12 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,initia
     <button className="mid3d-ui mid3d-action" style={{top:125}} aria-label="Запас рун и эликсиров" onClick={()=>{clearInput();setInventoryOpen(true);}}><img className="mid3d-control-art" src={`${BASE}img/models/ui_inventory.png`} alt="" draggable={false}/></button>
     {inventoryOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Запас Vicki"><h3>Запас Vicki</h3><InventorySection kind="potions" {...inventory}/><InventorySection kind="runes" {...inventory}/><button onClick={()=>setInventoryOpen(false)}>Вернуться в игру</button></section></div>}
     {questNear&&<div className="nifl-near nifl-quest-near"><b>{questNear.startsWith('ice:')?'Осколок вечного льда':questNear==='bridge'?'Восстановление переправы':questNear.startsWith('bridge:find:')?BRIDGE_PARTS.find(p=>'bridge:find:'+p.id===questNear)?.name:questNear==='girl'?'Девушка у чаши':questNear==='source'?(quest.restored?'Возрождённый Хвергельмир':'Печать Хвергельмира'):questNear.startsWith('seal:')?'Печать '+DRY_SEALS.find(r=>'seal:'+r.id===questNear)?.name:MEMORY_FINDS.find(f=>'find:'+f.id===questNear)?.name}</b><button onClick={()=>{clearInput();setQuestMessage('');if(questNear.startsWith('ice:')){emitDragon(questNear as DragonEvent);setStatus('Осколок вечного льда получен! Эликсир добавлен в общий запас.');}else if(questNear.startsWith('bridge:find:')){emitMemory(questNear as MemoryEvent);setStatus('Камень опоры найден.');}else if(questNear.startsWith('find:')){emitMemory(questNear as MemoryEvent);setStatus('Осколок памяти найден. Вернись к девушке, когда соберёшь все три.');}else setQuestDialog(questNear==='bridge'?'bridge':questNear.startsWith('seal:')?'seal':questNear==='girl'?'girl':'source');}}>{questNear.startsWith('ice:')?'Забрать осколок':questNear.startsWith('bridge:find:')?'Забрать камень':questNear==='bridge'?'Осмотреть переправу':questNear.startsWith('seal:')?'Осмотреть печать':questNear.startsWith('find:')?'Извлечь изо льда':questNear==='girl'?'Поговорить':quest.restored?'Осмотреть источник':'Прикоснуться к печати'}</button></div>}
+    {nearTrial&&!battle&&!trialOpen&&<div className="nifl-near nifl-quest-near" style={{bottom:questNear?164:115,background:'#132231ee',zIndex:6}}>
+      <b>{liberation.has(nearTrial)?'✓ ':''}{trialById(nearTrial)?.name}</b>
+      <button onClick={()=>{clearInput();enterTrial(nearTrial);}}>{liberation.has(nearTrial)?COMBAT_TRIALS.has(nearTrial as any)&&nearTrial!=='vampire'?'Повторное испытание':'Освобождено':'Задание хранителей'}</button>
+    </div>}
+    <div style={{position:'absolute',top:58,left:12,padding:'3px 8px',fontSize:11,zIndex:5,color:'#f4f4ea',background:'#152c3bdd',borderRadius:6,pointerEvents:'none'}}>❄️ Нифльхейм: {liberation.count}/{liberation.total} освобождено</div>
+    {libStatus&&<div className="nifl-near" style={{bottom:198,zIndex:8}}><span>{libStatus}</span><button onClick={()=>setLibStatus('')}>✓</button></div>}
     {quest.started&&!questDialog&&<div className="nifl-quest-progress">{quest.restored?'Хвергельмир восстановлен':quest.ready?'Печать: '+quest.step+'/3':'Осколки памяти: '+quest.found.length+'/3'}</div>}
     {questDialog&&<div className="nifl-overlay"><section className="nifl-panel nifl-quest-panel" role="dialog" aria-modal="true" aria-label={questDialog==='tower'?'Печать башни Нидхёгга':questDialog==='bridge'?'Восстановление переправы':questDialog==='seal'?'Печати пересохшего русла':questDialog==='girl'?'Три осколка памяти':'Печать Хвергельмира'}><button className="nifl-close" onClick={()=>setQuestDialog(null)}>Закрыть</button><h3>{questDialog==='tower'?'Печать башни Нидхёгга':questDialog==='bridge'?'Восстановление переправы':questDialog==='seal'?'Печати пересохшего русла':questDialog==='girl'?'Три осколка памяти':'Хвергельмир'}</h3>
       {questDialog==='tower'?<><p>Серебряная дверь скована печатью древнего дракона. Сначала освободи три печати пересохшего русла и верни память Хвергельмиру.</p>
@@ -845,14 +932,45 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,initia
         {dragon.sealReady&&!dragon.unsealed?<button onClick={()=>{emitDragon('tower:unseal');setQuestDialog(null);setStatus('Печать башни растворилась! Теперь дверь откроется.');}}>ᛉ Снять печать башни</button>:<p>{dragon.unsealed?'Печать уже снята. Теперь можно открыть дверь.':'Вернись к башне после выполнения загадок.'}</p>}</>:questDialog==='bridge'?<>{quest.bridgeRestored?<p>Последний пролёт восстановлен. Теперь мост соединяет оба берега.</p>:<><p>Найди три камня опоры на берегах озера и вернись к переправе. Они помогут восстановить утраченный пролёт.</p><ul>{BRIDGE_PARTS.map(p=><li key={p.id}>{quest.bridgeParts.includes(p.id)?'✓':'○'} {p.name}</li>)}</ul>{!quest.bridgeStarted?<button onClick={()=>emitMemory('bridge:start')}>Принять задание</button>:quest.bridgeParts.length===3?<button onClick={()=>{emitMemory('bridge:repair');setQuestDialog(null);setStatus('Последний пролёт восстанавливается…');}}>Восстановить мост</button>:<p>Собрано: {quest.bridgeParts.length}/3. Ищи светлые камни у берегов озера.</p>}</>}</>:questDialog==='seal'?<><p>Три печати удерживают пересохшее русло. Прочитай смысл знака, чтобы снять его. Иса — лёд, Наутиз — скованность, Хагалаз — разрушение.</p><p>Что удерживает этот камень?</p>{DRY_SEALS.map(r=><button key={r.id} onClick={()=>{if(questNear==='seal:'+r.id){emitMemory(('seal:'+r.id) as MemoryEvent);setQuestDialog(null);setStatus(quest.seals.length===2?'Все три печати сняты. Русло свободно, но вода вернётся только после победы над драконом.':'Печать растворяется. Камень больше не удерживает русло.');}else setQuestMessage('Знак не отозвался. Попробуй прочитать его ещё раз.');}}>{r.meaning}</button>)}{questMessage&&<p role="status">{questMessage}</p>}<p>Снято печатей: {quest.seals.length}/3. Вода вернётся после победы над драконом.</p></>:questDialog==='girl'?<>{quest.restored?<p>«Источник вновь свободен. Но корни ещё помнят боль. Найди Нидхёгга под разрушенной башней — твой путь продолжается».</p>:quest.ready?<p>«Пусть сначала вернётся память — Ансуз ᚨ. Затем потечёт вода — Лагуз ᛚ. И вслед за ней пробудится жизнь — Беркана ᛒ. Повтори этот порядок у Хвергельмира».</p>:<><p>«Воды Нифльхейма помнят то, что забыли даже боги. Найди три утраченные вещи, и река откроет тебе свою тайну».</p><ul>{MEMORY_FINDS.map(f=><li key={f.id}>{quest.found.some(g=>g.id===f.id)?'✓':'○'} {f.name}</li>)}</ul><p>Ищи в замёрзшем западном русле. Найденные вещи хранятся в задании.</p>{quest.found.length===3?<button onClick={()=>emitMemory('handover')}>Показать три осколка</button>:!quest.started?<button onClick={()=>emitMemory('start')}>Принять задание</button>:<p>Найдено: {quest.found.length}/3. Я буду ждать у чаши.</p>}</>}</>:quest.restored?<><p>Багровый лёд рассыпался. В каменной чаше вновь светится голубая вода.</p><p>Награда получена: {MEMORY_REWARD} Капель бессмертия и эликсир северного мха.</p><p>Из глубины доносится шёпот: «Вода вспомнила путь… А ты вспомнишь, кто тревожит корни?»</p></>:!quest.ready?<p>Печать не отвечает. {quest.found.length===3?'Покажи три осколка девушке у чаши.':'Сначала найди девушку у чаши и собери три осколка памяти в замёрзшем русле.'}</p>:<><p>Активируй три знака в порядке, который назвала девушка. Память → вода → жизнь.</p><p>Активировано: {quest.step}/3</p><div className="nifl-rune-choices">{[SOURCE_RUNES[1],SOURCE_RUNES[2],SOURCE_RUNES[0]].map(r=><button key={r.id} onClick={()=>{const correct=r.id===SOURCE_RUNES[quest.step].id;emitMemory(('rune:'+r.id) as MemoryEvent);setQuestMessage(correct?'Знак отозвался голубым светом.':'Порядок нарушен. Печать погасила знаки — начни снова.');if(correct&&quest.step===2){setQuestDialog(null);setStatus('Хвергельмир пробуждается! +60 Капель бессмертия и эликсир северного мха.');}}}><span>{r.symbol}</span>{r.name}</button>)}</div>{questMessage&&<p role="status">{questMessage}</p>}</>}
     </section></div>}
     {nearest&&!questNear&&<div className="nifl-near"><b>{nearest.name}</b><button onClick={()=>{clearInput();if(nearest.id==='nidhogg'){if(!dragon.unsealed){setQuestDialog('tower');}else if(!doorOpening&&towerEntrance.current?.canEnter(position.current.x,position.current.z)){setDoorOpening(true);towerEntrance.current.open();setStatus('Дверь башни открывается…');}}else if(nearest.id==='forge'){remember.current({...position.current});onForge({...position.current});}else setSelected(nearest.id);}}>{nearest.id==='nidhogg'?(doorOpening?'Дверь открывается…':'Открыть дверь башни'):nearest.id==='forge'?'Войти в кузницу':nearest.id==='nineWorldStranger'?'Поговорить':'Осмотреть'}</button></div>}
-    {mapOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Карта Нифльхейма"><button className="nifl-close" onClick={()=>setMapOpen(false)}>Закрыть</button><h3>Карта Нифльхейма</h3><p className="nifl-map-legend">Три русла: живое, замёрзшее и пересохшее · два озера · источник Хвергельмир. Нажми на номер или название локации.</p>
+    {trialOpen&&trialInfo&&<div className="nifl-overlay" style={{zIndex:20}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label={trialInfo.title} style={{maxWidth:430}}>
+      <button className="nifl-close" onClick={()=>{setTrialOpen('');setTrialMessage('');}}>Закрыть</button>
+      <h3>{trialInfo.title} — {trialInfo.name}</h3><p>{trialInfo.intro}</p>
+      {liberation.has(trialOpen)?<p>✅ {trialInfo.outcome}</p>:trialInfo.kind==='existing'?<p>Это задание уже связано с предметами и печатями в мире. Используй существующие механики сбора и восстановления. Карта отмечает прогресс автоматически.</p>:trialInfo.kind==='vampire'?<>{!liberation.vampireUnbound?
+        <><p>Морвейн: «Моя тюрьма — вода. Вспомни течение, память и защиту. Выбери знаки в этом порядке».</p>
+        <p>ᛚ Лагуз → ᚨ Ансуз → ᛉ Альгиз · правильно: {liberation.vampireRunes.length}/3</p>
+        {(['ansuz','algiz','laguz'] as const).map(id=><button key={id} onClick={()=>{
+          const expected=(['laguz','ansuz','algiz'] as const)[liberation.vampireRunes.length];
+          onLiberationEvent(('vampire:rune:'+id) as LiberationEvent);
+          setTrialMessage(id===expected?'Знак отозвался.':'Символы погасли. Начни последовательность заново.');
+        }}>{id==='laguz'?'ᛚ Лагуз':id==='ansuz'?'ᚨ Ансуз':'ᛉ Альгиз'}</button>)}
+        {liberation.vampireRunes.length===3&&<button onClick={()=>{onLiberationEvent('vampire:reveal');setTrialMessage('Морвейн свободен от водоворота, но тёмная магия заставляет его атаковать!');}}>🌊 Снять водную печать</button>}</>:<><p>Морвейн потерял контроль. Победи его, чтобы снять последнее заклятие, но сохрани ему жизнь.</p><button onClick={()=>startTrialBattle('vampire')}>⚔️ Усмирить Морвейна</button></>}</>:('options' in trialInfo)?<div>{trialInfo.options.map((answer,index)=><button key={index} onClick={()=>{
+        if(index!==trialInfo.answer){setTrialMessage('Неверный ответ. Прислушайся к подсказке и попробуй снова.');return;}
+        if(trialInfo.kind==='riddleBattle')startTrialBattle(trialInfo.id);
+        else{onLiberationEvent(('riddle:'+trialInfo.id) as LiberationEvent);setLibStatus('✨ '+trialInfo.outcome);setTrialOpen('');setStatus('Задание завершено. Награда отправлена в общий инвентарь.');}
+      }} style={{display:'block',width:'100%',marginBottom:6}}>{answer}</button>)}</div>:<button onClick={()=>startTrialBattle(trialInfo.id)}>⚔️ Начать испытание</button>}
+      {trialMessage&&<p role="status">{trialMessage}</p>}
+    </section></div>}
+    {battle&&<div className="nifl-overlay" style={{zIndex:22}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Бой за освобождение" style={{maxWidth:440}}>
+      <h3>⚔️ {trialById(battle.id)?.name}</h3>
+      <p>❤️ Vicki: {battle.heroHp}/{inventory.maxHp} · ⚔️ Противник: {battle.hp}/{battle.maxHp}</p>
+      <div style={{display:'flex',gap:5,margin:'8px 0'}}><div style={{height:7,background:'#c75858',width:Math.max(0,100*battle.heroHp/inventory.maxHp)+'%',borderRadius:4}}/><div style={{height:7,background:'#6b9dcf',width:Math.max(0,100*battle.hp/battle.maxHp)+'%',borderRadius:4}}/></div>
+      <p>{battle.log}</p><p>Энергия: {Array.from({length:5},(_,i)=>i<battle.energy?'🟢':'⚪').join('')} · Руна: {battle.runeCharge}/2</p>
+      <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+        <button disabled={battle.energy<1} onClick={()=>battleAction('hit')}>⚔️ Ударить</button>
+        <button disabled={!shieldEquipped} onClick={()=>battleAction('shield')}>🛡️ Щит</button>
+        <button disabled={!inventory.equippedRune||battle.runeCharge<1} onClick={()=>battleAction('rune')}>ᛉ Руна</button>
+        <button onClick={healInBattle}>🧪 Эликсир</button>
+        <button onClick={()=>{onFieldHpChange(battle.heroHp);setBattle(null);setStatus('Vicki отступила — бой можно повторить позже.');}}>🚪 Отступить</button>
+      </div>
+    </section></div>}
+    {mapOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Карта Нифльхейма"><button className="nifl-close" onClick={()=>setMapOpen(false)}>Закрыть</button><h3>Карта Нифльхейма</h3><p className="nifl-map-legend">❄️ Освобождение: {liberation.count}/{liberation.total}. {liberation.finished?'Нидхёгг утратил защиту мира!':'Заверши задания, чтобы ослабить Нидхёгга.'}</p><p className="nifl-map-legend">Три русла: живое, замёрзшее и пересохшее · два озера · источник Хвергельмир. Нажми на номер или название локации.</p>
       <svg viewBox="0 0 130 160" aria-label="Реки и локации Нифльхейма">
         {NIFL_ROUTES.map((route,i)=>{const a=NIFL_LOCATIONS.find(l=>l.id===route[0])!,b=NIFL_LOCATIONS.find(l=>l.id===route[1])!;return <line key={i} x1={a.x/NIFL_SCALE+65} y1={a.z/NIFL_SCALE+80} x2={b.x/NIFL_SCALE+65} y2={b.z/NIFL_SCALE+80} stroke="#8a9eab" strokeWidth="1" strokeDasharray="2 2"/>;})}
         {NIFL_RIVERS.map((river,i)=><polyline key={i} points={river.map(p=>`${p.x/NIFL_SCALE+65},${p.z/NIFL_SCALE+80}`).join(' ')} fill="none" stroke={i===2?"#82766b":"#78b2cf"} strokeWidth={i===0?4:3} strokeDasharray={i===2?"2 1":undefined}/>)}
         {NIFL_LAKES.map((l,i)=><ellipse key={i} cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} rx={l.rx/NIFL_SCALE} ry={l.rz/NIFL_SCALE} fill="#9ecbdf"/>)}<ellipse cx="65" cy="31" rx="8" ry="7" fill="#347c9d"/>
         {NIFL_LOCATIONS.map((l,i)=><g key={l.id} role="button" tabIndex={0} aria-label={l.name} onClick={()=>setSelected(l.id)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelected(l.id);}}} style={{cursor:'pointer'}}><circle cx={l.x/NIFL_SCALE+65} cy={l.z/NIFL_SCALE+80} r="5.5" fill="#fff" stroke="#526f82" strokeWidth=".6"/><text x={l.x/NIFL_SCALE+65} y={l.z/NIFL_SCALE+81.5} textAnchor="middle" fontSize="4" fill="#203e52">{i+1}</text></g>)}
         <circle cx={mapPoint(position.current.x,position.current.z).x} cy={mapPoint(position.current.x,position.current.z).y} r="2.5" fill="#d29d30" stroke="#fff" strokeWidth=".8"/>
-      </svg><div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><button key={l.id} onClick={()=>setSelected(l.id)}>{i+1}. {l.name}</button>)}</div><p className="nifl-map-legend">Золотая точка — Vicki. Западное русло покрыто льдом, восточная река течёт, северо-западное русло пересохло.</p><p className="nifl-map-legend">Входные врата: <a href="https://sketchfab.com/3d-models/stone-arch-565793eb6528447c97223cfaf278d3f6" target="_blank" rel="noopener noreferrer">Stone Arch — Teranox</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения: сжатие текстур, уменьшение высоты и размещение.</p>
+      </svg><div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><button key={l.id} onClick={()=>setSelected(l.id)}>{liberation.has(l.id)?'✓':'○'} {i+1}. {l.name}</button>)}</div><p className="nifl-map-legend">🧛 Морвейн: {liberation.vampireFreed?'✓ освобождён':'○ водоворот у Приюта хранителей'}.</p><p className="nifl-map-legend">Золотая точка — Vicki. Западное русло покрыто льдом, восточная река течёт, северо-западное русло пересохло.</p><p className="nifl-map-legend">Входные врата: <a href="https://sketchfab.com/3d-models/stone-arch-565793eb6528447c97223cfaf278d3f6" target="_blank" rel="noopener noreferrer">Stone Arch — Teranox</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения: сжатие текстур, уменьшение высоты и размещение.</p>
       <p className="nifl-map-legend">Факелы входных врат: <a href="https://sketchfab.com/3d-models/torch-a3b8085436d14977a69f965859d96575" target="_blank" rel="noopener noreferrer">Torch — DJMaesen</a>, CC BY 4.0. Текстуры сжаты в WebP; геометрия сохранена, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Стены зала: <a href="https://sketchfab.com/3d-models/stone-bricks-beige-wall-set-8df474d0b8df453c87255a1758dde6e2" target="_blank" rel="noopener noreferrer">Stone bricks beige Wall-set — DADedits</a>, CC BY 4.0. Выделен прямой модуль, уменьшены текстуры, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Плиты и стол: <a href="https://sketchfab.com/3d-models/cave-rocks-4101c07c6a754f85962c6b516af4713a" target="_blank" rel="noopener noreferrer">Cave Rocks — Splanyic</a>, CC BY 4.0. Выделены каменные модули, уменьшены текстуры; из модулей собраны плиты и стол.</p>
@@ -894,7 +1012,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,initia
       <p className="nifl-map-legend">Ледяной дом: <a href="https://sketchfab.com/3d-models/igloo-224f673917e6486eb08c496baf77ce84" target="_blank" rel="noopener noreferrer">Igloo — Vera4Art</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, убрана исходная площадка, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Великан: <a href="https://sketchfab.com/3d-models/lowpoly-giant-warrior-rigged-66588f8fd6f64212abe49c7c6cababa9" target="_blank" rel="noopener noreferrer">Lowpoly Giant Warrior (rigged) — luch.pok (lvintoniyak)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Убраны крупные браслеты, осветлена кожа, уменьшены текстуры; изменены масштаб и размещение, добавлены поза сидя и подъём с камня.</p>
     </section></div>}
-    {info&&<div className="nifl-overlay" style={{zIndex:11}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label={info.name}><h3>{info.name}</h3><p>{info.text}</p>{info.id==='forge'&&<p>Подойди к освещённому входу, чтобы войти в кузницу.</p>}<button onClick={()=>setSelected('')}>Продолжить путь</button></section></div>}
+    {info&&<div className="nifl-overlay" style={{zIndex:11}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label={info.name}><h3>{info.name}</h3><p>{info.text}</p>{trialById(info.id)&&<p>❄️ Задание: {trialById(info.id)?.name} — {liberation.has(info.id)?'выполнено':'ещё не выполнено'}. Чтобы выполнить, подойди к локации.</p>}{info.id==='forge'&&<p>Подойди к освещённому входу, чтобы войти в кузницу.</p>}<button onClick={()=>setSelected('')}>Продолжить путь</button></section></div>}
   </div>;
 }
 

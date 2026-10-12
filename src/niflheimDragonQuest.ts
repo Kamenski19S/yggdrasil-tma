@@ -1,3 +1,4 @@
+import {liberationProgress} from './niflheimLiberation';
 import type {Save,HeroWeapon} from './core';
 import {RUNE_CATALOG} from './world';
 
@@ -17,9 +18,10 @@ export function dragonProgress(done:readonly string[]){
  const has=(key:string)=>done.includes(PREFIX+key);
  const ice=NIFL_ICE.filter(p=>has('ice:'+p.id));
  const obsidian=NIFL_OBSIDIAN.filter(p=>has('obsidian:'+p.id));
+ const liberation=liberationProgress(done);
  const memoryRestored=done.includes('niflheim:memory:restored');
  const drySeals=['isa','nauthiz','hagalaz'].every(id=>done.includes('niflheim:dry:'+id));
- return {has,ice,obsidian,memoryRestored,drySeals,sealReady:memoryRestored&&drySeals,unsealed:has('towerUnsealed'),met:has('first'),ember:has('ember'),forged:has('forged'),defeated:has('defeated')};
+ return {has,ice,obsidian,liberation,worldFreed:liberation.finished,memoryRestored,drySeals,sealReady:memoryRestored&&drySeals,unsealed:has('towerUnsealed'),met:has('first'),ember:has('ember'),forged:has('forged'),defeated:has('defeated')};
 }
 export function applyDragonQuestEvent(save:Save,event:DragonEvent):Save{
  const p=dragonProgress(save.done);
@@ -49,7 +51,7 @@ export function applyDragonQuestEvent(save:Save,event:DragonEvent):Save{
   });
  }
  if(event==='forge'){
-  if(!p.met||p.ice.length!==NIFL_ICE.length||p.obsidian.length!==NIFL_OBSIDIAN.length||!p.ember||p.forged||save.runeSteel<2||!save.runes.includes('tiwazValor')||!save.ownedWeapons.includes('swordGolden'))return save;
+  if(!p.met||p.ice.length!==NIFL_ICE.length||p.obsidian.length!==NIFL_OBSIDIAN.length||!p.ember||p.forged||save.runeSteel<2||!save.runes.includes('tiwazValor')||!save.ownedWeapons.includes('swordGolden')||!p.worldFreed)return save;
   const runeCount=Math.max(1,Number(save.lootCounts.tiwazValor)||1)-1;
   return add('forged',{
    runeSteel:save.runeSteel-2,
@@ -61,7 +63,7 @@ export function applyDragonQuestEvent(save:Save,event:DragonEvent):Save{
   });
  }
  if(event==='defeat'){
-  if(!p.forged||p.defeated)return save;
+  if(!p.forged||p.defeated||!p.worldFreed)return save;
   const rune=RUNE_CATALOG[(save.done.length+7)%RUNE_CATALOG.length].id;
   return add('defeated',{
    immortalityDrops:save.immortalityDrops+45,
