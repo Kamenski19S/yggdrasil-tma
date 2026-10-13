@@ -61,9 +61,10 @@ export function App() {
   const [combatFx, setCombatFx] = useState<{kind:"hit"|"rune"|"guard";key:number}|null>(null);
   const [millRealm,setMillRealm]=useState("midgard");
   const [forgeRealm,setForgeRealm]=useState("midgard");
+  const [pendingForgeWeapon,setPendingForgeWeapon]=useState<HeroWeapon|null>(null);
   const [forgeTransition, setForgeTransition] = useState(false);
   const [craftWeapon,setCraftWeapon]=useState<HeroWeapon|''>('');
-  const [craftMaterial,setCraftMaterial]=useState<CraftMaterial|''>('');
+  const [craftMaterial,setCraftMaterial]=useState<CraftMaterial|'runeSteel'|''>('');
   const [craftPicker,setCraftPicker]=useState<'weapon'|'material'|null>(null);
   const forgeTimer = useRef<number>(0);
   const midgardReturn = useRef({x:0,z:28});
@@ -164,7 +165,7 @@ const [roadT, setRoadT] = useState(0.06);
 
   const enterForge=(position?:{x:number;z:number},realm="midgard")=>{
     if(forgeTransition)return;
-    setForgeRealm(realm);
+    setForgeRealm(realm);setPendingForgeWeapon(null);
     if(position){if(realm==="niflheim")niflheimReturn.current={...position};else midgardReturn.current={...position};}
     const goldenSwordReady=MIDGARD_GUARDIAN_ORDER.slice(0,-1).every(id=>save.done.includes("guardian:stage:"+id));
     if(realm==="midgard"&&goldenSwordReady&&!save.ownedWeapons.includes("swordGolden")){
@@ -213,7 +214,7 @@ const [roadT, setRoadT] = useState(0.06);
   const forgeLevel=(id:string)=>Math.max(0,Number(save.forgeLevels[id]||0));
   const equipped=(id:GearId)=>save.equippedGear.includes(id);
   const gearLevel=(id:GearId)=>equipped(id)?forgeLevel(id==='shield'?shieldForgeKey(save.shieldAsset):id):0;
-  const gearHp=()=>gearLevel('armor')*3+gearLevel('helmet')*2+(equipped('armor')?4:0)+(equipped('helmet')?2:0);
+  const gearHp=()=>gearLevel('armor')*8+gearLevel('helmet')*3+(equipped('armor')?8:0)+(equipped('helmet')?3:0);
   const gearDefense=()=>Math.floor((gearLevel('armor')+gearLevel('helmet'))/2)+(equipped('armor')?1:0);
   const activeRuneDef=()=>RUNE_CATALOG.find(r=>r.id===save.equippedRune);
   const runeLevel=(id:string)=>Math.min(3,1+Math.max(0,Number(save.forgeLevels['rune:'+id])||0));
@@ -234,7 +235,16 @@ const [roadT, setRoadT] = useState(0.06);
   };
   const toggleGear=(id:GearId)=>{
     const isOn=equipped(id);
-    setSave(s=>({...s,equippedGear:isOn?s.equippedGear.filter(gear=>gear!==id):[...s.equippedGear,id]}));
+    setSave(s=>{
+      const already=s.equippedGear.includes(id);
+      const nextGear=already?s.equippedGear.filter(gear=>gear!==id):[...s.equippedGear,id];
+      const hpFrom=(list:GearId[])=>
+        (list.includes('armor')?(Number(s.forgeLevels.armor)||0)*8+8:0)+
+        (list.includes('helmet')?(Number(s.forgeLevels.helmet)||0)*3+3:0);
+      const oldBonus=hpFrom(s.equippedGear),newBonus=hpFrom(nextGear);
+      return {...s,equippedGear:nextGear,
+        fieldHp:s.fieldHp===null?null:Math.min((heroDef?.hp||100)+newBonus,Math.max(1,s.fieldHp+newBonus-oldBonus))};
+    });
     haptic();say((isOn?'Снято: ':'Надето: ')+(forgeItems.find(item=>item.id===id)?.name||id));
   };
   const forgeLimit=(weaponOrShield:boolean)=>forgeRealm==="niflheim"?(weaponOrShield?20:15):(weaponOrShield?10:5);
@@ -248,7 +258,15 @@ const [roadT, setRoadT] = useState(0.06);
     if(save.stock.ashWood<ashCost){say("Для закалки от +5 нужна ясеневая древесина ×1.");return;}
     const cost=forgeCost(item.id);
     if(save.immortalityDrops<cost){say("Недостаточно Капель бессмертия. Нужно: "+cost);return;}
-    setSave(s=>s.stock.ashWood<ashCost||s.immortalityDrops<cost?s:({...s,stock:{...s.stock,ashWood:s.stock.ashWood-ashCost},immortalityDrops:s.immortalityDrops-cost,forgeFreeUsed:true,forgeLevels:{...s.forgeLevels,[key]:(s.forgeLevels[key]||0)+1}}));
+    setSave(s=>{
+      if(s.stock.ashWood<ashCost||s.immortalityDrops<cost)return s;
+      const hpBonus=key==='armor'&&s.equippedGear.includes('armor')?8:key==='helmet'&&s.equippedGear.includes('helmet')?3:0;
+      const oldHpBonus=(s.equippedGear.includes('armor')?(Number(s.forgeLevels.armor)||0)*8+8:0)+
+        (s.equippedGear.includes('helmet')?(Number(s.forgeLevels.helmet)||0)*3+3:0);
+      return {...s,stock:{...s.stock,ashWood:s.stock.ashWood-ashCost},immortalityDrops:s.immortalityDrops-cost,
+        forgeFreeUsed:true,forgeLevels:{...s.forgeLevels,[key]:(s.forgeLevels[key]||0)+1},
+        fieldHp:s.fieldHp===null?null:Math.min((heroDef?.hp||100)+oldHpBonus+hpBonus,s.fieldHp+hpBonus)};
+    });
     haptic("success");
     say((cost===0?"Первая ковка бесплатна. ":"")+item.name+": закалка +1");
   };
@@ -263,13 +281,14 @@ const [roadT, setRoadT] = useState(0.06);
       say(name+' пока хранится у защитника. Победи его, чтобы забрать оружие.');return;
     }
     const selected=id as HeroWeapon;
-    if(save.heroWeapon===selected){say(name+' уже в руке.');return;}
-    setSave(s=>({...s,heroWeapon:selected}));haptic('success');say(name+' в руке. Сила оружия: +'+WEAPON_POWER[selected]+'.');
+    if(save.heroWeapon===selected){say(name+' уже в руке.');setPendingForgeWeapon(null);return;}
+    setPendingForgeWeapon(selected);
+    say(name+' выбран для осмотра. Нажми «Взять в руку», чтобы сменить оружие Vicki.');
   };
   const craftRecipesForWeapon=craftWeapon?CRAFT_RECIPES.filter(r=>r.weapon===craftWeapon):[];
   const selectedCraftRecipe=CRAFT_RECIPES.find(r=>r.weapon===craftWeapon&&r.material===craftMaterial)||null;
   const craftWeaponCopies=craftWeapon?Math.max(0,Number(save.lootCounts[craftWeapon])||0):0;
-  const craftMaterialCount=craftMaterial?save.stock[craftMaterial]:0;
+  const craftMaterialCount=craftMaterial?(craftMaterial==='runeSteel'?save.runeSteel:save.stock[craftMaterial]):0;
   const directCraftWeaponIds=new Set<HeroWeapon>(CRAFT_RECIPES.map(r=>r.weapon));
   const chooseCraftWeapon=(id:HeroWeapon)=>{
     const recipes=CRAFT_RECIPES.filter(r=>r.weapon===id);
@@ -283,7 +302,7 @@ const [roadT, setRoadT] = useState(0.06);
     else if(!recipes.some(r=>r.material===craftMaterial))setCraftMaterial('');
     setCraftPicker(null);
   };
-  const craftReady=!!selectedCraftRecipe&&craftWeaponCopies>=2&&craftMaterialCount>=selectedCraftRecipe.amount&&save.immortalityDrops>=selectedCraftRecipe.cost;
+  const craftReady=!!selectedCraftRecipe&&craftWeaponCopies>=2&&craftMaterialCount>=selectedCraftRecipe.amount&&save.immortalityDrops>=selectedCraftRecipe.cost&&(!selectedCraftRecipe.reforge||(save.forgeLevels[selectedCraftRecipe.weapon]||0)<20);
   const performCraft=()=>{
     const recipe=selectedCraftRecipe;
     if(!recipe){say("Для этой пары оружия и материала пока нет рецепта.");return;}
@@ -292,18 +311,22 @@ const [roadT, setRoadT] = useState(0.06);
     if(save.immortalityDrops<recipe.cost){say("Не хватает Капель бессмертия. Нужно: "+recipe.cost);return;}
     setSave(state=>{
       const currentCopies=Math.max(0,Number(state.lootCounts[recipe.weapon])||0);
-      if(currentCopies<2||state.stock[recipe.material]<recipe.amount||state.immortalityDrops<recipe.cost)return state;
+      const materialAvailable=recipe.material==='runeSteel'?state.runeSteel:state.stock[recipe.material];
+      if(currentCopies<2||materialAvailable<recipe.amount||state.immortalityDrops<recipe.cost||
+        (recipe.reforge&&(state.forgeLevels[recipe.weapon]||0)>=20))return state;
       const nextCounts={...state.lootCounts,[recipe.weapon]:Math.max(1,currentCopies-1)};
-      nextCounts[recipe.result]=(Number(nextCounts[recipe.result])||0)+1;
+      if(!recipe.reforge)nextCounts[recipe.result]=(Number(nextCounts[recipe.result])||0)+1;
       return {...state,
         immortalityDrops:state.immortalityDrops-recipe.cost,
-        stock:{...state.stock,[recipe.material]:state.stock[recipe.material]-recipe.amount},
+        ...(recipe.material==='runeSteel'?{runeSteel:state.runeSteel-recipe.amount}:{
+          stock:{...state.stock,[recipe.material]:state.stock[recipe.material]-recipe.amount}}),
         ownedWeapons:[...new Set([...state.ownedWeapons,recipe.result])],
+        forgeLevels:recipe.reforge?{...state.forgeLevels,[recipe.weapon]:(state.forgeLevels[recipe.weapon]||0)+1}:state.forgeLevels,
         lootCounts:nextCounts
       };
     });
     haptic("success");
-    say("Крафт завершён: "+lootDisplayName(recipe.result)+" создан. Потрачена 1 лишняя копия "+lootDisplayName(recipe.weapon)+".");
+    say(recipe.reforge?"Закалка "+lootDisplayName(recipe.weapon)+" повышена на +1 за дубликат и руническую сталь.":"Крафт завершён: "+lootDisplayName(recipe.result)+" создан. Потрачена 1 лишняя копия "+lootDisplayName(recipe.weapon)+".");
     setCraftWeapon('');setCraftMaterial('');setCraftPicker(null);
   };
   const guardianProgressCount=MIDGARD_GUARDIAN_ORDER.filter(id=>save.done.includes("guardian:stage:"+id)||save.done.includes("guardian:"+id)).length;
@@ -1197,7 +1220,14 @@ const [roadT, setRoadT] = useState(0.06);
             : "Дар кузнеца: первое улучшение любого доступного предмета бесплатно."}</div>
           <div className="forge-group-title">{forgeRealm==="niflheim"?"Оружие для Нифльхейма":"Стена оружия Вёлунда"}</div>
           {forgeRealm==="niflheim"&&<div className="forge-note">Оружие Мидгарда остаётся доступным. Новые клинки и секиры куются по рецептам хранителей. Для победы над Нидхёггом потребуется особое преобразование золотого меча.</div>}
-          <ForgeWeaponWall niflheim={forgeRealm==="niflheim"} owned={save.ownedWeapons} ownedShields={save.ownedShields} selected={save.heroWeapon} selectedShield={equipped('shield')?save.shieldAsset:null} onChoose={chooseForgeWeapon}/>
+          <ForgeWeaponWall niflheim={forgeRealm==="niflheim"} owned={save.ownedWeapons} ownedShields={save.ownedShields} selected={pendingForgeWeapon||save.heroWeapon} selectedShield={equipped('shield')?save.shieldAsset:null} onChoose={chooseForgeWeapon}/>
+          {pendingForgeWeapon&&pendingForgeWeapon!==save.heroWeapon&&<div className="forge-note" style={{padding:12,border:'1px solid #c69c53',margin:'8px 0'}}>
+            Выбрано для осмотра: <b>{FORGE_WEAPON_MODELS.find(item=>item[2]===pendingForgeWeapon)?.[1]}</b>. Текущее оружие остаётся в руке до подтверждения.
+            <div style={{display:'flex',gap:8,marginTop:10}}>
+              <button onClick={()=>{const weapon=pendingForgeWeapon;setSave(prev=>prev.ownedWeapons.includes(weapon)?{...prev,heroWeapon:weapon}:prev);setPendingForgeWeapon(null);haptic('success');}}>⚔️ Взять в руку</button>
+              <button onClick={()=>setPendingForgeWeapon(null)}>Отмена</button>
+            </div>
+          </div>}
           <div className="forge-equipped"><span>В руке: {save.heroWeapon==='default'?('Меч валькирии'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} · сила +{WEAPON_POWER[save.heroWeapon]} · закалка +{forgeLevel(save.heroWeapon)}</span>
             <button disabled={forgeLevel(save.heroWeapon)>=forgeLimit(true)} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=forgeLimit(true)?'Максимум +'+forgeLimit(true):<>Закалить {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/>{forgeAshCost(true,forgeLevel(save.heroWeapon),!save.forgeFreeUsed)>0?" + ясень ×1":""}</>:'бесплатно'}</>}</button></div>
           {forgeRealm==="niflheim"&&(()=>{
@@ -1279,7 +1309,7 @@ const [roadT, setRoadT] = useState(0.06);
           <div className="card center" style={{background:"rgba(13,12,10,.84)",borderColor:"#71431f"}}>
             <div className="craft-fire">🔥</div>
             <div className="qhead2" style={{color:"#ffc45e"}}>Кузня Чертога</div>
-            <p className="dim">Для крафта Мидгарда нужна лишняя копия оружия. Новое оружие Нифльхейма создаётся по отдельным рецептам из рунической стали и Капель бессмертия.</p>
+            <p className="dim">Для крафта нужна лишняя копия оружия. Два одинаковых клинка Нифльхейма можно соединить с рунической сталью для закалки +1. Основной экземпляр остаётся у Vicki.</p>
             <button className="btn rune" onClick={()=>document.getElementById('nifl-craft-recipes')?.scrollIntoView({behavior:'smooth',block:'start'})}>❄️ Рецепты оружия Нифльхейма · 4 вида ↓</button>
             <div className="craft-recipe">
               <button className={"craft-slot"+(craftWeapon?" selected":"")} onClick={()=>setCraftPicker(craftPicker==="weapon"?null:"weapon")}>
@@ -1294,7 +1324,7 @@ const [roadT, setRoadT] = useState(0.06);
               <span className="craft-op">＝</span>
               <span className={"craft-slot"+(selectedCraftRecipe?" result":"")}>
                 <b>{selectedCraftRecipe?weaponDisplayIcon(selectedCraftRecipe.result):"?"}</b>
-                {selectedCraftRecipe?lootDisplayName(selectedCraftRecipe.result):"результат"}
+                {selectedCraftRecipe?(selectedCraftRecipe.reforge?lootDisplayName(selectedCraftRecipe.result)+" · закалка +1":lootDisplayName(selectedCraftRecipe.result)):"результат"}
               </span>
             </div>
 
@@ -1315,8 +1345,8 @@ const [roadT, setRoadT] = useState(0.06);
               <div className="craft-picker-title">{craftWeapon?"Подходящий материал для "+lootDisplayName(craftWeapon):"Сначала выбери оружие"}</div>
               <div className="craft-choices">
                 {!craftWeapon&&<div className="dim">Материал зависит от выбранного оружия.</div>}
-                {craftWeapon&&([...new Set(craftRecipesForWeapon.map(r=>r.material))] as CraftMaterial[]).map(id=><button key={id} disabled={save.stock[id]<=0} className={"craft-choice"+(craftMaterial===id?" on":"")} onClick={()=>{setCraftMaterial(id);setCraftPicker(null);}}>
-                  <span style={{fontSize:20}}>{craftMaterialIcon(id)}</span><span><b>{craftMaterialName(id)}</b><small>в корзине: {save.stock[id]}</small></span>
+                {craftWeapon&&([...new Set(craftRecipesForWeapon.map(r=>r.material))] as (CraftMaterial|'runeSteel')[]).map(id=><button key={id} disabled={(id==='runeSteel'?save.runeSteel:save.stock[id])<=0} className={"craft-choice"+(craftMaterial===id?" on":"")} onClick={()=>{setCraftMaterial(id);setCraftPicker(null);}}>
+                  <span style={{fontSize:20}}>{craftMaterialIcon(id)}</span><span><b>{craftMaterialName(id)}</b><small>в запасе: {id==='runeSteel'?save.runeSteel:save.stock[id]}</small></span>
                 </button>)}
               </div>
             </div>}
@@ -1324,9 +1354,9 @@ const [roadT, setRoadT] = useState(0.06);
             <div className="hrow"><SparkDrop/> Капли бессмертия: <b>{save.immortalityDrops}</b></div>
             {selectedCraftRecipe?<div className="craft-cost">
               Рецепт: 1 лишняя копия <b>{lootDisplayName(selectedCraftRecipe.weapon)}</b> + {selectedCraftRecipe.amount} × {craftMaterialName(selectedCraftRecipe.material)} + {selectedCraftRecipe.cost} Капель бессмертия.
-              <br/>Результат: <b>{lootDisplayName(selectedCraftRecipe.result)}</b>.
+              <br/>Результат: <b>{selectedCraftRecipe.reforge?'Закалка +1 для '+lootDisplayName(selectedCraftRecipe.result):lootDisplayName(selectedCraftRecipe.result)}</b>.
             </div>:<div className="craft-cost">{craftWeapon?"Для этого оружия выбери показанный подходящий материал.":"Выбери оружие с прямым рецептом. Оружие без продолжения разбирается ниже на Руническую сталь."}</div>}
-            <button className="btn gold" disabled={!craftReady} onClick={performCraft}>{selectedCraftRecipe?"Создать: "+lootDisplayName(selectedCraftRecipe.result):"Выбери рецепт"}</button>
+            <button className="btn gold" disabled={!craftReady} onClick={performCraft}>{selectedCraftRecipe?(selectedCraftRecipe.reforge?'Усилить дубликатом: ':'Создать: ')+lootDisplayName(selectedCraftRecipe.result):"Выбери рецепт"}</button>
 
             <div className="steel-wallet">⚙️ Руническая сталь: <b>{save.runeSteel}</b></div>
 

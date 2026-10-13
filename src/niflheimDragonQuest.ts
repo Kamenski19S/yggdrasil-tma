@@ -63,7 +63,6 @@ export function applyDragonQuestEvent(save:Save,event:DragonEvent):Save{
   return add('forged',{
    runeSteel:save.runeSteel-2,
    ownedWeapons:[...new Set([...save.ownedWeapons,'swordNidhogg'])],
-   heroWeapon:'swordNidhogg',
    runes:runeCount?save.runes:save.runes.filter(r=>r!=='tiwazValor'),
    equippedRune:runeCount?save.equippedRune:save.equippedRune==='tiwazValor'?'':save.equippedRune,
    lootCounts:{...save.lootCounts,tiwazValor:runeCount,swordNidhogg:1}

@@ -14,8 +14,8 @@ type Role='orc'|'troll'|'undead';
 type Spot={id:string;root:THREE.Group};
 type Asset={scene:THREE.Group;animations:THREE.AnimationClip[]};
 type Actor={model:THREE.Group;root:THREE.Group;mixer:THREE.AnimationMixer;role:Role;static:boolean;groundOffset:number;clips:THREE.AnimationClip[];idle:THREE.AnimationAction|null;current:THREE.AnimationAction|null;actionUntil:number};
-type Shadow={id:number;site:{x:number;z:number;place:string};root:THREE.Group;actor:Actor;healthBar:THREE.Mesh;hp:number;active:boolean;used:boolean;born:number;lastBite:number;lastHit:number};
-type Guard={id:string;actor:Actor;root:THREE.Group;origin:THREE.Vector3;role:'orc'|'troll';hp:number;maxHp:number;attack:number;lastAttack:number;lastHit:number;deadAt:number;respawnAt:number;bar:THREE.Mesh};
+type Shadow={id:number;site:{x:number;z:number;place:string};root:THREE.Group;actor:Actor;healthBar:THREE.Sprite;hp:number;active:boolean;used:boolean;born:number;lastBite:number;lastHit:number};
+type Guard={id:string;actor:Actor;root:THREE.Group;origin:THREE.Vector3;role:'orc'|'troll';hp:number;maxHp:number;attack:number;lastAttack:number;lastHit:number;deadAt:number;respawnAt:number;bar:THREE.Sprite};
 type OnShadowHit=(damage:number)=>void;
 type OnGuardDefeated=(id:string,role:'orc'|'troll')=>void;
 export const NIFLHEIM_RIGGED_ASSETS:Record<Role,string>={
@@ -164,19 +164,29 @@ export function installNiflheimRiggedEnemies(
     if(clip)desired.setLoop(THREE.LoopRepeat,Infinity);
     actor.current=desired;
   };
-  const makeBar=(root:THREE.Group,y:number,tint:string)=>{
-    const bg=new THREE.Mesh(new THREE.PlaneGeometry(2.5,.21),new THREE.MeshBasicMaterial({color:'#23212e',depthTest:false,side:THREE.DoubleSide}));
-    const bar=new THREE.Mesh(new THREE.PlaneGeometry(2.4,.15),new THREE.MeshBasicMaterial({color:tint,depthTest:false,side:THREE.DoubleSide}));
-    bg.position.set(0,y,.03);bar.position.set(0,y,.08);root.add(bg,bar);return bar;
+  // Depth-aware camera-facing health bars in WORLD coordinates.
+  const makeBar=(tint:string)=>{
+    const anchor=new THREE.Group();anchor.name='Здоровье над головой';scene.add(anchor);anchor.visible=false;
+    const background=new THREE.Sprite(new THREE.SpriteMaterial({color:'#29242c',depthTest:true,depthWrite:false,fog:false}));
+    background.scale.set(2.55,.28,1);anchor.add(background);
+    const fill=new THREE.Sprite(new THREE.SpriteMaterial({color:tint,depthTest:true,depthWrite:false,fog:false}));
+    fill.position.z=.09;fill.scale.set(2.42,.17,1);anchor.add(fill);return fill;
+  };
+  const updateBarPosition=(actor:Actor,fill:THREE.Sprite)=>{
+    const anchor=fill.parent as THREE.Group;
+    actor.model.updateWorldMatrix(true,true);
+    const head=actor.model.getObjectByName(actor.role==='orc'?'Bip001_Head_060':'Head_M_0230');
+    if(head){head.getWorldPosition(anchor.position);anchor.position.y+=.65;}
+    else{const box=new THREE.Box3().setFromObject(actor.model);box.getCenter(anchor.position);anchor.position.y=box.max.y+.45;}
   };
   const persistGuard=(id:string,next:number)=>{try{localStorage.setItem('yggdrasil-niflheim-guard-'+id,String(next));}catch{}};
   const readGuard=(id:string)=>{try{return Number(localStorage.getItem('yggdrasil-niflheim-guard-'+id))||0;}catch{return 0;}};
   const createGuard=(id:string,role:'orc'|'troll',holder:THREE.Group,actor:Actor)=>{
-    const isTroll=role==='troll',maxHp=isTroll?165:98,attack=isTroll?15:9;
-    const bar=makeBar(holder,ROLE_HEIGHT[role]+.55,isTroll?'#c9a4ec':'#e58b7f');
+    const isTroll=role==='troll',maxHp=isTroll?165:98,attack=isTroll?38:24;
+    const bar=makeBar(isTroll?'#c9a4ec':'#e58b7f');
     const origin=holder.getWorldPosition(new THREE.Vector3()),next=readGuard(id);
     const guard:Guard={id,actor,root:holder,origin,role,hp:maxHp,maxHp,attack,lastAttack:0,lastHit:0,deadAt:0,respawnAt:next,bar};
-    holder.visible=next<=Date.now();guards.push(guard);
+    holder.visible=next<=Date.now();bar.parent!.visible=holder.visible;guards.push(guard);
   };
   // Load one optimized axe and clone it; geometry/materials are shared.
   const axeTemplate=cachedGlbBuffer(`${BASE}img/models/Axe_Double.glb`)
@@ -191,16 +201,22 @@ export function installNiflheimRiggedEnemies(
       // floats across the waist instead of staying inside the closed fist.
       model.traverse(o=>{
         const mesh=o as THREE.Mesh;
-        if(mesh.isMesh&&(o.name==='Object_25'||mesh.geometry?.name?.includes('Axe_07')))o.visible=false;
+        if(mesh.isMesh&&(o.name==='Object_25'||o.name==='Axe'||mesh.geometry?.name?.includes('Axe_07')))o.visible=false;
+      });
+    }else if(role==='troll'){
+      // Source "meat" prop is a separate skinned mesh, NOT part of his body.
+      model.traverse(o=>{
+        const mesh=o as THREE.Mesh;
+        if(mesh.isMesh&&(o.name==='Object_290'||o.name==='Weapon_Weapon1_0'||mesh.geometry?.name?.includes('Weapon_Weapon1_0')))o.visible=false;
       });
     }
     axeTemplate.then(template=>{
       if(!isAlive()||!template)return;
       model.updateMatrixWorld(true);
-      const hand=model.getObjectByName(role==='orc'?'Bip001_R_Hand_017':'Wrist_L_0262');
+      const hand=model.getObjectByName(role==='orc'?'Bip001_R_Hand_017':'Wrist_R_0241');
       if(!hand){console.warn('No fist bone for',role);return;}
       const axe=template.clone(true);
-      axe.name=role==='orc'?'Секира орка в правой руке':'Секира гоблина в левой руке';
+      axe.name=role==='orc'?'Секира орка в правой руке':'Секира гоблина в правой руке';
       axe.updateMatrixWorld(true);
       const box=new THREE.Box3().setFromObject(axe),size=box.getSize(new THREE.Vector3());
       if(size.y<.0001)return;
@@ -211,7 +227,7 @@ export function installNiflheimRiggedEnemies(
       axe.position.z-=center.z;
       const grip=new THREE.Group();
       grip.name='Крепление оружия к кисти';
-      grip.rotation.set(Math.PI/2,0,role==='orc'?-Math.PI/2:Math.PI/2);
+      grip.rotation.set(Math.PI/2,0,-Math.PI/2);
       hand.add(grip);
       hand.updateWorldMatrix(true,false);
       const worldScale=hand.getWorldScale(new THREE.Vector3());
@@ -242,22 +258,19 @@ export function installNiflheimRiggedEnemies(
     root.position.set(site.x,ground(site.x,site.z),site.z);
     root.visible=false;scene.add(root);
     const actor=mountActor(root,'undead',asset);actor.static=false;
-    const background=new THREE.Mesh(new THREE.BoxGeometry(2.15,.17,.07),new THREE.MeshBasicMaterial({color:'#251526',depthTest:false}));
-    background.position.y=ROLE_HEIGHT.undead+.55;root.add(background);
-    const bar=new THREE.Mesh(new THREE.BoxGeometry(2.1,.14,.09),new THREE.MeshBasicMaterial({color:'#b47fdd',depthTest:false}));
-    bar.position.y=ROLE_HEIGHT.undead+.55;bar.position.z=.06;root.add(bar);
+    const bar=makeBar('#b47fdd');
     shadows.push({id,site,root,actor,healthBar:bar,hp:SHADOW_MAX_HP+id*9,active:false,used:false,born:0,lastBite:0,lastHit:0});
   };
   const fadeOut=(shadow:Shadow,defeated:boolean)=>{
-    shadow.root.visible=false;shadow.active=false;shadow.used=true;
+    shadow.root.visible=false;shadow.healthBar.parent!.visible=false;shadow.active=false;shadow.used=true;
     if(defeated){const drops=80+(shadow.id%5)*35;notify('🌑 Тень изгнана. +'+drops+' Капель и трофей.');onShadowDefeated(shadow.id);}
   };
   const activate=(shadow:Shadow,now:number)=>{
     shadow.active=true;shadow.used=true;shadow.born=now;
     shadow.hp=SHADOW_MAX_HP+shadow.id*9;shadow.lastBite=now;shadow.lastHit=0;
-    shadow.root.visible=true;shadow.root.scale.setScalar(.001);
+    shadow.root.visible=true;shadow.healthBar.parent!.visible=true;shadow.root.scale.setScalar(.001);
     shadow.root.position.set(shadow.site.x,ground(shadow.site.x,shadow.site.z),shadow.site.z);
-    shadow.healthBar.scale.x=1;shadow.healthBar.position.x=0;
+    shadow.healthBar.scale.x=2.42;shadow.healthBar.position.x=0;
     notify('🌑 Из тумана возникла Тень забытых у '+shadow.site.place+'!');
   };
 
@@ -331,16 +344,17 @@ export function installNiflheimRiggedEnemies(
       if(paused)return;
       for(const guard of guards){
         if(guard.deadAt){
-          if(now-guard.deadAt>1150){guard.root.visible=false;guard.deadAt=0;}
+          if(now-guard.deadAt>1150){guard.root.visible=false;guard.bar.parent!.visible=false;guard.deadAt=0;}
           continue;
         }
         if(guard.respawnAt>Date.now())continue;
         if(!guard.root.visible){
-          guard.root.visible=true;guard.hp=guard.maxHp;
+          guard.root.visible=true;guard.bar.parent!.visible=true;guard.hp=guard.maxHp;
           if(guard.root.parent===scene)guard.root.position.set(guard.origin.x,ground(guard.origin.x,guard.origin.z)+guard.actor.groundOffset,guard.origin.z);
           else guard.root.position.set(0,0,0);
-          guard.bar.scale.x=1;guard.bar.position.x=0;guard.respawnAt=0;
+          guard.bar.scale.x=2.42;guard.bar.position.x=0;guard.respawnAt=0;
         }
+        updateBarPosition(guard.actor,guard.bar);
         const place=guard.root.getWorldPosition(new THREE.Vector3());
         const dist=Math.hypot(place.x-hero.x,place.z-hero.z);
         if(dist>24){resetAction(guard.actor,now);continue;}
@@ -396,13 +410,13 @@ export function installNiflheimRiggedEnemies(
             shadow.root.position.set(nx,ground(nx,nz),nz);
           }
         }
-        shadow.actor.mixer.update(Math.min(dt,.05));
+        shadow.actor.mixer.update(Math.min(dt,.05));updateBarPosition(shadow.actor,shadow.healthBar);
         if(distance<4.5&&now-shadow.lastBite>3300){
           shadow.lastBite=now;
           if(shielded){
             if(now-lastWarn>1800){notify('🛡️ Щит отбил удар Тени.');lastWarn=now;}
           }else{
-            const damage=5+Math.floor(shadow.id/3)*2;
+            const damage=15+Math.floor(shadow.id/3)*3;
             onShadowStrike(damage);
             if(now-lastWarn>2400){notify('🌑 Тень атакует! −'+damage+' здоровья.');lastWarn=now;}
           }
@@ -422,7 +436,7 @@ export function installNiflheimRiggedEnemies(
         const damage=guard.role==='troll'?(specialist?48:18):(specialist?35:22);
         guard.hp=Math.max(0,guard.hp-damage);
         const ratio=guard.hp/guard.maxHp;
-        guard.bar.scale.x=ratio;guard.bar.position.x=-(1-ratio)*1.2;
+        guard.bar.scale.x=2.42*ratio;guard.bar.position.x=-(1-ratio)*1.21;
         if(guard.hp<=0){
           guard.deadAt=now;guard.respawnAt=Date.now()+WAVE_MS;
           persistGuard(guard.id,guard.respawnAt);
@@ -444,8 +458,8 @@ export function installNiflheimRiggedEnemies(
       const damage=weapon==='bladeObsidian'?48:weapon==='hammerRune'?38:22;
       target.hp=Math.max(0,target.hp-damage);
       const ratio=target.hp/(SHADOW_MAX_HP+target.id*9);
-      target.healthBar.scale.x=ratio;
-      target.healthBar.position.x=-(1-ratio)*1.05;
+      target.healthBar.scale.x=2.42*ratio;
+      target.healthBar.position.x=-(1-ratio)*1.21;
       if(target.hp<=0)fadeOut(target,true);
       else notify('⚔️ Удар по Тени! Осталось '+target.hp+' здоровья.');
       return true;
@@ -454,7 +468,8 @@ export function installNiflheimRiggedEnemies(
     numberOfShadowSites:()=>NIFLHEIM_SHADOW_SITES.length,
     dispose(){
       actors.forEach(a=>a.mixer.stopAllAction());
-      shadows.forEach(s=>s.root.removeFromParent());
+      shadows.forEach(s=>{s.root.removeFromParent();s.healthBar.parent?.removeFromParent();});
+      guards.forEach(g=>g.bar.parent?.removeFromParent());
       extras.forEach(e=>e.removeFromParent());
       commonShadowMaterials.forEach(m=>m.dispose());
       winterOrcMaterials.forEach(m=>m.dispose());

@@ -50,7 +50,7 @@ export const FORGE_WEAPON_MODELS = [
 export type CraftMaterial=GatherKind;
 
 
-export type CraftRecipe={weapon:Exclude<HeroWeapon,"default"|"swordGolden">;material:CraftMaterial;amount:number;cost:number;result:Exclude<HeroWeapon,"default"|"swordGolden">};
+export type CraftRecipe={weapon:Exclude<HeroWeapon,"default"|"swordGolden">;material:CraftMaterial|"runeSteel";amount:number;cost:number;result:Exclude<HeroWeapon,"default"|"swordGolden">;reforge?:boolean};
 
 
 export const CRAFT_RECIPES:CraftRecipe[]=[
@@ -59,20 +59,26 @@ export const CRAFT_RECIPES:CraftRecipe[]=[
   {weapon:"axeSmall",material:"wood",amount:2,cost:14,result:"axeDouble"},
   {weapon:"mace",material:"wood",amount:3,cost:18,result:"hammerDouble"},
   {weapon:"sword2",material:"wood",amount:3,cost:22,result:"swordBig"},
-  {weapon:"spear",material:"twigs",amount:3,cost:20,result:"scythe"}
+  {weapon:"spear",material:"twigs",amount:3,cost:20,result:"scythe"},
+  // Two identical Niflheim weapons are merged into one strengthened copy.
+  // Existing loot is kept; forgeLevels tracks the permanent +1 tempering.
+  {weapon:"swordStar",material:"runeSteel",amount:2,cost:110,result:"swordStar",reforge:true},
+  {weapon:"axeGiant",material:"runeSteel",amount:3,cost:140,result:"axeGiant",reforge:true},
+  {weapon:"hammerRune",material:"runeSteel",amount:4,cost:170,result:"hammerRune",reforge:true},
+  {weapon:"bladeObsidian",material:"runeSteel",amount:4,cost:190,result:"bladeObsidian",reforge:true}
 ];
 
 
-export const craftMaterialName=(id:CraftMaterial)=>id==="wood"?"Древесина":id==="twigs"?"Ветки":id==="ashWood"?"Ясеневая древесина":"Лечебные травы";
+export const craftMaterialName=(id:CraftMaterial|"runeSteel")=>id==="runeSteel"?"Руническая сталь":id==="wood"?"Древесина":id==="twigs"?"Ветки":id==="ashWood"?"Ясеневая древесина":"Лечебные травы";
 
 
-export const craftMaterialIcon=(id:CraftMaterial)=>id==="wood"?"🪵":id==="twigs"?"🌿":id==="ashWood"?"🪵✨":"🌱";
+export const craftMaterialIcon=(id:CraftMaterial|"runeSteel")=>id==="runeSteel"?"⚙️":id==="wood"?"🪵":id==="twigs"?"🌿":id==="ashWood"?"🪵✨":"🌱";
 
 
 export const RUNE_STEEL_YIELD:Partial<Record<HeroWeapon,number>>={
   knife:1,dagger2:2,sword2:1,axeSmall:1,mace:1,
   axe:2,spear:2,swordBig:2,axeDouble:3,hammerDouble:2,
-  claymore:3,scythe:3
+  claymore:3,scythe:3,swordStar:5,axeGiant:6,hammerRune:7,bladeObsidian:8
 };
 
 
