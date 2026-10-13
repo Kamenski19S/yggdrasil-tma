@@ -1,0 +1,5 @@
+Animated water texture 128px — YCbCr
+Source: https://opengameart.org/content/animated-water-texture-128px
+Downloaded archive: https://opengameart.org/sites/default/files/water_128px_frames.zip
+License: CC0 1.0 Universal https://creativecommons.org/publicdomain/zero/1.0/
+Modification: packed the 40 PNG files in the archive into an 8x5 WebP atlas, with 2px edge padding per frame. Used as an animated surface material along the game's river geometry.

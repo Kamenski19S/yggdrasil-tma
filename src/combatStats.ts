@@ -24,3 +24,8 @@ export function incomingCombatDamage(raw:number,stats:CombatStats,shielded=false
  const reduced=Math.max(1,raw-stats.defense);
  return shielded?Math.max(0,Math.ceil(reduced*.3)-stats.shieldDefense):reduced;
 }
+
+export function dragonStrikeDamage(raw:number,stats:CombatStats,shielded:boolean){
+ const damage=incomingCombatDamage(raw,stats);
+ return shielded?Math.ceil(damage/2):damage;
+}

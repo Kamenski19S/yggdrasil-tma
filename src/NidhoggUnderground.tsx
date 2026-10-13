@@ -1,4 +1,5 @@
-import {incomingCombatDamage,type CombatStats} from './combatStats';
+import {createDragonFire} from './dragonFire';
+import {dragonStrikeDamage,type CombatStats} from './combatStats';
 import {boostedPotionDamage,potionDodges,type PotionBoosts,type PotionBoostKind} from './potionEffects';
 import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
@@ -51,9 +52,11 @@ export default function NidhoggUnderground({combatStats,fieldHp,onFieldHpChange,
     // Cool lamps mark the chamber without adding another world renderer.
     for(const z of [-55,-32,-8,15])for(const x of [-31,31]){const lamp=new THREE.PointLight('#73cae9',90,18,2);lamp.position.set(x,7,z);scene.add(lamp);const crystal=new THREE.Mesh(new THREE.OctahedronGeometry(.7),new THREE.MeshBasicMaterial({color:'#83dcf5'}));crystal.position.copy(lamp.position);scene.add(crystal);}
     const wood=new THREE.MeshStandardMaterial({color:'#48352b',roughness:1});box(6,9,.4,0,4.5,26.8,wood);box(7,.7,1,0,9.3,26.6);box(.7,9.3,1,-3.4,4.65,26.6);box(.7,9.3,1,3.4,4.65,26.6);
-    const hero=new THREE.Group();scene.add(hero);const pos={x:0,z:19};hero.rotation.y=Math.PI;
+    const hero=new THREE.Group();scene.add(hero);const dragonFire=createDragonFire(scene);const pos={x:0,z:19};hero.rotation.y=Math.PI;
     let mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,current:THREE.AnimationAction|undefined,dragonMixer:THREE.AnimationMixer|undefined;
     let dragonBounds:THREE.Box3|undefined,encounter:ReturnType<typeof createNidhoggEncounter>|undefined;
+    let pendingBreath=0;
+    let shieldBones:THREE.Object3D[]=[],shieldPose:THREE.Quaternion[]=[];
     let heroReady=false,heroLife=Math.min(combatStats.maxHp,fieldHp??combatStats.maxHp),dragonLife=100,lastStrike=0,lastBite=0,guardUntil=0,lastHud=0,strikeCount=0,metSent=false,beaten=false,heartCharge=whirlpoolHeart?1:0;
     healRef.current=(amount:number)=>{heroLife=Math.min(combatRef.current.maxHp,heroLife+amount);setHp(heroLife);hpCallback.current(heroLife);};
     attackRef.current=()=>{
@@ -76,13 +79,13 @@ export default function NidhoggUnderground({combatStats,fieldHp,onFieldHpChange,
       dragonLife=Math.max(0,dragonLife-damage);setDragonHp(Math.ceil(dragonLife));
       setStatus('Погибель Нидхёгга разбивает древнюю чешую! Урон '+damage+'.');
       if(dragonLife<=0){
-        beaten=true;boss.anchor.visible=false;dragonBounds=undefined;
+        beaten=true;pendingBreath=0;dragonFire.stop();boss.anchor.visible=false;dragonBounds=undefined;
         if(combatRef.current.multiplier===2){heroLife=Math.ceil(heroLife/2);setHp(heroLife);}
         eventRef.current('defeat');
         setNearDragon(false);setStatus('Нидхёгг повержен! Чешуя дракона, руна, эликсиры и 45 капель бессмертия получены.');
       }
     };
-    shieldRef.current=()=>{if(shieldEquipped){guardUntil=performance.now()+1400;setStatus('Щит поднят: следующий удар дракона будет заблокирован.');}else setStatus('Сначала надень щит в кузнице.');};
+    shieldRef.current=()=>{if(shieldEquipped){guardUntil=performance.now()+1400;setStatus('Щит поднят: половина урона огненного удара будет поглощена.');}else setStatus('Сначала надень щит в кузнице.');};
     const flightCamera=new THREE.Vector3(),flightTarget=new THREE.Vector3();
     const terrainMeshes:THREE.Mesh[]=[];
     // Three deposits can be visited before the final fight, along the side walls.
@@ -188,6 +191,7 @@ export default function NidhoggUnderground({combatStats,fieldHp,onFieldHpChange,
         item.position.set(-center.x,isShield?-center.y:-bounds.min.y,-center.z);
         const hand=new THREE.Group();hand.scale.setScalar((isShield?.38:weapon==='spear'?.82:.57)/span);hand.position.set(0,isShield?.075:-.065,isShield?-.016:.015);if(isShield)hand.rotation.y=Math.PI;else hand.rotation.x=-.2;hand.add(item);parent.add(hand);
       }).catch(()=>{});
+      shieldBones=[bone('LeftArm'),bone('LeftForeArm')].filter((b):b is THREE.Object3D=>!!b);shieldPose=shieldBones.map(b=>b.quaternion.clone());
       const hand=bone('RightHand'),arm=bone('LeftForeArm');if(hand)equip(weapon==='default'?'Sword.glb':WEAPON_ASSET[weapon],hand,false);if(arm&&shieldEquipped)equip(shieldAsset,arm,true);
       mixer=new THREE.AnimationMixer(model);const idleClip=THREE.AnimationClip.findByName(gltf.animations,'idle')||THREE.AnimationClip.findByName(gltf.animations,'sword_idle')||gltf.animations[0];const walkClip=THREE.AnimationClip.findByName(gltf.animations,'walk_loop')||THREE.AnimationClip.findByName(gltf.animations,'walk')||idleClip;
       if(idleClip)idle=mixer.clipAction(idleClip);if(walkClip)walk=mixer.clipAction(walkClip);idle?.play();current=idle;heroReady=true;setStatus('');
@@ -219,25 +223,33 @@ export default function NidhoggUnderground({combatStats,fieldHp,onFieldHpChange,
         metSent=true;eventRef.current('first');
         setStatus('Встреча с Нидхёггом! Его чешуя восстанавливается. Найди обсидиан и вернись к кузнецу.');
       }
-      if(encounter&&!beaten&&!progressRef.current.defeated&&progressRef.current.met&&!encounter.flying){
+      if(encounter&&!beaten&&!progressRef.current.defeated&&progressRef.current.met&&encounter.canAttack){
         const distance=Math.hypot(pos.x-encounter.anchor.position.x,pos.z-encounter.anchor.position.z);
-        if(distance<16&&now-lastBite>3200){
-          lastBite=now;
-          if(now<guardUntil){setStatus('Щит отразил удар Нидхёгга!');}
-          else if(heartCharge>0){heartCharge--;setHeartReady(false);setStatus('🌊 Сердце водоворота Морвейна поглотило удар Нидхёгга!');}
+        if(distance<16&&now-lastBite>3200&&!pendingBreath){
+          lastBite=now;pendingBreath=now+450;encounter.breathe();dragonFire.start(encounter.mouth,hero,now);
+        }
+        if(pendingBreath&&now>=pendingBreath){
+          pendingBreath=0;
+          if(distance>=16){setStatus('Vicki ушла из зоны огненного удара.');}
+          else if(now>=guardUntil&&heartCharge>0){heartCharge--;setHeartReady(false);setStatus('🌊 Сердце водоворота Морвейна поглотило удар Нидхёгга!');}
           else {
-            let damage=incomingCombatDamage(24,combatRef.current);
+            const shielded=now<guardUntil;
+            let damage=dragonStrikeDamage(24,combatRef.current,shielded);
             if(boostRef.current.luck>0){if(potionDodges(boostRef.current.luck,Math.random()))damage=0;boostCallback.current('luck');}
             if(damage>0&&frostRef.current>0){damage=Math.ceil(damage*.5);frostCallback.current();}
             heroLife=Math.max(0,heroLife-damage);setHp(heroLife);hpCallback.current(heroLife);
-            setStatus('Нидхёгг атакует! −'+damage+' здоровья. Защита: '+combatRef.current.defense+'.');
+            setStatus((shielded?'🛡️ Щит поглотил половину огненного удара. ':'🔥 Огненный удар Нидхёгга! ')+'−'+damage+' здоровья.');
             if(heroLife<=0){heroLife=combatRef.current.maxHp;setHp(heroLife);hpCallback.current(heroLife);pos.x=0;pos.z=19;dragonLife=100;setDragonHp(100);setStatus('Vicki отступила к выходу. Попробуй позже — твой прогресс сохранён.');}
           }
         }
       }
       if(!progressRef.current.forged&&dragonLife<100){dragonLife=Math.min(100,dragonLife+dt*12);}
       if(now-lastHud>450){lastHud=now;setDragonHp(Math.ceil(dragonLife));}
+      shieldBones.forEach((b,i)=>b.quaternion.copy(shieldPose[i]));
       const action=moving?walk:idle;if(action&&action!==current){current?.fadeOut(.15);action.reset().fadeIn(.15).play();current=action;}mixer?.update(dt);if(!beaten)encounter?.update(document.hidden?0:dt,pos,heroReady&&terrainMeshes.length>0);hero.position.set(pos.x,groundY,pos.z);
+      const raise=shieldEquipped?Math.min(1,Math.max(0,(guardUntil-now)/240)):0;
+      if(raise)shieldBones.forEach((b,i)=>{b.rotation.z+=(i===0?-.75:-.4)*raise;});
+      dragonFire.update(now);
       const flying=!beaten&&encounter?.flying;
       flightCamera.set(pos.x*.4,flying?21:groundY+10,pos.z+(flying?25:16));
       flightTarget.set(pos.x,groundY+3.5,pos.z-8);
@@ -245,29 +257,30 @@ export default function NidhoggUnderground({combatStats,fieldHp,onFieldHpChange,
       camera.position.lerp(flightCamera,1-Math.exp(-dt*4));camera.lookAt(flightTarget);
       const near=Math.abs(pos.x)<5&&pos.z>20;if(near!==wasNear){wasNear=near;setNearExit(near);}renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
-    return()=>{attackRef.current=()=>{};healRef.current=()=>{};shieldRef.current=()=>{};alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',reset);document.removeEventListener('visibilitychange',reset);reset();mixer?.stopAllAction();dragonMixer?.stopAllAction();dispose(scene);assets.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();};
+    return()=>{attackRef.current=()=>{};healRef.current=()=>{};shieldRef.current=()=>{};dragonFire.dispose();alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',reset);document.removeEventListener('visibilitychange',reset);reset();mixer?.stopAllAction();dragonMixer?.stopAllAction();dispose(scene);assets.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();};
   },[weapon,shieldAsset,shieldEquipped]);
   const steer=(e:React.PointerEvent<HTMLButtonElement>)=>{if(pointer.current!==e.pointerId)return;const rect=e.currentTarget.getBoundingClientRect(),r=rect.width*.36;let x=(e.clientX-rect.left-rect.width/2)/r,z=(e.clientY-rect.top-rect.height/2)/r;const length=Math.hypot(x,z);if(length>1){x/=length;z/=length;}analog.current={x,z};if(knob.current)knob.current.style.transform=`translate(${x*r}px,${z*r}px)`;};
   return <div style={{position:'relative',flex:1,minHeight:0,overflow:'hidden',background:'#121d24',touchAction:'none'}}>
     <div ref={mount} style={{position:'absolute',inset:0}}/>
+    <style>{`.nidhogg-hud{position:absolute;top:72px;left:12px;right:12px;z-index:6;color:#eef8ff;pointer-events:none}.nidhogg-health-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.nidhogg-health-card{min-width:0;padding:7px 9px;border-radius:8px;background:#172b3de8;border:1px solid #809eac}.nidhogg-health-card>div:first-child{display:flex;flex-wrap:wrap;justify-content:space-between;gap:3px;font-size:11px}.nidhogg-health-track{height:8px;margin-top:5px;background:#101820;border-radius:5px;overflow:hidden}.nidhogg-health-track i{display:block;height:100%;transition:width .15s}.nidhogg-hud-details{display:flex;flex-wrap:wrap;gap:4px 9px;margin-top:6px;padding:5px 8px;border-radius:7px;background:#172b3ddb;font-size:10px;line-height:1.4}.nidhogg-heal{pointer-events:auto;display:block;margin:7px 0 0 auto;padding:8px 12px;border-radius:8px;border:1px solid #accade;background:#20313c;color:#eaf6ff;font:inherit;font-size:12px}.nidhogg-exit{pointer-events:auto;margin-top:7px;padding:8px 12px;background:#171e25;color:#e4c78c;border:1px solid #b39150;border-radius:8px;font:inherit;font-size:12px}.nidhogg-status{position:absolute;bottom:14px;left:12px;right:12px;z-index:6;padding:8px 10px;border:1px solid #9caaae;border-radius:9px;background:#182b3de8;color:#f9e6c0;font-size:11px;line-height:1.4;text-align:center;pointer-events:none}`}</style>
     <div className="mid3d-ui mid3d-top"><button className="mid3d-top-btn" onClick={()=>{clear();exit.current();}} aria-label="Вернуться в Нифльхейм"><img className="mid3d-top-button-art" src={`${BASE}img/models/home_button.png`} alt=""/></button><div className="mid3d-realm-title" style={{color:'#e9eff4'}}>Подземелье Нидхёгга</div></div>
-    {status&&<div role="status" style={{position:'absolute',top:85,left:12,right:12,color:'#fff',textAlign:'center',background:'#18232be6',padding:10,borderRadius:8}}>{status}</div>}
+    {status&&<div className="nidhogg-status" role="status">{status}</div>}
     <button className="mid3d-ui mid3d-joy" style={{padding:0,userSelect:'none'}} aria-label="Управление Vicki" onPointerDown={e=>{e.preventDefault();pointer.current=e.pointerId;e.currentTarget.setPointerCapture(e.pointerId);steer(e);}} onPointerMove={steer} onPointerUp={clear} onPointerCancel={clear} onLostPointerCapture={clear}><img style={{width:'100%',height:'100%',pointerEvents:'none'}} src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/><span className="mid3d-knob" ref={knob}/></button>
-    <div style={{position:'absolute',top:75,left:12,right:12,pointerEvents:'none',display:'flex',gap:8,flexWrap:'wrap',justifyContent:'center',color:'#f2f7ff',fontSize:12,textShadow:'0 1px 3px #000'}}>
-      <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>❤️ Vicki: {Math.min(hp,combatStats.maxHp)}/{combatStats.maxHp}</span>
-      <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>🐉 Нидхёгг: {progressRef.current.defeated?'побеждён':dragonHp+'/100'}</span>
-      <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>🌑 Обсидиан: {progressRef.current.obsidian.length}/3</span>
-      <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>❄️ Освобождено: {progressRef.current.liberation.count}/{progressRef.current.liberation.total}</span>
-      {whirlpoolHeart&&<span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>🌊 Сердце водоворота: {heartReady?'1 защита':'израсходовано'}</span>}
+    <div className="nidhogg-hud">
+      <div className="nidhogg-health-row">
+        <div className="nidhogg-health-card"><div><b>Vicki</b><span>{Math.min(hp,combatStats.maxHp)}/{combatStats.maxHp}</span></div><div className="nidhogg-health-track" role="progressbar" aria-label="Здоровье Vicki" aria-valuemin={0} aria-valuemax={combatStats.maxHp} aria-valuenow={Math.min(hp,combatStats.maxHp)}><i style={{width:Math.max(0,Math.min(100,hp/combatStats.maxHp*100))+'%',background:'#58c49d'}}/></div></div>
+        <div className="nidhogg-health-card"><div><b>Нидхёгг</b><span>{progressRef.current.defeated?0:dragonHp}/100</span></div><div className="nidhogg-health-track" role="progressbar" aria-label="Здоровье Нидхёгга" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressRef.current.defeated?0:dragonHp}><i style={{width:(progressRef.current.defeated?0:Math.max(0,dragonHp))+'%',background:'#e65b53'}}/></div></div>
+      </div>
+      <div className="nidhogg-hud-details"><span>🌑 Обсидиан: {progressRef.current.obsidian.length}/3</span><span>❄️ Освобождено: {progressRef.current.liberation.count}/{progressRef.current.liberation.total}</span>{whirlpoolHeart&&<span>🌊 Сердце: {heartReady?'1 защита':'израсходовано'}</span>}{combatStats.multiplier===2&&<span style={{color:'#ffe18a'}}>💧 Живая вода ×2</span>}</div>
+      {potions.length>0&&<button className="nidhogg-heal" onClick={()=>{const potion=potions.includes('lifeElixir')?'lifeElixir':potions.includes('northernMoss')?'northernMoss':potions.includes('hoddmimirElixir')?'hoddmimirElixir':'';if(potion&&hp<combatStats.maxHp&&onUsePotion(potion,hp)){healRef.current(potion==='northernMoss'?30:combatStats.maxHp);setStatus('Эликсир восстановил силы Vicki.');}}}>🧪 Лечение</button>}
+      {nearExit&&<button className="nidhogg-exit" onClick={()=>{clear();exit.current();}}>Открыть дверь · Нифльхейм</button>}
     </div>
     <button className="mid3d-ui mid3d-strike" aria-label="Ударить Нидхёгга" onClick={()=>attackRef.current()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></button>
     <button className="mid3d-ui mid3d-block" aria-label="Прикрыться щитом" disabled={!shieldEquipped} onClick={()=>shieldRef.current()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_shield.png`} alt="" draggable={false}/></button>
-    {combatStats.multiplier===2&&<div style={{position:'absolute',left:12,top:150,color:'#ffe18a',fontSize:12}}>💧 Живая вода: сила и защита ×2</div>}
-    {potions.length>0&&<button onClick={()=>{const potion=potions.includes('lifeElixir')?'lifeElixir':potions.includes('northernMoss')?'northernMoss':potions.includes('hoddmimirElixir')?'hoddmimirElixir':'';if(potion&&hp<combatStats.maxHp&&onUsePotion(potion,hp)){healRef.current(potion==='northernMoss'?30:combatStats.maxHp);setStatus('Эликсир восстановил силы Vicki.');}}} style={{position:'absolute',right:12,top:152,padding:9,background:'#20313c',color:'#eaf6ff',border:'1px solid #accade',borderRadius:8}}>🧪 Лечение</button>}
     {nearOre&&<div style={{position:'absolute',bottom:112,left:'50%',transform:'translateX(-50%)',padding:9,background:'#171d2deb',color:'#ebdfff',borderRadius:10,zIndex:7,textAlign:'center'}}><div>Обсидиан бездны · {NIFL_OBSIDIAN.find(p=>p.id===nearOre)?.name}</div><button onClick={()=>{eventRef.current(('obsidian:'+nearOre) as DragonEvent);setStatus('Обсидиан бездны получен. Вернись к великану с тремя залежами.');setNearOre('');}} style={{padding:'8px 12px',marginTop:6}}>🌑 Собрать</button></div>}
     {nearDragon&&(!progressRef.current.forged||!progressRef.current.worldFreed)&&<div style={{position:'absolute',bottom:110,left:'50%',transform:'translateX(-50%)',padding:10,background:'#1b273aeb',color:'#fff',borderRadius:8,zIndex:7,textAlign:'center'}}>{progressRef.current.worldFreed?'Чешуя дракона восстанавливается! Нужен легендарный меч.':'Нидхёгг защищён печатями оставшихся локаций. Освободи весь Нифльхейм.'} <button onClick={()=>{clear();exit.current();}} style={{marginLeft:6}}>Отступить к кузнецу</button></div>}
-    <div style={{position:'absolute',left:12,bottom:4,fontSize:10,color:'#aebac2',maxWidth:'55%'}}>Пещера: <a href="https://sketchfab.com/3d-models/dark-side-cave-e6347843eec64b408157dabfb8b196b2" target="_blank" rel="noopener noreferrer" style={{color:'inherit'}}>diaspora</a> · CC BY 4.0 · уменьшены текстуры, изменены масштаб и высота.</div>
-    <div style={{position:'absolute',right:12,bottom:4,fontSize:10,color:'#aebac2',maxWidth:'40%'}}>Кристаллы: <a href="https://sketchfab.com/3d-models/magic-crystals-f20b3376ef9a4dff8ad27f1402087c52" target="_blank" rel="noopener noreferrer" style={{color:'inherit'}}>Enn Shtyka</a> · CC BY 4.0 · уменьшены текстуры и масштаб.</div>
-    {nearExit&&<button onClick={()=>{clear();exit.current();}} style={{position:'absolute',right:16,bottom:25,padding:'12px 16px',background:'#171e25',color:'#e4c78c',border:'2px solid #b39150',borderRadius:10}}>Открыть дверь · Нифльхейм</button>}
+    {!status&&<><div style={{position:'absolute',left:12,bottom:4,fontSize:10,color:'#aebac2',maxWidth:'55%'}}>Пещера: <a href="https://sketchfab.com/3d-models/dark-side-cave-e6347843eec64b408157dabfb8b196b2" target="_blank" rel="noopener noreferrer" style={{color:'inherit'}}>diaspora</a> · CC BY 4.0 · уменьшены текстуры, изменены масштаб и высота.</div>
+    <div style={{position:'absolute',right:12,bottom:4,fontSize:10,color:'#aebac2',maxWidth:'40%'}}>Кристаллы: <a href="https://sketchfab.com/3d-models/magic-crystals-f20b3376ef9a4dff8ad27f1402087c52" target="_blank" rel="noopener noreferrer" style={{color:'inherit'}}>Enn Shtyka</a> · CC BY 4.0 · уменьшены текстуры и масштаб.</div></>}
+
   </div>;
 }

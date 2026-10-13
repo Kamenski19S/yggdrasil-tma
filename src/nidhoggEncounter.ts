@@ -20,15 +20,17 @@ export function createNidhoggEncounter(model:THREE.Group,clips:THREE.AnimationCl
   let neck:THREE.Object3D|undefined,jaw:THREE.Object3D|undefined;
   model.traverse(o=>{if(o.name==='DEF-neck.004_012')neck=o;if(o.name==='DEF-Teeth_Bottom_016')jaw=o;});
   const neckBase=neck?.quaternion.clone(),jawBase=jaw?.quaternion.clone(),offset=new THREE.Quaternion(),axis=new THREE.Vector3(1,0,0);
+  let fireUntil=0;
   const collision=new THREE.Box3();
   const updateCollision=()=>collision.setFromCenterAndSize(new THREE.Vector3(anchor.position.x,anchor.position.y+5,anchor.position.z),new THREE.Vector3(18,14,18));
   updateCollision();
   const smooth=(t:number)=>{t=THREE.MathUtils.clamp(t,0,1);return t*t*(3-2*t);};
-  return {anchor,mixer,collision,get flying(){return phase==='takeoff'||phase==='circle'||phase==='landing';},
+  return {anchor,mixer,collision,get canAttack(){return phase==='seated';},get mouth(){return jaw??anchor;},breathe(){fireUntil=performance.now()+1050;},get flying(){return phase==='takeoff'||phase==='circle'||phase==='landing';},
     update(dt:number,hero:{x:number;z:number},ready:boolean){
       if(neck&&neckBase)neck.quaternion.copy(neckBase);
       if(jaw&&jawBase)jaw.quaternion.copy(jawBase);
       mixer.update(dt);
+      if(jaw&&performance.now()<fireUntil){jaw.quaternion.multiply(offset.setFromAxisAngle(axis,-.32));}
       if(phase==='roots'){
         origin.y=groundAt(origin.x,origin.z);anchor.position.copy(origin);chew+=dt;
         // Small additive movements preserve the source idle and all skin weights.

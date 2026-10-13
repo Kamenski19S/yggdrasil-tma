@@ -55,14 +55,23 @@ export function addNiflheimRivers(scene:THREE.Scene,base:string,healed=false){
   const frost=new THREE.CanvasTexture(canvas);frost.colorSpace=THREE.SRGBColorSpace;
   frost.wrapS=frost.wrapT=THREE.MirroredRepeatWrapping;
   const ice=new THREE.MeshStandardMaterial({map:frost,color:'#e1f4fa',roughness:.29,metalness:.08,side:THREE.DoubleSide});
-  const water=new THREE.MeshStandardMaterial({color:'#6398ad',roughness:.28,metalness:.06,side:THREE.DoubleSide});
+  const water=new THREE.MeshStandardMaterial({color:'#b4dce9',roughness:.28,metalness:.06,side:THREE.DoubleSide});
   const time={value:0};
-  water.customProgramCacheKey=()=> 'nifl-living-river-v1';
+  water.customProgramCacheKey=()=> 'nifl-water-cc0-atlas-v2';
   water.onBeforeCompile=shader=>{
     shader.uniforms.uRiverTime=time;
     shader.vertexShader='varying vec2 vRiverUV;\n'+shader.vertexShader;
     shader.vertexShader=shader.vertexShader.replace('#include <uv_vertex>','#include <uv_vertex>\nvRiverUV=uv;');
     shader.fragmentShader='uniform float uRiverTime;\nvarying vec2 vRiverUV;\n'+shader.fragmentShader;
+    shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`
+      #ifdef USE_MAP
+      float frame=mod(floor(uRiverTime*15.0),40.0);
+      vec2 cell=vec2(mod(frame,8.0),4.0-floor(frame/8.0));
+      vec2 flowUV=fract(vec2(vRiverUV.x,vRiverUV.y-uRiverTime*.035));
+      vec2 atlasUV=(cell*132.0+vec2(2.0)+flowUV*128.0)/vec2(1056.0,660.0);
+      diffuseColor*=texture2D(map,atlasUV);
+      #endif
+    `);
     shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
       float bank=smoothstep(.28,.5,abs(vRiverUV.x-.5));
       float ripple=pow(.5+.5*sin(vRiverUV.y*31.0-uRiverTime*2.4+sin(vRiverUV.x*15.0)),12.0);
@@ -71,9 +80,9 @@ export function addNiflheimRivers(scene:THREE.Scene,base:string,healed=false){
     `);
   };
   let flowTexture:THREE.Texture|undefined,disposed=false;
-  new THREE.TextureLoader().load(`${base}img/models/T_Mimir_Water.jpg`,texture=>{
+  new THREE.TextureLoader().load(`${base}img/vfx/nifl-water-flow.webp`,texture=>{
     if(disposed){texture.dispose();return;}
-    texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.MirroredRepeatWrapping;
+    texture.colorSpace=THREE.SRGBColorSpace;texture.generateMipmaps=false;texture.minFilter=THREE.LinearFilter;texture.magFilter=THREE.LinearFilter;
     flowTexture=texture;water.map=texture;water.needsUpdate=true;
   });
   // Only the frozen river carries the infection; lake ice stays unchanged.
@@ -108,27 +117,24 @@ export function addNiflheimRivers(scene:THREE.Scene,base:string,healed=false){
   new THREE.TextureLoader().load(`${base}img/models/Niflheim_Dry_Riverbed.png`,soil=>{
     if(disposed){soil.dispose();return;}soil.colorSpace=THREE.SRGBColorSpace;soil.wrapS=soil.wrapT=THREE.RepeatWrapping;dry.map=soil;dry.needsUpdate=true;
   });
-  let living:THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>|undefined;
+  const flows:{mesh:THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>;baseY:Float32Array}[]=[];
   NIFL_RIVERS.forEach((points,index)=>{
-    const mesh=new THREE.Mesh(createNiflRiverGeometry(points,NIFL_RIVER_WIDTHS[index]),index===NIFL_DRY_RIVER?dry:index===NIFL_LIVING_RIVER?water:taintedIce);
-    mesh.name=index===NIFL_DRY_RIVER?'Dry cracked riverbed':index===NIFL_LIVING_RIVER?'Living eastern river':'Frozen river';mesh.receiveShadow=true;scene.add(mesh);
-    if(index===NIFL_LIVING_RIVER)living=mesh;
+    const material=healed?water:index===NIFL_DRY_RIVER?dry:index===NIFL_LIVING_RIVER?water:taintedIce;
+    const mesh=new THREE.Mesh(createNiflRiverGeometry(points,NIFL_RIVER_WIDTHS[index]),material);
+    mesh.name=healed?'Возрождённая река '+(index+1):index===NIFL_DRY_RIVER?'Dry cracked riverbed':index===NIFL_LIVING_RIVER?'Living eastern river':'Frozen river';
+    mesh.receiveShadow=true;scene.add(mesh);
+    if(material===water){
+      const p=mesh.geometry.getAttribute('position');
+      if(healed)for(let i=0;i<p.count;i++)p.setY(i,p.getY(i)+.19);
+      flows.push({mesh,baseY:Float32Array.from(p.array).filter((_,i)=>i%3===1)});
+    }
   });
-  // Only the final victory restores the dry river. Keep the existing bed and its texture beneath it.
-  if(healed){
-    const flow=new THREE.Mesh(createNiflRiverGeometry(NIFL_RIVERS[NIFL_DRY_RIVER],NIFL_RIVER_WIDTHS[NIFL_DRY_RIVER]*.83),water);
-    flow.name='Освобождённое русло Нифльхейма';
-    const position=flow.geometry.getAttribute('position');
-    for(let i=0;i<position.count;i++)position.setY(i,position.getY(i)+.19);
-    position.needsUpdate=true;flow.receiveShadow=true;scene.add(flow);
-  }
-  const baseY=living?Float32Array.from(living.geometry.getAttribute('position').array).filter((_,i)=>i%3===1):new Float32Array();
-  return {ice,water,update(seconds:number){
-    time.value=seconds;if(flowTexture)flowTexture.offset.y=-seconds*.035;
-    if(living){
-      const p=living.geometry.getAttribute('position'),uv=living.geometry.getAttribute('uv');
+  return {ice,water,flowCount:flows.length,update(seconds:number){
+    time.value=seconds;
+    for(const {mesh,baseY} of flows){
+      const p=mesh.geometry.getAttribute('position'),uv=mesh.geometry.getAttribute('uv');
       for(let i=0;i<p.count;i++)p.setY(i,baseY[i]+Math.sin(uv.getY(i)*5-seconds*1.8+uv.getX(i)*3)*.018*Math.sin(uv.getX(i)*Math.PI));
       p.needsUpdate=true;
     }
-  },dispose(){disposed=true;}};
+  },dispose(){disposed=true;const maps=new Set<THREE.Texture>();for(const material of [ice,taintedIce,dry]){if(material.map)maps.add(material.map);material.dispose();}maps.forEach(t=>t.dispose());}};
 }
