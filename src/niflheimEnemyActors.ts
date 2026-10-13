@@ -69,7 +69,7 @@ const MAX_ACTIVE_SHADOWS=3;
 const SHADOW_LIFETIME_MS=130*1000;
 const SHADOW_MAX_HP=51;
 // One visible size for each species, regardless of spawn point or building.
-const ROLE_HEIGHT={orc:4.1,troll:5.0,undead:5.2} as const;
+const ROLE_HEIGHT={orc:4.1,troll:5.6,undead:5.2} as const;
 
 export function installNiflheimRiggedEnemies(
  scene:THREE.Scene,spots:Spot[],isAlive:()=>boolean,
@@ -184,8 +184,18 @@ export function installNiflheimRiggedEnemies(
     const anchor=fill.parent as THREE.Group;
     actor.model.updateWorldMatrix(true,true);
     const head=actor.model.getObjectByName(actor.role==='orc'?'Bip001_Head_060':'Head_M_0230');
-    if(head){head.getWorldPosition(anchor.position);anchor.position.y+=.35;}
-    else{const box=new THREE.Box3().setFromObject(actor.model);box.getCenter(anchor.position);anchor.position.y=box.max.y+.45;}
+    const bounds=new THREE.Box3().setFromObject(actor.model);
+    if(head){
+      head.getWorldPosition(anchor.position);
+      // Bone pivots tend to be at the jaw or neck. Place the bar above the
+      // TOP of the visible head, not over the face; keep clearance on attack.
+      anchor.position.y=Math.max(
+        anchor.position.y+(actor.role==='troll'?.96:.74),
+        bounds.max.y+.25
+      );
+    }else{
+      bounds.getCenter(anchor.position);anchor.position.y=bounds.max.y+.35;
+    }
   };
   const persistGuard=(id:string,next:number)=>{try{localStorage.setItem('yggdrasil-niflheim-guard-'+id,String(next));}catch{}};
   const readGuard=(id:string)=>{try{return Number(localStorage.getItem('yggdrasil-niflheim-guard-'+id))||0;}catch{return 0;}};
@@ -386,13 +396,14 @@ export function installNiflheimRiggedEnemies(
         const dist=Math.hypot(place.x-hero.x,place.z-hero.z);
         if(dist>24){resetAction(guard.actor,now);continue;}
         guard.root.rotation.y=Math.atan2(hero.x-place.x,hero.z-place.z);
-        if(guard.role==='troll'&&!guard.actor.clips.some(c=>c.name==='ANM_LIGHT_ATTACK_2')){
-          // The supplied troll has only one imported clip. A short procedural
-          // body lunge makes its heavy blow readable without replacing its rig.
-          const t=now-guard.lastAttack;
-          const strike=t>0&&t<520?Math.sin(t/520*Math.PI):0;
-          guard.actor.model.rotation.x=-.23*strike;
-          guard.actor.model.rotation.z=.1*strike;
+        if(guard.role==='troll'){
+          // Support the retargeted bone swing with a small forward lunge.
+          // This also makes an attack readable if the animation clip fails
+          // to bind on a particular mobile WebGL device.
+          const elapsed=now-guard.lastAttack;
+          const strike=elapsed>0&&elapsed<620?Math.sin(elapsed/620*Math.PI):0;
+          guard.actor.model.rotation.x=-.15*strike;
+          guard.actor.model.rotation.z=.06*strike;
         }
         // Local chase radius keeps a guard at its building instead of letting it roam through walls.
         const walking=dist>4.6&&dist<14;
