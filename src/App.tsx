@@ -1279,7 +1279,8 @@ const [roadT, setRoadT] = useState(0.06);
           <div className="card center" style={{background:"rgba(13,12,10,.84)",borderColor:"#71431f"}}>
             <div className="craft-fire">🔥</div>
             <div className="qhead2" style={{color:"#ffc45e"}}>Кузня Чертога</div>
-            <p className="dim">Для крафта используется одна лишняя копия оружия. Основной экземпляр остаётся на складе. Выбери оружие, материал и подтверди создание.</p>
+            <p className="dim">Для крафта Мидгарда нужна лишняя копия оружия. Новое оружие Нифльхейма создаётся по отдельным рецептам из рунической стали и Капель бессмертия.</p>
+            <button className="btn rune" onClick={()=>document.getElementById('nifl-craft-recipes')?.scrollIntoView({behavior:'smooth',block:'start'})}>❄️ Рецепты оружия Нифльхейма · 4 вида ↓</button>
             <div className="craft-recipe">
               <button className={"craft-slot"+(craftWeapon?" selected":"")} onClick={()=>setCraftPicker(craftPicker==="weapon"?null:"weapon")}>
                 <b>{craftWeapon?weaponDisplayIcon(craftWeapon):"＋"}</b>{craftWeapon?lootDisplayName(craftWeapon):"оружие"}
@@ -1329,7 +1330,7 @@ const [roadT, setRoadT] = useState(0.06);
 
             <div className="steel-wallet">⚙️ Руническая сталь: <b>{save.runeSteel}</b></div>
 
-            <div className="steel-section">
+            <div className="steel-section" id="nifl-craft-recipes">
               <h3>❄️ Новое оружие Нифльхейма</h3>
               <p>Чертежи открываются при исследовании и освобождении локаций Нифльхейма. На изготовление расходуются только руническая сталь и Капли бессмертия; уже найденные уникальные артефакты остаются при Vicki. Каждый крафт создаёт настоящий экземпляр оружия, включая повторные копии.</p>
               <div className="steel-list">{NIFL_CRAFTS.map(recipe=>{
