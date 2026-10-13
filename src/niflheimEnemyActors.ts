@@ -92,7 +92,8 @@ export function installNiflheimRiggedEnemies(
  ground:(x:number,z:number)=>number,
  notify:(message:string)=>void,
  onShadowStrike:OnShadowHit,onShadowDefeated:(id:number)=>void,onGuardDefeated:OnGuardDefeated,
- canSpawn:(x:number,z:number)=>boolean
+ canSpawn:(x:number,z:number)=>boolean,
+ combatEffect:(kind:'enemy'|'hero',actor:THREE.Object3D,height:number,delay:number)=>void=()=>{}
 ){
   const loader=new GLTFLoader();
   const actors:Actor[]=[];
@@ -445,6 +446,7 @@ export function installNiflheimRiggedEnemies(
         }
         if(dist<5.2&&now-guard.lastAttack>(guard.role==='troll'?4300:3150)){
           guard.lastAttack=now;playAction(guard.actor,'attack',now);
+          combatEffect('enemy',guard.root,ROLE_HEIGHT[guard.role],guard.role==='troll'?400:180);
           if(shielded)notify('🛡️ Щит отразил удар стража.');
           else{onShadowStrike(guard.attack);notify('⚔️ '+(guard.role==='orc'?'Орк':'Зелёный гоблин')+' атакует! −'+guard.attack+' здоровья.');}
         }
@@ -478,6 +480,7 @@ export function installNiflheimRiggedEnemies(
         shadow.actor.mixer.update(Math.min(dt,.05));updateBarPosition(shadow.actor,shadow.healthBar);
         if(distance<4.5&&now-shadow.lastBite>3300){
           shadow.lastBite=now;
+          combatEffect('enemy',shadow.root,ROLE_HEIGHT.undead,120);
           if(shielded){
             if(now-lastWarn>1800){notify('🛡️ Щит отбил удар Тени.');lastWarn=now;}
           }else{
@@ -500,6 +503,7 @@ export function installNiflheimRiggedEnemies(
           ['swordStar','sword2','swordGolden','bladeObsidian'].includes(weapon);
         const damage=guard.role==='troll'?(specialist?48:18):(specialist?35:22);
         guard.hp=Math.max(0,guard.hp-damage);
+        combatEffect('hero',guard.root,ROLE_HEIGHT[guard.role],220);
         const ratio=guard.hp/guard.maxHp;
         guard.bar.scale.x=BAR_FILL_WIDTH*ratio;guard.bar.position.x=-(1-ratio)*BAR_FILL_WIDTH/2;
         if(guard.hp<=0){
@@ -522,6 +526,7 @@ export function installNiflheimRiggedEnemies(
       target.lastHit=now;
       const damage=weapon==='bladeObsidian'?48:weapon==='hammerRune'?38:22;
       target.hp=Math.max(0,target.hp-damage);
+      combatEffect('hero',target.root,ROLE_HEIGHT.undead,220);
       const ratio=target.hp/(SHADOW_MAX_HP+target.id*9);
       target.healthBar.scale.x=BAR_FILL_WIDTH*ratio;
       target.healthBar.position.x=-(1-ratio)*BAR_FILL_WIDTH/2;

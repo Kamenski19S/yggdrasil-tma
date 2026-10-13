@@ -380,7 +380,8 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
       },
       id=>libCallback.current(('shadow:defeated:'+id) as LiberationEvent),
       (id,role)=>libCallback.current(('guardian:defeated:'+id+':'+role) as LiberationEvent),
-      (x,z)=>!niflRiverBlocked(x,z)&&x>-95&&x<95&&z>-105&&z<125);
+      (x,z)=>!niflRiverBlocked(x,z)&&x>-95&&x<95&&z>-105&&z<125,
+      (kind,actor,height,delay)=>{if(kind==='enemy')combatEffects.enemySlash(actor,height,delay);else combatEffects.hit(actor,height*.55,delay);});
     // Three unique everlasting-ice fragments mark safe snow near major locations.
     const iceShape=new THREE.OctahedronGeometry(1.15,1);
     const iceDust=new THREE.MeshBasicMaterial({color:'#d9f3ff',transparent:true,opacity:.84});

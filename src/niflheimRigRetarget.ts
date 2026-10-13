@@ -64,9 +64,9 @@ function boneClip(troll:RigAsset,name:string):THREE.AnimationClip|null{
     // bend and swing them; X only twists the arm around its own length.
     ANM_LIGHT_ATTACK_2:[
       {bone:'Scapula_R_0219',axis:'y',angles:wave([0,-6,-18,12,3,0])},
-      {bone:'Shoulder_R_0235',axis:'z',angles:wave([0,-32,-72,58,18,0])},
-      {bone:'Elbow_R_0238',axis:'z',angles:wave([0,-25,-55,12,4,0])},
-      {bone:'Wrist_R_0241',axis:'z',angles:wave([0,12,18,-24,-8,0])},
+      {bone:'Shoulder_R_0235',axis:'z',angles:wave([0,-60,-125,35,15,0])},
+      {bone:'Elbow_R_0238',axis:'z',angles:wave([0,-35,-65,15,8,0])},
+      {bone:'Wrist_R_0241',axis:'z',angles:wave([0,8,12,-28,-10,0])},
       {bone:'Chest_M_0226',axis:'y',angles:wave([0,-10,-18,20,5,0])},
       {bone:'Spine1_M_0223',axis:'x',angles:wave([0,0,-7,11,4,0])}
     ],

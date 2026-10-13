@@ -4499,7 +4499,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     const hero=new THREE.Group();
     scene.add(hero);
     const combatEffects=createCombatEffects(scene,hero);
-    combatImpactRef.current=(blocked,target)=>{if(blocked)combatEffects.block();else combatEffects.hit(target??hero);};
+    combatImpactRef.current=(blocked,target)=>{if(blocked)combatEffects.block();else combatEffects.enemyHit(target??hero);};
 
     let heroAnim:any=null;
     let attackStartedAt=-10000;
@@ -5057,7 +5057,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
           if(!banditVictoryRef.current&&!encounterLocked&&!inventoryPauseRef.current&&Math.hypot(q.x-preview.actor.position.x,q.z-preview.actor.position.z)<7.2){
             const guarding=shieldRaiseUntilRef.current>now&&gear.includes('shield');
             const damage=Math.max(1,preview.spec.damage-banditDefenseRef.current);
-            if(guarding)combatEffects.block();else combatEffects.hit(hero);
+            if(guarding)combatEffects.block();else combatEffects.enemyHit(hero);
             banditDamageRef.current(guarding?Math.max(1,Math.ceil(damage*.25)):damage,guarding);
           }
         }
