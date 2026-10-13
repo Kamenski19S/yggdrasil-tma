@@ -85,7 +85,7 @@ const MAX_ACTIVE_SHADOWS=3;
 const SHADOW_LIFETIME_MS=130*1000;
 const SHADOW_MAX_HP=51;
 // One visible size for each species, regardless of spawn point or building.
-const ROLE_HEIGHT={orc:5.8,troll:5.6,undead:5.2} as const;
+const ROLE_HEIGHT={orc:7.4,troll:5.6,undead:5.2} as const;
 
 export function installNiflheimRiggedEnemies(
  scene:THREE.Scene,spots:Spot[],isAlive:()=>boolean,
@@ -147,9 +147,7 @@ export function installNiflheimRiggedEnemies(
       }
     });
     const mixer=new THREE.AnimationMixer(model);
-    const clip=role==='orc'?
-      asset.animations.find(a=>/ANM_IDLE/i.test(a.name))||asset.animations[0]:
-      asset.animations[0];
+    const clip=asset.animations.find(a=>/ANM_IDLE|Take 001/i.test(a.name))||asset.animations[0];
     const idle=clip?mixer.clipAction(clip):null;
     idle?.play();
     const actor={model,root,mixer,role,static:true,groundOffset:0,clips:asset.animations,idle,current:idle,actionUntil:0} satisfies Actor;
@@ -175,6 +173,8 @@ export function installNiflheimRiggedEnemies(
 
   const playAction=(actor:Actor,type:'attack'|'hurt'|'death',now:number)=>{
     if(actor.role==='undead')return;
+    // Finish a visible attack even when Vicki lands a hit during the swing.
+    if(type==='hurt'&&now<actor.actionUntil&&/LIGHT_ATTACK|ATTACK_CRIT/i.test(actor.current?.getClip().name||''))return;
     const pattern=type==='attack'?/LIGHT_ATTACK|ATTACK_CRIT/i:type==='hurt'?/DAMAGED/i:/DEATH/i;
     const clip=actor.clips.find(c=>pattern.test(c.name));if(!clip)return;
     const action=actor.mixer.clipAction(clip);
@@ -339,9 +339,9 @@ export function installNiflheimRiggedEnemies(
     const byRole=new Map(records.filter((x):x is NonNullable<typeof x>=>x!==null).map(x=>[x.role,x.asset] as const));
     const orc=byRole.get('orc'),troll=byRole.get('troll');
     if(orc)normalizeOrcAnimations(orc);
-    if(orc&&troll){
+    if(troll){
       try{
-        if(retargetOrcAnimationsToShieldTroll(orc,troll))
+        if(retargetOrcAnimationsToShieldTroll(orc??null,troll))
           console.info('Shield troll: orc walk/attack/hurt/death retargeted to original skeleton');
       }catch(error){console.warn('Troll retarget failed; original rig preserved',error);}
     }

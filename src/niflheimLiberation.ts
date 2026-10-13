@@ -85,16 +85,15 @@ export function applyLiberationEvent(save:Save,event:LiberationEvent):Save{
   if((save.locationCooldowns[cooldownKey]||0)>now)return save;
   const victoryCount=(save.lootCounts.niflheimShadowVictories||0)+1;
   const drops=80+(site%5)*35;
-  const potion=site%3===0?'lifeElixir':'northernMoss';
+  const supplies=combatSupplies(save,1+Math.floor(site/5));
   const rune=RUNE_CATALOG[(site+victoryCount)%RUNE_CATALOG.length].id;
   return {...save,immortalityDrops:save.immortalityDrops+drops,
     runeSteel:save.runeSteel+(site>=10?1:0),
-    runes:site%3===2?[...new Set([...save.runes,rune])]:save.runes,
-    potions:[...save.potions,potion],
+    ...supplies,
+    runes:[...new Set([...save.runes,rune])],
     locationCooldowns:{...save.locationCooldowns,[cooldownKey]:now+15*60*1000},
-    lootCounts:{...save.lootCounts,niflheimShadowVictories:victoryCount,
-      [potion]:(save.lootCounts[potion]||0)+1,
-      ...(site%3===2?{[rune]:(save.lootCounts[rune]||0)+1}:{})}};
+    lootCounts:{...supplies.lootCounts,niflheimShadowVictories:victoryCount,
+      [rune]:Math.max(save.runes.includes(rune)?1:0,save.lootCounts[rune]||0)+1}};
  }
  if(event.startsWith('guardian:defeated:')){
   const data=event.slice('guardian:defeated:'.length);
@@ -115,18 +114,20 @@ export function applyLiberationEvent(save:Save,event:LiberationEvent):Save{
    mountainOrc:'axeGiant',echoOrc:'sword2'
   };
   const weapon=prize[id]||(role==='troll'?'axeGiant':'swordStar');
-  const potion=role==='troll'?'lifeElixir':'northernMoss';
+  const supplies=combatSupplies(save,role==='troll'?3:2);
+  const rune=RUNE_CATALOG[(save.lootCounts.niflheimCombatSupplies||0)%RUNE_CATALOG.length].id;
   const drops=role==='troll'?190:125;
   const firstVictory=first?PREFIX+'cleared:'+id:'';
   return {...save,
     done:[...new Set([...save.done,...(first?[firstFlag]:[]),...(firstVictory&&trialById(id)?[firstVictory]:[])])],
     immortalityDrops:save.immortalityDrops+drops,
     runeSteel:save.runeSteel+(role==='troll'?2:1),
-    potions:[...save.potions,potion],
+    ...supplies,
+    runes:[...new Set([...save.runes,rune])],
     ownedWeapons:first?[...new Set([...save.ownedWeapons,weapon])]:save.ownedWeapons,
     locationCooldowns:{...save.locationCooldowns,[key]:now+15*60*1000},
-    lootCounts:{...save.lootCounts,
-      [potion]:(save.lootCounts[potion]||0)+1,
+    lootCounts:{...supplies.lootCounts,
+      [rune]:Math.max(save.runes.includes(rune)?1:0,save.lootCounts[rune]||0)+1,
       ...(first?{[weapon]:(save.lootCounts[weapon]||0)+1}:{})}};
  }
  if(event.startsWith('vampire:rune:')){
@@ -159,19 +160,26 @@ export function applyLiberationEvent(save:Save,event:LiberationEvent):Save{
  }
  return save;
 }
+// One shared rotation includes all seven elixirs and survives realm changes.
+function combatSupplies(save:Save,ashWood:number){
+ const count=save.lootCounts.niflheimCombatSupplies||0;
+ const potion=POTION_CATALOG[count%POTION_CATALOG.length].id;
+ return {stock:{...save.stock,ashWood:save.stock.ashWood+ashWood},
+   potions:[...save.potions,potion],
+   lootCounts:{...save.lootCounts,[potion]:(save.lootCounts[potion]||0)+1,niflheimCombatSupplies:count+1}};
+}
 function reward(save:Save,id:string,repeat:boolean):Save{
  const prefix=PREFIX+'cleared:'+id;
  const index=LIBERATION_TRIALS.findIndex(t=>t.id===id);
  const drops=repeat?4:12+index*2;
  const rune=RUNE_CATALOG[(index+Math.floor((save.lootCounts.niflheimTrialRunes||0)/2))%RUNE_CATALOG.length].id;
- const potion=POTION_CATALOG[index%POTION_CATALOG.length].id;
+ const supplies=combatSupplies(save,repeat?1:3);
  const steel=repeat?0:1;
- const lootCounts={...save.lootCounts,[rune]:(save.lootCounts[rune]||0)+1,
-   [potion]:(save.lootCounts[potion]||0)+1,
+ const lootCounts={...supplies.lootCounts,[rune]:Math.max(save.runes.includes(rune)?1:0,save.lootCounts[rune]||0)+1,
    niflheimTrialRunes:(save.lootCounts.niflheimTrialRunes||0)+1,
    ...(id==='vampire'?{whirlpoolHeart:1}:{})};
  return {...save,
   done:repeat?save.done:[...new Set([...save.done,prefix])],
   immortalityDrops:save.immortalityDrops+drops,runeSteel:save.runeSteel+steel,
-  runes:[...new Set([...save.runes,rune])],potions:[...save.potions,potion],lootCounts};
+  ...supplies,runes:[...new Set([...save.runes,rune])],lootCounts};
 }

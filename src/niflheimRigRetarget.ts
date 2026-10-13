@@ -60,10 +60,12 @@ function boneClip(troll:RigAsset,name:string):THREE.AnimationClip|null{
   const times=name==='ANM_WALK'?[0,.2,.4,.6,.8]:[0,.18,.37,.54,.78,1.05];
   const wave=(values:number[])=>values.map(v=>v*Math.PI/180);
   const motions:Record<string,{bone:string;axis:'x'|'y'|'z';angles:number[]}[]>={
+    // This rig's arm segments extend along local X. Rotate around Z to
+    // bend and swing them; X only twists the arm around its own length.
     ANM_LIGHT_ATTACK_2:[
       {bone:'Scapula_R_0219',axis:'y',angles:wave([0,-6,-18,12,3,0])},
-      {bone:'Shoulder_R_0235',axis:'x',angles:wave([0,-32,-72,58,18,0])},
-      {bone:'Elbow_R_0238',axis:'x',angles:wave([0,-25,-55,12,4,0])},
+      {bone:'Shoulder_R_0235',axis:'z',angles:wave([0,-32,-72,58,18,0])},
+      {bone:'Elbow_R_0238',axis:'z',angles:wave([0,-25,-55,12,4,0])},
       {bone:'Wrist_R_0241',axis:'z',angles:wave([0,12,18,-24,-8,0])},
       {bone:'Chest_M_0226',axis:'y',angles:wave([0,-10,-18,20,5,0])},
       {bone:'Spine1_M_0223',axis:'x',angles:wave([0,0,-7,11,4,0])}
@@ -99,17 +101,17 @@ function boneClip(troll:RigAsset,name:string):THREE.AnimationClip|null{
   return tracks.length?new THREE.AnimationClip(name,times[times.length-1],tracks):null;
 }
 
-export function retargetOrcAnimationsToShieldTroll(orc:RigAsset,troll:RigAsset):boolean{
+export function retargetOrcAnimationsToShieldTroll(orc:RigAsset|null,troll:RigAsset):boolean{
   const orcBones=new Map<string,THREE.Object3D>();
   const trollBones=new Map<string,THREE.Object3D>();
-  orc.scene.traverse(o=>{if(o instanceof THREE.Bone)orcBones.set(clean(o.name),o);});
+  orc?.scene.traverse(o=>{if(o instanceof THREE.Bone)orcBones.set(clean(o.name),o);});
   troll.scene.traverse(o=>{if(o instanceof THREE.Bone)trollBones.set(clean(o.name),o);});
   const mappings=Object.entries(TROLL_TO_ORC)
     .map(([to,from])=>({to:clean(to),from:clean(from)}))
     .filter(({to,from})=>trollBones.has(to)&&orcBones.has(from));
   let transferred=0,generated=0;
   for(const targetName of ['ANM_WALK','ANM_LIGHT_ATTACK_2','ANM_DAMAGED','ANM_DEATH']){
-    const source=orc.animations.find(c=>animationName(c.name)===targetName);
+    const source=orc?.animations.find(c=>animationName(c.name)===targetName);
     let clip:THREE.AnimationClip|null=null;
     // Orc attack translations twist the goblin rig away from its target.
     // Always use an axe swing authored for the goblin's own shoulder, elbow
@@ -145,7 +147,10 @@ export function retargetOrcAnimationsToShieldTroll(orc:RigAsset,troll:RigAsset):
       }
     }
     if(!clip){clip=boneClip(troll,targetName);if(clip)generated++;}
-    if(clip)troll.animations.push(clip);
+    if(clip){
+      troll.animations=troll.animations.filter(c=>animationName(c.name)!==targetName);
+      troll.animations.push(clip);
+    }
   }
   if(transferred+generated)console.info('Shield goblin animated:',transferred,'retargeted and',generated,'fallback clips');
   return transferred+generated>0;

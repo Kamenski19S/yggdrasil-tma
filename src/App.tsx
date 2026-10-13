@@ -151,7 +151,7 @@ const [roadT, setRoadT] = useState(0.06);
       const amount=MILL_BONUS_DROPS_MIN+Math.floor(Math.random()*MILL_BONUS_DROPS_RANGE);
       setSave(s=>({...s,millStored:s.millStored+amount}));return `+${amount} капель в накопитель`;
     }
-    const item=kind==='potion'?POTION_CATALOG[Math.floor(Math.random()*Math.min(3,POTION_CATALOG.length))]:RUNE_CATALOG[Math.floor(Math.random()*RUNE_CATALOG.length)];
+    const item=kind==='potion'?POTION_CATALOG[Math.floor(Math.random()*POTION_CATALOG.length)]:RUNE_CATALOG[Math.floor(Math.random()*RUNE_CATALOG.length)];
     const quantity=kind==='potion'?MILL_POTION_QUANTITY:MILL_RUNE_QUANTITY;
     setSave(s=>({...s,
       potions:kind==='potion'?[...s.potions,...Array.from({length:quantity},()=>item.id)]:s.potions,
