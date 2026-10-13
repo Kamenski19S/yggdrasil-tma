@@ -148,3 +148,8 @@ export function createRealmNornsWell(
   const radius=Math.max(3.25,Math.min(4.5,Math.max(bounds.max.x-bounds.min.x,bounds.max.z-bounds.min.z)*.39));
   return {root,radius};
 }
+
+/** Reach the water from outside the physical well's collision radius. */
+export function isNearRealmWell(x:number,z:number,well:{x:number;z:number;radius:number}|undefined):boolean{
+  return !!well&&Math.hypot(x-well.x,z-well.z)<=well.radius+5.5;
+}

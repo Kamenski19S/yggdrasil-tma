@@ -57,18 +57,18 @@ function trackBoneName(path:string):string|null{
  * no static floating body motion or extra rig is required.
  */
 function boneClip(troll:RigAsset,name:string):THREE.AnimationClip|null{
-  const times=name==='ANM_WALK'?[0,.2,.4,.6,.8]:[0,.18,.37,.54,.78,1.05];
+  const times=name==='ANM_WALK'?[0,.2,.4,.6,.8]:name==='ANM_LIGHT_ATTACK_2'?[0,.25,.55,.90,1.16,1.50]:[0,.18,.37,.54,.78,1.05];
   const wave=(values:number[])=>values.map(v=>v*Math.PI/180);
   const motions:Record<string,{bone:string;axis:'x'|'y'|'z';angles:number[]}[]>={
     // This rig's arm segments extend along local X. Rotate around Z to
     // bend and swing them; X only twists the arm around its own length.
     ANM_LIGHT_ATTACK_2:[
-      {bone:'Scapula_R_0219',axis:'y',angles:wave([0,-6,-18,12,3,0])},
-      {bone:'Shoulder_R_0235',axis:'z',angles:wave([0,-60,-125,35,15,0])},
-      {bone:'Elbow_R_0238',axis:'z',angles:wave([0,-35,-65,15,8,0])},
-      {bone:'Wrist_R_0241',axis:'z',angles:wave([0,8,12,-28,-10,0])},
-      {bone:'Chest_M_0226',axis:'y',angles:wave([0,-10,-18,20,5,0])},
-      {bone:'Spine1_M_0223',axis:'x',angles:wave([0,0,-7,11,4,0])}
+      {bone:'Scapula_R_0219',axis:'y',angles:wave([0,-6,-18,-18,12,0])},
+      {bone:'Shoulder_R_0235',axis:'z',angles:wave([0,-70,-125,-125,35,0])},
+      {bone:'Elbow_R_0238',axis:'z',angles:wave([0,-45,-65,-65,15,0])},
+      {bone:'Wrist_R_0241',axis:'z',angles:wave([0,8,12,12,-28,0])},
+      {bone:'Chest_M_0226',axis:'y',angles:wave([0,-10,-18,-18,20,0])},
+      {bone:'Spine1_M_0223',axis:'x',angles:wave([0,0,-7,-7,11,0])}
     ],
     ANM_DAMAGED:[
       {bone:'Chest_M_0226',axis:'x',angles:wave([0,10,27,-12,-4,0])},

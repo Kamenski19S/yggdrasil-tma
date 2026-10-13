@@ -1,7 +1,7 @@
 import {incomingCombatDamage,livingWaterUsed,livingWaterActive,type CombatStats} from './combatStats';
 import {boostedPotionDamage,potionDodges,type PotionBoostKind} from './potionEffects';
 import {createBridgeRepair,BRIDGE_PARTS} from './niflheimBridgeRepair';
-import {createRealmNornsWell,NIFLHEIM_NORNS_STYLE} from './realmNornsWell';
+import {createRealmNornsWell,NIFLHEIM_NORNS_STYLE,isNearRealmWell} from './realmNornsWell';
 import {installGuardianStones} from './niflheimGuardianStones';
 import {createMemoryTable} from './niflheimMemoryTable';
 import {memoryQuest,DRY_SEALS,MEMORY_FINDS,SOURCE_RUNES,MEMORY_REWARD,type MemoryEvent} from './niflheimMemoryQuest';
@@ -920,10 +920,11 @@ export default function Niflheim3D({combatStats,onPotionBoostUsed,onFrostGuardHi
         const iceFragment=NIFL_ICE.find(p=>!dragonRef.current.has('ice:'+p.id)&&Math.hypot(pos.x-p.x,pos.z-p.z)<5.5);
         const seal=drySeals.find(r=>!questRef.current.seals.some(s=>s.id===r.id)&&Math.hypot(pos.x-r.position.x,pos.z-r.position.z)<6);
         const bridgePart=questRef.current.bridgeStarted&&!questRef.current.bridgeRestored?bridgeRepair?.near(pos.x,pos.z,questRef.current.bridgeParts):undefined;
-        const nearQuest=iceFragment?'ice:'+iceFragment.id:bridgePart?'bridge:find:'+bridgePart.id:bridgeRepair&&Math.abs(pos.x+72)<8&&(Math.abs(pos.z-27)<8||Math.abs(pos.z+12)<8)?'bridge':seal?'seal:'+seal.id:find?'find:'+find.id:rootsSpace&&Math.hypot(pos.x-10.5,pos.z+57)<7?'girl':Math.hypot(pos.x-NIFL_SOURCE.x,pos.z-NIFL_SOURCE.z)<13?'source':'';
+        const atWell=isNearRealmWell(pos.x,pos.z,wellObstacle)||isNearRealmWell(pos.x,pos.z,nornsWellObstacle);
+        const nearQuest=atWell?'':iceFragment?'ice:'+iceFragment.id:bridgePart?'bridge:find:'+bridgePart.id:bridgeRepair&&Math.abs(pos.x+72)<8&&(Math.abs(pos.z-27)<8||Math.abs(pos.z+12)<8)?'bridge':seal?'seal:'+seal.id:find?'find:'+find.id:rootsSpace&&Math.hypot(pos.x-10.5,pos.z+57)<7?'girl':Math.hypot(pos.x-NIFL_SOURCE.x,pos.z-NIFL_SOURCE.z)<13?'source':'';
         setQuestNear(prev=>prev===nearQuest?prev:nearQuest);
         const shore={x:40,z:109};
-        const questLocation=Math.hypot(pos.x-shore.x,pos.z-shore.z)<10?'vampire':
+        const questLocation=atWell?'threeNornsWell':Math.hypot(pos.x-shore.x,pos.z-shore.z)<10?'vampire':
           LIBERATION_TRIALS.find(t=>t.id!=='vampire'&&Math.hypot(pos.x-(t.id==='iceLake'?-50:(NIFL_LOCATIONS.find(l=>l.id===t.id)?.x??900)),
               pos.z-(t.id==='iceLake'?10:(NIFL_LOCATIONS.find(l=>l.id===t.id)?.z??900)))<13)?.id||'';
         if(questLocation!==nearTrialRef){nearTrialRef=questLocation;setNearTrial(questLocation);}
@@ -958,7 +959,7 @@ export default function Niflheim3D({combatStats,onPotionBoostUsed,onFrostGuardHi
     {inventoryOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Запас Vicki"><h3>Запас Vicki</h3><InventorySection kind="potions" {...inventory}/><InventorySection kind="runes" {...inventory}/><button onClick={()=>setInventoryOpen(false)}>Вернуться в игру</button></section></div>}
     {questNear&&!modalActive&&<div className="nifl-near nifl-quest-near"><b>{questNear.startsWith('ice:')?'Осколок вечного льда':questNear==='bridge'?'Восстановление переправы':questNear.startsWith('bridge:find:')?BRIDGE_PARTS.find(p=>'bridge:find:'+p.id===questNear)?.name:questNear==='girl'?'Девушка у чаши':questNear==='source'?(quest.restored?'Возрождённый Хвергельмир':quest.ready?'Руны Хвергельмира готовы':'Печать Хвергельмира'):questNear.startsWith('seal:')?'Печать '+DRY_SEALS.find(r=>'seal:'+r.id===questNear)?.name:MEMORY_FINDS.find(f=>'find:'+f.id===questNear)?.name}</b><button onClick={()=>{clearInput();setQuestMessage('');if(questNear.startsWith('ice:')){emitDragon(questNear as DragonEvent);setStatus('Осколок вечного льда получен! Эликсир добавлен в общий запас.');}else if(questNear.startsWith('bridge:find:')){emitMemory(questNear as MemoryEvent);setStatus('Камень опоры найден.');}else if(questNear.startsWith('find:')){emitMemory(questNear as MemoryEvent);setStatus('Осколок памяти найден. Вернись к девушке, когда соберёшь все три.');}else {if(questNear.startsWith('seal:'))setSealTarget(questNear.slice(5));setQuestDialog(questNear==='bridge'?'bridge':questNear.startsWith('seal:')?'seal':questNear==='girl'?'girl':'source');}}}>{questNear.startsWith('ice:')?'Забрать осколок':questNear.startsWith('bridge:find:')?'Забрать камень':questNear==='bridge'?'Осмотреть переправу':questNear.startsWith('seal:')?'Осмотреть печать':questNear.startsWith('find:')?'Извлечь изо льда':questNear==='girl'?'Поговорить':quest.restored?'Осмотреть источник':'Прикоснуться к печати'}</button></div>}
     {nearTrial&&!questNear&&!modalActive&&<div className="nifl-near nifl-quest-near" style={{background:'#132231ee',zIndex:6}}>
-      <b>{liberation.has(nearTrial)?'✓ ':''}{trialById(nearTrial)?.name}</b>
+      <b>{nearTrial==='threeNornsWell'&&liberation.has(nearTrial)?'💧 Колодец · Живая вода':<>{liberation.has(nearTrial)?'✓ ':''}{trialById(nearTrial)?.name}</>}</b>
       <button onClick={()=>{clearInput();enterTrial(nearTrial);}}>{liberation.has(nearTrial)?nearTrial==='threeNornsWell'?'Живая вода':COMBAT_TRIALS.has(nearTrial as any)&&nearTrial!=='vampire'?'Повторное испытание':'Освобождено':'Задание хранителей'}</button>
     </div>}
     {!modalActive&&<button aria-label="Журнал пройденных и оставшихся заданий" style={{position:'absolute',top:72,left:12,padding:'5px 9px',fontSize:11,zIndex:5,color:'#f4e3b7',background:'#152c3bdd',border:'1px solid #bda16b',borderRadius:7}} onClick={()=>{clearInput();setJournalOpen(true);}}>📜 {liberation.count}/{liberation.total} · Задания</button>}

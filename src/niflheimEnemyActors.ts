@@ -15,7 +15,7 @@ type Spot={id:string;root:THREE.Group};
 type Asset={scene:THREE.Group;animations:THREE.AnimationClip[]};
 type Actor={model:THREE.Group;root:THREE.Group;mixer:THREE.AnimationMixer;role:Role;static:boolean;groundOffset:number;clips:THREE.AnimationClip[];idle:THREE.AnimationAction|null;current:THREE.AnimationAction|null;actionUntil:number};
 type Shadow={id:number;site:{x:number;z:number;place:string};root:THREE.Group;actor:Actor;healthBar:THREE.Sprite;hp:number;active:boolean;used:boolean;born:number;lastBite:number;lastHit:number};
-type Guard={id:string;actor:Actor;root:THREE.Group;origin:THREE.Vector3;role:'orc'|'troll';hp:number;maxHp:number;attack:number;lastAttack:number;lastHit:number;deadAt:number;respawnAt:number;bar:THREE.Sprite};
+type Guard={id:string;actor:Actor;root:THREE.Group;origin:THREE.Vector3;role:'orc'|'troll';hp:number;maxHp:number;attack:number;hitAt:number;lastAttack:number;lastHit:number;deadAt:number;respawnAt:number;bar:THREE.Sprite};
 type OnShadowHit=(damage:number)=>number;
 type OnGuardDefeated=(id:string,role:'orc'|'troll')=>void;
 export const NIFLHEIM_RIGGED_ASSETS:Record<Role,string>={
@@ -216,7 +216,7 @@ export function installNiflheimRiggedEnemies(
     const isTroll=role==='troll',maxHp=isTroll?165:98,attack=isTroll?38:24;
     const bar=makeBar(isTroll?'#c9a4ec':'#e58b7f');
     const origin=holder.getWorldPosition(new THREE.Vector3()),next=readGuard(id);
-    const guard:Guard={id,actor,root:holder,origin,role,hp:maxHp,maxHp,attack,lastAttack:0,lastHit:0,deadAt:0,respawnAt:next,bar};
+    const guard:Guard={id,actor,root:holder,origin,role,hp:maxHp,maxHp,attack,hitAt:0,lastAttack:0,lastHit:0,deadAt:0,respawnAt:next,bar};
     holder.visible=next<=Date.now();
     // No orphaned healthbars when a guard is cooling down.
     bar.parent!.visible=false;
@@ -385,9 +385,12 @@ export function installNiflheimRiggedEnemies(
     }
   }).catch(error=>console.warn('Niflheim rigged loading failed',error));
 
+  let previousAnimationAt=performance.now();
   return {
     tick(dt:number,now:number,hero:{x:number;z:number},shielded:boolean,paused:boolean){
       if(!isAlive())return;
+      const animationDt=paused?0:Math.min(1,Math.max(0,(now-previousAnimationAt)/1000));
+      previousAnimationAt=now;
       const realtime=Date.now();
       if(realtime>=nextWave){
         waveNumber++;
@@ -399,7 +402,7 @@ export function installNiflheimRiggedEnemies(
         if(actor.static){
           if(actor.root.visible){
             const p=actor.root.getWorldPosition(new THREE.Vector3());
-            if(actor.model.visible&&Math.hypot(p.x-hero.x,p.z-hero.z)<75){actor.mixer.update(Math.min(dt,.05));}
+            if(actor.model.visible&&Math.hypot(p.x-hero.x,p.z-hero.z)<75){actor.mixer.update(animationDt);}
           }
         }
       }
@@ -418,6 +421,14 @@ export function installNiflheimRiggedEnemies(
         }
         const place=guard.root.getWorldPosition(new THREE.Vector3());
         const dist=Math.hypot(place.x-hero.x,place.z-hero.z);
+        // Resolve damage at the downstroke, using the current range and shield.
+        if(guard.hitAt&&now>=guard.hitAt){
+          guard.hitAt=0;
+          if(dist<6){
+            if(shielded)notify('🛡️ Щит отразил удар стража.');
+            else{const loss=onShadowStrike(guard.attack);notify('⚔️ '+(guard.role==='orc'?'Орк':'Зелёный гоблин')+' атакует! −'+loss+' здоровья.');}
+          }
+        }
         // Preserve 21 goblin patrols without rendering every skinned mesh
         // across the entire frozen realm on a mobile device.
         guard.actor.model.visible=dist<57;
@@ -447,9 +458,9 @@ export function installNiflheimRiggedEnemies(
         }
         if(dist<5.2&&now-guard.lastAttack>(guard.role==='troll'?4300:3150)){
           guard.lastAttack=now;playAction(guard.actor,'attack',now);
-          combatEffect('enemy',guard.root,ROLE_HEIGHT[guard.role],guard.role==='troll'?400:180);
-          if(shielded)notify('🛡️ Щит отразил удар стража.');
-          else{const loss=onShadowStrike(guard.attack);notify('⚔️ '+(guard.role==='orc'?'Орк':'Зелёный гоблин')+' атакует! −'+loss+' здоровья.');}
+          const impactDelay=guard.role==='troll'?1050:350;
+          guard.hitAt=now+impactDelay;
+          combatEffect('enemy',guard.root,ROLE_HEIGHT[guard.role],impactDelay-110);
         }
       }
       // A zone creates an ambush only when approached in a live wave.
@@ -478,7 +489,7 @@ export function installNiflheimRiggedEnemies(
             shadow.root.position.set(nx,ground(nx,nz),nz);
           }
         }
-        shadow.actor.mixer.update(Math.min(dt,.05));updateBarPosition(shadow.actor,shadow.healthBar);
+        shadow.actor.mixer.update(animationDt);updateBarPosition(shadow.actor,shadow.healthBar);
         if(distance<4.5&&now-shadow.lastBite>3300){
           shadow.lastBite=now;
           combatEffect('enemy',shadow.root,ROLE_HEIGHT.undead,120);
@@ -508,7 +519,7 @@ export function installNiflheimRiggedEnemies(
         const ratio=guard.hp/guard.maxHp;
         guard.bar.scale.x=BAR_FILL_WIDTH*ratio;guard.bar.position.x=-(1-ratio)*BAR_FILL_WIDTH/2;
         if(guard.hp<=0){
-          guard.deadAt=now;guard.respawnAt=Date.now()+WAVE_MS;
+          guard.hitAt=0;guard.deadAt=now;guard.respawnAt=Date.now()+WAVE_MS;
           persistGuard(guard.id,guard.respawnAt);
           playAction(guard.actor,'death',now);
           notify('⚔️ Страж побеждён! Награда и оружие за первую победу.');
