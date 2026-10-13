@@ -61,10 +61,12 @@ function boneClip(troll:RigAsset,name:string):THREE.AnimationClip|null{
   const wave=(values:number[])=>values.map(v=>v*Math.PI/180);
   const motions:Record<string,{bone:string;axis:'x'|'y'|'z';angles:number[]}[]>={
     ANM_LIGHT_ATTACK_2:[
-      {bone:'Shoulder_R_0235',axis:'x',angles:wave([0,-56,-82,64,22,0])},
-      {bone:'Elbow_R_0238',axis:'x',angles:wave([0,-30,-46,18,8,0])},
-      {bone:'Chest_M_0226',axis:'y',angles:wave([0,-18,-27,24,6,0])},
-      {bone:'Spine1_M_0223',axis:'x',angles:wave([0,-8,-13,17,6,0])}
+      {bone:'Scapula_R_0219',axis:'y',angles:wave([0,-6,-18,12,3,0])},
+      {bone:'Shoulder_R_0235',axis:'x',angles:wave([0,-32,-72,58,18,0])},
+      {bone:'Elbow_R_0238',axis:'x',angles:wave([0,-25,-55,12,4,0])},
+      {bone:'Wrist_R_0241',axis:'z',angles:wave([0,12,18,-24,-8,0])},
+      {bone:'Chest_M_0226',axis:'y',angles:wave([0,-10,-18,20,5,0])},
+      {bone:'Spine1_M_0223',axis:'x',angles:wave([0,0,-7,11,4,0])}
     ],
     ANM_DAMAGED:[
       {bone:'Chest_M_0226',axis:'x',angles:wave([0,10,27,-12,-4,0])},
@@ -109,7 +111,13 @@ export function retargetOrcAnimationsToShieldTroll(orc:RigAsset,troll:RigAsset):
   for(const targetName of ['ANM_WALK','ANM_LIGHT_ATTACK_2','ANM_DAMAGED','ANM_DEATH']){
     const source=orc.animations.find(c=>animationName(c.name)===targetName);
     let clip:THREE.AnimationClip|null=null;
-    if(source){
+    // Orc attack translations twist the goblin rig away from its target.
+    // Always use an axe swing authored for the goblin's own shoulder, elbow
+    // and wrist; walk/hurt/death can still use the source retargeting.
+    if(targetName==='ANM_LIGHT_ATTACK_2'){
+      clip=boneClip(troll,targetName);if(clip)generated++;
+    }
+    if(source&&!clip){
       const tracksByBone=new Map<string,THREE.KeyframeTrack>();
       source.tracks.forEach(t=>{
         const node=trackBoneName(t.name);
