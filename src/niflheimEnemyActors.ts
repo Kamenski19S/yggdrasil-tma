@@ -52,10 +52,18 @@ export const NIFLHEIM_EXTRA_GUARDS=[
  {id:'hallOrc',role:'orc',x:-76,z:-95,place:'Внутри Зала забытых имён'},
  {id:'memoryOrc',role:'orc',x:90,z:4,place:'Внутри Пещеры воспоминаний'},
  {id:'mountainOrc',role:'orc',x:-86,z:84,place:'Под сводами Снежной горы'},
- {id:'echoOrc',role:'orc',x:83,z:61,place:'Внутри Пещеры ледяного эха'}
+ {id:'echoOrc',role:'orc',x:83,z:61,place:'Внутри Пещеры ледяного эха'},
+ // Additional shield goblins defend open roads; none is placed in a doorway.
+ {id:'iceRoadGoblin',role:'troll',x:-37,z:47,place:'Тропа замёрзшего русла'},
+ {id:'lakeGoblin',role:'troll',x:-54,z:17,place:'Берег ледяного озера'},
+ {id:'echoGoblin',role:'troll',x:66,z:76,place:'Дорога к Пещере ледяного эха'},
+ {id:'hallGoblin',role:'troll',x:-55,z:-82,place:'Подступы к Залу забытых имён'},
+ {id:'nornsGoblin',role:'troll',x:27,z:-72,place:'Дорога к Колодцу трёх норн'}
 ] as const;
 
 const WAVE_MS=15*60*1000;
+const BAR_WIDTH=1.05;
+const BAR_FILL_WIDTH=.98;
 const FIRST_WAVE_MS=45*1000; // First encounter is quickly visible for a new player.
 const MAX_ACTIVE_SHADOWS=3;
 const SHADOW_LIFETIME_MS=130*1000;
@@ -168,15 +176,15 @@ export function installNiflheimRiggedEnemies(
   const makeBar=(tint:string)=>{
     const anchor=new THREE.Group();anchor.name='Здоровье над головой';scene.add(anchor);anchor.visible=false;
     const background=new THREE.Sprite(new THREE.SpriteMaterial({color:'#29242c',depthTest:true,depthWrite:false,fog:false}));
-    background.scale.set(2.55,.28,1);anchor.add(background);
+    background.scale.set(BAR_WIDTH,.13,1);anchor.add(background);
     const fill=new THREE.Sprite(new THREE.SpriteMaterial({color:tint,depthTest:true,depthWrite:false,fog:false}));
-    fill.position.z=.09;fill.scale.set(2.42,.17,1);anchor.add(fill);return fill;
+    fill.position.z=.018;fill.scale.set(BAR_FILL_WIDTH,.075,1);anchor.add(fill);return fill;
   };
   const updateBarPosition=(actor:Actor,fill:THREE.Sprite)=>{
     const anchor=fill.parent as THREE.Group;
     actor.model.updateWorldMatrix(true,true);
     const head=actor.model.getObjectByName(actor.role==='orc'?'Bip001_Head_060':'Head_M_0230');
-    if(head){head.getWorldPosition(anchor.position);anchor.position.y+=.65;}
+    if(head){head.getWorldPosition(anchor.position);anchor.position.y+=.35;}
     else{const box=new THREE.Box3().setFromObject(actor.model);box.getCenter(anchor.position);anchor.position.y=box.max.y+.45;}
   };
   const persistGuard=(id:string,next:number)=>{try{localStorage.setItem('yggdrasil-niflheim-guard-'+id,String(next));}catch{}};
@@ -216,7 +224,26 @@ export function installNiflheimRiggedEnemies(
       const hand=model.getObjectByName(role==='orc'?'Bip001_R_Hand_017':'Wrist_R_0241');
       if(!hand){console.warn('No fist bone for',role);return;}
       const axe=template.clone(true);
-      axe.name=role==='orc'?'Секира орка в правой руке':'Секира гоблина в правой руке';
+      axe.name=role==='orc'?'Секира орка в правой руке':'Ледяная двулезвийная секира зелёного гоблина';
+      if(role==='troll'){
+        // Icy-steel tint makes the axe visibly different from the red shield
+        // and old meat prop, without additional draw calls or lights.
+        const adapted=new Map<THREE.Material,THREE.Material>();
+        axe.traverse(node=>{
+          if(!(node instanceof THREE.Mesh))return;
+          const rework=(source:THREE.Material)=>{
+            if(adapted.has(source))return adapted.get(source)!;
+            const material=source.clone();
+            if(material instanceof THREE.MeshStandardMaterial){
+              material.color.lerp(new THREE.Color('#8bd7e8'),.44);
+              material.emissive.set('#1d5a82');material.emissiveIntensity=.3;
+              material.roughness=Math.min(material.roughness,.48);
+            }
+            adapted.set(source,material);return material;
+          };
+          node.material=Array.isArray(node.material)?node.material.map(rework):rework(node.material);
+        });
+      }
       axe.updateMatrixWorld(true);
       const box=new THREE.Box3().setFromObject(axe),size=box.getSize(new THREE.Vector3());
       if(size.y<.0001)return;
@@ -270,7 +297,7 @@ export function installNiflheimRiggedEnemies(
     shadow.hp=SHADOW_MAX_HP+shadow.id*9;shadow.lastBite=now;shadow.lastHit=0;
     shadow.root.visible=true;shadow.healthBar.parent!.visible=true;shadow.root.scale.setScalar(.001);
     shadow.root.position.set(shadow.site.x,ground(shadow.site.x,shadow.site.z),shadow.site.z);
-    shadow.healthBar.scale.x=2.42;shadow.healthBar.position.x=0;
+    shadow.healthBar.scale.x=BAR_FILL_WIDTH;shadow.healthBar.position.x=0;
     notify('🌑 Из тумана возникла Тень забытых у '+shadow.site.place+'!');
   };
 
@@ -352,7 +379,7 @@ export function installNiflheimRiggedEnemies(
           guard.root.visible=true;guard.bar.parent!.visible=true;guard.hp=guard.maxHp;
           if(guard.root.parent===scene)guard.root.position.set(guard.origin.x,ground(guard.origin.x,guard.origin.z)+guard.actor.groundOffset,guard.origin.z);
           else guard.root.position.set(0,0,0);
-          guard.bar.scale.x=2.42;guard.bar.position.x=0;guard.respawnAt=0;
+          guard.bar.scale.x=BAR_FILL_WIDTH;guard.bar.position.x=0;guard.respawnAt=0;
         }
         updateBarPosition(guard.actor,guard.bar);
         const place=guard.root.getWorldPosition(new THREE.Vector3());
@@ -381,7 +408,7 @@ export function installNiflheimRiggedEnemies(
         if(dist<5.2&&now-guard.lastAttack>(guard.role==='troll'?4300:3150)){
           guard.lastAttack=now;playAction(guard.actor,'attack',now);
           if(shielded)notify('🛡️ Щит отразил удар стража.');
-          else{onShadowStrike(guard.attack);notify('⚔️ '+(guard.role==='orc'?'Орк':'Тролль')+' атакует! −'+guard.attack+' здоровья.');}
+          else{onShadowStrike(guard.attack);notify('⚔️ '+(guard.role==='orc'?'Орк':'Зелёный гоблин')+' атакует! −'+guard.attack+' здоровья.');}
         }
       }
       // A zone creates an ambush only when approached in a live wave.
@@ -436,7 +463,7 @@ export function installNiflheimRiggedEnemies(
         const damage=guard.role==='troll'?(specialist?48:18):(specialist?35:22);
         guard.hp=Math.max(0,guard.hp-damage);
         const ratio=guard.hp/guard.maxHp;
-        guard.bar.scale.x=2.42*ratio;guard.bar.position.x=-(1-ratio)*1.21;
+        guard.bar.scale.x=BAR_FILL_WIDTH*ratio;guard.bar.position.x=-(1-ratio)*BAR_FILL_WIDTH/2;
         if(guard.hp<=0){
           guard.deadAt=now;guard.respawnAt=Date.now()+WAVE_MS;
           persistGuard(guard.id,guard.respawnAt);
@@ -445,7 +472,7 @@ export function installNiflheimRiggedEnemies(
           onGuardDefeated(guard.id,guard.role);
         }else{
           playAction(guard.actor,'hurt',now);
-          notify('⚔️ '+(guard.role==='orc'?'Орк':'Тролль')+': '+guard.hp+'/'+guard.maxHp+' здоровья.');
+          notify('⚔️ '+(guard.role==='orc'?'Орк':'Зелёный гоблин')+': '+guard.hp+'/'+guard.maxHp+' здоровья.');
         }
         return true;
       }
@@ -458,8 +485,8 @@ export function installNiflheimRiggedEnemies(
       const damage=weapon==='bladeObsidian'?48:weapon==='hammerRune'?38:22;
       target.hp=Math.max(0,target.hp-damage);
       const ratio=target.hp/(SHADOW_MAX_HP+target.id*9);
-      target.healthBar.scale.x=2.42*ratio;
-      target.healthBar.position.x=-(1-ratio)*1.21;
+      target.healthBar.scale.x=BAR_FILL_WIDTH*ratio;
+      target.healthBar.position.x=-(1-ratio)*BAR_FILL_WIDTH/2;
       if(target.hp<=0)fadeOut(target,true);
       else notify('⚔️ Удар по Тени! Осталось '+target.hp+' здоровья.');
       return true;

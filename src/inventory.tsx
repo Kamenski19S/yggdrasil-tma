@@ -130,7 +130,9 @@ export function ForgeWeaponWall({owned,ownedShields,selected,selectedShield,onCh
         const center=box.getCenter(new THREE.Vector3());
         item.position.set(-center.x,-center.y,-center.z);
         const mount=new THREE.Group();mount.add(item);
-        mount.scale.setScalar((niflheim?2.8:1.48)/span);
+        // Each of the three Niflheim columns is ~3.35 units wide and the
+        // row is 2.95 high. Leave padding so blades and the shield fit.
+        mount.scale.setScalar((niflheim?1.48:1.48)/span);
         mount.position.set(niflheim?(index%3-1)*3.35:(index%5-2)*2.17,niflheim?(1-Math.floor(index/3))*2.95:(1.5-Math.floor(index/5))*2.28+.22,0);
         scene.add(mount);
         renderer.render(scene,camera);
