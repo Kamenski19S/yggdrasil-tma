@@ -49,16 +49,32 @@ export const NIFLHEIM_EXTRA_GUARDS=[
  {id:'towerOrc',role:'orc',x:54,z:-103,place:'Башня Нидхёгга'},
  {id:'crossingTroll',role:'troll',x:-88,z:-21,place:'Переправа'},
  {id:'rootsTroll',role:'troll',x:37,z:-54,place:'Сплетение корней'},
- {id:'hallOrc',role:'orc',x:-76,z:-95,place:'Внутри Зала забытых имён'},
- {id:'memoryOrc',role:'orc',x:90,z:4,place:'Внутри Пещеры воспоминаний'},
- {id:'mountainOrc',role:'orc',x:-86,z:84,place:'Под сводами Снежной горы'},
+ {id:'hallOrc',role:'orc',x:-65,z:-111,place:'Южный проход Зала забытых имён'},
+ {id:'memoryOrc',role:'orc',x:68,z:-1,place:'Путь к Пещере воспоминаний'},
+ {id:'mountainOrc',role:'orc',x:-68,z:106,place:'Внешний рубеж Снежной горы'},
  {id:'echoOrc',role:'orc',x:83,z:61,place:'Внутри Пещеры ледяного эха'},
  // Additional shield goblins defend open roads; none is placed in a doorway.
  {id:'iceRoadGoblin',role:'troll',x:-37,z:47,place:'Тропа замёрзшего русла'},
  {id:'lakeGoblin',role:'troll',x:-54,z:17,place:'Берег ледяного озера'},
  {id:'echoGoblin',role:'troll',x:66,z:76,place:'Дорога к Пещере ледяного эха'},
  {id:'hallGoblin',role:'troll',x:-55,z:-82,place:'Подступы к Залу забытых имён'},
- {id:'nornsGoblin',role:'troll',x:27,z:-72,place:'Дорога к Колодцу трёх норн'}
+ {id:'nornsGoblin',role:'troll',x:27,z:-72,place:'Дорога к Колодцу трёх норн'},
+ // More VISIBLY present goblins on the same routes the player walks.
+ // The one rigged GLB is reused; no additional model or texture downloads.
+ {id:'entranceGoblinA',role:'troll',x:-22,z:114,place:'Западный дозор Порога туманов'},
+ {id:'entranceGoblinB',role:'troll',x:21,z:111,place:'Восточный дозор Порога туманов'},
+ {id:'forgePathGoblin',role:'troll',x:-33,z:81,place:'Подход к Кузнице хранителей'},
+ {id:'shelterPathGoblin',role:'troll',x:33,z:91,place:'Дорога к Приюту хранителей'},
+ {id:'snowGateGoblin',role:'troll',x:-49,z:84,place:'Тропа к Снежной горе'},
+ {id:'riverEastGoblin',role:'troll',x:7,z:39,place:'Восток замёрзшего русла'},
+ {id:'iceLakeWestGoblin',role:'troll',x:-46,z:36,place:'Северный берег ледяного озера'},
+ {id:'echoGateGoblin',role:'troll',x:63,z:44,place:'Север Пещеры ледяного эха'},
+ {id:'memoryApproachGoblin',role:'troll',x:65,z:20,place:'Подход к Пещере воспоминаний'},
+ {id:'crossingSouthGoblin',role:'troll',x:-55,z:-22,place:'Южный берег переправы'},
+ {id:'rootsPassGoblin',role:'troll',x:-22,z:-49,place:'Тропа к Сплетению корней'},
+ {id:'hallNorthGoblin',role:'troll',x:-46,z:-64,place:'Северный дозор Зала забытых имён'},
+ {id:'hallSouthGoblin',role:'troll',x:-49,z:-105,place:'Южный дозор Зала забытых имён'},
+ {id:'sourceGoblin',role:'troll',x:13,z:-112,place:'Подступы к Хвергельмиру'}
 ] as const;
 
 const WAVE_MS=15*60*1000;
@@ -97,7 +113,11 @@ export function installNiflheimRiggedEnemies(
     holder.add(model);root.add(holder);
     model.traverse(o=>{
       if(!(o instanceof THREE.Mesh))return;
-      o.castShadow=role!=='undead';o.frustumCulled=true;
+      o.castShadow=role!=='undead';
+      // Animated skinned meshes change silhouette beyond their static bounds.
+      // Manually range-cull guards rather than lose visible goblins to
+      // incorrect Three.js skinned-mesh frustum culling.
+      o.frustumCulled=role==='undead';
       if(role==='orc'){
         const tintWinter=(original:THREE.Material)=>{
           const cached=winterOrcMaterials.get(original);if(cached)return cached;
@@ -184,17 +204,17 @@ export function installNiflheimRiggedEnemies(
     const anchor=fill.parent as THREE.Group;
     actor.model.updateWorldMatrix(true,true);
     const head=actor.model.getObjectByName(actor.role==='orc'?'Bip001_Head_060':'Head_M_0230');
-    const bounds=new THREE.Box3().setFromObject(actor.model);
     if(head){
+      // The orc head-bone pivot is around the neck/face. A 0.74-unit lift
+      // left its health bar INSIDE the skull. Leave a full clear gap.
       head.getWorldPosition(anchor.position);
-      // Bone pivots tend to be at the jaw or neck. Place the bar above the
-      // TOP of the visible head, not over the face; keep clearance on attack.
-      anchor.position.y=Math.max(
-        anchor.position.y+(actor.role==='troll'?.96:.74),
-        bounds.max.y+.25
-      );
+      anchor.position.y+=(actor.role==='orc'?1.45:actor.role==='troll'?1.32:1.25);
     }else{
-      bounds.getCenter(anchor.position);anchor.position.y=bounds.max.y+.35;
+      // Fall back only for malformed rigs; avoid computing animated AABBs
+      // for every visible enemy on every mobile frame.
+      const bounds=new THREE.Box3().setFromObject(actor.model);
+      bounds.getCenter(anchor.position);
+      anchor.position.y=bounds.max.y+.9;
     }
   };
   const persistGuard=(id:string,next:number)=>{try{localStorage.setItem('yggdrasil-niflheim-guard-'+id,String(next));}catch{}};
@@ -204,7 +224,10 @@ export function installNiflheimRiggedEnemies(
     const bar=makeBar(isTroll?'#c9a4ec':'#e58b7f');
     const origin=holder.getWorldPosition(new THREE.Vector3()),next=readGuard(id);
     const guard:Guard={id,actor,root:holder,origin,role,hp:maxHp,maxHp,attack,lastAttack:0,lastHit:0,deadAt:0,respawnAt:next,bar};
-    holder.visible=next<=Date.now();bar.parent!.visible=holder.visible;guards.push(guard);
+    holder.visible=next<=Date.now();
+    // No orphaned healthbars when a guard is cooling down.
+    bar.parent!.visible=false;
+    guards.push(guard);
   };
   // Load one optimized axe and clone it; geometry/materials are shared.
   const axeTemplate=cachedGlbBuffer(`${BASE}img/models/Axe_Double.glb`)
@@ -349,8 +372,17 @@ export function installNiflheimRiggedEnemies(
         for(const site of NIFLHEIM_EXTRA_GUARDS){
           if(site.role!==role)continue;
           const root=new THREE.Group();
-          root.name=site.place+': '+(role==='orc'?'орк-страж':'ледяной тролль');
-          root.position.set(site.x,ground(site.x,site.z),site.z);scene.add(root);
+          root.name=site.place+': '+(role==='orc'?'орк-страж':'зелёный гоблин');
+          // New patrols must stand on reachable snow, not a river mesh.
+          // Preserve the authored point where already walkable.
+          const shifts:[[number,number],...Array<[number,number]>]=[
+            [0,0],[7,0],[-7,0],[0,7],[0,-7],[9,7],[-9,-7],[12,0],[-12,0]
+          ];
+          const spawn=site.role==='troll'?
+            shifts.map(([dx,dz])=>({x:site.x+dx,z:site.z+dz}))
+              .find(p=>canSpawn(p.x,p.z))||{x:site.x,z:site.z}:
+            {x:site.x,z:site.z};
+          root.position.set(spawn.x,ground(spawn.x,spawn.z),spawn.z);scene.add(root);
           const actor=mountActor(root,role,asset);
           createGuard(site.id,role,root,actor);
           attachGuardWeapon(actor);
@@ -374,7 +406,7 @@ export function installNiflheimRiggedEnemies(
         if(actor.static){
           if(actor.root.visible){
             const p=actor.root.getWorldPosition(new THREE.Vector3());
-            if(Math.hypot(p.x-hero.x,p.z-hero.z)<75){actor.mixer.update(Math.min(dt,.05));}
+            if(actor.model.visible&&Math.hypot(p.x-hero.x,p.z-hero.z)<75){actor.mixer.update(Math.min(dt,.05));}
           }
         }
       }
@@ -391,9 +423,16 @@ export function installNiflheimRiggedEnemies(
           else guard.root.position.set(0,0,0);
           guard.bar.scale.x=BAR_FILL_WIDTH;guard.bar.position.x=0;guard.respawnAt=0;
         }
-        updateBarPosition(guard.actor,guard.bar);
         const place=guard.root.getWorldPosition(new THREE.Vector3());
         const dist=Math.hypot(place.x-hero.x,place.z-hero.z);
+        // Preserve 21 goblin patrols without rendering every skinned mesh
+        // across the entire frozen realm on a mobile device.
+        guard.actor.model.visible=dist<57;
+        // Only nearby enemies show a bar: distant or overlapping guards
+        // no longer plaster the middle of the player's screen.
+        const showBar=dist<34;
+        guard.bar.parent!.visible=showBar;
+        if(showBar)updateBarPosition(guard.actor,guard.bar);
         if(dist>24){resetAction(guard.actor,now);continue;}
         guard.root.rotation.y=Math.atan2(hero.x-place.x,hero.z-place.z);
         if(guard.role==='troll'){
