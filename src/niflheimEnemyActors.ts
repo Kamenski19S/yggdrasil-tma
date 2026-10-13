@@ -85,7 +85,7 @@ const MAX_ACTIVE_SHADOWS=3;
 const SHADOW_LIFETIME_MS=130*1000;
 const SHADOW_MAX_HP=51;
 // One visible size for each species, regardless of spawn point or building.
-const ROLE_HEIGHT={orc:4.1,troll:5.6,undead:5.2} as const;
+const ROLE_HEIGHT={orc:5.8,troll:5.6,undead:5.2} as const;
 
 export function installNiflheimRiggedEnemies(
  scene:THREE.Scene,spots:Spot[],isAlive:()=>boolean,
@@ -202,20 +202,11 @@ export function installNiflheimRiggedEnemies(
   };
   const updateBarPosition=(actor:Actor,fill:THREE.Sprite)=>{
     const anchor=fill.parent as THREE.Group;
-    actor.model.updateWorldMatrix(true,true);
-    const head=actor.model.getObjectByName(actor.role==='orc'?'Bip001_Head_060':'Head_M_0230');
-    if(head){
-      // The orc head-bone pivot is around the neck/face. A 0.74-unit lift
-      // left its health bar INSIDE the skull. Leave a full clear gap.
-      head.getWorldPosition(anchor.position);
-      anchor.position.y+=(actor.role==='orc'?1.45:actor.role==='troll'?1.32:1.25);
-    }else{
-      // Fall back only for malformed rigs; avoid computing animated AABBs
-      // for every visible enemy on every mobile frame.
-      const bounds=new THREE.Box3().setFromObject(actor.model);
-      bounds.getCenter(anchor.position);
-      anchor.position.y=bounds.max.y+.9;
-    }
+    // The head bones sit at different heights in the imported skeletons.
+    // Anchor to the ground-level actor and the normalized visible model height,
+    // so the small health bar always stays OUTSIDE the skull in every animation.
+    actor.root.getWorldPosition(anchor.position);
+    anchor.position.y+=ROLE_HEIGHT[actor.role]+.68;
   };
   const persistGuard=(id:string,next:number)=>{try{localStorage.setItem('yggdrasil-niflheim-guard-'+id,String(next));}catch{}};
   const readGuard=(id:string)=>{try{return Number(localStorage.getItem('yggdrasil-niflheim-guard-'+id))||0;}catch{return 0;}};
@@ -292,7 +283,7 @@ export function installNiflheimRiggedEnemies(
       hand.updateWorldMatrix(true,false);
       const worldScale=hand.getWorldScale(new THREE.Vector3());
       const absoluteScale=Math.max(.0001,(Math.abs(worldScale.x)+Math.abs(worldScale.y)+Math.abs(worldScale.z))/3);
-      const weaponLength=role==='orc'?2.35:2.15;
+      const weaponLength=role==='orc'?3.05:3.15;
       grip.scale.setScalar(Math.min(500,weaponLength/(size.y*absoluteScale)));
       grip.add(axe);
     });
@@ -436,13 +427,10 @@ export function installNiflheimRiggedEnemies(
         if(dist>24){resetAction(guard.actor,now);continue;}
         guard.root.rotation.y=Math.atan2(hero.x-place.x,hero.z-place.z);
         if(guard.role==='troll'){
-          // Support the retargeted bone swing with a small forward lunge.
-          // This also makes an attack readable if the animation clip fails
-          // to bind on a particular mobile WebGL device.
-          const elapsed=now-guard.lastAttack;
-          const strike=elapsed>0&&elapsed<620?Math.sin(elapsed/620*Math.PI):0;
-          guard.actor.model.rotation.x=-.15*strike;
-          guard.actor.model.rotation.z=.06*strike;
+          // Leave the torso upright. The goblin's dedicated right-arm animation
+          // swings the weapon; tilting the whole rig makes the axe miss Vicki.
+          guard.actor.model.rotation.x=0;
+          guard.actor.model.rotation.z=0;
         }
         // Local chase radius keeps a guard at its building instead of letting it roam through walls.
         const walking=dist>4.6&&dist<14;
