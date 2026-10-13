@@ -1,0 +1,5 @@
+Diamond - Free by ucukcontorian
+https://sketchfab.com/3d-models/diamond-free-67ae36e69cad4da7b3dfcddd14fc67c3
+CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+Original: diamond-source.glb
+Modified for Yggdrasil: normalized, partitioned into three closed solids with slanted fracture faces. Materials, size, placement and assembly animation adjusted in-game.
