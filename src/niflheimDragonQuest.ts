@@ -20,7 +20,7 @@ export function niflCraftUnlocked(progress:ReturnType<typeof dragonProgress>,rec
  if(recipe.need==='obsidian')return progress.obsidian.length>0||progress.liberation.has('namesHall');
  return progress.ember||progress.liberation.has('threeNornsWell');
 }
-export type DragonEvent='tower:unseal'|'first'|'ember'|'forge'|'defeat'|'supply:rune'|'supply:potion'|'supply:steel'|`ice:${string}`|`obsidian:${string}`|`craft:${string}`;
+export type DragonEvent='tower:unseal'|'first'|'ember'|'livingWater'|'forge'|'defeat'|'supply:rune'|'supply:potion'|'supply:steel'|`ice:${string}`|`obsidian:${string}`|`craft:${string}`;
 export function dragonProgress(done:readonly string[]){
  const has=(key:string)=>done.includes(PREFIX+key);
  const ice=NIFL_ICE.filter(p=>has('ice:'+p.id));
@@ -45,6 +45,10 @@ export function applyDragonQuestEvent(save:Save,event:DragonEvent):Save{
  if(event.startsWith('obsidian:')){
   const id=event.slice(9);
   return !p.has('obsidian:'+id)&&NIFL_OBSIDIAN.some(o=>o.id===id)?add('obsidian:'+id):save;
+ }
+ if(event==='livingWater'){
+  if(!p.liberation.has('threeNornsWell')||!p.forged||p.defeated||save.done.includes('niflheim:livingWater:used'))return save;
+  return {...save,done:[...save.done,'niflheim:livingWater:used'],fieldHp:save.fieldHp===null?null:save.fieldHp*2};
  }
  if(event==='ember'){
   if(!p.met||!p.memoryRestored||p.ember)return save;
@@ -72,6 +76,7 @@ export function applyDragonQuestEvent(save:Save,event:DragonEvent):Save{
   if(!p.forged||p.defeated||!p.worldFreed)return save;
   const rune=RUNE_CATALOG[(save.done.length+7)%RUNE_CATALOG.length].id;
   return add('defeated',{
+   fieldHp:save.fieldHp===null?null:save.done.includes('niflheim:livingWater:used')?Math.ceil(save.fieldHp/2):save.fieldHp,
    immortalityDrops:save.immortalityDrops+45,
    potions:[...save.potions,'hoddmimirElixir','lifeElixir'],
    runes:[...new Set([...save.runes,rune])],

@@ -1,3 +1,5 @@
+import {incomingCombatDamage,type CombatStats} from './combatStats';
+import {boostedPotionDamage,potionDodges,type PotionBoosts,type PotionBoostKind} from './potionEffects';
 import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
 import {createNidhoggEncounter} from './nidhoggEncounter';
@@ -5,20 +7,26 @@ import {dragonProgress,NIFL_OBSIDIAN,type DragonEvent} from './niflheimDragonQue
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {BASE,cachedGlbBuffer,WEAPON_ASSET,textureSteelOnWeapon,styleNiflheimWeapon,type HeroWeapon} from './core';
 
-export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEquipped,whirlpoolHeart,questDone,onDragonEvent,potions,onUsePotion}:{onBack:()=>void;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;whirlpoolHeart:boolean;questDone:string[];onDragonEvent:(event:DragonEvent)=>void;potions:string[];onUsePotion:(id:string,currentHpOverride?:number)=>boolean}){
+export default function NidhoggUnderground({combatStats,fieldHp,onFieldHpChange,potionBoosts,frostGuard,onPotionBoostUsed,onFrostGuardHit,onBack,weapon,shieldAsset,shieldEquipped,whirlpoolHeart,questDone,onDragonEvent,potions,onUsePotion}:{combatStats:CombatStats;fieldHp:number|null;onFieldHpChange:(hp:number)=>void;potionBoosts:PotionBoosts;frostGuard:number;onPotionBoostUsed:(kind:PotionBoostKind)=>void;onFrostGuardHit:()=>void;onBack:()=>void;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;whirlpoolHeart:boolean;questDone:string[];onDragonEvent:(event:DragonEvent)=>void;potions:string[];onUsePotion:(id:string,currentHpOverride?:number)=>boolean}){
   const mount=useRef<HTMLDivElement>(null),analog=useRef({x:0,z:0}),pointer=useRef<number|null>(null),knob=useRef<HTMLSpanElement>(null);
   const exit=useRef(onBack);exit.current=onBack;
   const [status,setStatus]=useState('Vicki спускается под разрушенную башню…');
   const [nearExit,setNearExit]=useState(true);
   const [nearOre,setNearOre]=useState('');
   const [nearDragon,setNearDragon]=useState(false);
-  const [hp,setHp]=useState(100);
+  const [hp,setHp]=useState(Math.min(combatStats.maxHp,fieldHp??combatStats.maxHp));
   const [dragonHp,setDragonHp]=useState(100);
   const [heartReady,setHeartReady]=useState(whirlpoolHeart);
   const attackRef=useRef<()=>void>(()=>{});
   const healRef=useRef<(amount:number)=>void>(()=>{});
   const shieldRef=useRef<()=>void>(()=>{});
   const progressRef=useRef(dragonProgress(questDone));progressRef.current=dragonProgress(questDone);
+  const combatRef=useRef(combatStats);combatRef.current=combatStats;
+  const boostRef=useRef(potionBoosts);boostRef.current=potionBoosts;
+  const frostRef=useRef(frostGuard);frostRef.current=frostGuard;
+  const hpCallback=useRef(onFieldHpChange);hpCallback.current=onFieldHpChange;
+  const boostCallback=useRef(onPotionBoostUsed);boostCallback.current=onPotionBoostUsed;
+  const frostCallback=useRef(onFrostGuardHit);frostCallback.current=onFrostGuardHit;
   const eventRef=useRef(onDragonEvent);eventRef.current=onDragonEvent;
   const clear=()=>{analog.current={x:0,z:0};pointer.current=null;if(knob.current)knob.current.style.transform='translate(0,0)';};
   useEffect(()=>{
@@ -46,8 +54,8 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     const hero=new THREE.Group();scene.add(hero);const pos={x:0,z:19};hero.rotation.y=Math.PI;
     let mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,current:THREE.AnimationAction|undefined,dragonMixer:THREE.AnimationMixer|undefined;
     let dragonBounds:THREE.Box3|undefined,encounter:ReturnType<typeof createNidhoggEncounter>|undefined;
-    let heroReady=false,heroLife=100,dragonLife=100,lastStrike=0,lastBite=0,guardUntil=0,lastHud=0,strikeCount=0,metSent=false,beaten=false,heartCharge=whirlpoolHeart?1:0;
-    healRef.current=(amount:number)=>{heroLife=Math.min(100,heroLife+amount);setHp(heroLife);};
+    let heroReady=false,heroLife=Math.min(combatStats.maxHp,fieldHp??combatStats.maxHp),dragonLife=100,lastStrike=0,lastBite=0,guardUntil=0,lastHud=0,strikeCount=0,metSent=false,beaten=false,heartCharge=whirlpoolHeart?1:0;
+    healRef.current=(amount:number)=>{heroLife=Math.min(combatRef.current.maxHp,heroLife+amount);setHp(heroLife);hpCallback.current(heroLife);};
     attackRef.current=()=>{
       const boss=encounter;
       if(!boss||beaten||progressRef.current.defeated){setStatus('Дракон уже повержен.');return;}
@@ -63,11 +71,13 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
         dragonLife=Math.max(90,dragonLife-5);setDragonHp(Math.ceil(dragonLife));
         setStatus('Золотой меч царапает чешую, но раны мгновенно затягиваются! Нужна ковка у великана.');return;
       }
-      const damage=++strikeCount%5===0?27:18;
+      let damage=Math.max(1,Math.round(combatRef.current.attack*(++strikeCount%5===0?1.5:1)));
+      if(boostRef.current.attack>0){damage=boostedPotionDamage(damage,boostRef.current.attack);boostCallback.current('attack');}
       dragonLife=Math.max(0,dragonLife-damage);setDragonHp(Math.ceil(dragonLife));
       setStatus('Погибель Нидхёгга разбивает древнюю чешую! Урон '+damage+'.');
       if(dragonLife<=0){
         beaten=true;boss.anchor.visible=false;dragonBounds=undefined;
+        if(combatRef.current.multiplier===2){heroLife=Math.ceil(heroLife/2);setHp(heroLife);}
         eventRef.current('defeat');
         setNearDragon(false);setStatus('Нидхёгг повержен! Чешуя дракона, руна, эликсиры и 45 капель бессмертия получены.');
       }
@@ -216,9 +226,12 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
           if(now<guardUntil){setStatus('Щит отразил удар Нидхёгга!');}
           else if(heartCharge>0){heartCharge--;setHeartReady(false);setStatus('🌊 Сердце водоворота Морвейна поглотило удар Нидхёгга!');}
           else {
-            heroLife=Math.max(0,heroLife-24);setHp(heroLife);
-            setStatus('Нидхёгг атакует! -24 здоровья. Используй щит или отступи.');
-            if(heroLife<=0){heroLife=100;setHp(100);pos.x=0;pos.z=19;dragonLife=100;setDragonHp(100);setStatus('Vicki отступила к выходу. Попробуй позже — твой прогресс сохранён.');}
+            let damage=incomingCombatDamage(24,combatRef.current);
+            if(boostRef.current.luck>0){if(potionDodges(boostRef.current.luck,Math.random()))damage=0;boostCallback.current('luck');}
+            if(damage>0&&frostRef.current>0){damage=Math.ceil(damage*.5);frostCallback.current();}
+            heroLife=Math.max(0,heroLife-damage);setHp(heroLife);hpCallback.current(heroLife);
+            setStatus('Нидхёгг атакует! −'+damage+' здоровья. Защита: '+combatRef.current.defense+'.');
+            if(heroLife<=0){heroLife=combatRef.current.maxHp;setHp(heroLife);hpCallback.current(heroLife);pos.x=0;pos.z=19;dragonLife=100;setDragonHp(100);setStatus('Vicki отступила к выходу. Попробуй позже — твой прогресс сохранён.');}
           }
         }
       }
@@ -241,7 +254,7 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     {status&&<div role="status" style={{position:'absolute',top:85,left:12,right:12,color:'#fff',textAlign:'center',background:'#18232be6',padding:10,borderRadius:8}}>{status}</div>}
     <button className="mid3d-ui mid3d-joy" style={{padding:0,userSelect:'none'}} aria-label="Управление Vicki" onPointerDown={e=>{e.preventDefault();pointer.current=e.pointerId;e.currentTarget.setPointerCapture(e.pointerId);steer(e);}} onPointerMove={steer} onPointerUp={clear} onPointerCancel={clear} onLostPointerCapture={clear}><img style={{width:'100%',height:'100%',pointerEvents:'none'}} src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/><span className="mid3d-knob" ref={knob}/></button>
     <div style={{position:'absolute',top:75,left:12,right:12,pointerEvents:'none',display:'flex',gap:8,flexWrap:'wrap',justifyContent:'center',color:'#f2f7ff',fontSize:12,textShadow:'0 1px 3px #000'}}>
-      <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>❤️ Vicki: {hp}/100</span>
+      <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>❤️ Vicki: {Math.min(hp,combatStats.maxHp)}/{combatStats.maxHp}</span>
       <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>🐉 Нидхёгг: {progressRef.current.defeated?'побеждён':dragonHp+'/100'}</span>
       <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>🌑 Обсидиан: {progressRef.current.obsidian.length}/3</span>
       <span style={{background:'#17222bca',borderRadius:6,padding:'5px 8px'}}>❄️ Освобождено: {progressRef.current.liberation.count}/{progressRef.current.liberation.total}</span>
@@ -249,7 +262,8 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     </div>
     <button className="mid3d-ui mid3d-strike" aria-label="Ударить Нидхёгга" onClick={()=>attackRef.current()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></button>
     <button className="mid3d-ui mid3d-block" aria-label="Прикрыться щитом" disabled={!shieldEquipped} onClick={()=>shieldRef.current()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_shield.png`} alt="" draggable={false}/></button>
-    {potions.length>0&&<button onClick={()=>{const potion=potions.includes('lifeElixir')?'lifeElixir':potions.includes('northernMoss')?'northernMoss':potions.includes('hoddmimirElixir')?'hoddmimirElixir':'';if(potion&&hp<100&&onUsePotion(potion,hp)){healRef.current(potion==='northernMoss'?30:100);setStatus('Эликсир восстановил силы Vicki.');}}} style={{position:'absolute',right:12,top:152,padding:9,background:'#20313c',color:'#eaf6ff',border:'1px solid #accade',borderRadius:8}}>🧪 Лечение</button>}
+    {combatStats.multiplier===2&&<div style={{position:'absolute',left:12,top:150,color:'#ffe18a',fontSize:12}}>💧 Живая вода: сила и защита ×2</div>}
+    {potions.length>0&&<button onClick={()=>{const potion=potions.includes('lifeElixir')?'lifeElixir':potions.includes('northernMoss')?'northernMoss':potions.includes('hoddmimirElixir')?'hoddmimirElixir':'';if(potion&&hp<combatStats.maxHp&&onUsePotion(potion,hp)){healRef.current(potion==='northernMoss'?30:combatStats.maxHp);setStatus('Эликсир восстановил силы Vicki.');}}} style={{position:'absolute',right:12,top:152,padding:9,background:'#20313c',color:'#eaf6ff',border:'1px solid #accade',borderRadius:8}}>🧪 Лечение</button>}
     {nearOre&&<div style={{position:'absolute',bottom:112,left:'50%',transform:'translateX(-50%)',padding:9,background:'#171d2deb',color:'#ebdfff',borderRadius:10,zIndex:7,textAlign:'center'}}><div>Обсидиан бездны · {NIFL_OBSIDIAN.find(p=>p.id===nearOre)?.name}</div><button onClick={()=>{eventRef.current(('obsidian:'+nearOre) as DragonEvent);setStatus('Обсидиан бездны получен. Вернись к великану с тремя залежами.');setNearOre('');}} style={{padding:'8px 12px',marginTop:6}}>🌑 Собрать</button></div>}
     {nearDragon&&(!progressRef.current.forged||!progressRef.current.worldFreed)&&<div style={{position:'absolute',bottom:110,left:'50%',transform:'translateX(-50%)',padding:10,background:'#1b273aeb',color:'#fff',borderRadius:8,zIndex:7,textAlign:'center'}}>{progressRef.current.worldFreed?'Чешуя дракона восстанавливается! Нужен легендарный меч.':'Нидхёгг защищён печатями оставшихся локаций. Освободи весь Нифльхейм.'} <button onClick={()=>{clear();exit.current();}} style={{marginLeft:6}}>Отступить к кузнецу</button></div>}
     <div style={{position:'absolute',left:12,bottom:4,fontSize:10,color:'#aebac2',maxWidth:'55%'}}>Пещера: <a href="https://sketchfab.com/3d-models/dark-side-cave-e6347843eec64b408157dabfb8b196b2" target="_blank" rel="noopener noreferrer" style={{color:'inherit'}}>diaspora</a> · CC BY 4.0 · уменьшены текстуры, изменены масштаб и высота.</div>

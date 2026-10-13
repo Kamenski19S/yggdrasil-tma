@@ -1,3 +1,4 @@
+import {equipmentCombatStats,livingWaterActive} from './combatStats';
 import {applyMemoryEvent} from './niflheimMemoryQuest';
 import {applyDragonQuestEvent,dragonProgress,NIFL_CRAFTS,niflCraftUnlocked,type DragonEvent} from './niflheimDragonQuest';
 import {applyLiberationEvent,liberationProgress,type LiberationEvent} from './niflheimLiberation';
@@ -225,6 +226,7 @@ const [roadT, setRoadT] = useState(0.06);
     return key==='power'?base+(level>=3?1:0):base+(level-1);
   };
   const activeArtifactDef=()=>ARTIFACT_INFO[save.equippedArtifact];
+  const currentCombat=()=>equipmentCombatStats(save,heroDef||{hp:100,str:10,en:10});
   const heroPowerPips=()=>{
     if(!heroDef)return 1;
     const gearForge=gearLevel('armor')+gearLevel('helmet')+gearLevel('shield')+gearLevel('boots');
@@ -241,9 +243,10 @@ const [roadT, setRoadT] = useState(0.06);
       const hpFrom=(list:GearId[])=>
         (list.includes('armor')?(Number(s.forgeLevels.armor)||0)*8+8:0)+
         (list.includes('helmet')?(Number(s.forgeLevels.helmet)||0)*3+3:0);
-      const oldBonus=hpFrom(s.equippedGear),newBonus=hpFrom(nextGear);
+      const factor=livingWaterActive(s.done)?2:1;
+      const oldBonus=hpFrom(s.equippedGear)*factor,newBonus=hpFrom(nextGear)*factor;
       return {...s,equippedGear:nextGear,
-        fieldHp:s.fieldHp===null?null:Math.min((heroDef?.hp||100)+newBonus,Math.max(1,s.fieldHp+newBonus-oldBonus))};
+        fieldHp:s.fieldHp===null?null:Math.min((heroDef?.hp||100)*factor+newBonus,Math.max(1,s.fieldHp+newBonus-oldBonus))};
     });
     haptic();say((isOn?'Снято: ':'Надето: ')+(forgeItems.find(item=>item.id===id)?.name||id));
   };
@@ -260,12 +263,13 @@ const [roadT, setRoadT] = useState(0.06);
     if(save.immortalityDrops<cost){say("Недостаточно Капель бессмертия. Нужно: "+cost);return;}
     setSave(s=>{
       if(s.stock.ashWood<ashCost||s.immortalityDrops<cost)return s;
-      const hpBonus=key==='armor'&&s.equippedGear.includes('armor')?8:key==='helmet'&&s.equippedGear.includes('helmet')?3:0;
+      const factor=livingWaterActive(s.done)?2:1;
+      const hpBonus=(key==='armor'&&s.equippedGear.includes('armor')?8:key==='helmet'&&s.equippedGear.includes('helmet')?3:0)*factor;
       const oldHpBonus=(s.equippedGear.includes('armor')?(Number(s.forgeLevels.armor)||0)*8+8:0)+
         (s.equippedGear.includes('helmet')?(Number(s.forgeLevels.helmet)||0)*3+3:0);
       return {...s,stock:{...s.stock,ashWood:s.stock.ashWood-ashCost},immortalityDrops:s.immortalityDrops-cost,
         forgeFreeUsed:true,forgeLevels:{...s.forgeLevels,[key]:(s.forgeLevels[key]||0)+1},
-        fieldHp:s.fieldHp===null?null:Math.min((heroDef?.hp||100)+oldHpBonus+hpBonus,s.fieldHp+hpBonus)};
+        fieldHp:s.fieldHp===null?null:Math.min(((heroDef?.hp||100)+oldHpBonus)*factor+hpBonus,s.fieldHp+hpBonus)};
     });
     haptic("success");
     say((cost===0?"Первая ковка бесплатна. ":"")+item.name+": закалка +1");
@@ -278,7 +282,7 @@ const [roadT, setRoadT] = useState(0.06);
       haptic('success');say(already?'Щит снят.':name+' надет на левую руку. Закалка выбрана ниже.');return;
     }
     if(!id||!save.ownedWeapons.includes(id)){
-      say(name+' пока хранится у защитника. Победи его, чтобы забрать оружие.');return;
+      say(id==='swordNidhogg'?'Этот меч нужно выковать: ниже, в «Памяти древней кузницы», восстанови горн и преобрази золотой меч.':NIFL_CRAFTS.some(r=>r.id===id)?'Это оружие создаётся ниже в «Особых рецептах» кузницы хранителей.':name+' ещё не получено. Продолжай испытания Мидгарда.');return;
     }
     const selected=id as HeroWeapon;
     if(save.heroWeapon===selected){say(name+' уже в руке.');setPendingForgeWeapon(null);return;}
@@ -411,7 +415,7 @@ const [roadT, setRoadT] = useState(0.06);
     const m = MASTERS[id];
     const ash = save.powers.includes("ashBreath");
     const forgedHp=gearHp();
-    const fightMaxHp=heroDef!.hp+forgedHp+(ash?25:0);
+    const fightMaxHp=currentCombat().maxHp+(ash?25:0);
     setMhp(m.hp);
     setHhp(fightMaxHp);
     setHmax(fightMaxHp);
@@ -436,7 +440,7 @@ const [roadT, setRoadT] = useState(0.06);
   const useInventoryPotion=(id:string,currentHpOverride?:number)=>{
     const item=POTION_CATALOG.find(p=>p.id===id);
     if(!item||!save.potions.includes(id)){say('Этого эликсира пока нет в запасе.');return false;}
-    const maxHp=(heroDef?.hp||100)+gearHp(),currentHp=Math.min(maxHp,currentHpOverride??save.fieldHp??maxHp);
+    const maxHp=currentCombat().maxHp,currentHp=Math.min(maxHp,currentHpOverride??save.fieldHp??maxHp);
     if(id==='hoddmimirElixir'&&currentHp>=maxHp&&save.frostGuard>=2){say('Здоровье и защита Ходдмимира уже восстановлены.');return false;}
     const boost=potionBoostKind(id);
     if(boost&&save.potionBoosts[boost]>=3){say('Этот эффект уже действует на три действия.');return false;}
@@ -493,7 +497,7 @@ const [roadT, setRoadT] = useState(0.06);
     say(`Победа: +${loot.drops} капель · ${rewardText}`);return `+${loot.drops} капель · ${rewardText}`;
   };
   const banditKnockout=()=>{
-    setSave(s=>({...s,immortalityDrops:Math.max(0,s.immortalityDrops-5),fieldHp:(heroDef?.hp||100)+gearHp()}));
+    setSave(s=>({...s,immortalityDrops:Math.max(0,s.immortalityDrops-5),fieldHp:currentCombat().maxHp}));
     haptic();say('Рунический удар разбойника сбил Vicki с ног. Древо вернуло её к началу пути (−5 Капель бессмертия).');
   };
   const fightAct = (id: string, kind: "hit" | "rune" | "shield" | "restore") => {
@@ -502,7 +506,7 @@ const [roadT, setRoadT] = useState(0.06);
     let dmg = 0; let log = ""; let nhen = hen; let nmen = men; let nshield = shield;
     if (kind === "hit") {
       setCombatFx({kind:"hit",key:Date.now()});
-      dmg = heroDef!.str + WEAPON_POWER[save.heroWeapon] + forgeLevel(save.heroWeapon) + activeRuneBonus('attack') + (activeArtifactDef()?.attack||0) + rnd(4);
+      dmg = currentCombat().attack + rnd(4);
       if(hen>0)nhen=Math.max(0,hen-1);else{dmg=Math.ceil(dmg*.55);log="Силы иссякли — удар слабее. ";}
       if (save.powers.includes("fireOath")) { dmg += 5; setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "fireOath") })); log += "Огненный обет! "; }
       if (heroDef!.id === "berserk" && hhp <= Math.max(heroDef!.hp,hmax) / 2) { dmg *= 2; log += "Медвежья ярость! "; }
@@ -530,8 +534,8 @@ const [roadT, setRoadT] = useState(0.06);
     const enemyAttacks=nmen>0;
     if(nmen<=0){md=0;nmen=2;mlog=" "+m.name+" вынужден перевести дыхание и восстанавливает энергию.";}else nmen=Math.max(0,nmen-1);
     const forgedDefense=gearDefense();
-    md=Math.max(1,md-forgedDefense-activeRuneBonus('defense')-(activeArtifactDef()?.defense||0));
-    if (nshield) { md = Math.max(0,Math.ceil(md * (equipped('shield')?.3:.6))-gearLevel('shield')-(equipped('shield')?1:0)); mlog += " Щит принял большую часть удара."; }
+    md=Math.max(1,md-currentCombat().defense);
+    if (nshield) { md = Math.max(0,Math.ceil(md * (equipped('shield')?.3:.6))-currentCombat().shieldDefense); mlog += " Щит принял большую часть удара."; }
     if(!enemyAttacks)md=0;
     if(md>0&&save.potionBoosts.luck>0){if(potionDodges(save.potionBoosts.luck,Math.random())){md=0;mlog+=' Эликсир удачи помог уклониться.';}consumePotionBoost('luck');}
     if(!nshield&&md>0&&save.frostGuard>0){md=Math.max(1,Math.ceil(md*.5));setSave(s=>({...s,frostGuard:Math.max(0,s.frostGuard-1)}));mlog+=" Морозный настой ослабил удар.";}
@@ -607,7 +611,7 @@ const [roadT, setRoadT] = useState(0.06);
       )}
 
 
-      {screen.t === "underground" && <React.Suspense fallback={<div className="content">Спуск под башню…</div>}><NidhoggUnderground questDone={save.done} onDragonEvent={(event:DragonEvent)=>setSave(s=>applyDragonQuestEvent(s,event))} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")} whirlpoolHeart={!!save.lootCounts.whirlpoolHeart||save.done.includes('niflheim:liberation:cleared:vampire')} potions={save.potions} onUsePotion={useInventoryPotion} onBack={()=>go({t:"realm",id:"niflheim"})}/></React.Suspense>}
+      {screen.t === "underground" && <React.Suspense fallback={<div className="content">Спуск под башню…</div>}><NidhoggUnderground potionBoosts={save.potionBoosts} frostGuard={save.frostGuard} onPotionBoostUsed={consumePotionBoost} onFrostGuardHit={()=>setSave(s=>({...s,frostGuard:Math.max(0,s.frostGuard-1)}))} combatStats={currentCombat()} fieldHp={save.fieldHp} onFieldHpChange={hp=>setSave(s=>({...s,fieldHp:hp}))} questDone={save.done} onDragonEvent={(event:DragonEvent)=>setSave(s=>applyDragonQuestEvent(s,event))} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")} whirlpoolHeart={!!save.lootCounts.whirlpoolHeart||save.done.includes('niflheim:liberation:cleared:vampire')} potions={save.potions} onUsePotion={useInventoryPotion} onBack={()=>go({t:"realm",id:"niflheim"})}/></React.Suspense>}
       {screen.t === "mill" && (
         <MillScene
           stored={save.millStored}
@@ -622,7 +626,7 @@ const [roadT, setRoadT] = useState(0.06);
       {screen.t === "realm" && (() => {
   const realm = REALMS.find(r => r.id === screen.id)!;
 
-  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D questDone={save.done} onMemoryEvent={event=>setSave(s=>applyMemoryEvent(s,event))} onDragonEvent={(event:DragonEvent)=>setSave(s=>applyDragonQuestEvent(s,event))} onLiberationEvent={(event:LiberationEvent)=>setSave(s=>applyLiberationEvent(s,event))} onFieldHpChange={hp=>setSave(s=>({...s,fieldHp:hp}))} useBattlePotion={useInventoryPotion} locationCooldowns={save.locationCooldowns} onEnterUnderground={position=>{niflheimReturn.current={...position};go({t:"underground"});}} initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")} onOpenMill={()=>{setMillRealm("niflheim");go({t:"mill"});}} inventory={{potions:save.potions,runes:save.runes,equippedRune:save.equippedRune,lootCounts:save.lootCounts,runeLevels:save.forgeLevels,hp:Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp()),maxHp:(heroDef?.hp??100)+gearHp(),frostGuard:save.frostGuard,potionBoosts:save.potionBoosts,onUsePotion:useInventoryPotion,onEquipRune:equipInventoryRune,onFuseRune:fuseInventoryRune}} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")}/></React.Suspense>;
+  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D combatStats={currentCombat()} onPotionBoostUsed={consumePotionBoost} onFrostGuardHit={()=>setSave(s=>({...s,frostGuard:Math.max(0,s.frostGuard-1)}))} questDone={save.done} onMemoryEvent={event=>setSave(s=>applyMemoryEvent(s,event))} onDragonEvent={(event:DragonEvent)=>setSave(s=>applyDragonQuestEvent(s,event))} onLiberationEvent={(event:LiberationEvent)=>setSave(s=>applyLiberationEvent(s,event))} onFieldHpChange={hp=>setSave(s=>({...s,fieldHp:hp}))} useBattlePotion={useInventoryPotion} locationCooldowns={save.locationCooldowns} onEnterUnderground={position=>{niflheimReturn.current={...position};go({t:"underground"});}} initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")} onOpenMill={()=>{setMillRealm("niflheim");go({t:"mill"});}} inventory={{potions:save.potions,runes:save.runes,equippedRune:save.equippedRune,lootCounts:save.lootCounts,runeLevels:save.forgeLevels,hp:Math.min(currentCombat().maxHp,save.fieldHp??currentCombat().maxHp),maxHp:currentCombat().maxHp,frostGuard:save.frostGuard,potionBoosts:save.potionBoosts,onUsePotion:useInventoryPotion,onEquipRune:equipInventoryRune,onFuseRune:fuseInventoryRune}} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")}/></React.Suspense>;
 
   if (realm.id === "midgard") {
     if (!heroDef) return null;
@@ -740,7 +744,7 @@ const [roadT, setRoadT] = useState(0.06);
           'Для ремонта моста подготовь материалы с помощью Сигрид, Бьёрна и Торвальда. Ремонт стоит 300 капель бессмертия.');return;
       }
       if (id === "port") {
-        const maxHp=(heroDef?.hp||100)+gearHp(),currentHp=Math.min(maxHp,save.fieldHp??maxHp);
+        const maxHp=currentCombat().maxHp,currentHp=Math.min(maxHp,save.fieldHp??maxHp);
         const now=Date.now(),readyAt=save.locationCooldowns.riverBridge||0;
         if(currentHp>=maxHp){say("У реки спокойно. Vicki уже полностью здорова — отдых сейчас не нужен.");return;}
         if(now<readyAt){
@@ -988,10 +992,10 @@ const [roadT, setRoadT] = useState(0.06);
       whisperResolved={save.done.includes("whisper:battle")||save.done.includes("whisper:wisdom")}
       guardianResolved={routeProgress(save).completed}
       whisperStats={{
-        maxHp:heroDef.hp+gearHp(),
-        attack:heroDef.str+WEAPON_POWER[save.heroWeapon]+forgeLevel(save.heroWeapon)+activeRuneBonus('attack')+(activeArtifactDef()?.attack||0),
-        runeAttack:heroDef.en+2+activeRuneBonus('rune')+(activeArtifactDef()?.rune||0),
-        defense:gearDefense()+activeRuneBonus('defense')+(activeArtifactDef()?.defense||0),
+        maxHp:currentCombat().maxHp,
+        attack:currentCombat().attack,
+        runeAttack:currentCombat().runeAttack,
+        defense:currentCombat().defense,
         power:heroPowerPips()
       }}
       onWhisperCorrect={finishWhisperCorrect}
@@ -1145,9 +1149,9 @@ const [roadT, setRoadT] = useState(0.06);
             <div className="hero-profile-tabs" role="tablist" aria-label="Разделы героя"><button role="tab" aria-selected={heroTab==='equipment'} onClick={()=>setHeroTab('equipment')}>Снаряжение и навыки</button><button role="tab" aria-selected={heroTab==='story'} onClick={()=>setHeroTab('story')}>История Vicki</button></div>
             {heroTab==='story'?<section className="hero-story" role="tabpanel">{VIKA_STORY.map((chapter,index)=>index===0||save.done.includes('world:complete:midgard')?<details key={chapter.id} open={index===0}><summary>{chapter.title}</summary>{chapter.text.split('\n\n').map((p,i)=><p key={i}>{p}</p>)}</details>:<p key={chapter.id} className="story-locked">Продолжение «За вратами Мидгарда» откроется после завершения Мидгарда.</p>)}</section>:<section role="tabpanel">
             <div className="stats">
-              <div className="stat"><b>⚔ {heroDef.str}</b><span>сила</span></div>
+              <div className="stat"><b>⚔ {currentCombat().attack}</b><span>сила</span></div>
               <div className="stat"><b>✨ {heroDef.en}</b><span>энергия</span></div>
-              <div className="stat"><b>❤ {heroDef.hp+gearHp()}</b><span>здоровье</span></div>
+              <div className="stat"><b>❤ {currentCombat().maxHp}</b><span>здоровье</span></div>
             </div>
             <div className="hrow">🗡 Оружие в руке</div>
             <div className="chips">
@@ -1203,7 +1207,7 @@ const [roadT, setRoadT] = useState(0.06);
             const on=equipped(item.id as GearId);
             return <div key={item.id} className={'forge-item'+(on?' selected':'')}>{label}<div className="forge-gear-actions">
               <button className={on?'on':''} onClick={()=>toggleGear(item.id as GearId)}>{on?'Снять':'Надеть'}</button>
-              <button disabled={maxed||incompatible} onClick={()=>improveForgeItem(item)}>{maxed?'★':free?'0':<>{forgeCost(item.id)}<SparkDrop/>{forgeAshCost(item.id==='shield',level,!save.forgeFreeUsed)>0?' + 🪵✨1':''}</>}</button>
+              <button disabled={maxed||incompatible} onClick={()=>improveForgeItem(item)}>{maxed?'★':free?'Закалить бесплатно':<><strong>Закалить</strong> · {forgeCost(item.id)}<SparkDrop/>{forgeAshCost(item.id==='shield',level,!save.forgeFreeUsed)>0?' + 🪵✨1':''}</>}</button>
             </div></div>;
           }
           return null;
@@ -1224,30 +1228,31 @@ const [roadT, setRoadT] = useState(0.06);
           {pendingForgeWeapon&&pendingForgeWeapon!==save.heroWeapon&&<div className="forge-note" style={{padding:12,border:'1px solid #c69c53',margin:'8px 0'}}>
             Выбрано для осмотра: <b>{FORGE_WEAPON_MODELS.find(item=>item[2]===pendingForgeWeapon)?.[1]}</b>. Текущее оружие остаётся в руке до подтверждения.
             <div style={{display:'flex',gap:8,marginTop:10}}>
-              <button onClick={()=>{const weapon=pendingForgeWeapon;setSave(prev=>prev.ownedWeapons.includes(weapon)?{...prev,heroWeapon:weapon}:prev);setPendingForgeWeapon(null);haptic('success');}}>⚔️ Взять в руку</button>
+              <button onClick={()=>{const weapon=pendingForgeWeapon;setSave(prev=>prev.ownedWeapons.includes(weapon)?{...prev,heroWeapon:weapon}:prev);setPendingForgeWeapon(null);haptic('success');}}>⚔️ <strong>Взять</strong> в руку</button>
               <button onClick={()=>setPendingForgeWeapon(null)}>Отмена</button>
             </div>
           </div>}
           <div className="forge-equipped"><span>В руке: {save.heroWeapon==='default'?('Меч валькирии'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} · сила +{WEAPON_POWER[save.heroWeapon]} · закалка +{forgeLevel(save.heroWeapon)}</span>
-            <button disabled={forgeLevel(save.heroWeapon)>=forgeLimit(true)} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=forgeLimit(true)?'Максимум +'+forgeLimit(true):<>Закалить {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/>{forgeAshCost(true,forgeLevel(save.heroWeapon),!save.forgeFreeUsed)>0?" + ясень ×1":""}</>:'бесплатно'}</>}</button></div>
+            <button disabled={forgeLevel(save.heroWeapon)>=forgeLimit(true)} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=forgeLimit(true)?'Максимум +'+forgeLimit(true):<><strong>Закалить</strong> {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/>{forgeAshCost(true,forgeLevel(save.heroWeapon),!save.forgeFreeUsed)>0?" + ясень ×1":""}</>:'бесплатно'}</>}</button></div>
+          <div className="forge-combat-values">⚔️ Урон: {currentCombat().attack} · ❤️ Здоровье: {currentCombat().maxHp} · 🛡️ Защита: {currentCombat().defense} · защита щита: {currentCombat().shieldDefense}{livingWaterActive(save.done)&&<strong> · Живая вода ×2</strong>}</div>
           {forgeRealm==="niflheim"&&(()=>{
             const q=dragonProgress(save.done);
             const canForge=q.met&&q.ember&&q.ice.length===3&&q.obsidian.length===3&&save.runeSteel>=2&&save.runes.includes('tiwazValor')&&save.ownedWeapons.includes('swordGolden')&&q.worldFreed&&!q.forged;
-            const rewards=(event:DragonEvent,notice:string)=>{setSave(s=>applyDragonQuestEvent(s,event));say(notice);haptic('success');};
+            const rewards=(event:DragonEvent,notice:string)=>{const next=applyDragonQuestEvent(save,event);if(next===save){say(event==='ember'?'Сначала восстанови память Хвергельмира.':'Для этого действия пока не выполнены условия.');return;}setSave(next);say(notice);haptic('success');};
             return <section className="forge-note" style={{padding:14,margin:"12px 0",background:"#172431",border:"1px solid #b9c4d2",borderRadius:10,color:"#e3f0ff"}}>
               <h3 style={{color:"#e5c587",margin:"0 0 8px"}}>⚒️ Память древней кузницы</h3>
               <p>{q.met?'Великан вспоминает ковку, способную сокрушить чешую Нидхёгга.':'Спустись в логово после снятия печати башни. Первая встреча с драконом откроет древний рецепт.'}</p>
               <p>💎 Осколки вечного льда: {q.ice.length}/3 · 🌑 Обсидиан бездны: {q.obsidian.length}/3 · ⚙️ Руническая сталь: {save.runeSteel}</p>
               <p>🔥 Сердце древнего пламени: {q.ember?'получено':'не пробуждено'} · ᛏ Тейваз: {save.runes.includes('tiwazValor')?'есть':'нет'}</p>
               <p>❄️ Освобождение Нифльхейма: {q.liberation.count}/{q.liberation.total}. {q.worldFreed?'Все локации свободны. Финальная ковка открыта!':'Заверши остальные задания и освободи Морвейна, прежде чем перековывать золотой меч.'}</p>
-              {!q.ember&&q.met&&<button onClick={()=>rewards('ember','Горн восстановлен: сердце древнего пламени, 2 рунические стали, Тейваз и эликсир жизни!')}>🔥 Восстановить горн по памяти Хвергельмира</button>}
-              {q.ember&&!q.forged&&<><p>«Золото Мидгарда помнит твою первую победу. Дай мне лёд и обсидиан — я создам Погибель Нидхёгга».</p><button disabled={!canForge} onClick={()=>rewards('forge','Золотой меч преобразован в «Погибель Нидхёгга»! Новый клинок в руке Vicki.')}>⚔️ Преобразить золотой меч (3 льда · 3 обсидиана · 2 стали · ᛏ)</button></>}
+              {!q.ember&&q.met&&<button onClick={()=>rewards('ember','Горн восстановлен: сердце древнего пламени, 2 рунические стали, Тейваз и эликсир жизни!')}>🔥 <strong>Восстановить</strong> горн по памяти Хвергельмира</button>}
+              {q.ember&&!q.forged&&<><p>«Золото Мидгарда помнит твою первую победу. Дай мне лёд и обсидиан — я создам Погибель Нидхёгга».</p><button disabled={!canForge} onClick={()=>rewards('forge','«Погибель Нидхёгга» выкована! Выбери меч на стенде и нажми «Взять в руку».')}>⚔️ <strong>Преобразить</strong> золотой меч (3 льда · 3 обсидиана · 2 стали · ᛏ)</button></>}
               {q.forged&&<p>✅ «Погибель Нидхёгга» выкована. {q.defeated?'Дракон повержен, его чешуя хранится среди трофеев.':'Вернись в логово — чешуя дракона уязвима лишь после освобождения всего Нифльхейма.'}</p>}
               <h4 style={{margin:"12px 0 6px"}}>Особые рецепты</h4>
               {NIFL_CRAFTS.map(recipe=><div key={recipe.id} style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",marginBottom:7}}>
                 <span>{recipe.name} · ⚙️{recipe.steel} · 💧{recipe.drops} · экземпляров: {Math.max(0,save.lootCounts[recipe.id]||0)}</span>
                 <button disabled={!niflCraftUnlocked(q,recipe)||save.runeSteel<recipe.steel||save.immortalityDrops<recipe.drops}
-                  onClick={()=>rewards(('craft:'+recipe.id) as DragonEvent,recipe.name+' выкован!')}>{!niflCraftUnlocked(q,recipe)?'Чертёж закрыт':'Выковать'}</button>
+                  onClick={()=>rewards(('craft:'+recipe.id) as DragonEvent,recipe.name+' выкован!')}>{!niflCraftUnlocked(q,recipe)?'Чертёж закрыт':<strong>Выковать</strong>}</button>
               </div>)}
               <h4 style={{margin:"12px 0 6px"}}>Руны и эликсиры Нифльхейма</h4>
               <p>Не нужно возвращаться за припасами в Мидгард: руны можно получать за 8 капель, эликсир жизни — за 6, а руническую сталь — за 10 капель после пробуждения горна. Руны выдаются по кругу из полного набора.</p>
@@ -1297,8 +1302,8 @@ const [roadT, setRoadT] = useState(0.06);
               <div className="artifact-slots">{save.artifacts.length?save.artifacts.map(id=>{const item=ARTIFACT_INFO[id];if(!item)return null;return <button key={id} className={'artifact-slot'+(save.equippedArtifact===id?' on':'')} onClick={()=>{setSelectedArtifact(id);haptic();}} title={item.name}>{item.symbol}{save.equippedArtifact===id&&<small>АКТИВЕН</small>}</button>}):<span className="dim">Первый артефакт появится после полного завершения мира.</span>}</div>
               {selectedArtifact&&ARTIFACT_INFO[selectedArtifact]&&(()=>{const item=ARTIFACT_INFO[selectedArtifact],active=save.equippedArtifact===selectedArtifact;return <div className="artifact-detail"><b>{item.symbol} {item.name}</b><small>{item.world}. {item.description}</small><small><b>Эффект:</b> {item.effect}</small><button className={active?'active':''} onClick={()=>{setSave(s=>({...s,equippedArtifact:active?'':selectedArtifact}));haptic('success');say(active?item.name+' снят.':item.name+' применён. '+item.effect);}}>{active?'Снять артефакт':'Применить'}</button></div>})()}
             </div>
-            <div className="hall-section inventory-hall"><InventorySection kind="potions" potions={save.potions} runes={save.runes} equippedRune={save.equippedRune} hp={Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp())} maxHp={(heroDef?.hp??100)+gearHp()} frostGuard={save.frostGuard} potionBoosts={save.potionBoosts} onUsePotion={useInventoryPotion} onEquipRune={equipInventoryRune}/></div>
-            <div className="hall-section inventory-hall"><InventorySection kind="runes" potions={save.potions} runes={save.runes} equippedRune={save.equippedRune} lootCounts={save.lootCounts} runeLevels={save.forgeLevels} hp={Math.min((heroDef?.hp??100)+gearHp(),save.fieldHp??(heroDef?.hp??100)+gearHp())} maxHp={(heroDef?.hp??100)+gearHp()} frostGuard={save.frostGuard} potionBoosts={save.potionBoosts} onUsePotion={useInventoryPotion} onEquipRune={equipInventoryRune} onFuseRune={fuseInventoryRune}/></div>
+            <div className="hall-section inventory-hall"><InventorySection kind="potions" potions={save.potions} runes={save.runes} equippedRune={save.equippedRune} hp={Math.min(currentCombat().maxHp,save.fieldHp??currentCombat().maxHp)} maxHp={currentCombat().maxHp} frostGuard={save.frostGuard} potionBoosts={save.potionBoosts} onUsePotion={useInventoryPotion} onEquipRune={equipInventoryRune}/></div>
+            <div className="hall-section inventory-hall"><InventorySection kind="runes" potions={save.potions} runes={save.runes} equippedRune={save.equippedRune} lootCounts={save.lootCounts} runeLevels={save.forgeLevels} hp={Math.min(currentCombat().maxHp,save.fieldHp??currentCombat().maxHp)} maxHp={currentCombat().maxHp} frostGuard={save.frostGuard} potionBoosts={save.potionBoosts} onUsePotion={useInventoryPotion} onEquipRune={equipInventoryRune} onFuseRune={fuseInventoryRune}/></div>
           </div>
           <button className="craft-entry" onClick={()=>{haptic();go({t:"craft"});}}><b>🔥 Перейти в локацию крафта</b><span>Соединяй оружие, материалы и Капли бессмертия в новые предметы.</span></button>
         </div>

@@ -62,6 +62,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   const frostGuardRef=useRef(frostGuard);
   const equippedRuneRef=useRef(equippedRune);
   const banditDefenseRef=useRef(whisperStats.defense);
+  const banditAttackRef=useRef(whisperStats.attack);banditAttackRef.current=whisperStats.attack;
   const banditRespawnAtRef=useRef(banditRespawnAt);
   const banditDamageRef=useRef<(amount:number,guarding:boolean)=>void>(()=>{});
   const [insideHome, setInsideHome] = useState(false);
@@ -4550,7 +4551,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       attackStartedAt=now;combatEffects.slash();
       const target=bandits.filter(b=>b.alerted&&b.hp>0&&Math.hypot(hero.position.x-b.actor.position.x,hero.position.z-b.actor.position.z)<4.0).sort((a,b)=>Math.hypot(hero.position.x-a.actor.position.x,hero.position.z-a.actor.position.z)-Math.hypot(hero.position.x-b.actor.position.x,hero.position.z-b.actor.position.z))[0];
       if(target&&!banditVictoryRef.current){
-        const damage=boostedPotionDamage(equippedRuneRef.current==='uruzStrength'?2:1,potionBoostsRef.current.attack);
+        const damage=boostedPotionDamage(Math.max(1,Math.ceil(banditAttackRef.current/10)),potionBoostsRef.current.attack);
         if(potionBoostsRef.current.attack>0)consumeBoostRef.current('attack');
         if(damage>0)combatEffects.hit(target.actor);
         target.hp=Math.max(0,target.hp-damage);

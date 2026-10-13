@@ -16,7 +16,7 @@ type Asset={scene:THREE.Group;animations:THREE.AnimationClip[]};
 type Actor={model:THREE.Group;root:THREE.Group;mixer:THREE.AnimationMixer;role:Role;static:boolean;groundOffset:number;clips:THREE.AnimationClip[];idle:THREE.AnimationAction|null;current:THREE.AnimationAction|null;actionUntil:number};
 type Shadow={id:number;site:{x:number;z:number;place:string};root:THREE.Group;actor:Actor;healthBar:THREE.Sprite;hp:number;active:boolean;used:boolean;born:number;lastBite:number;lastHit:number};
 type Guard={id:string;actor:Actor;root:THREE.Group;origin:THREE.Vector3;role:'orc'|'troll';hp:number;maxHp:number;attack:number;lastAttack:number;lastHit:number;deadAt:number;respawnAt:number;bar:THREE.Sprite};
-type OnShadowHit=(damage:number)=>void;
+type OnShadowHit=(damage:number)=>number;
 type OnGuardDefeated=(id:string,role:'orc'|'troll')=>void;
 export const NIFLHEIM_RIGGED_ASSETS:Record<Role,string>={
   orc:'Niflheim_Orc_Rigged_Lite.glb',
@@ -93,7 +93,8 @@ export function installNiflheimRiggedEnemies(
  notify:(message:string)=>void,
  onShadowStrike:OnShadowHit,onShadowDefeated:(id:number)=>void,onGuardDefeated:OnGuardDefeated,
  canSpawn:(x:number,z:number)=>boolean,
- combatEffect:(kind:'enemy'|'hero',actor:THREE.Object3D,height:number,delay:number)=>void=()=>{}
+ combatEffect:(kind:'enemy'|'hero',actor:THREE.Object3D,height:number,delay:number)=>void=()=>{},
+ heroAttack:()=>number=()=>22
 ){
   const loader=new GLTFLoader();
   const actors:Actor[]=[];
@@ -448,7 +449,7 @@ export function installNiflheimRiggedEnemies(
           guard.lastAttack=now;playAction(guard.actor,'attack',now);
           combatEffect('enemy',guard.root,ROLE_HEIGHT[guard.role],guard.role==='troll'?400:180);
           if(shielded)notify('🛡️ Щит отразил удар стража.');
-          else{onShadowStrike(guard.attack);notify('⚔️ '+(guard.role==='orc'?'Орк':'Зелёный гоблин')+' атакует! −'+guard.attack+' здоровья.');}
+          else{const loss=onShadowStrike(guard.attack);notify('⚔️ '+(guard.role==='orc'?'Орк':'Зелёный гоблин')+' атакует! −'+loss+' здоровья.');}
         }
       }
       // A zone creates an ambush only when approached in a live wave.
@@ -485,8 +486,8 @@ export function installNiflheimRiggedEnemies(
             if(now-lastWarn>1800){notify('🛡️ Щит отбил удар Тени.');lastWarn=now;}
           }else{
             const damage=15+Math.floor(shadow.id/3)*3;
-            onShadowStrike(damage);
-            if(now-lastWarn>2400){notify('🌑 Тень атакует! −'+damage+' здоровья.');lastWarn=now;}
+            const loss=onShadowStrike(damage);
+            if(now-lastWarn>2400){notify('🌑 Тень атакует! −'+loss+' здоровья.');lastWarn=now;}
           }
         }
       }
@@ -501,7 +502,7 @@ export function installNiflheimRiggedEnemies(
         const specialist=guard.role==='troll'?
           ['axeGiant','hammerRune','axeDouble','hammerDouble'].includes(weapon):
           ['swordStar','sword2','swordGolden','bladeObsidian'].includes(weapon);
-        const damage=guard.role==='troll'?(specialist?48:18):(specialist?35:22);
+        const damage=Math.max(1,Math.round(heroAttack()*(specialist?1.2:1)));
         guard.hp=Math.max(0,guard.hp-damage);
         combatEffect('hero',guard.root,ROLE_HEIGHT[guard.role],220);
         const ratio=guard.hp/guard.maxHp;
@@ -524,7 +525,7 @@ export function installNiflheimRiggedEnemies(
         .filter(s=>s.distance<8.5).sort((a,b)=>a.distance-b.distance)[0]?.shadow;
       if(!target)return false;
       target.lastHit=now;
-      const damage=weapon==='bladeObsidian'?48:weapon==='hammerRune'?38:22;
+      const damage=Math.max(1,Math.round(heroAttack()*(['bladeObsidian','hammerRune'].includes(weapon)?1.2:1)));
       target.hp=Math.max(0,target.hp-damage);
       combatEffect('hero',target.root,ROLE_HEIGHT.undead,220);
       const ratio=target.hp/(SHADOW_MAX_HP+target.id*9);

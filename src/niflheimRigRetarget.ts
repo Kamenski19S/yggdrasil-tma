@@ -86,11 +86,22 @@ function boneClip(troll:RigAsset,name:string):THREE.AnimationClip|null{
       {bone:'Shoulder_L_0256',axis:'x',angles:wave([-10,0,10,0,-10])}
     ]
   };
-  const tracks:THREE.QuaternionKeyframeTrack[]=[];
+  // The source idle animates both rig controls and skin bones. Keep a complete
+  // stable pose under the strike so its shoulder cannot blend with a second
+  // controller pose when the idle fades out.
+  const original=troll.animations.find(c=>c.name==='Take 001');
+  const animated=new Set((motions[name]||[]).map(m=>m.bone+'.quaternion'));
+  const tracks:THREE.KeyframeTrack[]=name==='ANM_LIGHT_ATTACK_2'&&original?original.tracks.filter(t=>!animated.has(t.name)).map(t=>{
+    const copy=t.clone(),size=t.getValueSize();
+    copy.times=new Float32Array([0,times[times.length-1]]);
+    copy.values=new Float32Array([...t.values.slice(0,size),...t.values.slice(0,size)]);
+    return copy;
+  }):[];
   for(const spec of motions[name]||[]){
     const bone=troll.scene.getObjectByName(spec.bone);
     if(!bone)continue;
-    const base=bone.quaternion.clone(),values:number[]=[];
+    const sourceTrack=original?.tracks.find(t=>t.name===spec.bone+'.quaternion');
+    const base=sourceTrack?new THREE.Quaternion().fromArray(sourceTrack.values,0):bone.quaternion.clone(),values:number[]=[];
     spec.angles.forEach(angle=>{
       const e=new THREE.Euler(spec.axis==='x'?angle:0,spec.axis==='y'?angle:0,spec.axis==='z'?angle:0,'XYZ');
       const q=base.clone().multiply(new THREE.Quaternion().setFromEuler(e)).normalize();

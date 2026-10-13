@@ -1,3 +1,5 @@
+import {incomingCombatDamage,livingWaterUsed,livingWaterActive,type CombatStats} from './combatStats';
+import {boostedPotionDamage,potionDodges,type PotionBoostKind} from './potionEffects';
 import {createBridgeRepair,BRIDGE_PARTS} from './niflheimBridgeRepair';
 import {createRealmNornsWell,NIFLHEIM_NORNS_STYLE} from './realmNornsWell';
 import {installGuardianStones} from './niflheimGuardianStones';
@@ -49,7 +51,7 @@ const CSS=`
 .nifl-overlay{position:absolute;inset:0;z-index:10;background:#142b3acc;display:flex;align-items:center;justify-content:center;padding:12px;touch-action:auto}.nifl-panel{background:#fff;color:#22323d;border:2px solid #bac8d0;border-radius:16px;padding:16px;width:100%;max-width:620px;max-height:94%;overflow:auto}.nifl-panel h3{margin:0 0 8px;font-size:20px}.nifl-panel p{font-size:14px;line-height:1.6}.nifl-panel button{background:#eef3f6;color:#22323d;border:1px solid #b3c4ce;border-radius:9px;padding:10px;font:inherit;font-size:13px}.nifl-close{float:right}.nifl-panel svg{display:block;width:100%;height:42vh;min-height:240px;background:#e7eff4;border-radius:12px;margin-top:12px}.nifl-map-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:12px 0}.nifl-map-list button{text-align:left;font-size:12px}.nifl-map-legend{font-size:12px!important;color:#536875}.nifl-task-book{display:grid;gap:8px}.nifl-task-book-row{background:#f0f5f8;border:1px solid #b7c9d2;border-radius:9px;padding:10px;display:flex;flex-direction:column;gap:5px}.nifl-task-book-row.cleared{opacity:.77}.nifl-task-book-row b{font-size:13px}.nifl-task-book-row small{font-size:12px;line-height:1.5}.nifl-task-book-row button{align-self:flex-start}.nifl-task-actions p{margin:6px 0}.nifl-task-actions button{max-width:100%}
 `;
 
-export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLiberationEvent,onFieldHpChange,useBattlePotion,locationCooldowns,initialPosition,onRemember,onForge,onOpenMill,onEnterUnderground,inventory,weapon,shieldAsset,shieldEquipped}:{questDone:string[];onMemoryEvent:(event:MemoryEvent)=>void;onDragonEvent:(event:DragonEvent)=>void;onLiberationEvent:(event:LiberationEvent)=>void;onFieldHpChange:(hp:number)=>void;useBattlePotion:(id:string,hp:number)=>boolean;locationCooldowns:Record<string,number>;onEnterUnderground:(position:{x:number;z:number})=>void;onOpenMill:()=>void;inventory:Omit<React.ComponentProps<typeof InventorySection>,'kind'>;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;onForge:(position:{x:number;z:number})=>void;initialPosition:{x:number;z:number};onRemember:(position:{x:number;z:number})=>void}){
+export default function Niflheim3D({combatStats,onPotionBoostUsed,onFrostGuardHit,questDone,onMemoryEvent,onDragonEvent,onLiberationEvent,onFieldHpChange,useBattlePotion,locationCooldowns,initialPosition,onRemember,onForge,onOpenMill,onEnterUnderground,inventory,weapon,shieldAsset,shieldEquipped}:{combatStats:CombatStats;onPotionBoostUsed:(kind:PotionBoostKind)=>void;onFrostGuardHit:()=>void;questDone:string[];onMemoryEvent:(event:MemoryEvent)=>void;onDragonEvent:(event:DragonEvent)=>void;onLiberationEvent:(event:LiberationEvent)=>void;onFieldHpChange:(hp:number)=>void;useBattlePotion:(id:string,hp:number)=>boolean;locationCooldowns:Record<string,number>;onEnterUnderground:(position:{x:number;z:number})=>void;onOpenMill:()=>void;inventory:Omit<React.ComponentProps<typeof InventorySection>,'kind'>;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;onForge:(position:{x:number;z:number})=>void;initialPosition:{x:number;z:number};onRemember:(position:{x:number;z:number})=>void}){
   const mount=useRef<HTMLDivElement>(null);
   const position=useRef(clampNiflPosition(initialPosition.x,initialPosition.z));
   const remember=useRef(onRemember);remember.current=onRemember;
@@ -77,6 +79,9 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
   const emitDragon=(event:DragonEvent)=>dragonCallback.current(event);
   const libCallback=useRef(onLiberationEvent);libCallback.current=onLiberationEvent;
   const healthCallback=useRef(onFieldHpChange);healthCallback.current=onFieldHpChange;
+  const combatStatsRef=useRef(combatStats);combatStatsRef.current=combatStats;
+  const boostUsedRef=useRef(onPotionBoostUsed);boostUsedRef.current=onPotionBoostUsed;
+  const frostHitRef=useRef(onFrostGuardHit);frostHitRef.current=onFrostGuardHit;
   const sharedInventoryRef=useRef(inventory);sharedInventoryRef.current=inventory;
   const liberation=liberationProgress(questDone),liberationRef=useRef(liberation);liberationRef.current=liberation;
   const [nearTrial,setNearTrial]=useState('');
@@ -87,6 +92,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
   const [libStatus,setLibStatus]=useState('');
   const enterTrial=(id:string)=>{
     const trial=trialById(id);if(!trial)return;
+    if(id==='threeNornsWell'&&liberation.has(id)){setTrialOpen(id);return;}
     if(liberation.has(id)&&COMBAT_TRIALS.has(id as any)){
       const key='niflheim:liberation:repeat:'+id;
       const remaining=(locationCooldowns[key]||0)-Date.now();
@@ -114,14 +120,19 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
     if(type==='rune'&&(!inventory.equippedRune||battle.runeCharge<1))return;
     if(type==='shield'&&!shieldEquipped){setBattle({...battle,log:'Для защиты сначала нужен щит.'});return;}
     const guard=type==='shield';
-    const power=type==='hit'?11+WEAPON_POWER[weapon]:type==='rune'?21:0;
+    const boosts=inventory.potionBoosts;
+    let power=type==='hit'?combatStats.attack:type==='rune'?combatStats.runeAttack:0;
+    const boost=type==='hit'?'attack':type==='rune'?'rune':null;
+    if(boost&&(boosts?.[boost]||0)>0){power=boostedPotionDamage(power,boosts![boost]);onPotionBoostUsed(boost);}
     const enemyHp=Math.max(0,battle.hp-power);
     if(enemyHp<=0){
       setBattle(null);onLiberationEvent(('victory:'+battle.id) as LiberationEvent);
       setLibStatus('✨ '+trial.outcome);setStatus('Победа! Получены Капли бессмертия, руна, эликсир и руническая сталь.');
       return;
     }
-    const incoming=guard?Math.max(2,Math.floor(trial.attack*.2)):trial.attack;
+    let incoming=incomingCombatDamage(trial.attack,combatStats,guard);
+    if((boosts?.luck||0)>0){if(potionDodges(boosts!.luck,Math.random()))incoming=0;onPotionBoostUsed('luck');}
+    if(!guard&&inventory.frostGuard>0&&incoming>0){incoming=Math.ceil(incoming*.5);onFrostGuardHit();}
     const heroHp=Math.max(0,battle.heroHp-incoming);
     onFieldHpChange(heroHp>0?heroHp:Math.max(35,Math.round(inventory.maxHp*.4)));
     if(heroHp<=0){
@@ -374,14 +385,20 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
     const riggedEnemies=installNiflheimRiggedEnemies(scene,guardianRoots,()=>alive,walkingY,setStatus,
       loss=>{
         const state=sharedInventoryRef.current;
-        const hp=Math.max(1,state.hp-loss);
+        let damage=incomingCombatDamage(loss,combatStatsRef.current);
+        if((state.potionBoosts?.luck||0)>0){if(potionDodges(state.potionBoosts!.luck,Math.random()))damage=0;boostUsedRef.current('luck');}
+        if(damage>0&&state.frostGuard>0){damage=Math.ceil(damage*.5);frostHitRef.current();}
+        const hp=Math.max(1,state.hp-damage);
+        sharedInventoryRef.current={...state,hp};
         healthCallback.current(hp);
         if(hp===1)setStatus('❤️ Здоровье на исходе! Используй эликсир или отступи. Без переноса к вратам.');
+        return state.hp-hp;
       },
       id=>libCallback.current(('shadow:defeated:'+id) as LiberationEvent),
       (id,role)=>libCallback.current(('guardian:defeated:'+id+':'+role) as LiberationEvent),
       (x,z)=>!niflRiverBlocked(x,z)&&x>-95&&x<95&&z>-105&&z<125,
-      (kind,actor,height,delay)=>{if(kind==='enemy')combatEffects.enemySlash(actor,height,delay);else combatEffects.hit(actor,height*.55,delay);});
+      (kind,actor,height,delay)=>{if(kind==='enemy')combatEffects.enemySlash(actor,height,delay);else combatEffects.hit(actor,height*.55,delay);},
+      ()=>{const state=sharedInventoryRef.current;let damage=combatStatsRef.current.attack;if((state.potionBoosts?.attack||0)>0){damage=boostedPotionDamage(damage,state.potionBoosts!.attack);boostUsedRef.current('attack');}return damage;});
     // Three unique everlasting-ice fragments mark safe snow near major locations.
     const iceShape=new THREE.OctahedronGeometry(1.15,1);
     const iceDust=new THREE.MeshBasicMaterial({color:'#d9f3ff',transparent:true,opacity:.84});
@@ -942,7 +959,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
     {questNear&&!modalActive&&<div className="nifl-near nifl-quest-near"><b>{questNear.startsWith('ice:')?'Осколок вечного льда':questNear==='bridge'?'Восстановление переправы':questNear.startsWith('bridge:find:')?BRIDGE_PARTS.find(p=>'bridge:find:'+p.id===questNear)?.name:questNear==='girl'?'Девушка у чаши':questNear==='source'?(quest.restored?'Возрождённый Хвергельмир':quest.ready?'Руны Хвергельмира готовы':'Печать Хвергельмира'):questNear.startsWith('seal:')?'Печать '+DRY_SEALS.find(r=>'seal:'+r.id===questNear)?.name:MEMORY_FINDS.find(f=>'find:'+f.id===questNear)?.name}</b><button onClick={()=>{clearInput();setQuestMessage('');if(questNear.startsWith('ice:')){emitDragon(questNear as DragonEvent);setStatus('Осколок вечного льда получен! Эликсир добавлен в общий запас.');}else if(questNear.startsWith('bridge:find:')){emitMemory(questNear as MemoryEvent);setStatus('Камень опоры найден.');}else if(questNear.startsWith('find:')){emitMemory(questNear as MemoryEvent);setStatus('Осколок памяти найден. Вернись к девушке, когда соберёшь все три.');}else {if(questNear.startsWith('seal:'))setSealTarget(questNear.slice(5));setQuestDialog(questNear==='bridge'?'bridge':questNear.startsWith('seal:')?'seal':questNear==='girl'?'girl':'source');}}}>{questNear.startsWith('ice:')?'Забрать осколок':questNear.startsWith('bridge:find:')?'Забрать камень':questNear==='bridge'?'Осмотреть переправу':questNear.startsWith('seal:')?'Осмотреть печать':questNear.startsWith('find:')?'Извлечь изо льда':questNear==='girl'?'Поговорить':quest.restored?'Осмотреть источник':'Прикоснуться к печати'}</button></div>}
     {nearTrial&&!questNear&&!modalActive&&<div className="nifl-near nifl-quest-near" style={{background:'#132231ee',zIndex:6}}>
       <b>{liberation.has(nearTrial)?'✓ ':''}{trialById(nearTrial)?.name}</b>
-      <button onClick={()=>{clearInput();enterTrial(nearTrial);}}>{liberation.has(nearTrial)?COMBAT_TRIALS.has(nearTrial as any)&&nearTrial!=='vampire'?'Повторное испытание':'Освобождено':'Задание хранителей'}</button>
+      <button onClick={()=>{clearInput();enterTrial(nearTrial);}}>{liberation.has(nearTrial)?nearTrial==='threeNornsWell'?'Живая вода':COMBAT_TRIALS.has(nearTrial as any)&&nearTrial!=='vampire'?'Повторное испытание':'Освобождено':'Задание хранителей'}</button>
     </div>}
     {!modalActive&&<button aria-label="Журнал пройденных и оставшихся заданий" style={{position:'absolute',top:72,left:12,padding:'5px 9px',fontSize:11,zIndex:5,color:'#f4e3b7',background:'#152c3bdd',border:'1px solid #bda16b',borderRadius:7}} onClick={()=>{clearInput();setJournalOpen(true);}}>📜 {liberation.count}/{liberation.total} · Задания</button>}
 
@@ -955,8 +972,8 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
     {nearest&&!questNear&&!nearTrial&&!modalActive&&<div className="nifl-near"><b>{nearest.name}</b><button onClick={()=>{clearInput();if(nearest.id==='nidhogg'){if(!dragon.unsealed){setQuestDialog('tower');}else if(!doorOpening&&towerEntrance.current?.canEnter(position.current.x,position.current.z)){setDoorOpening(true);towerEntrance.current.open();setStatus('Дверь башни открывается…');}}else if(nearest.id==='forge'){remember.current({...position.current});onForge({...position.current});}else setSelected(nearest.id);}}>{nearest.id==='nidhogg'?(doorOpening?'Дверь открывается…':'Открыть дверь башни'):nearest.id==='forge'?'Войти в кузницу':nearest.id==='nineWorldStranger'?'Поговорить':'Осмотреть'}</button></div>}
     {trialOpen&&trialInfo&&<div className="nifl-overlay" style={{zIndex:20}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label={trialInfo.title} style={{maxWidth:430}}>
       <button className="nifl-close" onClick={()=>{setTrialOpen('');setTrialMessage('');}}>Закрыть</button>
-      <h3>{trialInfo.title} — {trialInfo.name}</h3><p>{trialInfo.intro}</p>
-      {liberation.has(trialOpen)?<p>✅ {trialInfo.outcome}</p>:trialInfo.kind==='existing'?<div className="nifl-task-actions">
+      <h3>{trialInfo.title} — {trialOpen==='threeNornsWell'&&liberation.has(trialOpen)?'Живая вода':trialInfo.name}</h3><p>{trialOpen==='threeNornsWell'&&liberation.has(trialOpen)?'Колодец освобождён. Под сиянием трёх норн пробудилась живая вода.':trialInfo.intro}</p>
+      {liberation.has(trialOpen)?<><p>✅ {trialInfo.outcome}</p>{trialOpen==='threeNornsWell'&&<div className="nifl-task-actions"><h3>💧 Живая вода</h3><p>Удваивает силу оружия, здоровье от брони и шлема, защиту и силу щита до победы над Нидхёггом. Испить можно только один раз, после ковки легендарного меча.</p>{livingWaterUsed(questDone)?<p>{livingWaterActive(questDone)?'✨ Усиление ×2 действует до победы над драконом.':'Живая вода уже использована. Нидхёгг повержен.'}</p>:<><button disabled={!dragon.forged||dragon.defeated} onClick={()=>{emitDragon('livingWater');setStatus('💧 Живая вода: оружие и защита усилены вдвое до победы над Нидхёггом!');}}>💧 Испить живой воды · сила и защита ×2</button>{!dragon.forged&&<p>Сначала выкуй «Погибель Нидхёгга» в кузнице хранителей.</p>}</>}</div>}</>:trialInfo.kind==='existing'?<div className="nifl-task-actions">
       {trialOpen==='frozenRiver'&&<><p>Найдено: {quest.found.length}/3. Каждый найденный артефакт сохраняется навсегда.</p>
         {MEMORY_FINDS.map(f=><p key={f.id}>{quest.found.some(p=>p.id===f.id)?'✓':'○'} {f.name}</p>)}
         <p>{quest.found.length===3?'Все предметы получены! Теперь можно активировать руны источника прямо в задании «Хвергельмир».':'Ищи светящиеся предметы у замёрзшего русла. Задание не требует повторно брать уже найденное.'}</p>
@@ -1028,7 +1045,7 @@ export default function Niflheim3D({questDone,onMemoryEvent,onDragonEvent,onLibe
       <p className="nifl-map-legend">15 участков появления Теней. Новая волна — каждые 15 минут; одновременно атакуют не более трёх, чтобы не перегружать телефон. После победы Тени исчезают до следующей волны. Орки охраняют важные проходы, тролли — магические рубежи.</p>
       <p className="nifl-map-legend">Зелёных гоблинов: {NIFLHEIM_EXTRA_GUARDS.filter(site=>site.role==='troll').length} по всему миру · орков: {NIFLHEIM_EXTRA_GUARDS.filter(site=>site.role==='orc').length+5} (включая сюжетных). Тени: {NIFLHEIM_SHADOW_SITES.length} точек.</p>
       <h4 style={{margin:'14px 0 6px'}}>🧭 Локации на карте</h4>
-      <div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><div key={l.id} style={{padding:'7px 9px',background:'#edf2f6',border:'1px solid #d1dce3',borderRadius:7,fontSize:12}}>{liberation.has(l.id)?'✓':'○'} {i+1}. {l.name}</div>)}</div><p className="nifl-map-legend">🧛 Морвейн: {liberation.vampireFreed?'✓ освобождён':'○ водоворот у Приюта хранителей'}.</p><p className="nifl-map-legend">Золотая точка — Vicki. Западное русло покрыто льдом, восточная река течёт, северо-западное русло пересохло.</p><p className="nifl-map-legend">Входные врата: <a href="https://sketchfab.com/3d-models/stone-arch-565793eb6528447c97223cfaf278d3f6" target="_blank" rel="noopener noreferrer">Stone Arch — Teranox</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения: сжатие текстур, уменьшение высоты и размещение.</p>
+      <div className="nifl-map-list">{NIFL_LOCATIONS.map((l,i)=><div key={l.id} style={{padding:'7px 9px',background:'#edf2f6',border:'1px solid #d1dce3',borderRadius:7,fontSize:12}}>{l.id==='threshold'?'🚪':l.id==='nineWorldStranger'?'💬':l.id==='forge'?(dragon.forged?'✓':'⚒️'):l.id==='nidhogg'?(dragon.defeated?'✓':'🐉'):liberation.has(l.id)?'✓':'○'} {i+1}. {l.name}</div>)}</div><p className="nifl-map-legend">🧛 Морвейн: {liberation.vampireFreed?'✓ освобождён':'○ водоворот у Приюта хранителей'}.</p><p className="nifl-map-legend">Золотая точка — Vicki. Западное русло покрыто льдом, восточная река течёт, северо-западное русло пересохло.</p><p className="nifl-map-legend">Входные врата: <a href="https://sketchfab.com/3d-models/stone-arch-565793eb6528447c97223cfaf278d3f6" target="_blank" rel="noopener noreferrer">Stone Arch — Teranox</a>. Лицензия: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Изменения: сжатие текстур, уменьшение высоты и размещение.</p>
       <p className="nifl-map-legend">Факелы входных врат: <a href="https://sketchfab.com/3d-models/torch-a3b8085436d14977a69f965859d96575" target="_blank" rel="noopener noreferrer">Torch — DJMaesen</a>, CC BY 4.0. Текстуры сжаты в WebP; геометрия сохранена, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Стены зала: <a href="https://sketchfab.com/3d-models/stone-bricks-beige-wall-set-8df474d0b8df453c87255a1758dde6e2" target="_blank" rel="noopener noreferrer">Stone bricks beige Wall-set — DADedits</a>, CC BY 4.0. Выделен прямой модуль, уменьшены текстуры, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Плиты и стол: <a href="https://sketchfab.com/3d-models/cave-rocks-4101c07c6a754f85962c6b516af4713a" target="_blank" rel="noopener noreferrer">Cave Rocks — Splanyic</a>, CC BY 4.0. Выделены каменные модули, уменьшены текстуры; из модулей собраны плиты и стол.</p>
