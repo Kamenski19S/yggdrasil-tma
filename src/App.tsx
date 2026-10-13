@@ -1,3 +1,4 @@
+import {CRYSTAL_NAME,applyCrystalEvent,waterCrystalProgress} from './waterCrystalQuest';
 import {equipmentCombatStats,livingWaterActive} from './combatStats';
 import {applyMemoryEvent} from './niflheimMemoryQuest';
 import {applyDragonQuestEvent,dragonProgress,NIFL_CRAFTS,niflCraftUnlocked,type DragonEvent} from './niflheimDragonQuest';
@@ -371,7 +372,7 @@ const [roadT, setRoadT] = useState(0.06);
   };
   const rnd = (n: number) => Math.floor(Math.random() * n);
   const trialIdx = (id: string) => save.trials.filter(t => t.startsWith(id + ":")).length;
-  const openGate = (r: Realm) => { if (save.artifacts.includes(r.id)) { say("Мир покорён. Артефакт хранится в листе героя."); return; } haptic(); setScreen({ t: "trial", id: r.id }); };
+  const openGate = (r: Realm) => { if(r.id==='muspelheim'&&!waterCrystalProgress(save.done).gateOpen){say('Вставь Кристалл первозданной воды, чтобы открыть первые врата Муспельхейма.');return;}  if (save.artifacts.includes(r.id)) { say("Мир покорён. Артефакт хранится в листе героя."); return; } haptic(); setScreen({ t: "trial", id: r.id }); };
   const finishTrial = (id: string, idx: number, add: number) => {
     const finale = idx === 2;
     setSave(s => ({ ...s, immortalityDrops: s.immortalityDrops + add + (finale ? 30 : 0), trials: [...s.trials, id + ":" + idx] }));
@@ -626,7 +627,7 @@ const [roadT, setRoadT] = useState(0.06);
       {screen.t === "realm" && (() => {
   const realm = REALMS.find(r => r.id === screen.id)!;
 
-  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D combatStats={currentCombat()} onPotionBoostUsed={consumePotionBoost} onFrostGuardHit={()=>setSave(s=>({...s,frostGuard:Math.max(0,s.frostGuard-1)}))} questDone={save.done} onMemoryEvent={event=>setSave(s=>applyMemoryEvent(s,event))} onDragonEvent={(event:DragonEvent)=>setSave(s=>applyDragonQuestEvent(s,event))} onLiberationEvent={(event:LiberationEvent)=>setSave(s=>applyLiberationEvent(s,event))} onFieldHpChange={hp=>setSave(s=>({...s,fieldHp:hp}))} useBattlePotion={useInventoryPotion} locationCooldowns={save.locationCooldowns} onEnterUnderground={position=>{niflheimReturn.current={...position};go({t:"underground"});}} initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")} onOpenMill={()=>{setMillRealm("niflheim");go({t:"mill"});}} inventory={{potions:save.potions,runes:save.runes,equippedRune:save.equippedRune,lootCounts:save.lootCounts,runeLevels:save.forgeLevels,hp:Math.min(currentCombat().maxHp,save.fieldHp??currentCombat().maxHp),maxHp:currentCombat().maxHp,frostGuard:save.frostGuard,potionBoosts:save.potionBoosts,onUsePotion:useInventoryPotion,onEquipRune:equipInventoryRune,onFuseRune:fuseInventoryRune}} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")}/></React.Suspense>;
+  if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D onCrystalEvent={event=>setSave(s=>applyCrystalEvent(s,event))} combatStats={currentCombat()} onPotionBoostUsed={consumePotionBoost} onFrostGuardHit={()=>setSave(s=>({...s,frostGuard:Math.max(0,s.frostGuard-1)}))} questDone={save.done} onMemoryEvent={event=>setSave(s=>applyMemoryEvent(s,event))} onDragonEvent={(event:DragonEvent)=>setSave(s=>applyDragonQuestEvent(s,event))} onLiberationEvent={(event:LiberationEvent)=>setSave(s=>applyLiberationEvent(s,event))} onFieldHpChange={hp=>setSave(s=>({...s,fieldHp:hp}))} useBattlePotion={useInventoryPotion} locationCooldowns={save.locationCooldowns} onEnterUnderground={position=>{niflheimReturn.current={...position};go({t:"underground"});}} initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")} onOpenMill={()=>{setMillRealm("niflheim");go({t:"mill"});}} inventory={{potions:save.potions,runes:save.runes,equippedRune:save.equippedRune,lootCounts:save.lootCounts,runeLevels:save.forgeLevels,hp:Math.min(currentCombat().maxHp,save.fieldHp??currentCombat().maxHp),maxHp:currentCombat().maxHp,frostGuard:save.frostGuard,potionBoosts:save.potionBoosts,onUsePotion:useInventoryPotion,onEquipRune:equipInventoryRune,onFuseRune:fuseInventoryRune}} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")}/></React.Suspense>;
 
   if (realm.id === "midgard") {
     if (!heroDef) return null;
@@ -1036,7 +1037,7 @@ const [roadT, setRoadT] = useState(0.06);
         </div>
       </div>
 
-      <button className="gate" onClick={() => openGate(realm)}>
+      <button className="gate" onClick={() => openGate(realm)} disabled={realm.id==='muspelheim'&&!waterCrystalProgress(save.done).gateOpen}>
         <span className="gwrap">
           <span
             className="gate-ring"
@@ -1067,9 +1068,7 @@ const [roadT, setRoadT] = useState(0.06);
         </span>
       </button>
 
-      <div className="hint">
-        Нажми на врата — хозяин мира ждёт загадок
-      </div>
+      {realm.id==='muspelheim'&&!waterCrystalProgress(save.done).gateOpen?<div className="card" style={{position:'relative',zIndex:2,margin:'16px auto',maxWidth:420,padding:18}}><h3 style={{color:'#eac779'}}>💎 Первые врата Муспельхейма</h3><p>Углубление во вратах ждёт Кристалл первозданной воды.</p><p>{waterCrystalProgress(save.done).assembled?'Кристалл соединён и готов стать ключом.':'Собери три осколка в Нифльхейме, победи Нидхёгга и соедини кристалл у воительницы возле багровой чаши.'}</p><button className="btn gold" disabled={!waterCrystalProgress(save.done).assembled} onClick={()=>{setSave(s=>applyCrystalEvent(s,'openGate'));haptic('success');say('💎 Кристалл занял своё место. Первые врата Муспельхейма открыты!');}}>Вставить кристалл</button><button className="btn" onClick={()=>go({t:'realm',id:'niflheim'})}>Вернуться в Нифльхейм</button></div>:<div className="hint">Нажми на врата — хозяин мира ждёт загадок</div>}
     </div>
   );
 })()}
@@ -1141,9 +1140,11 @@ const [roadT, setRoadT] = useState(0.06);
         );
       })()}
 
+
       {screen.t === "hero" && heroDef && save.hero && (
         <div className="scroll">
           <style>{HERO_PROFILE_CSS}</style>
+          {screen.t==='hero'&&<div className="card" style={{margin:12,padding:14}}><b>💎 {CRYSTAL_NAME}</b><p>{waterCrystalProgress(save.done).gateOpen?'Установлен в первых вратах Муспельхейма. Путь открыт.':waterCrystalProgress(save.done).assembled?'Целый кристалл · 1 шт. Ключ к первым вратам Муспельхейма.':'Осколки: '+waterCrystalProgress(save.done).collected.length+'/3. Два алтаря и багровая пещера Нифльхейма.'}</p></div>}
           <div className="card hero-profile">
             <header className="hero-profile-header"><span className="hface"><BgImg name="hero_valkyrie.jpg" className="himg"/></span><div><h2>Vicki</h2><p>Валькирия · защитница Мидгарда</p></div></header>
             <div className="hero-profile-tabs" role="tablist" aria-label="Разделы героя"><button role="tab" aria-selected={heroTab==='equipment'} onClick={()=>setHeroTab('equipment')}>Снаряжение и навыки</button><button role="tab" aria-selected={heroTab==='story'} onClick={()=>setHeroTab('story')}>История Vicki</button></div>

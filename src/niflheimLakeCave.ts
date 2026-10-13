@@ -155,6 +155,6 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
     arch.position.sub(new THREE.Vector3(center.x,bounds.min.y,center.z));fitted.add(arch);fitted.scale.set(10/size.x,9/size.y,2/size.z);fitted.rotation.y=Math.PI/2;fitted.position.set(0,0,0);root.add(fitted);root.updateMatrixWorld(true);
   };
   root.updateMatrixWorld(true);
-  return {root,addArch,addTable,addCrystal,addOrb,addRitual,update,inside,groundY,blocked,terrainY:(x:number,z:number)=>inside(x,z)?groundY(x,z)!-.35:undefined,
+  return {root,crystalAltar:()=>tableBounds?new THREE.Vector3(tableBounds.getCenter(new THREE.Vector3()).x+2.2,tableBounds.max.y-.35,tableBounds.getCenter(new THREE.Vector3()).z+1.1):undefined,addArch,addTable,addCrystal,addOrb,addRitual,update,inside,groundY,blocked,terrainY:(x:number,z:number)=>inside(x,z)?groundY(x,z)!-.35:undefined,
     camera:(x:number,z:number)=>new THREE.Vector3(x,(groundY(x,z)??root.position.y)+4.8,z+7)};
 }
