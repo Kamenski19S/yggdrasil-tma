@@ -44,7 +44,7 @@ export function applyDragonQuestEvent(save:Save,event:DragonEvent):Save{
  }
  if(event.startsWith('obsidian:')){
   const id=event.slice(9);
-  return p.met&&!p.has('obsidian:'+id)&&NIFL_OBSIDIAN.some(o=>o.id===id)?add('obsidian:'+id):save;
+  return !p.has('obsidian:'+id)&&NIFL_OBSIDIAN.some(o=>o.id===id)?add('obsidian:'+id):save;
  }
  if(event==='ember'){
   if(!p.met||!p.memoryRestored||p.ember)return save;
