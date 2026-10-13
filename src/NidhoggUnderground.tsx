@@ -78,11 +78,18 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
     // Three deposits can be visited before the final fight, along the side walls.
     const oreMarkers=NIFL_OBSIDIAN.map((place,index)=>{
       const group=new THREE.Group();group.name='Обсидиан бездны: '+place.name;
-      const stone=new THREE.Mesh(new THREE.DodecahedronGeometry(1.55,1),
-        new THREE.MeshStandardMaterial({color:'#22202e',metalness:.58,roughness:.31,emissive:'#231536',emissiveIntensity:.43}));
-      stone.rotation.set(.15,index*.7,.12);group.add(stone);
-      const mark=new THREE.Mesh(new THREE.OctahedronGeometry(.32),
-        new THREE.MeshBasicMaterial({color:'#c4b2f5'}));mark.position.y=1.4;group.add(mark);
+      // Bright mineral veins and tall beacons remain visible in the dark cave.
+      const vein=new THREE.Mesh(new THREE.DodecahedronGeometry(2.05,1),
+        new THREE.MeshStandardMaterial({color:'#29213c',metalness:.48,roughness:.28,emissive:'#784bb9',emissiveIntensity:.76}));
+      vein.rotation.set(.15,index*.7,.12);vein.position.y=.45;group.add(vein);
+      const halo=new THREE.Mesh(new THREE.TorusGeometry(1.72,.12,6,24),
+        new THREE.MeshBasicMaterial({color:'#d29cff'}));
+      halo.rotation.x=Math.PI/2;halo.position.y=-.2;group.add(halo);
+      const mark=new THREE.Mesh(new THREE.OctahedronGeometry(.78),
+        new THREE.MeshBasicMaterial({color:'#e8c1ff'}));mark.position.y=3.3;group.add(mark);
+      const beacon=new THREE.Mesh(new THREE.ConeGeometry(.44,5.3,6),
+        new THREE.MeshBasicMaterial({color:'#9c76e9',transparent:true,opacity:.22,depthWrite:false}));
+      beacon.position.y=2.4;group.add(beacon);
       group.position.set(place.x,0,place.z);scene.add(group);
       return {id:place.id,group};
     });
@@ -192,9 +199,9 @@ export default function NidhoggUnderground({onBack,weapon,shieldAsset,shieldEqui
       let dx=0,dz=0;if(!document.hidden){dx=analog.current.x+(keys.has('d')||keys.has('ArrowRight')?1:0)-(keys.has('a')||keys.has('ArrowLeft')?1:0);dz=analog.current.z+(keys.has('s')||keys.has('ArrowDown')?1:0)-(keys.has('w')||keys.has('ArrowUp')?1:0);}
       const length=Math.hypot(dx,dz);let moving=false;if(length>.08&&!(encounter?.flying&&!beaten)){dx/=Math.max(1,length);dz/=Math.max(1,length);const x=THREE.MathUtils.clamp(pos.x+dx*8.5*dt,-31,31),z=THREE.MathUtils.clamp(pos.z+dz*8.5*dt,-65,24.5);const blocked=crystalBounds.some(b=>x>b.min.x&&x<b.max.x&&z>b.min.z&&z<b.max.z)||(!encounter?.flying&&dragonBounds&&x>dragonBounds.min.x&&x<dragonBounds.max.x&&z>dragonBounds.min.z&&z<dragonBounds.max.z);if(!blocked){moving=Math.hypot(x-pos.x,z-pos.z)>.001;pos.x=x;pos.z=z;}const target=Math.atan2(dx,dz);hero.rotation.y+=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y))*(1-Math.exp(-dt*14));}
       if(pos.x!==groundX||pos.z!==groundZ){groundY=groundAt(pos.x,pos.z);groundX=pos.x;groundZ=pos.z;}
-      if(!oreGroundReady&&terrainMeshes.length){oreMarkers.forEach(marker=>{marker.group.position.y=groundAt(marker.group.position.x,marker.group.position.z)+1.2;});oreGroundReady=true;}
+      if(!oreGroundReady&&terrainMeshes.length){oreMarkers.forEach(marker=>{marker.group.position.y=groundAt(marker.group.position.x,marker.group.position.z)+1.15;});oreGroundReady=true;}
       oreMarkers.forEach(marker=>{marker.group.visible=!progressRef.current.has('obsidian:'+marker.id);marker.group.rotation.y+=dt*.16;});
-      const deposit=progressRef.current.met?NIFL_OBSIDIAN.find(place=>!progressRef.current.has('obsidian:'+place.id)&&Math.hypot(pos.x-place.x,pos.z-place.z)<5.5):undefined;
+      const deposit=NIFL_OBSIDIAN.find(place=>!progressRef.current.has('obsidian:'+place.id)&&Math.hypot(pos.x-place.x,pos.z-place.z)<7);
       if((deposit?.id||'')!==nearOreRef) {nearOreRef=deposit?.id||'';setNearOre(nearOreRef);}
       const atDragon=!!encounter&&!beaten&&!progressRef.current.defeated&&!encounter.flying&&Math.hypot(pos.x-encounter.anchor.position.x,pos.z-encounter.anchor.position.z)<22;
       if(atDragon!==nearDragonRef){nearDragonRef=atDragon;setNearDragon(atDragon);}
