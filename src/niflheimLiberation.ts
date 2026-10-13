@@ -75,6 +75,9 @@ export function liberationProgress(done:readonly string[]){
    has:(id:string)=>flags.has(id),
    memoryFinds};
 }
+export function niflheimLakeFreed(index:number,progress:ReturnType<typeof liberationProgress>):boolean{
+ return index===0?progress.has('iceLake'):index===1?progress.vampireFreed:false;
+}
 export function applyLiberationEvent(save:Save,event:LiberationEvent):Save{
  const progress=liberationProgress(save.done);
  const addFlag=(flag:string)=>({...save,done:[...new Set([...save.done,PREFIX+flag])]});

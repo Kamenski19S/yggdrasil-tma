@@ -1,3 +1,4 @@
+import {settleNidhoggReward} from './nidhoggBalance';
 import { EMPTY_POTION_BOOSTS, normalizePotionBoosts, type PotionBoosts } from "./potionEffects";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
@@ -396,7 +397,7 @@ export const loadSave = (): Save => {
     s.artifacts=confirmedArtifacts;
     if(typeof s.equippedArtifact!=="string"||!confirmedArtifacts.includes(s.equippedArtifact))s.equippedArtifact="";
     if (!s.watch) s.watch = Date.now();
-    return s as Save;
+    return settleNidhoggReward(s as Save);
   } catch {
     return { ...DEF, watch: Date.now() };
   }

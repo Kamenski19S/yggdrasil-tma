@@ -73,7 +73,7 @@ export function addNiflheimRivers(scene:THREE.Scene,base:string,healed=false){
       #endif
     `);
     shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
-      float bank=smoothstep(.28,.5,abs(vRiverUV.x-.5));
+      float bank=smoothstep(.28,.5,abs(fract(vRiverUV.x)-.5));
       float ripple=pow(.5+.5*sin(vRiverUV.y*31.0-uRiverTime*2.4+sin(vRiverUV.x*15.0)),12.0);
       diffuseColor.rgb*=mix(.78,1.18,bank);
       diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.73,.87,.9),ripple*.12);

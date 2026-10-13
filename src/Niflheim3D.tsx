@@ -6,7 +6,7 @@ import {installGuardianStones} from './niflheimGuardianStones';
 import {createMemoryTable} from './niflheimMemoryTable';
 import {memoryQuest,DRY_SEALS,MEMORY_FINDS,SOURCE_RUNES,MEMORY_REWARD,type MemoryEvent} from './niflheimMemoryQuest';
 import {dragonProgress,NIFL_ICE,type DragonEvent} from './niflheimDragonQuest';
-import {liberationProgress,LIBERATION_TRIALS,trialById,COMBAT_TRIALS,type LiberationEvent} from './niflheimLiberation';
+import {liberationProgress,niflheimLakeFreed,LIBERATION_TRIALS,trialById,COMBAT_TRIALS,type LiberationEvent} from './niflheimLiberation';
 import {installNiflheimRiggedEnemies,NIFLHEIM_SHADOW_SITES,NIFLHEIM_EXTRA_GUARDS} from './niflheimEnemyActors';
 import {createHvergelmir} from './niflheimHvergelmir';
 import {lakeBridgeBlocked} from './niflheimLakeBridgeCollision';
@@ -63,7 +63,7 @@ export default function Niflheim3D({combatStats,onPotionBoostUsed,onFrostGuardHi
   const towerEntrance=useRef<ReturnType<typeof installTowerEntrance>|null>(null);
   const [doorOpening,setDoorOpening]=useState(false);
   const undergroundCallback=useRef(onEnterUnderground);undergroundCallback.current=onEnterUnderground;
-  const [near,setNear]=useState('threshold');
+  const [near,setNear]=useState('');
   const [mapOpen,setMapOpen]=useState(false);
   const [journalOpen,setJournalOpen]=useState(false);
   const [inventoryOpen,setInventoryOpen]=useState(false);
@@ -352,7 +352,7 @@ export default function Niflheim3D({combatStats,onPotionBoostUsed,onFrostGuardHi
     }
     const rivers=addNiflheimRivers(scene,BASE,dragonRef.current.defeated),{ice,water}=rivers;
     const disc=(x:number,z:number,rx:number,rz:number,mat:THREE.Material)=>{const m=mesh(new THREE.CircleGeometry(1,48),mat,x,niflGroundY(x,z)+.08,z,rx,rz,1);m.rotation.x=-Math.PI/2;return m;};
-    NIFL_LAKES.forEach(l=>{disc(l.x,l.z,l.rx,l.rz,ice);for(let i=0;i<7;i++){const a=i/7*6.28;mesh(rockGeo,stone,l.x+Math.cos(a)*(l.rx+1),.6,l.z+Math.sin(a)*(l.rz+1),1,.8,1);}});
+    const lakeSurfaces=NIFL_LAKES.map((l,index)=>{const surface=disc(l.x,l.z,l.rx,l.rz,niflheimLakeFreed(index,liberationRef.current)?water:ice);const uv=surface.geometry.getAttribute('uv');for(let i=0;i<uv.count;i++){uv.setXY(i,uv.getX(i)*l.rx/3,uv.getY(i)*l.rz/3);}uv.needsUpdate=true;for(let i=0;i<7;i++){const a=i/7*6.28;mesh(rockGeo,stone,l.x+Math.cos(a)*(l.rx+1),.6,l.z+Math.sin(a)*(l.rz+1),1,.8,1);}return surface;});
     const smallLake=NIFL_LAKES[1];
     cachedGlbBuffer(`${BASE}img/models/Niflheim_Water_Spiral.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{if(!alive){disposeObject(asset.scene);return;}const model=asset.scene;model.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3()),centre=box.getCenter(new THREE.Vector3());const wrapper=new THREE.Group();wrapper.position.set(smallLake.x,niflGroundY(smallLake.x,smallLake.z)+.14,smallLake.z);const scale=8/Math.max(size.x,size.z,.001);model.scale.multiplyScalar(scale);model.position.set(-centre.x*scale,-box.min.y*scale,-centre.z*scale);wrapper.add(model);scene.add(wrapper);waterSpiral=wrapper;refreshShadows();}).catch(()=>{if(alive)setStatus('Не удалось загрузить водную спираль.');});
     cachedGlbBuffer(`${BASE}img/models/Niflheim_Lake_Stranger.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{if(!alive){disposeObject(asset.scene);return;}const model=asset.scene;model.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3()),centre=box.getCenter(new THREE.Vector3()),scale=10.5/Math.max(size.y,.001);model.scale.multiplyScalar(scale);model.position.set(smallLake.x-centre.x*scale,niflGroundY(smallLake.x,smallLake.z)+.12-box.min.y*scale,smallLake.z-centre.z*scale);model.name='Незнакомец у приюта хранителей';model.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}});scene.add(model);refreshShadows();}).catch(()=>{if(alive)setStatus('Не удалось загрузить незнакомца у озера.');});
@@ -442,7 +442,7 @@ export default function Niflheim3D({combatStats,onPotionBoostUsed,onFrostGuardHi
           // Source deck at local world Y=9.2; north end touches shore, south end stops three units short.
           bridge.position.set(-72-center.x*bridge.scale.x,lakeBridgeDeck-9.2*bridge.scale.y,5.5-center.z*bridge.scale.z);
           bridge.name='Разрушенная переправа через озеро';
-          bridgeRepair=createBridgeRepair(scene,lakeBridgeDeck,niflGroundY,questRef.current.bridgeRestored);
+          bridgeRepair=createBridgeRepair(scene,bridge,niflGroundY,questRef.current.bridgeRestored);
           bridge.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;}});
           scene.add(bridge);refreshShadows();
         }).catch(()=>{});
@@ -895,7 +895,9 @@ export default function Niflheim3D({combatStats,onPotionBoostUsed,onFrostGuardHi
       if(giant?.update(dt,pos,!paused.current&&!document.hidden))refreshShadows();
       const hy=walkingY(pos.x,pos.z);
       entranceVeil?.update(now*.001,pos);
-      rivers.update(now*.001);forgeSpace?.update(now*.001);
+      rivers.update(now*.001);
+      lakeSurfaces.forEach((surface,index)=>{surface.material=niflheimLakeFreed(index,liberationRef.current)?water:ice;});
+      forgeSpace?.update(now*.001);
       const inCave=caveSpace?.inside(pos.x,pos.z);
       const inMemory=memorySpace?.inside(pos.x,pos.z);
       const inHall=hallSpace?.inside(pos.x,pos.z);

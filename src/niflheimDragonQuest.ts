@@ -1,3 +1,4 @@
+import {NIDHOGG_REWARD} from './nidhoggBalance';
 import {liberationProgress} from './niflheimLiberation';
 import type {Save,HeroWeapon} from './core';
 import {RUNE_CATALOG} from './world';
@@ -77,10 +78,10 @@ export function applyDragonQuestEvent(save:Save,event:DragonEvent):Save{
   const rune=RUNE_CATALOG[(save.done.length+7)%RUNE_CATALOG.length].id;
   return add('defeated',{
    fieldHp:save.fieldHp===null?null:save.done.includes('niflheim:livingWater:used')?Math.ceil(save.fieldHp/2):save.fieldHp,
-   immortalityDrops:save.immortalityDrops+45,
+   immortalityDrops:save.immortalityDrops+NIDHOGG_REWARD,
    potions:[...save.potions,'hoddmimirElixir','lifeElixir'],
    runes:[...new Set([...save.runes,rune])],
-   lootCounts:{...save.lootCounts,[rune]:(save.lootCounts[rune]||0)+1,hoddmimirElixir:(save.lootCounts.hoddmimirElixir||0)+1,lifeElixir:(save.lootCounts.lifeElixir||0)+1,dragonScale:1}
+   lootCounts:{...save.lootCounts,[rune]:(save.lootCounts[rune]||0)+1,hoddmimirElixir:(save.lootCounts.hoddmimirElixir||0)+1,lifeElixir:(save.lootCounts.lifeElixir||0)+1,dragonScale:1,nidhoggDropsAwarded:NIDHOGG_REWARD}
   });
  }
  if(event.startsWith('craft:')){
