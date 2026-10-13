@@ -132,14 +132,14 @@ export function ForgeWeaponWall({owned,ownedShields,selected,selectedShield,onCh
         const mount=new THREE.Group();mount.add(item);
         // Each of the three Niflheim columns is ~3.35 units wide and the
         // row is 2.95 high. Leave padding so blades and the shield fit.
-        mount.scale.setScalar((niflheim?1.48:1.48)/span);
-        mount.position.set(niflheim?(index%3-1)*3.35:(index%5-2)*2.17,niflheim?(1-Math.floor(index/3))*2.95:(1.5-Math.floor(index/5))*2.28+.22,0);
+        mount.scale.setScalar((niflheim?1.95:1.48)/span);
+        mount.position.set(niflheim?(index%3-1)*3.35:(index%5-2)*2.17,niflheim?(1-Math.floor(index/3))*3.13:(1.5-Math.floor(index/5))*2.28+.22,0);
         scene.add(mount);
         renderer.render(scene,camera);
       }).catch(error=>console.warn('Forge display model unavailable',asset,error));
     });
     return()=>{active=false;scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.dispose();};
   },[niflheim]);
-  return <><div className="forge-wall"><canvas ref={canvas}/><div className="forge-wall-labels" style={niflheim?{gridTemplateColumns:"repeat(3,minmax(0,1fr))"}:undefined}>{models.map(([asset,name,id])=><button type="button" className={'forge-wall-label'+(id&&owned.includes(id)?' owned':'')+(ownedShields.includes(asset)?' owned':'')+(asset===selectedShield||(!asset.startsWith('Shield_')&&id===selected)?' equipped':'')} key={id||asset} aria-label={'Выбрать '+name} onClick={()=>onChoose(asset,name,id)}>{name}</button>)}</div></div>
+  return <><div className="forge-wall" style={niflheim?{aspectRatio:"11 / 9.4"}:undefined}><canvas ref={canvas}/><div className="forge-wall-labels" style={niflheim?{gridTemplateColumns:"repeat(3,minmax(0,1fr))",gridTemplateRows:"repeat(3,minmax(0,1fr))"}:undefined}>{models.map(([asset,name,id])=><button type="button" className={'forge-wall-label'+(id&&owned.includes(id)?' owned':'')+(ownedShields.includes(asset)?' owned':'')+(asset===selectedShield||(!asset.startsWith('Shield_')&&id===selected)?' equipped':'')} key={id||asset} aria-label={'Выбрать '+name} onClick={()=>onChoose(asset,name,id)}>{name}</button>)}</div></div>
     <p className="forge-wall-note">Выбери полученное оружие или щит. Остальные щиты откроются по мере прохождения.</p></>;
 }
