@@ -1,6 +1,7 @@
 import {amuletProgress} from './niflheimAmulet';
 import {NIDHOGG_REWARD} from './nidhoggBalance';
 import {liberationProgress} from './niflheimLiberation';
+import {allNiflheimSealsOpened} from './niflheimSeals';
 import type {Save,HeroWeapon} from './core';
 import {RUNE_CATALOG} from './world';
 
@@ -19,7 +20,7 @@ export function niflCraftUnlocked(progress:ReturnType<typeof dragonProgress>,rec
  // Finding components OR liberating the associated site unlocks a blueprint.
  // No unreachable three-fragment requirement for ordinary weapon crafting.
  if(recipe.need==='ice')return progress.ice.length>0||progress.liberation.has('snowMountain')||progress.liberation.has('frozenRiver');
- if(recipe.need==='obsidian')return progress.obsidian.length>0||progress.liberation.has('namesHall');
+ if(recipe.need==='obsidian')return progress.allSealsOpen&&progress.obsidian.length>0;
  return progress.ember||progress.liberation.has('threeNornsWell');
 }
 export type DragonEvent='tower:unseal'|'first'|'ember'|'livingWater'|'forge'|'defeat'|'supply:rune'|'supply:potion'|'supply:steel'|`ice:${string}`|`obsidian:${string}`|`craft:${string}`;
@@ -30,7 +31,8 @@ export function dragonProgress(done:readonly string[]){
  const liberation=liberationProgress(done);
  const memoryRestored=done.includes('niflheim:memory:restored');
  const drySeals=['isa','nauthiz','hagalaz'].every(id=>done.includes('niflheim:dry:'+id));
- return {has,ice,obsidian,liberation,worldFreed:liberation.finished,memoryRestored,drySeals,sealReady:memoryRestored&&drySeals,unsealed:has('towerUnsealed'),met:has('first'),ember:has('ember'),forged:has('forged'),defeated:has('defeated')};
+ const allSealsOpen=allNiflheimSealsOpened(done);
+ return {has,ice,obsidian,liberation,worldFreed:liberation.finished,allSealsOpen,memoryRestored,drySeals,sealReady:memoryRestored&&drySeals,unsealed:has('towerUnsealed'),met:has('first'),ember:has('ember'),forged:has('forged'),defeated:has('defeated')};
 }
 export function applyDragonQuestEvent(save:Save,event:DragonEvent):Save{
  const p=dragonProgress(save.done);
@@ -46,6 +48,7 @@ export function applyDragonQuestEvent(save:Save,event:DragonEvent):Save{
  }
  if(event.startsWith('obsidian:')){
   const id=event.slice(9);
+  if(!p.allSealsOpen)return save;
   return !p.has('obsidian:'+id)&&NIFL_OBSIDIAN.some(o=>o.id===id)?add('obsidian:'+id):save;
  }
  if(event==='livingWater'){
