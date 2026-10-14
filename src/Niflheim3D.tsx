@@ -1,4 +1,5 @@
 import {FIRST_SEAL,firstSealOpened,createFirstSeal} from './niflheimFirstSeal';
+import {installSealGuardian} from './niflheimSealGuardian';
 import {AMULET_NAME,AMULET_PARTS,amuletProgress,type AmuletEvent} from './niflheimAmulet';
 import {createAmuletScene} from './niflheimAmuletScene';
 import {CRYSTAL_NAME,CRYSTAL_PARTS,waterCrystalProgress,type CrystalEvent} from './waterCrystalQuest';
@@ -201,6 +202,7 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
     const dryRockBounds:THREE.Box3[]=[];
     const drySeals:{id:string;position:THREE.Vector3;mesh:THREE.Mesh;opacity:number}[]=[];
     let firstSeal:ReturnType<typeof createFirstSeal>|undefined;
+    let sealGuardian:ReturnType<typeof installSealGuardian>|undefined;
     let lakeCave:ReturnType<typeof createLakeDescendingCave>|undefined;
     cachedGlbBuffer(`${BASE}img/models/Niflheim_Dry_River_Rocks.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
       if(!alive){disposeObject(asset.scene);return;}
@@ -821,6 +823,11 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
         if(!alive){disposeObject(asset.scene);return;}
         firstSeal=createFirstSeal(asset.scene,sealSpace,angle);scene.add(firstSeal.root);firstSeal.update(0,firstSealOpened(crystalDoneRef.current));refreshShadows();
       }).catch(()=>{if(alive)setStatus('Не удалось загрузить первую печать. Открой Нифльхейм снова.');});
+      // Animated Scourger guards the seal visually; battle mechanics are pending.
+      cachedGlbBuffer(`${BASE}img/models/Scourger_Rig_Optimized.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
+        if(!alive){disposeObject(asset.scene);return;}
+        sealGuardian=installSealGuardian(scene,asset,sealSpace,angle);refreshShadows();
+      }).catch(()=>{/* Await asset upload; preserve the existing scene. */});
       const stonesCentre=caveSpace.world(CAVE_MOUTH_X,CAVE_FLOOR_Y,-4);
       cachedGlbBuffer(`${BASE}img/models/Niflheim_Guardian_Stones.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{if(!alive){disposeObject(asset.scene);return;}guardianStones=installGuardianStones(scene,asset.scene,stonesCentre);refreshShadows();}).catch(()=>{if(alive)setStatus('Не удалось загрузить камни хранителей.');});
       const giantSpace=caveSpace;
@@ -901,6 +908,7 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
       if(next&&next!==currentAction){currentAction?.fadeOut(.16);next.reset();next.enabled=true;next.setEffectiveWeight(1);next.setEffectiveTimeScale(1);next.fadeIn(.16).play();currentAction=next;}
       const pos=position.current;
       firstSeal?.update(now*.001,firstSealOpened(crystalDoneRef.current));
+      sealGuardian?.update(dt,Math.hypot(pos.x-sealGuardian.root.position.x,pos.z-sealGuardian.root.position.z)<75,!firstSealOpened(crystalDoneRef.current));
       if(!wandererLoading&&!wandererPresent&&Math.hypot(pos.x-wandererX,pos.z-wandererZ)<60)loadWanderer();
       if(previousFindCount!==questRef.current.found.length){previousFindCount=questRef.current.found.length;memoryFinds.update(questRef.current.found.map(f=>f.id));refreshShadows();}
       if(sourceBasin.update(dt,now*.001,questRef.current.restored,questRef.current.step))refreshShadows();
@@ -1138,6 +1146,7 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
       <p className="nifl-map-legend">Колодец: <a href="https://sketchfab.com/3d-models/good-ol-well-9eadcb31e4b445c8978e791fcce548fe" target="_blank" rel="noopener noreferrer">Good Ol' Well — mikelkel2</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, геометрия сохранена, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Лестница: <a href="https://sketchfab.com/3d-models/the-staircase-step-ladder-20e23588d08d4cae986dc1e208d1c969" target="_blank" rel="noopener noreferrer">Mehdi Shahsavana (@ahmagh2e)</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Убраны верхний пролёт и надписи; сохранены нижние ступени и площадка.</p>
       <p className="nifl-map-legend">Ледяной дом: <a href="https://sketchfab.com/3d-models/igloo-224f673917e6486eb08c496baf77ce84" target="_blank" rel="noopener noreferrer">Igloo — Vera4Art</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, убрана исходная площадка, изменены масштаб и размещение.</p>
+      <p className="nifl-map-legend">Страж первой печати: <a href="https://sketchfab.com/3d-models/scourger-rig-deb9b27965064f85a7f482599f5a69a8" target="_blank" rel="noopener noreferrer">Scourger Rig — DM-913</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Текстуры уменьшены до 512 px, скелет и четыре анимации сохранены. Установлен для предварительного осмотра; бой добавим отдельно.</p>
       <p className="nifl-map-legend">Великан: <a href="https://sketchfab.com/3d-models/lowpoly-giant-warrior-rigged-66588f8fd6f64212abe49c7c6cababa9" target="_blank" rel="noopener noreferrer">Lowpoly Giant Warrior (rigged) — luch.pok (lvintoniyak)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Убраны крупные браслеты, осветлена кожа, уменьшены текстуры; изменены масштаб и размещение, добавлены поза сидя и подъём с камня.</p>
     </section></div>}
     {info&&!questDialog&&!trialOpen&&!battle&&!mapOpen&&!inventoryOpen&&<div className="nifl-overlay" style={{zIndex:11}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label={info.name}><h3>{info.name}</h3><p>{info.text}</p>{trialById(info.id)&&<p>❄️ Задание: {trialById(info.id)?.name} — {liberation.has(info.id)?'выполнено':'ещё не выполнено'}. Чтобы выполнить, подойди к локации.</p>}{info.id==='forge'&&<p>Подойди к освещённому входу, чтобы войти в кузницу.</p>}<button onClick={()=>setSelected('')}>Продолжить путь</button></section></div>}

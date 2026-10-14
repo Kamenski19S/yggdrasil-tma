@@ -1,0 +1,4 @@
+Scourger Rig by DM-913 (@SuperKapoo913)
+Original: https://sketchfab.com/3d-models/scourger-rig-deb9b27965064f85a7f482599f5a69a8
+License: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
+Changes: 12 embedded texture images resized to 512px and recompressed; geometry, rig and four animations retained; scaled and positioned beside first Niflheim seal.
