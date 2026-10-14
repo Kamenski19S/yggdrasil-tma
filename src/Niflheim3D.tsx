@@ -158,7 +158,7 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
         return;
       }
       setBattle(null);onLiberationEvent(('victory:'+battle.id) as LiberationEvent);
-      setLibStatus('✨ '+trial.outcome);setStatus('Победа! Получены Капли бессмертия, руна, эликсир и руническая сталь.');
+      setLibStatus('✨ '+(trial?.outcome??'Победа'));setStatus('Победа! Получены Капли бессмертия, руна, эликсир и руническая сталь.');
       return;
     }
     let incoming=incomingCombatDamage(isSeal?Math.max(10,Math.round(combatStats.maxHp*.10)):(trial as {attack:number}).attack,combatStats,guard);
