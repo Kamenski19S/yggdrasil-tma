@@ -93,6 +93,7 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
   const [selected,setSelected]=useState('');
   const [status,setStatus]=useState('Vicki входит в Нифльхейм…');
   const paused=useRef(false);paused.current=doorOpening||mapOpen||journalOpen||inventoryOpen||!!selected;
+  const movementPaused=useRef(false);
   useEffect(()=>{if(!status)return;const timeout=window.setTimeout(()=>setStatus(''),5000);return()=>window.clearTimeout(timeout);},[status]);
   const quest=memoryQuest(questDone),questRef=useRef(quest);questRef.current=quest;
   const dragon=dragonProgress(questDone),dragonRef=useRef(dragon);dragonRef.current=dragon;
@@ -196,6 +197,9 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
   const [sealTarget,setSealTarget]=useState('');
   const modalActive=amuletDialog||crystalDialog||mapOpen||journalOpen||inventoryOpen||!!questDialog||!!trialOpen||!!battle||!!selected;
   paused.current=paused.current||amuletDialog||crystalDialog||!!questDialog||!!trialOpen||!!battle;
+  // The compact seal battle HUD must not disable Vicki's main joystick.
+  // Keep the rest of the world/combat systems paused, but allow movement during this one battle.
+  movementPaused.current=doorOpening||mapOpen||journalOpen||inventoryOpen||!!selected||amuletDialog||crystalDialog||!!questDialog||!!trialOpen||!!(battle&&battle.id!=='sealGuardian');
   const emitMemory=(event:MemoryEvent)=>{onMemoryEvent(event);};
   const info=NIFL_LOCATIONS.find(l=>l.id===selected);
   const nearest=NIFL_LOCATIONS.find(l=>l.id===near);
@@ -917,16 +921,16 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
     camera.position.set(position.current.x,9,position.current.z+19);
     const frame=(now:number)=>{
       if(!alive)return;const flyoverDt=Math.min((now-previous)/1000,1),dt=Math.min(flyoverDt,.05);previous=now;
-      const keys=input.current;let dx=0,dz=0;if(!paused.current&&!document.hidden){dx=(keys.has('ArrowRight')||keys.has('d')?1:0)-(keys.has('ArrowLeft')||keys.has('a')?1:0);dz=(keys.has('ArrowDown')||keys.has('s')?1:0)-(keys.has('ArrowUp')||keys.has('w')?1:0);}
-      if(!paused.current&&!document.hidden&&Math.hypot(analog.current.x,analog.current.z)>.05){dx=analog.current.x;dz=analog.current.z;}
+      const keys=input.current;let dx=0,dz=0;if(!movementPaused.current&&!document.hidden){dx=(keys.has('ArrowRight')||keys.has('d')?1:0)-(keys.has('ArrowLeft')||keys.has('a')?1:0);dz=(keys.has('ArrowDown')||keys.has('s')?1:0)-(keys.has('ArrowUp')||keys.has('w')?1:0);}
+      if(!movementPaused.current&&!document.hidden&&Math.hypot(analog.current.x,analog.current.z)>.05){dx=analog.current.x;dz=analog.current.z;}
       const length=Math.hypot(dx,dz),isMoving=length>.05;
       const steer=1-Math.exp(-dt*14);
       velocityX=THREE.MathUtils.lerp(velocityX,isMoving?dx/length:0,steer);velocityZ=THREE.MathUtils.lerp(velocityZ,isMoving?dz/length:0,steer);
-      if(!paused.current&&!document.hidden){const from=position.current,next=moveThroughNiflEntrance(from,from.x+velocityX*8.5*dt,from.z+velocityZ*8.5*dt);
+      if(!movementPaused.current&&!document.hidden){const from=position.current,next=moveThroughNiflEntrance(from,from.x+velocityX*8.5*dt,from.z+velocityZ*8.5*dt);
         const candidate=caveSpace?caveSpace.move(from,next):next;
         if(!(firstSeal&&!firstSealOpened(crystalDoneRef.current)&&firstSeal.blocked(from,candidate))&&!(niflRiverBlocked(candidate.x,candidate.z)&&venetianBridges.groundY(candidate.x,candidate.z)===undefined&&rootsBridge.groundY(candidate.x,candidate.z)===undefined&&forgeSpace?.groundY(candidate.x,candidate.z)===undefined&&lakeBridgeY(candidate.x,candidate.z)===undefined&&!rootsSpace?.inside(candidate.x,candidate.z)&&!memorySpace?.inside(candidate.x,candidate.z)&&!caveSpace?.inside(candidate.x,candidate.z)&&!lakeCave?.inside(candidate.x,candidate.z))&&!entranceSupports.some(b=>candidate.x>b.min.x&&candidate.x<b.max.x&&candidate.z>b.min.z&&candidate.z<b.max.z)&&!dryRockBounds.some(b=>candidate.x>b.min.x&&candidate.x<b.max.x&&candidate.z>b.min.z&&candidate.z<b.max.z)&&!lakeCave?.blocked(from,candidate)&&!towerEntrance.current?.blocked(from,candidate)&&!sourceBasin.blocked(from,candidate)&&!lakeBridgeBlocked(from,candidate,lakeBridgeDeck!==undefined,bridgeRepair?.ready()??false)&&!platformBlocked(from,candidate)&&!hallSpace?.blocked(candidate.x,candidate.z)&&!memorySpace?.blocked(candidate.x,candidate.z)&&!memoryTable?.blocked(candidate.x,candidate.z)&&!memoryGiant?.blocked(candidate.x,candidate.z,from)&&!venetianBridges.blocked(candidate.x,candidate.z)&&!rootsBridge.blocked(candidate.x,candidate.z)&&!rootsSpace?.blocked(candidate.x,candidate.z)&&!guardianStones?.blocked(candidate.x,candidate.z)&&!giant?.blocked(candidate.x,candidate.z,from)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
       if(isMoving){const target=Math.atan2(velocityX,velocityZ),difference=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y));hero.rotation.y+=difference*(1-Math.exp(-dt*14));cameraDir.x=Math.sin(hero.rotation.y);cameraDir.z=Math.cos(hero.rotation.y);}
-      const walking=!paused.current&&!document.hidden&&Math.hypot(velocityX,velocityZ)>.08;
+      const walking=!movementPaused.current&&!document.hidden&&Math.hypot(velocityX,velocityZ)>.08;
       moving=walking;
       const next=now<attackUntil?attack:moving?walk:idle;
       if(next&&next!==currentAction){currentAction?.fadeOut(.16);next.reset();next.enabled=true;next.setEffectiveWeight(1);next.setEffectiveTimeScale(1);next.fadeIn(.16).play();currentAction=next;}
