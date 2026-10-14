@@ -14,8 +14,24 @@ export function installSealGuardian(scene:THREE.Scene,asset:{scene:THREE.Group;a
   model.scale.setScalar(scale);model.position.set(-centre.x*scale,-box.min.y*scale,-centre.z*scale);
   model.traverse(o=>{if(o instanceof THREE.Mesh){o.castShadow=true;o.receiveShadow=true;if(o instanceof THREE.SkinnedMesh)o.frustumCulled=false;}});
   root.add(model);scene.add(root);
-  const mixer=new THREE.AnimationMixer(model),idle=asset.animations.find(a=>a.name==='Idle')||asset.animations[0];
-  if(idle)mixer.clipAction(idle).play();root.visible=false;
-  return {root,update(dt:number,near:boolean,closed:boolean){root.visible=near&&closed;if(root.visible)mixer.update(dt);},
-    dispose(){mixer.stopAllAction();scene.remove(root);}};
+  const mixer=new THREE.AnimationMixer(model);
+  const byName=(name:string)=>asset.animations.find(a=>a.name===name);
+  const idle=byName('Idle')||asset.animations[0];
+  const attack=byName('Plunge Attack')||byName('Rear Attack');
+  const idleAction=idle?mixer.clipAction(idle):null;
+  const attackAction=attack?mixer.clipAction(attack):null;
+  idleAction?.play();root.visible=false;
+  let strikeRemaining=0;
+  return {
+    root,
+    strike(){if(!attackAction)return;strikeRemaining=attack!.duration;idleAction?.fadeOut(.12);
+      attackAction.reset().setLoop(THREE.LoopOnce,1);attackAction.clampWhenFinished=true;attackAction.fadeIn(.12).play();},
+    update(dt:number,summoned:boolean,closed:boolean){
+      root.visible=summoned&&closed;
+      if(!root.visible)return;
+      mixer.update(dt);
+      if(strikeRemaining>0){strikeRemaining-=dt;if(strikeRemaining<=0){attackAction?.fadeOut(.15);idleAction?.reset().fadeIn(.15).play();}}
+    },
+    dispose(){mixer.stopAllAction();scene.remove(root);}
+  };
 }

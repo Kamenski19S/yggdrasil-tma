@@ -71,6 +71,8 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
   const undergroundCallback=useRef(onEnterUnderground);undergroundCallback.current=onEnterUnderground;
   const [near,setNear]=useState('');
   const [firstSealNear,setFirstSealNear]=useState(false);
+  const sealSummoned=useRef(false);
+  const sealDefeated=useRef(false);
   const crystal=waterCrystalProgress(questDone),crystalDoneRef=useRef(questDone);crystalDoneRef.current=questDone;
   const [crystalNear,setCrystalNear]=useState('');
   const [amuletNear,setAmuletNear]=useState('');
@@ -83,6 +85,7 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
   const [journalOpen,setJournalOpen]=useState(false);
   const [inventoryOpen,setInventoryOpen]=useState(false);
   const attackAction=useRef<(()=>void)|null>(null);
+  const sealGuardianAction=useRef<(()=>void)|null>(null);
   const guardUntil=useRef(0);
   const [selected,setSelected]=useState('');
   const [status,setStatus]=useState('Vicki входит в Нифльхейм…');
@@ -119,6 +122,13 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
     setTrialMessage('');
     if(trial.kind==='battle')startTrialBattle(trial.id);else setTrialOpen(id);
   };
+  const startSealBattle=()=>{
+    if(sealDefeated.current)return;
+    sealSummoned.current=true;
+    const hp=Math.max(150,Math.ceil(combatStats.attack*15));
+    setBattle({id:'sealGuardian',hp,maxHp:hp,heroHp:Math.max(1,inventory.hp),energy:5,guard:false,runeCharge:2,log:'Печать пробуждает стражника! Он атакует Vicki.'});
+    clearInput();
+  };
   const startTrialBattle=(id:string)=>{
     const trial=trialById(id);if(!trial||!('hp' in trial)||!('attack' in trial))return;
     if(id!=='vampire'){
@@ -131,7 +141,8 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
   };
   const battleAction=(type:'hit'|'shield'|'rune')=>{
     if(!battle)return;
-    const trial=trialById(battle.id);if(!trial||!('attack' in trial))return;
+    const isSeal=battle.id==='sealGuardian';
+    const trial=trialById(battle.id);if(!isSeal&&(!trial||!('attack' in trial)))return;
     if(type==='rune'&&(!inventory.equippedRune||battle.runeCharge<1))return;
     if(type==='shield'&&!shieldEquipped){setBattle({...battle,log:'Для защиты сначала нужен щит.'});return;}
     const guard=type==='shield';
@@ -139,18 +150,25 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
     let power=type==='hit'?combatStats.attack:type==='rune'?combatStats.runeAttack:0;
     const boost=type==='hit'?'attack':type==='rune'?'rune':null;
     if(boost&&(boosts?.[boost]||0)>0){power=boostedPotionDamage(power,boosts![boost]);onPotionBoostUsed(boost);}
-    const enemyHp=Math.max(0,battle.hp-power);
+    const enemyHp=Math.max(0,battle.hp-Math.max(1,power));
     if(enemyHp<=0){
+      if(isSeal){
+        sealDefeated.current=true;sealSummoned.current=false;setBattle(null);
+        setStatus('⚔️ Страж печати побеждён! Теперь необходимо выполнить условия снятия печати.');
+        return;
+      }
       setBattle(null);onLiberationEvent(('victory:'+battle.id) as LiberationEvent);
       setLibStatus('✨ '+trial.outcome);setStatus('Победа! Получены Капли бессмертия, руна, эликсир и руническая сталь.');
       return;
     }
-    let incoming=incomingCombatDamage(trial.attack,combatStats,guard);
+    let incoming=incomingCombatDamage(isSeal?Math.max(10,Math.round(combatStats.maxHp*.10)):(trial as {attack:number}).attack,combatStats,guard);
+    if(isSeal)sealGuardianAction.current?.();
     if((boosts?.luck||0)>0){if(potionDodges(boosts!.luck,Math.random()))incoming=0;onPotionBoostUsed('luck');}
     if(!guard&&inventory.frostGuard>0&&incoming>0){incoming=Math.ceil(incoming*.5);onFrostGuardHit();}
     const heroHp=Math.max(0,battle.heroHp-incoming);
     onFieldHpChange(heroHp>0?heroHp:Math.max(35,Math.round(inventory.maxHp*.4)));
     if(heroHp<=0){
+      if(isSeal)sealSummoned.current=false;
       setBattle(null);setStatus('Vicki отступила. Локация ещё не освобождена, но находки сохранены.');return;
     }
     setBattle({...battle,hp:enemyHp,heroHp,guard,energy:type==='shield'?Math.min(5,battle.energy+1):Math.max(1,battle.energy-1),
@@ -203,6 +221,7 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
     const drySeals:{id:string;position:THREE.Vector3;mesh:THREE.Mesh;opacity:number}[]=[];
     let firstSeal:ReturnType<typeof createFirstSeal>|undefined;
     let sealGuardian:ReturnType<typeof installSealGuardian>|undefined;
+    sealGuardianAction.current=()=>sealGuardian?.strike();
     let lakeCave:ReturnType<typeof createLakeDescendingCave>|undefined;
     cachedGlbBuffer(`${BASE}img/models/Niflheim_Dry_River_Rocks.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
       if(!alive){disposeObject(asset.scene);return;}
@@ -876,7 +895,7 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
       mixer=new THREE.AnimationMixer(model);const findClip=(...names:string[])=>names.map(name=>THREE.AnimationClip.findByName(gltf.animations,name)).find(Boolean);
       const idleClip=findClip('idle','sword_idle')||gltf.animations[0],walkClip=findClip('walk_loop','walk')||idleClip;
       const attackClip=findClip('sword_attack','attack');if(attackClip)attack=mixer.clipAction(attackClip);
-      attackAction.current=()=>{if(firstSeal&&!firstSealOpened(crystalDoneRef.current)&&firstSeal.near(position.current.x,position.current.z)){setStatus('Печать пока доступна для осмотра. Владыка будет добавлен позже; ресурсы не расходуются.');return;}if(paused.current||!attack||performance.now()<attackUntil)return;clearInput();combatEffects.slash();currentAction?.fadeOut(.08);attack.reset().setLoop(THREE.LoopOnce,1);attack.clampWhenFinished=true;attack.setEffectiveWeight(1);attack.fadeIn(.05).play();currentAction=attack;attackUntil=performance.now()+Math.max(650,attack.getClip().duration*1000);riggedEnemies.strikeEnemy(position.current,weapon,performance.now());};
+      attackAction.current=()=>{if(firstSeal&&!firstSealOpened(crystalDoneRef.current)&&firstSeal.near(position.current.x,position.current.z)){if(!sealDefeated.current)startSealBattle();else setStatus('Страж побеждён. Для снятия печати потребуются руны, сталь и 17 000 капель.');return;}if(paused.current||!attack||performance.now()<attackUntil)return;clearInput();combatEffects.slash();currentAction?.fadeOut(.08);attack.reset().setLoop(THREE.LoopOnce,1);attack.clampWhenFinished=true;attack.setEffectiveWeight(1);attack.fadeIn(.05).play();currentAction=attack;attackUntil=performance.now()+Math.max(650,attack.getClip().duration*1000);riggedEnemies.strikeEnemy(position.current,weapon,performance.now());};
       if(idleClip)idle=mixer.clipAction(idleClip);if(walkClip)walk=mixer.clipAction(walkClip);idle?.play();currentAction=idle;setStatus('Сияние Нифльхейма ведёт тех, кто готов узнать его тайны.');
     },()=>{if(alive)setStatus('Не удалось загрузить Vicki. Выйди на Древо и войди снова.');})).catch(()=>{if(alive)setStatus('Не удалось загрузить Vicki. Выйди на Древо и войди снова.');});
     const entranceZ=65*NIFL_SCALE,entranceY=niflGroundY(0,entranceZ);
@@ -908,7 +927,7 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
       if(next&&next!==currentAction){currentAction?.fadeOut(.16);next.reset();next.enabled=true;next.setEffectiveWeight(1);next.setEffectiveTimeScale(1);next.fadeIn(.16).play();currentAction=next;}
       const pos=position.current;
       firstSeal?.update(now*.001,firstSealOpened(crystalDoneRef.current),dt);
-      sealGuardian?.update(dt,Math.hypot(pos.x-sealGuardian.root.position.x,pos.z-sealGuardian.root.position.z)<75,!firstSealOpened(crystalDoneRef.current));
+      sealGuardian?.update(dt,sealSummoned.current&&!sealDefeated.current,!firstSealOpened(crystalDoneRef.current));
       if(!wandererLoading&&!wandererPresent&&Math.hypot(pos.x-wandererX,pos.z-wandererZ)<60)loadWanderer();
       if(previousFindCount!==questRef.current.found.length){previousFindCount=questRef.current.found.length;memoryFinds.update(questRef.current.found.map(f=>f.id));refreshShadows();}
       if(sourceBasin.update(dt,now*.001,questRef.current.restored,questRef.current.step))refreshShadows();
@@ -1007,8 +1026,8 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
         <div style={{color:sealWallet.drops>=FIRST_SEAL.drops?'#b9e8bd':'#efbbc6'}}>💧 Капли бессмертия: {sealWallet.drops.toLocaleString('ru-RU')} / 17 000</div>
         <div style={{color:sealWallet.steel>=FIRST_SEAL.steel?'#b9e8bd':'#efbbc6'}}>⚙ Руническая сталь: {sealWallet.steel} / {FIRST_SEAL.steel}</div>
         {FIRST_SEAL.runes.map(r=>{const count=inventory.lootCounts?.[r.id]??(inventory.runes.includes(r.id)?1:0);return <div key={r.id} style={{color:count>=r.amount?'#b9e8bd':'#efbbc6'}}>{r.symbol} {r.name}: {count} / {r.amount}</div>;})}
-        <div>⚔ {questDone.includes(FIRST_SEAL.lordFlag)?'✓ Владыка печати побеждён':'Победить Владыку печати'}</div>
-      </div><small style={{display:'block',marginTop:6,lineHeight:1.4}}>Сначала победа, затем расход рун, стали и капель. Сейчас доступен только осмотр печати.</small>
+        <div>⚔ {sealDefeated.current||questDone.includes(FIRST_SEAL.lordFlag)?'✓ Стражник побеждён':'Ударь мечом по печати для призыва стражника'}</div>
+      </div><small style={{display:'block',marginTop:6,lineHeight:1.4}}>Сначала победа, затем расход рун, стали и капель. Снятие печати подключим отдельно.</small>
     </div>}
     {!firstSealNear&&amuletNear&&!modalActive&&<div className="nifl-near nifl-quest-near"><b>🧿 {AMULET_PARTS.find(p=>p.id===amuletNear)?.name}</b><button disabled={!amulet.canCollect(amuletNear)} onClick={()=>{clearInput();amuletCallback.current?.(('collect:'+amuletNear) as AmuletEvent);setStatus('🧿 Часть амулета получена: '+(amulet.collected.length+1)+'/6.');}}>{amulet.canCollect(amuletNear)?'Забрать часть амулета':'Сначала освободи эту локацию'}</button></div>}
     {amuletDialog&&<div className="nifl-overlay"><section className="nifl-panel nifl-quest-panel" role="dialog" aria-modal="true" aria-label={AMULET_NAME}><button className="nifl-close" onClick={()=>setAmuletDialog(false)}>Закрыть</button><h3>🧿 {AMULET_NAME}</h3><p>«Нидхёгг расколол защиту хранителей на шесть частей. Верни их, и мы восстановим амулет. Без него дракона не победить».</p>{AMULET_PARTS.map(p=><p key={p.id}>{amulet.collected.includes(p.id)?'✓':'○'} {p.name} — {p.place}</p>)}{amulet.restored?<p>Амулет восстановлен и хранится в рюкзаке. Он автоматически поглощает 30% силы огня Нидхёгга и позволяет нанести решающий удар.</p>:<><p>Собрано: {amulet.collected.length}/6. Побеждать дракона для восстановления не нужно.</p><button disabled={!amulet.ready} onClick={()=>{amuletCallback.current?.('restore');setAmuletDialog(false);clearInput();setStatus('🧿 Амулет хранителей восстановлен. Защита от огня Нидхёгга: 30%.');}}>Восстановить амулет</button></>}<p>Сердце Морвейна активируй отдельно в подземелье перед финальным боем: оно ослабляет огонь дракона на 25%.</p></section></div>}
@@ -1070,8 +1089,8 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
       }} style={{display:'block',width:'100%',marginBottom:6}}>{answer}</button>)}</div>:<button onClick={()=>startTrialBattle(trialInfo.id)}>⚔️ Начать испытание</button>}
       {trialMessage&&<p role="status">{trialMessage}</p>}
     </section></div>}
-    {battle&&<div className="nifl-overlay" style={{zIndex:22}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Бой за освобождение" style={{maxWidth:440}}>
-      <h3>⚔️ {trialById(battle.id)?.name}</h3>
+    {battle&&<div className="nifl-overlay" style={{zIndex:22,alignItems:"flex-end"}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Бой за освобождение" style={{maxWidth:440,marginTop:"auto",marginBottom:12}}>
+      <h3>⚔️ {battle.id==='sealGuardian'?'Страж Печати Мёртвого узла':trialById(battle.id)?.name}</h3>
       <p>❤️ Vicki: {battle.heroHp}/{inventory.maxHp} · ⚔️ Противник: {battle.hp}/{battle.maxHp}</p>
       <div style={{display:'flex',gap:5,margin:'8px 0'}}><div style={{height:7,background:'#c75858',width:Math.max(0,100*battle.heroHp/inventory.maxHp)+'%',borderRadius:4}}/><div style={{height:7,background:'#6b9dcf',width:Math.max(0,100*battle.hp/battle.maxHp)+'%',borderRadius:4}}/></div>
       <p>{battle.log}</p><p>Энергия: {Array.from({length:5},(_,i)=>i<battle.energy?'🟢':'⚪').join('')} · Руна: {battle.runeCharge}/2</p>
@@ -1080,7 +1099,7 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
         <button disabled={!shieldEquipped} onClick={()=>battleAction('shield')}>🛡️ Щит</button>
         <button disabled={!inventory.equippedRune||battle.runeCharge<1} onClick={()=>battleAction('rune')}>ᛉ Руна</button>
         <button onClick={healInBattle}>🧪 Эликсир</button>
-        <button onClick={()=>{onFieldHpChange(battle.heroHp);setBattle(null);setStatus('Vicki отступила — бой можно повторить позже.');}}>🚪 Отступить</button>
+        <button onClick={()=>{onFieldHpChange(battle.heroHp);if(battle.id==='sealGuardian')sealSummoned.current=false;setBattle(null);setStatus('Vicki отступила — бой можно повторить позже.');}}>🚪 Отступить</button>
       </div>
     </section></div>}
     {journalOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Журнал испытаний Нифльхейма">
