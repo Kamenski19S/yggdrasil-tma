@@ -86,6 +86,7 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
   const [inventoryOpen,setInventoryOpen]=useState(false);
   const attackAction=useRef<(()=>void)|null>(null);
   const sealGuardianAction=useRef<(()=>void)|null>(null);
+  const sealHeroStrike=useRef<(()=>void)|null>(null);
   const guardUntil=useRef(0);
   const [selected,setSelected]=useState('');
   const [status,setStatus]=useState('Vicki входит в Нифльхейм…');
@@ -146,6 +147,7 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
     if(type==='rune'&&(!inventory.equippedRune||battle.runeCharge<1))return;
     if(type==='shield'&&!shieldEquipped){setBattle({...battle,log:'Для защиты сначала нужен щит.'});return;}
     const guard=type==='shield';
+    if(isSeal){if(guard)guardUntil.current=performance.now()+1250;else sealHeroStrike.current?.();}
     const boosts=inventory.potionBoosts;
     let power=type==='hit'?combatStats.attack:type==='rune'?combatStats.runeAttack:0;
     const boost=type==='hit'?'attack':type==='rune'?'rune':null;
@@ -895,6 +897,7 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
       mixer=new THREE.AnimationMixer(model);const findClip=(...names:string[])=>names.map(name=>THREE.AnimationClip.findByName(gltf.animations,name)).find(Boolean);
       const idleClip=findClip('idle','sword_idle')||gltf.animations[0],walkClip=findClip('walk_loop','walk')||idleClip;
       const attackClip=findClip('sword_attack','attack');if(attackClip)attack=mixer.clipAction(attackClip);
+      sealHeroStrike.current=()=>{if(!attack)return;combatEffects.slash();currentAction?.fadeOut(.08);attack.reset().setLoop(THREE.LoopOnce,1);attack.clampWhenFinished=true;attack.setEffectiveWeight(1);attack.fadeIn(.05).play();currentAction=attack;attackUntil=performance.now()+Math.max(650,attack.getClip().duration*1000);};
       attackAction.current=()=>{if(firstSeal&&!firstSealOpened(crystalDoneRef.current)&&firstSeal.near(position.current.x,position.current.z)){if(!sealDefeated.current)startSealBattle();else setStatus('Страж побеждён. Для снятия печати потребуются руны, сталь и 17 000 капель.');return;}if(paused.current||!attack||performance.now()<attackUntil)return;clearInput();combatEffects.slash();currentAction?.fadeOut(.08);attack.reset().setLoop(THREE.LoopOnce,1);attack.clampWhenFinished=true;attack.setEffectiveWeight(1);attack.fadeIn(.05).play();currentAction=attack;attackUntil=performance.now()+Math.max(650,attack.getClip().duration*1000);riggedEnemies.strikeEnemy(position.current,weapon,performance.now());};
       if(idleClip)idle=mixer.clipAction(idleClip);if(walkClip)walk=mixer.clipAction(walkClip);idle?.play();currentAction=idle;setStatus('Сияние Нифльхейма ведёт тех, кто готов узнать его тайны.');
     },()=>{if(alive)setStatus('Не удалось загрузить Vicki. Выйди на Древо и войди снова.');})).catch(()=>{if(alive)setStatus('Не удалось загрузить Vicki. Выйди на Древо и войди снова.');});
