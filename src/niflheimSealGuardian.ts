@@ -24,6 +24,7 @@ export function installSealGuardian(scene:THREE.Scene,asset:{scene:THREE.Group;a
   let strikeRemaining=0;
   return {
     root,
+    moveTo(x:number,z:number,rotation:number){root.position.set(x,niflGroundY(x,z),z);root.rotation.y=rotation;},
     strike(){if(!attackAction)return;strikeRemaining=attack!.duration;idleAction?.fadeOut(.12);
       attackAction.reset().setLoop(THREE.LoopOnce,1);attackAction.clampWhenFinished=true;attackAction.fadeIn(.12).play();},
     update(dt:number,summoned:boolean,closed:boolean){
