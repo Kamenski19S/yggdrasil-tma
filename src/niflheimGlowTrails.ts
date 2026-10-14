@@ -56,7 +56,7 @@ export function createNiflheimGlowTrails(
     threshold:{x:0,z:127},
     forge:{x:-18,z:96},                  // southern forecourt
     shelter:{x:40,z:91},                 // snow-cave mouth
-    frozenRiver:{x:-17,z:49},
+    frozenRiver:{x:-23,z:59},
     echoCave:{x:82,z:65},
     memoryCave:{x:90,z:19},              // igloo passage
     roots:{x:10,z:-31.75},              // root cave entrance

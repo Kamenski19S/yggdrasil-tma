@@ -19,7 +19,7 @@ const rune=(id:string,name:string,symbol:string,amount:number):NiflheimSealRune=
 export const NIFLHEIM_SEALS:NiflheimSealDef[]=[
  {id:'shelter',order:1,name:'Печать Мёртвого узла',location:'Приют хранителей',x:40,z:88,angle:-.35,drops:17000,steel:5,hits:15,damagePct:.10,runes:[rune('algizGuard','Альгиз','ᛉ',1),rune('nauthizEndurance','Наутиз','ᚾ',1)]},
  {id:'forge',order:2,name:'Печать Закованного горна',location:'Кузница хранителей',x:-18,z:93,angle:0,drops:20000,steel:6,hits:17,damagePct:.11,runes:[rune('algizGuard','Альгиз','ᛉ',2),rune('nauthizEndurance','Наутиз','ᚾ',1)]},
- {id:'frozenRiver',order:3,name:'Печать Белого плена',location:'Замёрзшее русло',x:-19.6,z:55.5,angle:.15,drops:23000,steel:7,hits:19,damagePct:.12,runes:[rune('isaGuard','Иса','ᛁ',2),rune('nauthizEndurance','Наутиз','ᚾ',2)]},
+ {id:'frozenRiver',order:3,name:'Печать Белого плена',location:'Замёрзшее русло',x:-23,z:56,angle:0,drops:23000,steel:7,hits:19,damagePct:.12,runes:[rune('isaGuard','Иса','ᛁ',2),rune('nauthizEndurance','Наутиз','ᚾ',2)]},
  {id:'echoCave',order:4,name:'Печать Ледяного эха',location:'Пещера ледяного эха',x:74.6,z:62.8,angle:-.8,drops:27000,steel:8,hits:21,damagePct:.13,runes:[rune('ansuzWisdom','Ансуз','ᚨ',2),rune('isaGuard','Иса','ᛁ',2),rune('nauthizEndurance','Наутиз','ᚾ',1)]},
  {id:'memoryCave',order:5,name:'Печать Утраченной памяти',location:'Пещера воспоминаний',x:90,z:19,angle:0,drops:31000,steel:9,hits:23,damagePct:.14,runes:[rune('ansuzWisdom','Ансуз','ᚨ',2),rune('perthroFate','Перт','ᛈ',2),rune('eihwazResilience','Эйваз','ᛇ',2)]},
  {id:'snowMountain',order:6,name:'Печать Безмолвной вершины',location:'Снежная гора',x:-86,z:99,angle:0,drops:36000,steel:10,hits:25,damagePct:.15,runes:[rune('uruzStrength','Уруз','ᚢ',2),rune('isaGuard','Иса','ᛁ',2),rune('eihwazResilience','Эйваз','ᛇ',3)]},
@@ -103,6 +103,17 @@ export function sealBlocksEntry(from:Point,to:Point,contains:(p:Point)=>boolean)
 
 export const sealGuardianHealth=(attack:number,def:NiflheimSealDef)=>Math.max(1,Math.ceil(attack*def.hits));
 export const sealGuardianDamage=(maxHp:number,def:NiflheimSealDef)=>Math.max(1,Math.round(maxHp*def.damagePct));
+
+export function sealViewHint(point:THREE.Vector3,camera:THREE.Camera){
+ const local=point.clone().applyMatrix4(camera.matrixWorldInverse);
+ if(local.z>=0)return 'Шар позади — развернись к нему.';
+ const screen=point.clone().project(camera);
+ if(screen.x<-.8)return '← Шар слева — поверни к нему.';
+ if(screen.x>.8)return 'Шар справа — поверни к нему. →';
+ if(screen.y<-.75)return '↓ Шар ниже — посмотри перед Vicki.';
+ if(screen.y>.8)return '↑ Шар выше — посмотри на склон.';
+ return 'Ударь мечом по шару — появится страж.';
+}
 
 export function createNiflheimSealVisual(model:THREE.Group,def:NiflheimSealDef,animations:THREE.AnimationClip[]=[]){
  const root=new THREE.Group();root.name=def.name+' — '+def.location;

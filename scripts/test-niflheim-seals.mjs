@@ -1,6 +1,7 @@
 import {createServer} from 'vite';
 import {fileURLToPath} from 'node:url';
 import assert from 'node:assert/strict';
+import {PerspectiveCamera,Vector3} from 'three';
 globalThis.window={};
 const server=await createServer({root:fileURLToPath(new URL('../',import.meta.url)),server:{middlewareMode:true}});
 try {
@@ -32,5 +33,12 @@ const centre=d.id==='iceLake'?{x:-50,z:10}:d.id==='crossing'?{x:-72,z:5}:d.id===
 assert(contains(centre),d.id+' centre ward');
 for(let k=0;k<8;k++){const a=k*Math.PI/4,far={x:centre.x+60*Math.cos(a),z:centre.z+60*Math.sin(a)};assert(m.sealBlocksEntry(far,centre,contains),d.id+' approach '+k);assert(!m.sealBlocksEntry(centre,far,contains),d.id+' escape');}
 }
-console.log('PASS: 14 sequential seals, exact payment, rune deductions, insufficient resources, repeat protection, all guardian HP/damage steps, final obsidian gate, 112 entry directions and old-save exits.');
+const {niflRiverBlocked}=await server.ssrLoadModule('/src/niflheimMapData.ts');
+const third=m.sealById('frozenRiver');assert.equal(niflRiverBlocked(third.x,third.z),false,'Third seal must stand on the accessible bank');
+const camera=new PerspectiveCamera(42,450/800,.1,200);camera.position.set(0,0,10);camera.lookAt(0,0,0);camera.updateMatrixWorld();
+assert.match(m.sealViewHint(new Vector3(0,0,20),camera),/позади/);
+assert.match(m.sealViewHint(new Vector3(-20,0,0),camera),/слева/);
+assert.match(m.sealViewHint(new Vector3(20,0,0),camera),/справа/);
+assert.match(m.sealViewHint(new Vector3(0,0,0),camera),/Ударь/);
+console.log('PASS: 14 sequential seals, exact payment, rune deductions, insufficient resources, repeat protection, all guardian HP/damage steps, final obsidian gate, 112 entry directions, old-save exits, third seal bank placement and camera direction hints.');
 }finally{await server.close()}

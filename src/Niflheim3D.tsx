@@ -1,5 +1,5 @@
 import {createFirstSeal} from './niflheimFirstSeal';
-import {NIFLHEIM_SEALS,sealById,sealOpened,sealGuardianDefeated,sealAvailable,openedSealCount,createNiflheimSealVisual,sealContains,sealBlocksEntry,sealGuardianHealth,sealGuardianDamage,type NiflheimSealEvent} from './niflheimSeals';
+import {NIFLHEIM_SEALS,sealById,sealOpened,sealGuardianDefeated,sealAvailable,openedSealCount,createNiflheimSealVisual,sealContains,sealBlocksEntry,sealGuardianHealth,sealGuardianDamage,sealViewHint,type NiflheimSealEvent} from './niflheimSeals';
 import {installSealGuardian} from './niflheimSealGuardian';
 import {AMULET_NAME,AMULET_PARTS,amuletProgress,type AmuletEvent} from './niflheimAmulet';
 import {createAmuletScene} from './niflheimAmuletScene';
@@ -58,6 +58,7 @@ const CSS=`
 .nifl-joystick{padding:0;user-select:none}.nifl-joystick img{width:100%;height:100%;pointer-events:none}.nifl-realm-title{display:flex;align-items:center;justify-content:center;height:58px;color:#eaf7ff!important;font-size:20px!important;text-shadow:0 2px 4px #143449}
 
 .nifl-near{position:absolute;bottom:64px;top:auto;right:10px;width:min(56%,218px);z-index:5;background:#fffffff2;color:#23313b;border:2px solid #b5c7d1;border-radius:13px;padding:10px}.nifl-near b{font-size:13px;display:block;line-height:1.4}.nifl-near button{width:100%;padding:9px 4px;margin-top:7px;border:1px solid #acbec9;border-radius:8px;background:#edf3f6;color:#23313b;font:inherit;font-size:12px}
+.nifl-seal-prompt{position:absolute;left:10px;right:10px;bottom:8px;z-index:7;box-sizing:border-box;padding:7px 10px;border:1px solid #9c526b;border-radius:10px;background:#14212dee;color:#f0e1ba;font-size:11px;line-height:1.35}.nifl-seal-prompt b{display:block;font-size:12px;line-height:1.3}.nifl-seal-costs{display:flex;flex-wrap:wrap;gap:2px 9px;margin:3px 0}.nifl-seal-costs span{white-space:nowrap}.nifl-seal-prompt small{display:block;font-size:10px;line-height:1.3}.nifl-seal-prompt button{display:block;width:100%;margin-top:4px;padding:5px;border:1px solid #bda16b;border-radius:6px;background:#172b3d;color:#f0e1ba;font:inherit}.nifl-seal-prompt button:disabled{opacity:.6}
 .nifl-overlay{position:absolute;inset:0;z-index:10;background:#142b3acc;display:flex;align-items:center;justify-content:center;padding:12px;touch-action:auto}.nifl-panel{background:#fff;color:#22323d;border:2px solid #bac8d0;border-radius:16px;padding:16px;width:100%;max-width:620px;max-height:94%;overflow:auto}.nifl-panel h3{margin:0 0 8px;font-size:20px}.nifl-panel p{font-size:14px;line-height:1.6}.nifl-panel button{background:#eef3f6;color:#22323d;border:1px solid #b3c4ce;border-radius:9px;padding:10px;font:inherit;font-size:13px}.nifl-close{float:right}.nifl-panel svg{display:block;width:100%;height:42vh;min-height:240px;background:#e7eff4;border-radius:12px;margin-top:12px}.nifl-map-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:12px 0}.nifl-map-list button{text-align:left;font-size:12px}.nifl-map-legend{font-size:12px!important;color:#536875}.nifl-task-book{display:grid;gap:8px}.nifl-task-book-row{background:#f0f5f8;border:1px solid #b7c9d2;border-radius:9px;padding:10px;display:flex;flex-direction:column;gap:5px}.nifl-task-book-row.cleared{opacity:.77}.nifl-task-book-row b{font-size:13px}.nifl-task-book-row small{font-size:12px;line-height:1.5}.nifl-task-book-row button{align-self:flex-start}.nifl-task-actions p{margin:6px 0}.nifl-task-actions button{max-width:100%}
 `;
 
@@ -75,6 +76,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
   const undergroundCallback=useRef(onEnterUnderground);undergroundCallback.current=onEnterUnderground;
   const [near,setNear]=useState('');
   const [sealNear,setSealNear]=useState('');
+  const [sealDirection,setSealDirection]=useState('');
   const sealSummoned=useRef('');
   const sealDefeated=useRef(new Set(NIFLHEIM_SEALS.filter(def=>sealGuardianDefeated(questDone,def.id)).map(def=>def.id)));
   for(const def of NIFLHEIM_SEALS)if(sealGuardianDefeated(questDone,def.id))sealDefeated.current.add(def.id);
@@ -1086,6 +1088,10 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       if(now-checkAt>180){checkAt=now;
         const nextSeal=nearbySeal(pos);
         setSealNear(prev=>prev===nextSeal?prev:nextSeal);
+        const activeVisual=nextSeal==='shelter'?firstSeal:sealVisuals.find(v=>v.id===nextSeal);
+        camera.updateMatrixWorld();
+        const direction=activeVisual?sealViewHint(activeVisual.root.position,camera):'';
+        setSealDirection(prev=>prev===direction?prev:direction);
         const nextAmulet=amuletScene.near(pos.x,pos.z,crystalDoneRef.current);setAmuletNear(prev=>prev===nextAmulet?prev:nextAmulet);
         const nextCrystal=crystalScene.near(pos.x,pos.z,crystalDoneRef.current);setCrystalNear(prev=>prev===nextCrystal?prev:nextCrystal);
         const find=memoryFinds.near(pos.x,pos.z,questRef.current.found.map(f=>f.id));
@@ -1135,18 +1141,19 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" onClick={()=>attackAction.current?.()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></button>
     <button className="mid3d-ui mid3d-action" style={{top:125}} aria-label="Запас рун и эликсиров" onClick={()=>{clearInput();setInventoryOpen(true);}}><img className="mid3d-control-art" src={`${BASE}img/models/ui_inventory.png`} alt="" draggable={false}/></button>
     {inventoryOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Запас Vicki"><h3>Запас Vicki</h3><p>🧿 {AMULET_NAME}: {amulet.restored?'восстановлен · защита от дракона 30%':amulet.collected.length+'/6 частей'}</p><p>🌊 Сердце Морвейна: {liberation.vampireFreed?'в рюкзаке · активируется перед финальным боем':'не получено'}</p><p>💎 {CRYSTAL_NAME}: {crystal.gateOpen?'установлен во вратах Муспельхейма':crystal.assembled?'целый кристалл · 1 шт.':crystal.collected.length+'/3 осколков'}</p><InventorySection kind="potions" {...inventory}/><InventorySection kind="runes" {...inventory}/><button onClick={()=>setInventoryOpen(false)}>Вернуться в игру</button></section></div>}
-    {currentSeal&&!modalActive&&<div className="nifl-near nifl-quest-near" style={{borderColor:'#9c526b',width:'min(64%,275px)',zIndex:7}}>
-      <b>{currentSeal.name}</b><small style={{display:'block',margin:'4px 0'}}>{currentSeal.order}/14 · {currentSeal.location} · условия снятия</small>
-      <div style={{fontSize:11,lineHeight:1.65}}>
-        <div style={{color:sealWallet.drops>=currentSeal.drops?'#b9e8bd':'#efbbc6'}}>💧 Капли бессмертия: {sealWallet.drops.toLocaleString('ru-RU')} / {currentSeal.drops.toLocaleString('ru-RU')}</div>
-        <div style={{color:sealWallet.steel>=currentSeal.steel?'#b9e8bd':'#efbbc6'}}>⚙ Руническая сталь: {sealWallet.steel} / {currentSeal.steel}</div>
-        {currentSeal.runes.map(r=>{const count=sealRuneCount(r.id);return <div key={r.id} style={{color:count>=r.amount?'#b9e8bd':'#efbbc6'}}>{r.symbol} {r.name}: {count} / {r.amount}</div>;})}
-        <div>⚔ {!sealActive?'Печать спит: сначала предыдущая локация':sealWon?'✓ Стражник побеждён':'Ударь мечом по печати для призыва стражника'}</div>
+    {currentSeal&&!modalActive&&<div className="nifl-seal-prompt" role="group" aria-label="Условия снятия печати">
+      <b>{currentSeal.order}/14 · {currentSeal.name}</b>
+      <div className="nifl-seal-costs" aria-label="Стоимость снятия">
+        <span style={{color:sealWallet.drops>=currentSeal.drops?'#b9e8bd':'#efbbc6'}}>💧 {currentSeal.drops.toLocaleString('ru-RU')} капель</span>
+        <span style={{color:sealWallet.steel>=currentSeal.steel?'#b9e8bd':'#efbbc6'}}>⚙ {currentSeal.steel} стали</span>
+        {currentSeal.runes.map(r=><span key={r.id} style={{color:sealRuneCount(r.id)>=r.amount?'#b9e8bd':'#efbbc6'}}>{r.symbol} {r.name} ×{r.amount}</span>)}
       </div>
-      {sealWon&&<button type="button" disabled={!sealCanPay} style={{marginTop:7,width:'100%'}} onClick={()=>{if(!sealCanPay)return;clearInput();onSealEvent(('open:'+currentSeal.id) as NiflheimSealEvent);setStatus(currentSeal.order===14?'🔓 Все 14 печатей сняты. Путь в логово открыт — теперь можно собирать обсидиан.':'🔓 '+currentSeal.name+' снята. Следующая печать пробудилась.');}}>
-        {sealCanPay?'Снять печать · '+currentSeal.drops.toLocaleString('ru-RU')+' капель':'Не хватает ресурсов для снятия печати'}
-      </button>}
-      <small style={{display:'block',marginTop:6,lineHeight:1.4}}>{!sealActive?'Эта печать активируется только после предыдущей.':sealWon?'После оплаты ресурсы и указанные руны будут списаны.':'Страж '+currentSeal.order+'/14: около '+currentSeal.hits+' ударов до победы; урон '+Math.round(currentSeal.damagePct*100)+'% здоровья до защиты.'}</small>
+      {sealWon?<button type="button" disabled={!sealCanPay} onClick={()=>{if(!sealCanPay)return;clearInput();onSealEvent(('open:'+currentSeal.id) as NiflheimSealEvent);setStatus(currentSeal.order===14?'🔓 Все 14 печатей сняты. Путь в логово открыт — теперь можно собирать обсидиан.':'🔓 '+currentSeal.name+' снята. Следующая печать пробудилась.');}}>
+        {sealCanPay?'Снять печать':'Не хватает ресурсов для снятия печати'}
+      </button>:<>
+        <small>{!sealActive?'Печать спит: сначала открой предыдущую локацию.':sealDirection||'Ударь мечом по шару — появится страж.'}</small>
+        <small>Страж: ≈{currentSeal.hits} ударов · урон {Math.round(currentSeal.damagePct*100)}% здоровья до защиты.</small>
+      </>}
     </div>}
     {!sealNear&&amuletNear&&!modalActive&&<div className="nifl-near nifl-quest-near"><b>🧿 {AMULET_PARTS.find(p=>p.id===amuletNear)?.name}</b><button disabled={!amulet.canCollect(amuletNear)} onClick={()=>{clearInput();amuletCallback.current?.(('collect:'+amuletNear) as AmuletEvent);setStatus('🧿 Часть амулета получена: '+(amulet.collected.length+1)+'/6.');}}>{amulet.canCollect(amuletNear)?'Забрать часть амулета':'Сначала освободи эту локацию'}</button></div>}
     {amuletDialog&&<div className="nifl-overlay"><section className="nifl-panel nifl-quest-panel" role="dialog" aria-modal="true" aria-label={AMULET_NAME}><button className="nifl-close" onClick={()=>setAmuletDialog(false)}>Закрыть</button><h3>🧿 {AMULET_NAME}</h3><p>«Нидхёгг расколол защиту хранителей на шесть частей. Верни их, и мы восстановим амулет. Без него дракона не победить».</p>{AMULET_PARTS.map(p=><p key={p.id}>{amulet.collected.includes(p.id)?'✓':'○'} {p.name} — {p.place}</p>)}{amulet.restored?<p>Амулет восстановлен и хранится в рюкзаке. Он автоматически поглощает 30% силы огня Нидхёгга и позволяет нанести решающий удар.</p>:<><p>Собрано: {amulet.collected.length}/6. Побеждать дракона для восстановления не нужно.</p><button disabled={!amulet.ready} onClick={()=>{amuletCallback.current?.('restore');setAmuletDialog(false);clearInput();setStatus('🧿 Амулет хранителей восстановлен. Защита от огня Нидхёгга: 30%.');}}>Восстановить амулет</button></>}<p>Сердце Морвейна активируй отдельно в подземелье перед финальным боем: оно ослабляет огонь дракона на 25%.</p></section></div>}
