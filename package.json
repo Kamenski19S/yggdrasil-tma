@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test:seals": "node scripts/test-niflheim-seals.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "prebuild": "node scripts/materialize-ice-assets.mjs"

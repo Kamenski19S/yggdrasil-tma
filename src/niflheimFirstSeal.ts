@@ -33,13 +33,11 @@ export function applyFirstSealEvent(save:Save,event:FirstSealEvent):Save{
   done:[...new Set([...save.done,FIRST_SEAL.lordFlag,FIRST_SEAL.openedFlag])]
  };
 }
-export function createFirstSeal(model:THREE.Group,space:ReturnType<typeof createCaveSpace>,angle:number,animations:THREE.AnimationClip[]=[]){
- const root=new THREE.Group();root.name='Первая печать — Приют хранителей';
- root.position.copy(space.world(CAVE_MOUTH_X,CAVE_FLOOR_Y+3.15,CAVE_FRONT_Z+.8));root.rotation.y=angle;
+export function prepareAnimatedSeal(model:THREE.Group,animations:THREE.AnimationClip[]=[]){
  const box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3()),centre=box.getCenter(new THREE.Vector3());
  model.position.sub(centre);const scale=4.5/size.y;model.scale.setScalar(scale);model.position.multiplyScalar(scale);
  model.traverse(o=>{if(o instanceof THREE.Mesh){
-  o.castShadow=true;o.receiveShadow=true;
+  o.castShadow=true;o.receiveShadow=true;if(o instanceof THREE.SkinnedMesh)o.frustumCulled=false;
   const originals=Array.isArray(o.material)?o.material:[o.material];
   const themed=originals.map(source=>{
    const m=source instanceof THREE.MeshStandardMaterial?source.clone():new THREE.MeshStandardMaterial({color:'#777b88'});
@@ -49,13 +47,18 @@ export function createFirstSeal(model:THREE.Group,space:ReturnType<typeof create
   });
   o.material=Array.isArray(o.material)?themed:themed[0];
  }});
+
+ const mixer=new THREE.AnimationMixer(model);
+ for(const clip of animations)mixer.clipAction(clip).setLoop(THREE.LoopRepeat,Infinity).play();
+ return {model,mixer};
+}
+export function createFirstSeal(model:THREE.Group,space:ReturnType<typeof createCaveSpace>,angle:number,animations:THREE.AnimationClip[]=[]){
+ const root=new THREE.Group();root.name='Первая печать — Приют хранителей';
+ root.position.copy(space.world(CAVE_MOUTH_X,CAVE_FLOOR_Y+3.15,CAVE_FRONT_Z+.8));root.rotation.y=angle;
+ const {mixer}=prepareAnimatedSeal(model,animations);
  root.add(model);
  // The entrance collision remains active without a visible barrier plane.
  const light=new THREE.PointLight('#c81741',9,12,2);light.position.z=.6;root.add(light);
- const mixer=new THREE.AnimationMixer(model);
- for(const clip of animations){
-  const action=mixer.clipAction(clip);action.setLoop(THREE.LoopRepeat,Infinity).play();
- }
  return {root,
   near(x:number,z:number){return Math.hypot(x-root.position.x,z-root.position.z)<8;},
   blocked(from:{x:number;z:number},to:{x:number;z:number}){

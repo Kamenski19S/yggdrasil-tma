@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type {Save} from './core';
+import {prepareAnimatedSeal} from './niflheimFirstSeal';
 import {NIFL_LOCATIONS,niflGroundY} from './niflheimMapData';
 
 export type NiflheimSealRune={id:string;name:string;symbol:string;amount:number};
@@ -17,18 +18,18 @@ const rune=(id:string,name:string,symbol:string,amount:number):NiflheimSealRune=
  */
 export const NIFLHEIM_SEALS:NiflheimSealDef[]=[
  {id:'shelter',order:1,name:'Печать Мёртвого узла',location:'Приют хранителей',x:40,z:88,angle:-.35,drops:17000,steel:5,hits:15,damagePct:.10,runes:[rune('algizGuard','Альгиз','ᛉ',1),rune('nauthizEndurance','Наутиз','ᚾ',1)]},
- {id:'forge',order:2,name:'Печать Закованного горна',location:'Кузница хранителей',x:-10.5,z:89.7,angle:.3,drops:20000,steel:6,hits:17,damagePct:.11,runes:[rune('algizGuard','Альгиз','ᛉ',2),rune('nauthizEndurance','Наутиз','ᚾ',1)]},
+ {id:'forge',order:2,name:'Печать Закованного горна',location:'Кузница хранителей',x:-18,z:93,angle:0,drops:20000,steel:6,hits:17,damagePct:.11,runes:[rune('algizGuard','Альгиз','ᛉ',2),rune('nauthizEndurance','Наутиз','ᚾ',1)]},
  {id:'frozenRiver',order:3,name:'Печать Белого плена',location:'Замёрзшее русло',x:-19.6,z:55.5,angle:.15,drops:23000,steel:7,hits:19,damagePct:.12,runes:[rune('isaGuard','Иса','ᛁ',2),rune('nauthizEndurance','Наутиз','ᚾ',2)]},
  {id:'echoCave',order:4,name:'Печать Ледяного эха',location:'Пещера ледяного эха',x:74.6,z:62.8,angle:-.8,drops:27000,steel:8,hits:21,damagePct:.13,runes:[rune('ansuzWisdom','Ансуз','ᚨ',2),rune('isaGuard','Иса','ᛁ',2),rune('nauthizEndurance','Наутиз','ᚾ',1)]},
- {id:'memoryCave',order:5,name:'Печать Утраченной памяти',location:'Пещера воспоминаний',x:88.8,z:23.4,angle:-1.05,drops:31000,steel:9,hits:23,damagePct:.14,runes:[rune('ansuzWisdom','Ансуз','ᚨ',2),rune('perthroFate','Перт','ᛈ',2),rune('eihwazResilience','Эйваз','ᛇ',2)]},
- {id:'snowMountain',order:6,name:'Печать Безмолвной вершины',location:'Снежная гора',x:-79.2,z:92.9,angle:.85,drops:36000,steel:10,hits:25,damagePct:.15,runes:[rune('uruzStrength','Уруз','ᚢ',2),rune('isaGuard','Иса','ᛁ',2),rune('eihwazResilience','Эйваз','ᛇ',3)]},
- {id:'iceLake',order:7,name:'Печать Чёрного льда',location:'Озеро подо льдом',x:-73.2,z:15.4,angle:.2,drops:42000,steel:12,hits:27,damagePct:.16,runes:[rune('raidoPath','Райдо','ᚱ',2),rune('laguzFlow','Лагуз','ᛚ',3),rune('isaGuard','Иса','ᛁ',3)]},
- {id:'crossing',order:8,name:'Печать Разорванного пути',location:'Разрушенная переправа',x:-72,z:-4.5,angle:.25,drops:49000,steel:14,hits:29,damagePct:.17,runes:[rune('raidoPath','Райдо','ᚱ',3),rune('eihwazResilience','Эйваз','ᛇ',3),rune('algizGuard','Альгиз','ᛉ',3)]},
- {id:'namesHall',order:9,name:'Печать Забытого имени',location:'Зал забытых имён',x:-75.5,z:-70.5,angle:.25,drops:57000,steel:16,hits:31,damagePct:.18,runes:[rune('ansuzWisdom','Ансуз','ᚨ',3),rune('mannazMind','Манназ','ᛗ',3),rune('perthroFate','Перт','ᛈ',4)]},
- {id:'roots',order:10,name:'Печать Тёмного корня',location:'Сплетение корней',x:2.9,z:-50.5,angle:-.1,drops:66000,steel:18,hits:33,damagePct:.19,runes:[rune('eihwazResilience','Эйваз','ᛇ',4),rune('algizGuard','Альгиз','ᛉ',4),rune('nauthizEndurance','Наутиз','ᚾ',3)]},
- {id:'threeNornsWell',order:11,name:'Печать Нити судьбы',location:'Колодец трёх норн',x:31.7,z:-78.9,angle:-.45,drops:76000,steel:20,hits:35,damagePct:.20,runes:[rune('perthroFate','Перт','ᛈ',4),rune('laguzFlow','Лагуз','ᛚ',4),rune('dagazDawn','Дагаз','ᛞ',4)]},
+ {id:'memoryCave',order:5,name:'Печать Утраченной памяти',location:'Пещера воспоминаний',x:90,z:19,angle:0,drops:31000,steel:9,hits:23,damagePct:.14,runes:[rune('ansuzWisdom','Ансуз','ᚨ',2),rune('perthroFate','Перт','ᛈ',2),rune('eihwazResilience','Эйваз','ᛇ',2)]},
+ {id:'snowMountain',order:6,name:'Печать Безмолвной вершины',location:'Снежная гора',x:-86,z:99,angle:0,drops:36000,steel:10,hits:25,damagePct:.15,runes:[rune('uruzStrength','Уруз','ᚢ',2),rune('isaGuard','Иса','ᛁ',2),rune('eihwazResilience','Эйваз','ᛇ',3)]},
+ {id:'iceLake',order:7,name:'Печать Чёрного льда',location:'Озеро подо льдом',x:-50,z:18,angle:0,drops:42000,steel:12,hits:27,damagePct:.16,runes:[rune('raidoPath','Райдо','ᚱ',2),rune('laguzFlow','Лагуз','ᛚ',3),rune('isaGuard','Иса','ᛁ',3)]},
+ {id:'crossing',order:8,name:'Печать Разорванного пути',location:'Разрушенная переправа',x:-72,z:29,angle:0,drops:49000,steel:14,hits:29,damagePct:.17,runes:[rune('raidoPath','Райдо','ᚱ',3),rune('eihwazResilience','Эйваз','ᛇ',3),rune('algizGuard','Альгиз','ᛉ',3)]},
+ {id:'namesHall',order:9,name:'Печать Забытого имени',location:'Зал забытых имён',x:-76,z:-74,angle:0,drops:57000,steel:16,hits:31,damagePct:.18,runes:[rune('ansuzWisdom','Ансуз','ᚨ',3),rune('mannazMind','Манназ','ᛗ',3),rune('perthroFate','Перт','ᛈ',4)]},
+ {id:'roots',order:10,name:'Печать Тёмного корня',location:'Сплетение корней',x:10,z:-29,angle:0,drops:66000,steel:18,hits:33,damagePct:.19,runes:[rune('eihwazResilience','Эйваз','ᛇ',4),rune('algizGuard','Альгиз','ᛉ',4),rune('nauthizEndurance','Наутиз','ᚾ',3)]},
+ {id:'threeNornsWell',order:11,name:'Печать Нити судьбы',location:'Колодец трёх норн',x:62,z:-64,angle:0,drops:76000,steel:20,hits:35,damagePct:.20,runes:[rune('perthroFate','Перт','ᛈ',4),rune('laguzFlow','Лагуз','ᛚ',4),rune('dagazDawn','Дагаз','ᛞ',4)]},
  {id:'lookout',order:12,name:'Печать Иссохшей реки',location:'Пересохшее русло',x:-29.4,z:-120.4,angle:.3,drops:87000,steel:23,hits:37,damagePct:.21,runes:[rune('isaGuard','Иса','ᛁ',4),rune('nauthizEndurance','Наутиз','ᚾ',5),rune('hagalazBreak','Хагалаз','ᚺ',4)]},
- {id:'hvergelmir',order:13,name:'Печать Скованного истока',location:'Хвергельмир',x:-6.1,z:-102.4,angle:0,drops:99000,steel:26,hits:39,damagePct:.22,runes:[rune('laguzFlow','Лагуз','ᛚ',5),rune('ansuzWisdom','Ансуз','ᚨ',5),rune('berkanoHeal','Беркана','ᛒ',4)]},
+ {id:'hvergelmir',order:13,name:'Печать Скованного истока',location:'Хвергельмир',x:0,z:-78,angle:0,drops:99000,steel:26,hits:39,damagePct:.22,runes:[rune('laguzFlow','Лагуз','ᛚ',5),rune('ansuzWisdom','Ансуз','ᚨ',5),rune('berkanoHeal','Беркана','ᛒ',4)]},
  {id:'nidhogg',order:14,name:'Печать Драконьего порога',location:'Логово Нидхёгга',x:49.3,z:-122.6,angle:-.5,drops:112000,steel:30,hits:42,damagePct:.23,runes:[rune('tiwazValor','Тейваз','ᛏ',5),rune('sowiloLight','Соулу','ᛋ',5),rune('algizGuard','Альгиз','ᛉ',5)]}
 ];
 
@@ -80,67 +81,50 @@ export function applyNiflheimSealEvent(save:Save,event:NiflheimSealEvent):Save{
  };
 }
 
-export function createNiflheimSealVisual(model:THREE.Group,def:NiflheimSealDef){
+type Point={x:number;z:number};
+
+/** Fallback wards work before GLB loading; interiors supply exact footprints once ready. */
+export function sealContains(def:NiflheimSealDef,p:Point){
+ const site=NIFL_LOCATIONS.find(l=>l.id===def.id)!;
+ if(def.id==='forge')return Math.abs(p.x-site.x)<6.5&&p.z<site.z+1&&p.z>site.z-16;
+ if(def.id==='crossing')return Math.abs(p.x+72)<5&&p.z<26&&p.z>-15;
+ if(def.id==='iceLake')return Math.hypot(p.x+50,p.z-10)<6;
+ if(def.id==='hvergelmir')return Math.hypot((p.x-site.x)/17,(p.z-site.z)/17)<1;
+ return Math.hypot(p.x-site.x,p.z-site.z)<7.2;
+}
+
+export function sealBlocksEntry(from:Point,to:Point,contains:(p:Point)=>boolean){
+ // Subdivide long moves, so a frame stall cannot jump across a ward.
+ if(contains(from))return false; // Let pre-existing saves leave a locked interior.
+ const steps=Math.max(1,Math.ceil(Math.hypot(to.x-from.x,to.z-from.z)/.35));
+ for(let i=1;i<=steps;i++)if(contains({x:from.x+(to.x-from.x)*i/steps,z:from.z+(to.z-from.z)*i/steps}))return true;
+ return false;
+}
+
+export const sealGuardianHealth=(attack:number,def:NiflheimSealDef)=>Math.max(1,Math.ceil(attack*def.hits));
+export const sealGuardianDamage=(maxHp:number,def:NiflheimSealDef)=>Math.max(1,Math.round(maxHp*def.damagePct));
+
+export function createNiflheimSealVisual(model:THREE.Group,def:NiflheimSealDef,animations:THREE.AnimationClip[]=[]){
  const root=new THREE.Group();root.name=def.name+' — '+def.location;
- const ground=niflGroundY(def.x,def.z);
- root.position.set(def.x,ground+2.65,def.z);root.rotation.y=def.angle;
-
- // Keep the original gyroscope seal, but add a guaranteed visible dark ward behind it.
- // This prevents a model/material quirk from making a progression seal visually disappear.
- const box=new THREE.Box3().setFromObject(model),size=box.getSize(new THREE.Vector3()),centre=box.getCenter(new THREE.Vector3());
- model.position.sub(centre);const scale=4.8/Math.max(.001,size.y);model.scale.setScalar(scale);model.position.multiplyScalar(scale);model.position.z=.16;
- model.traverse(o=>{if(o instanceof THREE.Mesh){
-  o.visible=true;o.castShadow=true;o.receiveShadow=true;
-  const source=Array.isArray(o.material)?o.material:[o.material];
-  const themed=source.map(material=>{
-   const m=material instanceof THREE.MeshStandardMaterial?material.clone():new THREE.MeshStandardMaterial({color:'#777b88'});
-   m.visible=true;m.transparent=false;m.opacity=1;m.depthWrite=true;m.side=THREE.DoubleSide;
-   m.color.set('#5f626d');m.metalness=.78;m.roughness=.28;m.emissive.set('#b20f35');m.emissiveIntensity=.78;
-   if('map' in m)m.map=null;
-   return m;
-  });
-  o.material=Array.isArray(o.material)?themed:themed[0];
- }});
- root.add(model);
-
- const disk=new THREE.Mesh(new THREE.CircleGeometry(2.35,40),new THREE.MeshBasicMaterial({color:'#16050b',transparent:true,opacity:.72,side:THREE.DoubleSide,depthWrite:false}));
- disk.position.z=-.22;root.add(disk);
- const outer=new THREE.Mesh(new THREE.TorusGeometry(2.42,.11,8,44),new THREE.MeshBasicMaterial({color:'#d51d49',transparent:true,opacity:.92,side:THREE.DoubleSide}));
- outer.position.z=-.12;root.add(outer);
- const inner=new THREE.Mesh(new THREE.TorusGeometry(1.63,.055,6,36),new THREE.MeshBasicMaterial({color:'#7f132e',transparent:true,opacity:.9,side:THREE.DoubleSide}));
- inner.position.z=-.08;root.add(inner);
- for(let i=0;i<3;i++){
-  const bar=new THREE.Mesh(new THREE.BoxGeometry(.085,3.25,.055),new THREE.MeshBasicMaterial({color:'#a91639'}));
-  bar.rotation.z=i*Math.PI/3;bar.position.z=-.02;root.add(bar);
- }
- const light=new THREE.PointLight('#d01943',10,13,2);light.position.set(0,.2,1);root.add(light);
-
- const site=NIFL_LOCATIONS.find(l=>l.id===def.id)??{x:def.x,z:def.z};
- const wardRadius=def.id==='nidhogg'?8.5:def.id==='crossing'?8:7.2;
- const baseY=root.position.y;
+ const {mixer}=prepareAnimatedSeal(model,animations);root.add(model);
+ const light=new THREE.PointLight('#c81741',9,12,2);light.position.z=.6;root.add(light);
+ const place=(x:number,z:number,y=niflGroundY(x,z),angle=def.angle)=>{
+  root.position.set(x,y+3.15,z);root.rotation.y=angle;
+ };
+ place(def.x,def.z);
  return {
-  id:def.id,root,
-  near(x:number,z:number){return Math.hypot(x-def.x,z-def.z)<10;},
-  blocked(from:{x:number;z:number},to:{x:number;z:number}){
-   const before=Math.hypot(from.x-site.x,from.z-site.z),after=Math.hypot(to.x-site.x,to.z-site.z);
-   // Old saves already inside a ward may leave it, but an unopened seal blocks entry.
-   return before>=wardRadius&&after<wardRadius;
-  },
+  id:def.id,root,place,
+  near(x:number,z:number){return Math.hypot(x-root.position.x,z-root.position.z)<12;},
   guardianPoint(){
-   const dx=def.x-site.x,dz=def.z-site.z,len=Math.max(.001,Math.hypot(dx,dz));
-   return {x:def.x+dx/len*2.7,z:def.z+dz/len*2.7,angle:Math.atan2(-dx,-dz)};
+   // Spawn beside the sphere, leaving both the door and approach clear.
+   const angle=root.rotation.y;
+   return {x:root.position.x-5.2*Math.cos(angle)+3*Math.sin(angle),z:root.position.z+5.2*Math.sin(angle)+3*Math.cos(angle),angle};
   },
-  update(time:number,opened:boolean,available:boolean){
-   root.visible=!opened;
-   if(!root.visible)return;
-   root.position.y=baseY+Math.sin(time*1.45+def.order*.7)*.08;
-   root.rotation.y=def.angle+Math.sin(time*.45+def.order)*.04;
-   disk.rotation.z=-time*.13;outer.rotation.z=time*.2;inner.rotation.z=-time*.31;
-   const glow=available?1:.58;
-   (outer.material as THREE.MeshBasicMaterial).opacity=.72+.2*glow+.06*Math.sin(time*2+def.order);
-   (inner.material as THREE.MeshBasicMaterial).opacity=.55+.28*glow;
-   light.color.set(available?'#ef1648':'#71172e');
-   light.intensity=(available?10:4)+Math.sin(time*1.6+def.order)*1.1;
-  }
+  update(time:number,opened:boolean,available:boolean,dt=0){
+   root.visible=!opened;if(!root.visible)return;
+   mixer.update(dt);
+   light.intensity=(available?9:4)+Math.sin(time*1.6+def.order)*1.1;
+  },
+  dispose(){mixer.stopAllAction();}
  };
 }

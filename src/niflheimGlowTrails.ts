@@ -65,8 +65,8 @@ export function createNiflheimGlowTrails(
     crossing:{x:-72,z:27},              // north end of bridge
     namesHall:{x:-76,z:-75},            // front arch
     snowMountain:{x:-86,z:96},
-    threeNornsWell:{x:36,z:-79},
-    nineWorldStranger:{x:44,z:-78}
+    threeNornsWell:{x:62,z:-66},
+    nineWorldStranger:{x:78,z:-62}
   };
   const links:ReadonlyArray<readonly [string,string]>=[...NIFL_ROUTES,...EXTRA_LINKS] as Array<[string,string]>;
 

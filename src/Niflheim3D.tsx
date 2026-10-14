@@ -1,5 +1,5 @@
 import {createFirstSeal} from './niflheimFirstSeal';
-import {NIFLHEIM_SEALS,sealById,sealOpened,sealGuardianDefeated,sealAvailable,openedSealCount,createNiflheimSealVisual,type NiflheimSealEvent} from './niflheimSeals';
+import {NIFLHEIM_SEALS,sealById,sealOpened,sealGuardianDefeated,sealAvailable,openedSealCount,createNiflheimSealVisual,sealContains,sealBlocksEntry,sealGuardianHealth,sealGuardianDamage,type NiflheimSealEvent} from './niflheimSeals';
 import {installSealGuardian} from './niflheimSealGuardian';
 import {AMULET_NAME,AMULET_PARTS,amuletProgress,type AmuletEvent} from './niflheimAmulet';
 import {createAmuletScene} from './niflheimAmuletScene';
@@ -38,6 +38,7 @@ import {createNiflheimGiant} from './niflheimGiant';
 import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
+import {clone as cloneSkeleton} from 'three/examples/jsm/utils/SkeletonUtils.js';
 import {BASE,cachedGlbBuffer,WEAPON_ASSET,WEAPON_POWER,textureSteelOnWeapon,styleNiflheimWeapon,type HeroWeapon} from './core';
 import {addEntranceIce} from './niflheimEntranceIce';
 import {addEntranceSnow} from './niflheimEntranceSnow';
@@ -132,12 +133,14 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     if(trial.kind==='battle')startTrialBattle(trial.id);else setTrialOpen(id);
   };
   const startSealBattle=(sealId:string)=>{
+    if(battleRef.current)return;
     const done=crystalDoneRef.current,def=sealById(sealId);if(!def||sealOpened(done,sealId))return;
     if(!sealAvailable(done,sealId)){const previous=NIFLHEIM_SEALS[def.order-2];setStatus('🔒 Эта печать ещё спит. Сначала открой «'+(previous?.location||'предыдущую локацию')+'».');return;}
     if(sealDefeated.current.has(sealId)||sealGuardianDefeated(done,sealId))return;
+    if(!sealGuardianPlace.current){setStatus('Страж печати ещё загружается. Подожди немного и ударь снова.');return;}
     sealSummoned.current=sealId;sealGuardianPlace.current?.(sealId);
-    const hp=Math.max(150,Math.ceil(combatStats.attack*def.hits));
-    const next={id:'sealGuardian:'+sealId,hp,maxHp:hp,heroHp:Math.max(1,inventory.hp),energy:5,guard:false,runeCharge:2,log:'Печать пробуждает стражника '+def.order+'/14! Он атакует Vicki.'};
+    const hp=sealGuardianHealth(combatStatsRef.current.attack,def);
+    const next={id:'sealGuardian:'+sealId,hp,maxHp:hp,heroHp:Math.max(1,sharedInventoryRef.current.hp),energy:5,guard:false,runeCharge:2,log:'Печать пробуждает стражника '+def.order+'/14! Он атакует Vicki.'};
     battleRef.current=next;setBattle(next);clearInput();
   };
   const startTrialBattle=(id:string)=>{
@@ -164,7 +167,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     let power=type==='hit'?combatStats.attack:type==='rune'?combatStats.runeAttack:0;
     const boost=type==='hit'?'attack':type==='rune'?'rune':null;
     if(boost&&(boosts?.[boost]||0)>0){power=boostedPotionDamage(power,boosts![boost]);onPotionBoostUsed(boost);}
-    const enemyHp=Math.max(0,battle.hp-Math.max(1,power));
+    const enemyHp=Math.max(0,battle.hp-(guard?0:Math.max(1,power)));
     if(enemyHp<=0){
       if(isSeal&&sealDef){
         sealDefeated.current.add(sealId);sealSummoned.current='';battleRef.current=null;setBattle(null);onSealEvent(('guardianDefeated:'+sealId) as NiflheimSealEvent);
@@ -200,7 +203,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     if(battle.heroHp>=inventory.maxHp){setBattle({...battle,log:'Здоровье уже полное.'});return;}
     if(useBattlePotion(potion,battle.heroHp)){
       const heroHp=potion==='northernMoss'?Math.min(inventory.maxHp,battle.heroHp+30):inventory.maxHp;
-      setBattle({...battle,heroHp,log:'Эликсир восстановил здоровье.'});
+      const next={...battle,heroHp,log:'Эликсир восстановил здоровье.'};battleRef.current=next;setBattle(next);
     }
   };
 
@@ -212,7 +215,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       const sealId=current.id.slice('sealGuardian:'.length),def=sealById(sealId);if(!def)return;
       const stats=combatStatsRef.current,inv=sharedInventoryRef.current;
       const guarding=guardUntil.current>performance.now();
-      let incoming=incomingCombatDamage(Math.max(10,Math.round(stats.maxHp*def.damagePct)),stats,guarding);
+      let incoming=incomingCombatDamage(sealGuardianDamage(stats.maxHp,def),stats,guarding);
       if((inv.potionBoosts?.luck||0)>0){if(potionDodges(inv.potionBoosts!.luck,Math.random()))incoming=0;boostUsedRef.current('luck');}
       if(!guarding&&inv.frostGuard>0&&incoming>0){incoming=Math.ceil(incoming*.5);frostHitRef.current();}
       sealGuardianAction.current?.();
@@ -334,6 +337,27 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       if(wandererObstacle&&Math.hypot(next.x-wandererObstacle.x,next.z-wandererObstacle.z)<wandererObstacle.radius)return true;
       const toY=stairGroundY(next.x,next.z),fromY=stairGroundY(from.x,from.z);
       return toY!==undefined&&toY-(fromY??raisedSnowY(from.x,from.z))>.85;
+    };
+    const sealInterior=(id:string,p:{x:number;z:number})=>{
+      if(id==='shelter'&&caveSpace)return caveSpace.inside(p.x,p.z);
+      if(id==='forge'&&forgeSpace)return forgeSpace.inside(p.x,p.z);
+      if(id==='memoryCave'&&memorySpace)return memorySpace.inside(p.x,p.z);
+      if(id==='roots'&&rootsSpace)return rootsSpace.inside(p.x,p.z);
+      if(id==='snowMountain'&&lakeCave)return lakeCave.inside(p.x,p.z);
+      if(id==='namesHall'&&hallSpace)return hallSpace.inside(p.x,p.z);
+      if(id==='nidhogg'&&towerEntrance.current){const t=towerEntrance.current;return Math.hypot(p.x-t.center.x,p.z-t.center.z)<t.radius+1;}
+      return sealContains(sealById(id)!,p);
+    };
+    const sealedEntry=(from:{x:number;z:number},to:{x:number;z:number})=>NIFLHEIM_SEALS.some(def=>
+      !sealOpened(crystalDoneRef.current,def.id)&&sealBlocksEntry(from,to,p=>sealInterior(def.id,p)));
+    const nearbySeal=(pos:{x:number;z:number})=>{
+      const done=crystalDoneRef.current;
+      const candidates=NIFLHEIM_SEALS.filter(def=>!sealOpened(done,def.id)).map(def=>{
+        const visual=def.id==='shelter'?firstSeal:sealVisuals.find(v=>v.id===def.id);
+        const point=visual?.root.position??def;
+        return {id:def.id,distance:Math.hypot(pos.x-point.x,pos.z-point.z),inside:sealInterior(def.id,pos)};
+      }).filter(s=>s.distance<12||s.inside).sort((a,b)=>a.distance-b.distance);
+      return candidates[0]?.id||'';
     };
     const walkingY=(x:number,z:number)=>venetianBridges.groundY(x,z)??rootsBridge.groundY(x,z)??lakeCave?.groundY(x,z)??towerEntrance.current?.groundY(x,z)??stairGroundY(x,z)??lakeBridgeY(x,z)??hallSpace?.groundY(x,z)??memorySpace?.groundY(x,z)??forgeSpace?.groundY(x,z)??caveSpace?.groundY(x,z)??rootsSpace?.groundY(x,z)??raisedSnowY(x,z);
     // Magical navigation follows the map's main destinations. Broken river
@@ -464,7 +488,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       if(!COMBAT_TRIALS.has(trial.id as any)||trial.id==='vampire')continue;
       const location=NIFL_LOCATIONS.find(l=>l.id===trial.id);if(!location)continue;
       const root=new THREE.Group();root.name='Орк-страж: '+trial.title;
-      const spawnOffset:Record<string,{x:number;z:number}>={memoryCave:{x:90,z:16},roots:{x:12,z:-38},namesHall:{x:-76,z:-90},snowMountain:{x:-86,z:86},threeNornsWell:{x:43,z:-78}};
+      const spawnOffset:Record<string,{x:number;z:number}>={memoryCave:{x:90,z:16},roots:{x:12,z:-38},namesHall:{x:-76,z:-90},snowMountain:{x:-86,z:86},threeNornsWell:{x:70,z:-78}};
       const spawn=spawnOffset[trial.id]||location;
       root.position.set(spawn.x,walkingY(spawn.x,spawn.z)+.15,spawn.z);
       scene.add(root);guardianRoots.push({id:trial.id,root});
@@ -586,6 +610,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       scene.add(tower);
       if(standing){
         const entrance=installTowerEntrance(scene,tower,standing,niflGroundY);towerEntrance.current=entrance;
+        sealVisuals.find(v=>v.id==='nidhogg')?.place(entrance.center.x,entrance.frontZ+2.5,entrance.floor,0);
         const sealVisual=new THREE.Group();sealVisual.name='Печать башни Нидхёгга';
         sealVisual.position.set(entrance.center.x,entrance.floor+4,entrance.frontZ+.5);
         const rim=new THREE.Mesh(new THREE.TorusGeometry(2.25,.11,8,56),
@@ -608,7 +633,8 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     }).catch(()=>{if(alive)setStatus('Не удалось загрузить разрушенную башню.');});
     // One shared model in every world: same Well of Three Norns as Midgard,
     // taller and frost-blue in Niflheim. Clear of the tower doorway and its rubble.
-    const niflNornsX=36,niflNornsZ=-85;
+    const nornsSite=NIFL_LOCATIONS.find(l=>l.id==='threeNornsWell')!;
+    const niflNornsX=nornsSite.x,niflNornsZ=nornsSite.z;
     cachedGlbBuffer(`${BASE}img/models/Midgard_Well_Three_Norns_V1_YUP.glb`)
       .then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`))
       .then(asset=>{
@@ -619,7 +645,8 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       }).catch(()=>{if(alive)setStatus('Не удалось загрузить Колодец трёх норн.');});
     // The same Nine-Worlds Wanderer as in Midgard; load only when Vika
     // approaches this part of the map to spare mobile startup bandwidth.
-    const wandererX=44,wandererZ=-80;
+    const wandererSite=NIFL_LOCATIONS.find(l=>l.id==='nineWorldStranger')!;
+    const wandererX=wandererSite.x,wandererZ=wandererSite.z;
     let wandererLoading=false,wandererPresent=false;
     let wandererIdle:((now:number)=>void)|null=null;
     let wandererTurn:((dt:number,x:number,z:number)=>void)|null=null;
@@ -856,6 +883,19 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       },()=>{})).catch(()=>{});refreshShadows();
     },()=>{})).catch(()=>{});
 
+    cachedGlbBuffer(`${BASE}img/models/Magical_Gyroscope_Seal_No_Stand.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
+      if(!alive){disposeObject(asset.scene);return;}
+      for(const def of NIFLHEIM_SEALS){
+        if(def.id==='shelter')continue;
+        const visual=createNiflheimSealVisual(cloneSkeleton(asset.scene) as THREE.Group,def,asset.animations);
+        if(def.id==='nidhogg'&&towerEntrance.current){const t=towerEntrance.current;visual.place(t.center.x,t.frontZ+2.5,t.floor,0);}
+        else visual.place(def.x,def.z,walkingY(def.x,def.z));
+        visual.update(0,sealOpened(crystalDoneRef.current,def.id),sealAvailable(crystalDoneRef.current,def.id));
+        sealVisuals.push(visual);scene.add(visual.root);
+      }
+      refreshShadows();
+    }).catch(()=>{if(alive)setStatus('Не удалось загрузить печати Нифльхейма. Открой мир снова.');});
+
     // Fred Drabble's cave, CC BY 4.0: snowy giant shelter facing the entrance road.
     const forgeLocation=NIFL_LOCATIONS.find(l=>l.id==='forge')!;
     forgeSpace=createNiflheimForge(forgeLocation.x,forgeLocation.z,niflGroundY(forgeLocation.x,forgeLocation.z),niflGroundY,refreshShadows);scene.add(forgeSpace.root);
@@ -887,14 +927,10 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       const sealSpace=caveSpace;
       cachedGlbBuffer(`${BASE}img/models/Magical_Gyroscope_Seal_No_Stand.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
         if(!alive){disposeObject(asset.scene);return;}
-        firstSeal=createFirstSeal(asset.scene.clone(true),sealSpace,angle,asset.animations);scene.add(firstSeal.root);firstSeal.update(0,sealOpened(crystalDoneRef.current,'shelter'));
-        for(const def of NIFLHEIM_SEALS){
-          if(def.id==='shelter')continue;
-          const visual=createNiflheimSealVisual(asset.scene.clone(true),def);sealVisuals.push(visual);scene.add(visual.root);
-        }
+        firstSeal=createFirstSeal(cloneSkeleton(asset.scene) as THREE.Group,sealSpace,angle,asset.animations);scene.add(firstSeal.root);firstSeal.update(0,sealOpened(crystalDoneRef.current,'shelter'));
         refreshShadows();
       }).catch(()=>{if(alive)setStatus('Не удалось загрузить печати Нифльхейма. Открой мир снова.');});
-      // Animated Scourger guards the seal visually; battle mechanics are pending.
+      // One animated guardian is moved to the seal whose battle is active.
       cachedGlbBuffer(`${BASE}img/models/Scourger_Rig_Optimized.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
         if(!alive){disposeObject(asset.scene);return;}
         sealGuardian=installSealGuardian(scene,asset,sealSpace,angle);
@@ -957,8 +993,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       sealHeroStrike.current=()=>{if(!attack)return;combatEffects.slash();currentAction?.fadeOut(.08);attack.reset().setLoop(THREE.LoopOnce,1);attack.clampWhenFinished=true;attack.setEffectiveWeight(1);attack.fadeIn(.05).play();currentAction=attack;attackUntil=performance.now()+Math.max(650,attack.getClip().duration*1000);};
       attackAction.current=()=>{
         const done=crystalDoneRef.current,pos=position.current;
-        let sealId=firstSeal&&!sealOpened(done,'shelter')&&firstSeal.near(pos.x,pos.z)?'shelter':'';
-        if(!sealId)sealId=sealVisuals.find(v=>!sealOpened(done,v.id)&&v.near(pos.x,pos.z))?.id||'';
+        const sealId=nearbySeal(pos);
         if(sealId){
           const def=sealById(sealId)!;
           if(!sealAvailable(done,sealId)){const previous=NIFLHEIM_SEALS[def.order-2];setStatus('🔒 Сначала открой «'+(previous?.location||'предыдущую локацию')+'».');return;}
@@ -991,7 +1026,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       velocityX=THREE.MathUtils.lerp(velocityX,isMoving?dx/length:0,steer);velocityZ=THREE.MathUtils.lerp(velocityZ,isMoving?dz/length:0,steer);
       if(!movementPaused.current&&!document.hidden){const from=position.current,next=moveThroughNiflEntrance(from,from.x+velocityX*8.5*dt,from.z+velocityZ*8.5*dt);
         const candidate=caveSpace?caveSpace.move(from,next):next;
-        if(!(firstSeal&&!sealOpened(crystalDoneRef.current,'shelter')&&firstSeal.blocked(from,candidate))&&!sealVisuals.some(v=>!sealOpened(crystalDoneRef.current,v.id)&&v.blocked(from,candidate))&&!(niflRiverBlocked(candidate.x,candidate.z)&&venetianBridges.groundY(candidate.x,candidate.z)===undefined&&rootsBridge.groundY(candidate.x,candidate.z)===undefined&&forgeSpace?.groundY(candidate.x,candidate.z)===undefined&&lakeBridgeY(candidate.x,candidate.z)===undefined&&!rootsSpace?.inside(candidate.x,candidate.z)&&!memorySpace?.inside(candidate.x,candidate.z)&&!caveSpace?.inside(candidate.x,candidate.z)&&!lakeCave?.inside(candidate.x,candidate.z))&&!entranceSupports.some(b=>candidate.x>b.min.x&&candidate.x<b.max.x&&candidate.z>b.min.z&&candidate.z<b.max.z)&&!dryRockBounds.some(b=>candidate.x>b.min.x&&candidate.x<b.max.x&&candidate.z>b.min.z&&candidate.z<b.max.z)&&!lakeCave?.blocked(from,candidate)&&!towerEntrance.current?.blocked(from,candidate)&&!sourceBasin.blocked(from,candidate)&&!lakeBridgeBlocked(from,candidate,lakeBridgeDeck!==undefined,bridgeRepair?.ready()??false)&&!platformBlocked(from,candidate)&&!hallSpace?.blocked(candidate.x,candidate.z)&&!memorySpace?.blocked(candidate.x,candidate.z)&&!memoryTable?.blocked(candidate.x,candidate.z)&&!memoryGiant?.blocked(candidate.x,candidate.z,from)&&!venetianBridges.blocked(candidate.x,candidate.z)&&!rootsBridge.blocked(candidate.x,candidate.z)&&!rootsSpace?.blocked(candidate.x,candidate.z)&&!guardianStones?.blocked(candidate.x,candidate.z)&&!giant?.blocked(candidate.x,candidate.z,from)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
+        if(!(firstSeal&&!sealOpened(crystalDoneRef.current,'shelter')&&firstSeal.blocked(from,candidate))&&!sealedEntry(from,candidate)&&!(niflRiverBlocked(candidate.x,candidate.z)&&venetianBridges.groundY(candidate.x,candidate.z)===undefined&&rootsBridge.groundY(candidate.x,candidate.z)===undefined&&forgeSpace?.groundY(candidate.x,candidate.z)===undefined&&lakeBridgeY(candidate.x,candidate.z)===undefined&&!rootsSpace?.inside(candidate.x,candidate.z)&&!memorySpace?.inside(candidate.x,candidate.z)&&!caveSpace?.inside(candidate.x,candidate.z)&&!lakeCave?.inside(candidate.x,candidate.z))&&!entranceSupports.some(b=>candidate.x>b.min.x&&candidate.x<b.max.x&&candidate.z>b.min.z&&candidate.z<b.max.z)&&!dryRockBounds.some(b=>candidate.x>b.min.x&&candidate.x<b.max.x&&candidate.z>b.min.z&&candidate.z<b.max.z)&&!lakeCave?.blocked(from,candidate)&&!towerEntrance.current?.blocked(from,candidate)&&!sourceBasin.blocked(from,candidate)&&!lakeBridgeBlocked(from,candidate,lakeBridgeDeck!==undefined,bridgeRepair?.ready()??false)&&!platformBlocked(from,candidate)&&!hallSpace?.blocked(candidate.x,candidate.z)&&!memorySpace?.blocked(candidate.x,candidate.z)&&!memoryTable?.blocked(candidate.x,candidate.z)&&!memoryGiant?.blocked(candidate.x,candidate.z,from)&&!venetianBridges.blocked(candidate.x,candidate.z)&&!rootsBridge.blocked(candidate.x,candidate.z)&&!rootsSpace?.blocked(candidate.x,candidate.z)&&!guardianStones?.blocked(candidate.x,candidate.z)&&!giant?.blocked(candidate.x,candidate.z,from)&&!forgeSpace?.blocked(candidate.x,candidate.z))position.current=candidate;}
       if(isMoving){const target=Math.atan2(velocityX,velocityZ),difference=Math.atan2(Math.sin(target-hero.rotation.y),Math.cos(target-hero.rotation.y));hero.rotation.y+=difference*(1-Math.exp(-dt*14));cameraDir.x=Math.sin(hero.rotation.y);cameraDir.z=Math.cos(hero.rotation.y);}
       const walking=!movementPaused.current&&!document.hidden&&Math.hypot(velocityX,velocityZ)>.08;
       moving=walking;
@@ -999,7 +1034,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       if(next&&next!==currentAction){currentAction?.fadeOut(.16);next.reset();next.enabled=true;next.setEffectiveWeight(1);next.setEffectiveTimeScale(1);next.fadeIn(.16).play();currentAction=next;}
       const pos=position.current;
       firstSeal?.update(now*.001,sealOpened(crystalDoneRef.current,'shelter'),dt);
-      sealVisuals.forEach(v=>v.update(now*.001,sealOpened(crystalDoneRef.current,v.id),sealAvailable(crystalDoneRef.current,v.id)));
+      sealVisuals.forEach(v=>v.update(now*.001,sealOpened(crystalDoneRef.current,v.id),sealAvailable(crystalDoneRef.current,v.id),dt));
       const summonedSeal=sealSummoned.current;
       sealGuardian?.update(dt,!!summonedSeal&&!sealDefeated.current.has(summonedSeal),!!summonedSeal&&!sealOpened(crystalDoneRef.current,summonedSeal));
       if(!wandererLoading&&!wandererPresent&&Math.hypot(pos.x-wandererX,pos.z-wandererZ)<60)loadWanderer();
@@ -1049,8 +1084,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       if(bridgeRepair?.update(dt,questRef.current.bridgeRestored,questRef.current.bridgeParts))refreshShadows();
       sourceRing.rotation.z+=dt*.12;gates.forEach(g=>{(g.material as THREE.MeshBasicMaterial).opacity=.78+Math.sin(now*.001)*.06;});
       if(now-checkAt>180){checkAt=now;
-        let nextSeal=!!firstSeal&&!sealOpened(crystalDoneRef.current,'shelter')&&firstSeal.near(pos.x,pos.z)?'shelter':'';
-        if(!nextSeal)nextSeal=sealVisuals.find(v=>!sealOpened(crystalDoneRef.current,v.id)&&v.near(pos.x,pos.z))?.id||'';
+        const nextSeal=nearbySeal(pos);
         setSealNear(prev=>prev===nextSeal?prev:nextSeal);
         const nextAmulet=amuletScene.near(pos.x,pos.z,crystalDoneRef.current);setAmuletNear(prev=>prev===nextAmulet?prev:nextAmulet);
         const nextCrystal=crystalScene.near(pos.x,pos.z,crystalDoneRef.current);setCrystalNear(prev=>prev===nextCrystal?prev:nextCrystal);
@@ -1070,7 +1104,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       wellGlowSprites.forEach((sprite,i)=>{(sprite.material as THREE.SpriteMaterial).opacity=.54+.12*Math.sin(performance.now()*.0017+i*2);});
       renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
-    return()=>{riggedEnemies.dispose();glowTrails.dispose();memoryTable?.dispose();sourceBasin.dispose();venetianBridges.dispose();rootsBridge.dispose();combatEffects.dispose();towerEntrance.current?.dispose();towerEntrance.current=null;attackAction.current=null;sealGuardianPlace.current=null;guardUntil.current=0;alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});rivers.dispose();forgeSpace?.dispose();mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());sun.shadow.dispose();renderer.dispose();renderer.domElement.remove();};
+    return()=>{sealVisuals.forEach(v=>v.dispose());riggedEnemies.dispose();glowTrails.dispose();memoryTable?.dispose();sourceBasin.dispose();venetianBridges.dispose();rootsBridge.dispose();combatEffects.dispose();towerEntrance.current?.dispose();towerEntrance.current=null;attackAction.current=null;sealGuardianPlace.current=null;guardUntil.current=0;alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});rivers.dispose();forgeSpace?.dispose();mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());sun.shadow.dispose();renderer.dispose();renderer.domElement.remove();};
   },[weapon,shieldAsset,shieldEquipped]);
   const steerStick=(event:React.PointerEvent<HTMLButtonElement>)=>{
     if(pointerId.current!==event.pointerId)return;
@@ -1112,7 +1146,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       {sealWon&&<button type="button" disabled={!sealCanPay} style={{marginTop:7,width:'100%'}} onClick={()=>{if(!sealCanPay)return;clearInput();onSealEvent(('open:'+currentSeal.id) as NiflheimSealEvent);setStatus(currentSeal.order===14?'🔓 Все 14 печатей сняты. Путь в логово открыт — теперь можно собирать обсидиан.':'🔓 '+currentSeal.name+' снята. Следующая печать пробудилась.');}}>
         {sealCanPay?'Снять печать · '+currentSeal.drops.toLocaleString('ru-RU')+' капель':'Не хватает ресурсов для снятия печати'}
       </button>}
-      <small style={{display:'block',marginTop:6,lineHeight:1.4}}>{!sealActive?'Эта печать активируется только после предыдущей.':sealWon?'После оплаты ресурсы и указанные руны будут списаны.':'Страж '+currentSeal.order+'/14 выдерживает примерно '+currentSeal.hits+' обычных ударов Vicki.'}</small>
+      <small style={{display:'block',marginTop:6,lineHeight:1.4}}>{!sealActive?'Эта печать активируется только после предыдущей.':sealWon?'После оплаты ресурсы и указанные руны будут списаны.':'Страж '+currentSeal.order+'/14: около '+currentSeal.hits+' ударов до победы; урон '+Math.round(currentSeal.damagePct*100)+'% здоровья до защиты.'}</small>
     </div>}
     {!sealNear&&amuletNear&&!modalActive&&<div className="nifl-near nifl-quest-near"><b>🧿 {AMULET_PARTS.find(p=>p.id===amuletNear)?.name}</b><button disabled={!amulet.canCollect(amuletNear)} onClick={()=>{clearInput();amuletCallback.current?.(('collect:'+amuletNear) as AmuletEvent);setStatus('🧿 Часть амулета получена: '+(amulet.collected.length+1)+'/6.');}}>{amulet.canCollect(amuletNear)?'Забрать часть амулета':'Сначала освободи эту локацию'}</button></div>}
     {amuletDialog&&<div className="nifl-overlay"><section className="nifl-panel nifl-quest-panel" role="dialog" aria-modal="true" aria-label={AMULET_NAME}><button className="nifl-close" onClick={()=>setAmuletDialog(false)}>Закрыть</button><h3>🧿 {AMULET_NAME}</h3><p>«Нидхёгг расколол защиту хранителей на шесть частей. Верни их, и мы восстановим амулет. Без него дракона не победить».</p>{AMULET_PARTS.map(p=><p key={p.id}>{amulet.collected.includes(p.id)?'✓':'○'} {p.name} — {p.place}</p>)}{amulet.restored?<p>Амулет восстановлен и хранится в рюкзаке. Он автоматически поглощает 30% силы огня Нидхёгга и позволяет нанести решающий удар.</p>:<><p>Собрано: {amulet.collected.length}/6. Побеждать дракона для восстановления не нужно.</p><button disabled={!amulet.ready} onClick={()=>{amuletCallback.current?.('restore');setAmuletDialog(false);clearInput();setStatus('🧿 Амулет хранителей восстановлен. Защита от огня Нидхёгга: 30%.');}}>Восстановить амулет</button></>}<p>Сердце Морвейна активируй отдельно в подземелье перед финальным боем: оно ослабляет огонь дракона на 25%.</p></section></div>}
