@@ -48,6 +48,8 @@ import {NIFL_SCALE,NIFL_SOURCE,NIFL_ENTRANCE_ARCS,NIFL_LOCATIONS,NIFL_RIVERS,NIF
 
 const hash=(x:number,z:number)=>{const n=Math.sin(x*127.1+z*311.7)*43758.5453;return n-Math.floor(n);};
 const CSS=`
+.nifl-seal-battle{position:absolute;inset:0;z-index:22;pointer-events:none;color:#fff;font-family:inherit}.nifl-seal-health{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:12px;justify-content:space-between}.nifl-seal-fighter{background:#152532df;border:1px solid #b79a62;border-radius:11px;padding:7px 10px;display:flex;flex-direction:column;gap:3px;min-width:0;width:43%;font-size:12px;text-shadow:0 1px #000}.nifl-seal-fighter b{font-size:13px}.nifl-seal-fighter span{font-size:11px}.nifl-seal-meter{width:100%;height:7px;background:#314652;border-radius:6px;overflow:hidden}.nifl-seal-meter i{display:block;height:100%;border-radius:6px}.nifl-seal-controls{position:absolute;bottom:10px;left:6px;right:6px;text-align:center}.nifl-seal-energy{display:flex;align-items:center;justify-content:center;gap:5px;margin:0 auto 7px;max-width:100%;height:29px;background:#122330bb;border-radius:9px;padding:2px 4px}.nifl-seal-energy span{width:12px;height:12px;border-radius:50%;border:1px solid #b7d9d1;flex:none}.nifl-seal-energy small{font-size:10px;line-height:1.15;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:68%;color:#fff}.nifl-seal-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}.nifl-seal-actions button{pointer-events:auto;display:flex;align-items:center;flex-direction:column;gap:2px;background:#172839bf;border:1px solid #bda16b;border-radius:10px;padding:5px 2px;color:#fff;font-family:inherit;min-width:0;min-height:70px;text-shadow:0 1px #000}.nifl-seal-actions button:disabled{opacity:.45}.nifl-seal-actions img{width:42px;height:42px;object-fit:contain}.nifl-seal-actions b{font-size:10px;line-height:1.1}.nifl-seal-rune{font-size:36px;color:#d9b976;line-height:42px}.nifl-seal-retreat{pointer-events:auto;border:0;color:#e6d5af;background:#152535cc;padding:3px 13px;border-radius:8px;font-size:10px;margin-top:4px}
+
 .nifl-quest-near,.nifl-quest-panel{background:#14212dee!important;color:#f0e1ba!important;border:1px solid #bda16b!important}.nifl-quest-panel{max-width:430px!important}.nifl-quest-panel button,.nifl-quest-near button{background:#172b3d!important;color:#f0e1ba!important;border:1px solid #bda16b!important}.nifl-rune-choices{display:flex;gap:8px}.nifl-rune-choices button{flex:1;min-width:0;font-size:11px!important}.nifl-rune-choices span{display:block;font-size:30px}.nifl-quest-progress{position:absolute;bottom:63px;top:auto;left:10px;transform:none;font-size:10px;padding:4px 7px;color:#f0e1ba;background:#14212ddb;border:1px solid #bda16b;border-radius:8px;pointer-events:none;white-space:nowrap}
 
 .nifl-world{position:relative;flex:1;min-height:0;overflow:hidden;background:#9ab3c4;touch-action:none}.nifl-mount{position:absolute;inset:0}.nifl-mount canvas{display:block;width:100%;height:100%}.nifl-top{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;pointer-events:none}.nifl-top h2{margin:0;color:#eaf7ff;font-size:20px;text-shadow:0 2px 4px #143449}.nifl-top p{margin:4px 0;color:#eaf7ff;font-size:11px;text-shadow:0 1px 3px #143449}.nifl-top button{pointer-events:auto;background:#f9fcff;color:#253847;border:2px solid #b7c9d2;border-radius:10px;padding:10px;font:inherit;font-size:13px}.nifl-status{position:absolute;bottom:12px;top:auto;left:10px;right:10px;transform:none;padding:6px 10px;border-radius:9px;background:#182b3de8;color:#f6e4bd;border:1px solid #ad915d;font-size:11px;text-align:center;max-width:none;z-index:6;pointer-events:none;line-height:1.4}
@@ -1092,18 +1094,31 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
       }} style={{display:'block',width:'100%',marginBottom:6}}>{answer}</button>)}</div>:<button onClick={()=>startTrialBattle(trialInfo.id)}>⚔️ Начать испытание</button>}
       {trialMessage&&<p role="status">{trialMessage}</p>}
     </section></div>}
-    {battle&&<div className="nifl-overlay" style={{zIndex:22,alignItems:"flex-end"}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Бой за освобождение" style={{maxWidth:440,marginTop:"auto",marginBottom:12}}>
-      <h3>⚔️ {battle.id==='sealGuardian'?'Страж Печати Мёртвого узла':trialById(battle.id)?.name}</h3>
-      <p>❤️ Vicki: {battle.heroHp}/{inventory.maxHp} · ⚔️ Противник: {battle.hp}/{battle.maxHp}</p>
-      <div style={{display:'flex',gap:5,margin:'8px 0'}}><div style={{height:7,background:'#c75858',width:Math.max(0,100*battle.heroHp/inventory.maxHp)+'%',borderRadius:4}}/><div style={{height:7,background:'#6b9dcf',width:Math.max(0,100*battle.hp/battle.maxHp)+'%',borderRadius:4}}/></div>
-      <p>{battle.log}</p><p>Энергия: {Array.from({length:5},(_,i)=>i<battle.energy?'🟢':'⚪').join('')} · Руна: {battle.runeCharge}/2</p>
-      <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
-        <button disabled={battle.energy<1} onClick={()=>battleAction('hit')}>⚔️ Ударить</button>
-        <button disabled={!shieldEquipped} onClick={()=>battleAction('shield')}>🛡️ Щит</button>
-        <button disabled={!inventory.equippedRune||battle.runeCharge<1} onClick={()=>battleAction('rune')}>ᛉ Руна</button>
-        <button onClick={healInBattle}>🧪 Эликсир</button>
-        <button onClick={()=>{onFieldHpChange(battle.heroHp);if(battle.id==='sealGuardian')sealSummoned.current=false;setBattle(null);setStatus('Vicki отступила — бой можно повторить позже.');}}>🚪 Отступить</button>
+    {battle?.id==='sealGuardian'&&<div className="nifl-seal-battle" role="group" aria-label="Бой со стражником">
+      <div className="nifl-seal-health">
+        <div className="nifl-seal-fighter"><b>Валькирия</b><span>♥ {battle.heroHp}/{inventory.maxHp}</span><div className="nifl-seal-meter"><i style={{width:Math.max(0,100*battle.heroHp/inventory.maxHp)+'%',background:'#63d58f'}}/></div></div>
+        <div className="nifl-seal-fighter"><b>Страж печати</b><span>♥ {battle.hp}/{battle.maxHp}</span><div className="nifl-seal-meter"><i style={{width:Math.max(0,100*battle.hp/battle.maxHp)+'%',background:'#d7717e'}}/></div></div>
       </div>
+      <div className="nifl-seal-controls">
+        <div className="nifl-seal-energy">{Array.from({length:5},(_,i)=><span key={i} style={{background:i<battle.energy?'#35cf94':'#354b56'}}/>)}<small>{battle.log}</small></div>
+        <div className="nifl-seal-actions">
+          <button disabled={battle.energy<1} onClick={()=>battleAction('hit')}><img src={`${BASE}img/models/ui_attack.png`} alt=""/><b>Удар оружием</b></button>
+          <button disabled={!shieldEquipped} onClick={()=>battleAction('shield')}><img src={`${BASE}img/models/ui_shield.png`} alt=""/><b>Поднять щит</b></button>
+          <button disabled={!inventory.equippedRune||battle.runeCharge<1} onClick={()=>battleAction('rune')}><span className="nifl-seal-rune">ᛉ</span><b>Руна</b></button>
+          <button onClick={healInBattle}><img src={`${BASE}img/models/ui_inventory.png`} alt=""/><b>Эликсир</b></button>
+        </div>
+        <button className="nifl-seal-retreat" onClick={()=>{onFieldHpChange(battle.heroHp);sealSummoned.current=false;setBattle(null);setStatus('Vicki отступила — бой можно повторить позже.');}}>Отступить</button>
+      </div>
+    </div>}
+    {battle&&battle.id!=='sealGuardian'&&<div className="nifl-overlay" style={{zIndex:22,alignItems:"flex-end"}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Бой за освобождение" style={{maxWidth:440,marginTop:"auto",marginBottom:12}}>
+      <h3>⚔️ {trialById(battle.id)?.name}</h3>
+      <p>❤️ Vicki: {battle.heroHp}/{inventory.maxHp} · ⚔️ Противник: {battle.hp}/{battle.maxHp}</p>
+      <p>{battle.log}</p><p>Энергия: {battle.energy}/5 · Руна: {battle.runeCharge}/2</p>
+      <button disabled={battle.energy<1} onClick={()=>battleAction('hit')}>⚔️ Ударить</button>
+      <button disabled={!shieldEquipped} onClick={()=>battleAction('shield')}>🛡️ Щит</button>
+      <button disabled={!inventory.equippedRune||battle.runeCharge<1} onClick={()=>battleAction('rune')}>ᛉ Руна</button>
+      <button onClick={healInBattle}>🧪 Эликсир</button>
+      <button onClick={()=>{onFieldHpChange(battle.heroHp);setBattle(null);setStatus('Vicki отступила — бой можно повторить позже.');}}>Отступить</button>
     </section></div>}
     {journalOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Журнал испытаний Нифльхейма">
       <button className="nifl-close" onClick={()=>setJournalOpen(false)}>Закрыть</button>
