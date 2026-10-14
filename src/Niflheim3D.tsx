@@ -128,7 +128,7 @@ export default function Niflheim3D({sealWallet,onFirstSealEvent,combatStats,onPo
     if(trial.kind==='battle')startTrialBattle(trial.id);else setTrialOpen(id);
   };
   const startSealBattle=()=>{
-    if(sealDefeated.current)return;
+    if(sealDefeated.current||questDone.includes(FIRST_SEAL.lordFlag))return;
     sealSummoned.current=true;
     const hp=Math.max(150,Math.ceil(combatStats.attack*15));
     setBattle({id:'sealGuardian',hp,maxHp:hp,heroHp:Math.max(1,inventory.hp),energy:5,guard:false,runeCharge:2,log:'Печать пробуждает стражника! Он атакует Vicki.'});
@@ -1046,6 +1046,9 @@ export default function Niflheim3D({sealWallet,onFirstSealEvent,combatStats,onPo
   const startStick=(event:React.PointerEvent<HTMLButtonElement>)=>{event.preventDefault();pointerId.current=event.pointerId;event.currentTarget.setPointerCapture(event.pointerId);steerStick(event);};
   const stopStick=(event:React.PointerEvent<HTMLButtonElement>)=>{if(pointerId.current===event.pointerId)clearInput();};
   const mapPoint=(x:number,z:number)=>({x:x/NIFL_SCALE+65,y:z/NIFL_SCALE+80});
+  const sealWon=sealDefeated.current||questDone.includes(FIRST_SEAL.lordFlag);
+  const sealRuneCount=(id:string)=>inventory.lootCounts?.[id]??(inventory.runes.includes(id)?1:0);
+  const sealCanPay=sealWon&&sealWallet.drops>=FIRST_SEAL.drops&&sealWallet.steel>=FIRST_SEAL.steel&&FIRST_SEAL.runes.every(r=>sealRuneCount(r.id)>=r.amount);
   return <div className="nifl-world"><style>{CSS}</style><div className="nifl-mount" ref={mount}/>
     <div className="mid3d-ui mid3d-top">
       <button className="mid3d-top-btn" aria-label="Карта Нифльхейма" onClick={()=>{clearInput();setMapOpen(true);}}><img className="mid3d-top-button-art" src={`${BASE}img/models/ui_map.png`} alt="" draggable={false}/></button>
@@ -1063,9 +1066,13 @@ export default function Niflheim3D({sealWallet,onFirstSealEvent,combatStats,onPo
       <div style={{fontSize:11,lineHeight:1.65}}>
         <div style={{color:sealWallet.drops>=FIRST_SEAL.drops?'#b9e8bd':'#efbbc6'}}>💧 Капли бессмертия: {sealWallet.drops.toLocaleString('ru-RU')} / 17 000</div>
         <div style={{color:sealWallet.steel>=FIRST_SEAL.steel?'#b9e8bd':'#efbbc6'}}>⚙ Руническая сталь: {sealWallet.steel} / {FIRST_SEAL.steel}</div>
-        {FIRST_SEAL.runes.map(r=>{const count=inventory.lootCounts?.[r.id]??(inventory.runes.includes(r.id)?1:0);return <div key={r.id} style={{color:count>=r.amount?'#b9e8bd':'#efbbc6'}}>{r.symbol} {r.name}: {count} / {r.amount}</div>;})}
-        <div>⚔ {sealDefeated.current||questDone.includes(FIRST_SEAL.lordFlag)?'✓ Стражник побеждён':'Ударь мечом по печати для призыва стражника'}</div>
-      </div><small style={{display:'block',marginTop:6,lineHeight:1.4}}>Сначала победа, затем расход рун, стали и капель. Снятие печати подключим отдельно.</small>
+        {FIRST_SEAL.runes.map(r=>{const count=sealRuneCount(r.id);return <div key={r.id} style={{color:count>=r.amount?'#b9e8bd':'#efbbc6'}}>{r.symbol} {r.name}: {count} / {r.amount}</div>;})}
+        <div>⚔ {sealWon?'✓ Стражник побеждён':'Ударь мечом по печати для призыва стражника'}</div>
+      </div>
+      {sealWon&&<button type="button" disabled={!sealCanPay} style={{marginTop:7,width:'100%'}} onClick={()=>{if(!sealCanPay)return;clearInput();onFirstSealEvent('open');setStatus('🔓 Печать Мёртвого узла снята. Проход в Приют хранителей открыт.');}}>
+        {sealCanPay?'Снять печать · 17 000 капель':'Не хватает ресурсов для снятия печати'}
+      </button>}
+      <small style={{display:'block',marginTop:6,lineHeight:1.4}}>{sealWon?'После оплаты спишутся 17 000 капель, 5 рунической стали, Альгиз ×1 и Наутиз ×1.':'Сначала победи стражника. После победы появится оплата снятия печати.'}</small>
     </div>}
     {!firstSealNear&&amuletNear&&!modalActive&&<div className="nifl-near nifl-quest-near"><b>🧿 {AMULET_PARTS.find(p=>p.id===amuletNear)?.name}</b><button disabled={!amulet.canCollect(amuletNear)} onClick={()=>{clearInput();amuletCallback.current?.(('collect:'+amuletNear) as AmuletEvent);setStatus('🧿 Часть амулета получена: '+(amulet.collected.length+1)+'/6.');}}>{amulet.canCollect(amuletNear)?'Забрать часть амулета':'Сначала освободи эту локацию'}</button></div>}
     {amuletDialog&&<div className="nifl-overlay"><section className="nifl-panel nifl-quest-panel" role="dialog" aria-modal="true" aria-label={AMULET_NAME}><button className="nifl-close" onClick={()=>setAmuletDialog(false)}>Закрыть</button><h3>🧿 {AMULET_NAME}</h3><p>«Нидхёгг расколол защиту хранителей на шесть частей. Верни их, и мы восстановим амулет. Без него дракона не победить».</p>{AMULET_PARTS.map(p=><p key={p.id}>{amulet.collected.includes(p.id)?'✓':'○'} {p.name} — {p.place}</p>)}{amulet.restored?<p>Амулет восстановлен и хранится в рюкзаке. Он автоматически поглощает 30% силы огня Нидхёгга и позволяет нанести решающий удар.</p>:<><p>Собрано: {amulet.collected.length}/6. Побеждать дракона для восстановления не нужно.</p><button disabled={!amulet.ready} onClick={()=>{amuletCallback.current?.('restore');setAmuletDialog(false);clearInput();setStatus('🧿 Амулет хранителей восстановлен. Защита от огня Нидхёгга: 30%.');}}>Восстановить амулет</button></>}<p>Сердце Морвейна активируй отдельно в подземелье перед финальным боем: оно ослабляет огонь дракона на 25%.</p></section></div>}
