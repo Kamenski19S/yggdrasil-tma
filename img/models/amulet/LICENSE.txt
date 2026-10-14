@@ -1,0 +1,4 @@
+Magical Amulet - Enchanted Fantasy Accessory by NicholasDeStefano
+https://sketchfab.com/3d-models/magical-amulet-enchanted-fantasy-accessory-a8d6d7ff4fbb41849513d0f6b443ffc8
+CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+Modified for Yggdrasil: textures resized to 256px WebP; pendant normalized and divided into six radial fragments preserving UVs and normals; necklace cord omitted from the fragments; placement and animation changed.
