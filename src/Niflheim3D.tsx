@@ -151,7 +151,9 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
   };
   const battleAction=(type:'hit'|'shield'|'rune')=>{
     if(!battle)return;
-    const isSeal=battle.id==='sealGuardian';
+    const isSeal=battle.id.startsWith('sealGuardian:');
+    const sealId=isSeal?battle.id.slice('sealGuardian:'.length):'';
+    const sealDef=isSeal?sealById(sealId):undefined;
     const trial=trialById(battle.id);if(!isSeal&&(!trial||!('attack' in trial)))return;
     if(type==='rune'&&(!inventory.equippedRune||battle.runeCharge<1))return;
     if(type==='shield'&&!shieldEquipped){setBattle({...battle,log:'Для защиты сначала нужен щит.'});return;}
@@ -163,9 +165,9 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     if(boost&&(boosts?.[boost]||0)>0){power=boostedPotionDamage(power,boosts![boost]);onPotionBoostUsed(boost);}
     const enemyHp=Math.max(0,battle.hp-Math.max(1,power));
     if(enemyHp<=0){
-      if(isSeal){
-        sealDefeated.current=true;sealSummoned.current=false;battleRef.current=null;setBattle(null);onFirstSealEvent('guardianDefeated');
-        setStatus('⚔️ Страж печати побеждён! Теперь можно оплатить снятие печати.');
+      if(isSeal&&sealDef){
+        sealDefeated.current.add(sealId);sealSummoned.current='';battleRef.current=null;setBattle(null);onSealEvent(('guardianDefeated:'+sealId) as NiflheimSealEvent);
+        setStatus('⚔️ Страж '+sealDef.order+'/14 побеждён! Теперь можно оплатить снятие печати.');
         return;
       }
       setBattle(null);onLiberationEvent(('victory:'+battle.id) as LiberationEvent);
@@ -202,20 +204,21 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
   };
 
   useEffect(()=>{
-    if(battle?.id!=='sealGuardian')return;
+    if(!battle?.id.startsWith('sealGuardian:'))return;
     const timer=window.setInterval(()=>{
       const current=battleRef.current;
-      if(!current||current.id!=='sealGuardian')return;
+      if(!current||!current.id.startsWith('sealGuardian:'))return;
+      const sealId=current.id.slice('sealGuardian:'.length),def=sealById(sealId);if(!def)return;
       const stats=combatStatsRef.current,inv=sharedInventoryRef.current;
       const guarding=guardUntil.current>performance.now();
-      let incoming=incomingCombatDamage(Math.max(10,Math.round(stats.maxHp*.10)),stats,guarding);
+      let incoming=incomingCombatDamage(Math.max(10,Math.round(stats.maxHp*def.damagePct)),stats,guarding);
       if((inv.potionBoosts?.luck||0)>0){if(potionDodges(inv.potionBoosts!.luck,Math.random()))incoming=0;boostUsedRef.current('luck');}
       if(!guarding&&inv.frostGuard>0&&incoming>0){incoming=Math.ceil(incoming*.5);frostHitRef.current();}
       sealGuardianAction.current?.();
       const heroHp=Math.max(0,current.heroHp-incoming);
       healthCallback.current(heroHp>0?heroHp:Math.max(35,Math.round(inv.maxHp*.4)));
       if(heroHp<=0){
-        sealSummoned.current=false;battleRef.current=null;setBattle(null);
+        sealSummoned.current='';battleRef.current=null;setBattle(null);
         setStatus('Vicki отступила. Страж печати остаётся на страже.');
         return;
       }
@@ -233,7 +236,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
   paused.current=paused.current||amuletDialog||crystalDialog||!!questDialog||!!trialOpen||!!battle;
   // The compact seal battle HUD must not disable Vicki's main joystick.
   // Keep the rest of the world/combat systems paused, but allow movement during this one battle.
-  movementPaused.current=doorOpening||mapOpen||journalOpen||inventoryOpen||!!selected||amuletDialog||crystalDialog||!!questDialog||!!trialOpen||!!(battle&&battle.id!=='sealGuardian');
+  movementPaused.current=doorOpening||mapOpen||journalOpen||inventoryOpen||!!selected||amuletDialog||crystalDialog||!!questDialog||!!trialOpen||!!(battle&&!battle.id.startsWith('sealGuardian:'));
   const emitMemory=(event:MemoryEvent)=>{onMemoryEvent(event);};
   const info=NIFL_LOCATIONS.find(l=>l.id===selected);
   const nearest=NIFL_LOCATIONS.find(l=>l.id===near);
