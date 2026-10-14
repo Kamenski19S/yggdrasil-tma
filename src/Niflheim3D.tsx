@@ -1,4 +1,4 @@
-import {FIRST_SEAL,firstSealOpened,createFirstSeal} from './niflheimFirstSeal';
+import {FIRST_SEAL,firstSealOpened,createFirstSeal,type FirstSealEvent} from './niflheimFirstSeal';
 import {installSealGuardian} from './niflheimSealGuardian';
 import {AMULET_NAME,AMULET_PARTS,amuletProgress,type AmuletEvent} from './niflheimAmulet';
 import {createAmuletScene} from './niflheimAmuletScene';
@@ -59,7 +59,7 @@ const CSS=`
 .nifl-overlay{position:absolute;inset:0;z-index:10;background:#142b3acc;display:flex;align-items:center;justify-content:center;padding:12px;touch-action:auto}.nifl-panel{background:#fff;color:#22323d;border:2px solid #bac8d0;border-radius:16px;padding:16px;width:100%;max-width:620px;max-height:94%;overflow:auto}.nifl-panel h3{margin:0 0 8px;font-size:20px}.nifl-panel p{font-size:14px;line-height:1.6}.nifl-panel button{background:#eef3f6;color:#22323d;border:1px solid #b3c4ce;border-radius:9px;padding:10px;font:inherit;font-size:13px}.nifl-close{float:right}.nifl-panel svg{display:block;width:100%;height:42vh;min-height:240px;background:#e7eff4;border-radius:12px;margin-top:12px}.nifl-map-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:12px 0}.nifl-map-list button{text-align:left;font-size:12px}.nifl-map-legend{font-size:12px!important;color:#536875}.nifl-task-book{display:grid;gap:8px}.nifl-task-book-row{background:#f0f5f8;border:1px solid #b7c9d2;border-radius:9px;padding:10px;display:flex;flex-direction:column;gap:5px}.nifl-task-book-row.cleared{opacity:.77}.nifl-task-book-row b{font-size:13px}.nifl-task-book-row small{font-size:12px;line-height:1.5}.nifl-task-book-row button{align-self:flex-start}.nifl-task-actions p{margin:6px 0}.nifl-task-actions button{max-width:100%}
 `;
 
-export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onFrostGuardHit,questDone,onAmuletEvent,onCrystalEvent,onMemoryEvent,onDragonEvent,onLiberationEvent,onFieldHpChange,useBattlePotion,locationCooldowns,initialPosition,onRemember,onForge,onOpenMill,onEnterUnderground,inventory,weapon,shieldAsset,shieldEquipped}:{sealWallet:{drops:number;steel:number};combatStats:CombatStats;onPotionBoostUsed:(kind:PotionBoostKind)=>void;onFrostGuardHit:()=>void;questDone:string[];onAmuletEvent?:(event:AmuletEvent)=>void;onCrystalEvent?:(event:CrystalEvent)=>void;onMemoryEvent:(event:MemoryEvent)=>void;onDragonEvent:(event:DragonEvent)=>void;onLiberationEvent:(event:LiberationEvent)=>void;onFieldHpChange:(hp:number)=>void;useBattlePotion:(id:string,hp:number)=>boolean;locationCooldowns:Record<string,number>;onEnterUnderground:(position:{x:number;z:number})=>void;onOpenMill:()=>void;inventory:Omit<React.ComponentProps<typeof InventorySection>,'kind'>;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;onForge:(position:{x:number;z:number})=>void;initialPosition:{x:number;z:number};onRemember:(position:{x:number;z:number})=>void}){
+export default function Niflheim3D({sealWallet,onFirstSealEvent,combatStats,onPotionBoostUsed,onFrostGuardHit,questDone,onAmuletEvent,onCrystalEvent,onMemoryEvent,onDragonEvent,onLiberationEvent,onFieldHpChange,useBattlePotion,locationCooldowns,initialPosition,onRemember,onForge,onOpenMill,onEnterUnderground,inventory,weapon,shieldAsset,shieldEquipped}:{sealWallet:{drops:number;steel:number};onFirstSealEvent:(event:FirstSealEvent)=>void;combatStats:CombatStats;onPotionBoostUsed:(kind:PotionBoostKind)=>void;onFrostGuardHit:()=>void;questDone:string[];onAmuletEvent?:(event:AmuletEvent)=>void;onCrystalEvent?:(event:CrystalEvent)=>void;onMemoryEvent:(event:MemoryEvent)=>void;onDragonEvent:(event:DragonEvent)=>void;onLiberationEvent:(event:LiberationEvent)=>void;onFieldHpChange:(hp:number)=>void;useBattlePotion:(id:string,hp:number)=>boolean;locationCooldowns:Record<string,number>;onEnterUnderground:(position:{x:number;z:number})=>void;onOpenMill:()=>void;inventory:Omit<React.ComponentProps<typeof InventorySection>,'kind'>;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;onForge:(position:{x:number;z:number})=>void;initialPosition:{x:number;z:number};onRemember:(position:{x:number;z:number})=>void}){
   const mount=useRef<HTMLDivElement>(null);
   const position=useRef(clampNiflPosition(initialPosition.x,initialPosition.z));
   const remember=useRef(onRemember);remember.current=onRemember;
@@ -74,7 +74,7 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
   const [near,setNear]=useState('');
   const [firstSealNear,setFirstSealNear]=useState(false);
   const sealSummoned=useRef(false);
-  const sealDefeated=useRef(false);
+  const sealDefeated=useRef(questDone.includes(FIRST_SEAL.lordFlag));
   const crystal=waterCrystalProgress(questDone),crystalDoneRef=useRef(questDone);crystalDoneRef.current=questDone;
   const [crystalNear,setCrystalNear]=useState('');
   const [amuletNear,setAmuletNear]=useState('');
@@ -110,6 +110,7 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
   const [trialOpen,setTrialOpen]=useState('');
   const [trialMessage,setTrialMessage]=useState('');
   const [battle,setBattle]=useState<{id:string;hp:number;maxHp:number;heroHp:number;energy:number;guard:boolean;runeCharge:number;log:string}|null>(null);
+  const battleRef=useRef(battle);battleRef.current=battle;
   const trialInfo=trialById(trialOpen);
   const [libStatus,setLibStatus]=useState('');
   const enterTrial=(id:string)=>{
@@ -158,22 +159,26 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
     const enemyHp=Math.max(0,battle.hp-Math.max(1,power));
     if(enemyHp<=0){
       if(isSeal){
-        sealDefeated.current=true;sealSummoned.current=false;setBattle(null);
-        setStatus('⚔️ Страж печати побеждён! Теперь необходимо выполнить условия снятия печати.');
+        sealDefeated.current=true;sealSummoned.current=false;battleRef.current=null;setBattle(null);onFirstSealEvent('guardianDefeated');
+        setStatus('⚔️ Страж печати побеждён! Теперь можно оплатить снятие печати.');
         return;
       }
       setBattle(null);onLiberationEvent(('victory:'+battle.id) as LiberationEvent);
       setLibStatus('✨ '+(trial?.outcome??'Победа'));setStatus('Победа! Получены Капли бессмертия, руна, эликсир и руническая сталь.');
       return;
     }
-    let incoming=incomingCombatDamage(isSeal?Math.max(10,Math.round(combatStats.maxHp*.10)):(trial as {attack:number}).attack,combatStats,guard);
-    if(isSeal)sealGuardianAction.current?.();
+    if(isSeal){
+      const next={...battle,hp:enemyHp,guard,energy:type==='shield'?Math.min(5,battle.energy+1):Math.max(1,battle.energy-1),
+        runeCharge:type==='rune'?battle.runeCharge-1:battle.runeCharge,
+        log:guard?'Vicki поднимает щит и ждёт удара стража.':type==='rune'?'Руна рассекла морозную защиту.':'Удар оружием! Страж готовит ответ.'};
+      battleRef.current=next;setBattle(next);return;
+    }
+    let incoming=incomingCombatDamage((trial as {attack:number}).attack,combatStats,guard);
     if((boosts?.luck||0)>0){if(potionDodges(boosts!.luck,Math.random()))incoming=0;onPotionBoostUsed('luck');}
     if(!guard&&inventory.frostGuard>0&&incoming>0){incoming=Math.ceil(incoming*.5);onFrostGuardHit();}
     const heroHp=Math.max(0,battle.heroHp-incoming);
     onFieldHpChange(heroHp>0?heroHp:Math.max(35,Math.round(inventory.maxHp*.4)));
     if(heroHp<=0){
-      if(isSeal)sealSummoned.current=false;
       setBattle(null);setStatus('Vicki отступила. Локация ещё не освобождена, но находки сохранены.');return;
     }
     setBattle({...battle,hp:enemyHp,heroHp,guard,energy:type==='shield'?Math.min(5,battle.energy+1):Math.max(1,battle.energy-1),
@@ -190,6 +195,30 @@ export default function Niflheim3D({sealWallet,combatStats,onPotionBoostUsed,onF
       setBattle({...battle,heroHp,log:'Эликсир восстановил здоровье.'});
     }
   };
+
+  useEffect(()=>{
+    if(battle?.id!=='sealGuardian')return;
+    const timer=window.setInterval(()=>{
+      const current=battleRef.current;
+      if(!current||current.id!=='sealGuardian')return;
+      const stats=combatStatsRef.current,inv=sharedInventoryRef.current;
+      const guarding=guardUntil.current>performance.now();
+      let incoming=incomingCombatDamage(Math.max(10,Math.round(stats.maxHp*.10)),stats,guarding);
+      if((inv.potionBoosts?.luck||0)>0){if(potionDodges(inv.potionBoosts!.luck,Math.random()))incoming=0;boostUsedRef.current('luck');}
+      if(!guarding&&inv.frostGuard>0&&incoming>0){incoming=Math.ceil(incoming*.5);frostHitRef.current();}
+      sealGuardianAction.current?.();
+      const heroHp=Math.max(0,current.heroHp-incoming);
+      healthCallback.current(heroHp>0?heroHp:Math.max(35,Math.round(inv.maxHp*.4)));
+      if(heroHp<=0){
+        sealSummoned.current=false;battleRef.current=null;setBattle(null);
+        setStatus('Vicki отступила. Страж печати остаётся на страже.');
+        return;
+      }
+      const next={...current,heroHp,guard:guarding,log:guarding?'Щит поглотил большую часть удара стража.':'Страж печати наносит удар! Vicki теряет здоровье.'};
+      battleRef.current=next;setBattle(next);
+    },2400);
+    return()=>window.clearInterval(timer);
+  },[battle?.id]);
 
   const [questNear,setQuestNear]=useState('');
   const [questDialog,setQuestDialog]=useState<'girl'|'source'|'seal'|'bridge'|'tower'|null>(null);
