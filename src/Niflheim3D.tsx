@@ -1,4 +1,5 @@
-import {FIRST_SEAL,firstSealOpened,createFirstSeal,type FirstSealEvent} from './niflheimFirstSeal';
+import {FIRST_SEAL,firstSealOpened,createFirstSeal} from './niflheimFirstSeal';
+import {NIFLHEIM_SEALS,sealById,sealOpened,sealGuardianDefeated,sealAvailable,openedSealCount,createNiflheimSealVisual,type NiflheimSealEvent} from './niflheimSeals';
 import {installSealGuardian} from './niflheimSealGuardian';
 import {AMULET_NAME,AMULET_PARTS,amuletProgress,type AmuletEvent} from './niflheimAmulet';
 import {createAmuletScene} from './niflheimAmuletScene';
@@ -59,7 +60,7 @@ const CSS=`
 .nifl-overlay{position:absolute;inset:0;z-index:10;background:#142b3acc;display:flex;align-items:center;justify-content:center;padding:12px;touch-action:auto}.nifl-panel{background:#fff;color:#22323d;border:2px solid #bac8d0;border-radius:16px;padding:16px;width:100%;max-width:620px;max-height:94%;overflow:auto}.nifl-panel h3{margin:0 0 8px;font-size:20px}.nifl-panel p{font-size:14px;line-height:1.6}.nifl-panel button{background:#eef3f6;color:#22323d;border:1px solid #b3c4ce;border-radius:9px;padding:10px;font:inherit;font-size:13px}.nifl-close{float:right}.nifl-panel svg{display:block;width:100%;height:42vh;min-height:240px;background:#e7eff4;border-radius:12px;margin-top:12px}.nifl-map-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:12px 0}.nifl-map-list button{text-align:left;font-size:12px}.nifl-map-legend{font-size:12px!important;color:#536875}.nifl-task-book{display:grid;gap:8px}.nifl-task-book-row{background:#f0f5f8;border:1px solid #b7c9d2;border-radius:9px;padding:10px;display:flex;flex-direction:column;gap:5px}.nifl-task-book-row.cleared{opacity:.77}.nifl-task-book-row b{font-size:13px}.nifl-task-book-row small{font-size:12px;line-height:1.5}.nifl-task-book-row button{align-self:flex-start}.nifl-task-actions p{margin:6px 0}.nifl-task-actions button{max-width:100%}
 `;
 
-export default function Niflheim3D({sealWallet,onFirstSealEvent,combatStats,onPotionBoostUsed,onFrostGuardHit,questDone,onAmuletEvent,onCrystalEvent,onMemoryEvent,onDragonEvent,onLiberationEvent,onFieldHpChange,useBattlePotion,locationCooldowns,initialPosition,onRemember,onForge,onOpenMill,onEnterUnderground,inventory,weapon,shieldAsset,shieldEquipped}:{sealWallet:{drops:number;steel:number};onFirstSealEvent:(event:FirstSealEvent)=>void;combatStats:CombatStats;onPotionBoostUsed:(kind:PotionBoostKind)=>void;onFrostGuardHit:()=>void;questDone:string[];onAmuletEvent?:(event:AmuletEvent)=>void;onCrystalEvent?:(event:CrystalEvent)=>void;onMemoryEvent:(event:MemoryEvent)=>void;onDragonEvent:(event:DragonEvent)=>void;onLiberationEvent:(event:LiberationEvent)=>void;onFieldHpChange:(hp:number)=>void;useBattlePotion:(id:string,hp:number)=>boolean;locationCooldowns:Record<string,number>;onEnterUnderground:(position:{x:number;z:number})=>void;onOpenMill:()=>void;inventory:Omit<React.ComponentProps<typeof InventorySection>,'kind'>;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;onForge:(position:{x:number;z:number})=>void;initialPosition:{x:number;z:number};onRemember:(position:{x:number;z:number})=>void}){
+export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionBoostUsed,onFrostGuardHit,questDone,onAmuletEvent,onCrystalEvent,onMemoryEvent,onDragonEvent,onLiberationEvent,onFieldHpChange,useBattlePotion,locationCooldowns,initialPosition,onRemember,onForge,onOpenMill,onEnterUnderground,inventory,weapon,shieldAsset,shieldEquipped}:{sealWallet:{drops:number;steel:number};onSealEvent:(event:NiflheimSealEvent)=>void;combatStats:CombatStats;onPotionBoostUsed:(kind:PotionBoostKind)=>void;onFrostGuardHit:()=>void;questDone:string[];onAmuletEvent?:(event:AmuletEvent)=>void;onCrystalEvent?:(event:CrystalEvent)=>void;onMemoryEvent:(event:MemoryEvent)=>void;onDragonEvent:(event:DragonEvent)=>void;onLiberationEvent:(event:LiberationEvent)=>void;onFieldHpChange:(hp:number)=>void;useBattlePotion:(id:string,hp:number)=>boolean;locationCooldowns:Record<string,number>;onEnterUnderground:(position:{x:number;z:number})=>void;onOpenMill:()=>void;inventory:Omit<React.ComponentProps<typeof InventorySection>,'kind'>;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;onForge:(position:{x:number;z:number})=>void;initialPosition:{x:number;z:number};onRemember:(position:{x:number;z:number})=>void}){
   const mount=useRef<HTMLDivElement>(null);
   const position=useRef(clampNiflPosition(initialPosition.x,initialPosition.z));
   const remember=useRef(onRemember);remember.current=onRemember;
@@ -72,9 +73,10 @@ export default function Niflheim3D({sealWallet,onFirstSealEvent,combatStats,onPo
   const [doorOpening,setDoorOpening]=useState(false);
   const undergroundCallback=useRef(onEnterUnderground);undergroundCallback.current=onEnterUnderground;
   const [near,setNear]=useState('');
-  const [firstSealNear,setFirstSealNear]=useState(false);
-  const sealSummoned=useRef(false);
-  const sealDefeated=useRef(questDone.includes(FIRST_SEAL.lordFlag));
+  const [sealNear,setSealNear]=useState('');
+  const sealSummoned=useRef('');
+  const sealDefeated=useRef(new Set(NIFLHEIM_SEALS.filter(def=>sealGuardianDefeated(questDone,def.id)).map(def=>def.id)));
+  for(const def of NIFLHEIM_SEALS)if(sealGuardianDefeated(questDone,def.id))sealDefeated.current.add(def.id);
   const crystal=waterCrystalProgress(questDone),crystalDoneRef=useRef(questDone);crystalDoneRef.current=questDone;
   const [crystalNear,setCrystalNear]=useState('');
   const [amuletNear,setAmuletNear]=useState('');
@@ -115,6 +117,7 @@ export default function Niflheim3D({sealWallet,onFirstSealEvent,combatStats,onPo
   const [libStatus,setLibStatus]=useState('');
   const enterTrial=(id:string)=>{
     const trial=trialById(id);if(!trial)return;
+    if(sealById(id)&&!sealOpened(questDone,id)){setStatus('🔒 Сначала сними печать у локации «'+sealById(id)!.location+'».');return;}
     if(id==='threeNornsWell'&&liberation.has(id)){setTrialOpen(id);return;}
     if(liberation.has(id)&&COMBAT_TRIALS.has(id as any)){
       const key='niflheim:liberation:repeat:'+id;
@@ -127,12 +130,14 @@ export default function Niflheim3D({sealWallet,onFirstSealEvent,combatStats,onPo
     setTrialMessage('');
     if(trial.kind==='battle')startTrialBattle(trial.id);else setTrialOpen(id);
   };
-  const startSealBattle=()=>{
-    if(sealDefeated.current||questDone.includes(FIRST_SEAL.lordFlag))return;
-    sealSummoned.current=true;
-    const hp=Math.max(150,Math.ceil(combatStats.attack*15));
-    setBattle({id:'sealGuardian',hp,maxHp:hp,heroHp:Math.max(1,inventory.hp),energy:5,guard:false,runeCharge:2,log:'Печать пробуждает стражника! Он атакует Vicki.'});
-    clearInput();
+  const startSealBattle=(sealId:string)=>{
+    const def=sealById(sealId);if(!def||sealOpened(questDone,sealId))return;
+    if(!sealAvailable(questDone,sealId)){const previous=NIFLHEIM_SEALS[def.order-2];setStatus('🔒 Эта печать ещё спит. Сначала открой «'+(previous?.location||'предыдущую локацию')+'».');return;}
+    if(sealDefeated.current.has(sealId)||sealGuardianDefeated(questDone,sealId))return;
+    sealSummoned.current=sealId;
+    const hp=Math.max(150,Math.ceil(combatStats.attack*def.hits));
+    const next={id:'sealGuardian:'+sealId,hp,maxHp:hp,heroHp:Math.max(1,inventory.hp),energy:5,guard:false,runeCharge:2,log:'Печать пробуждает стражника '+def.order+'/14! Он атакует Vicki.'};
+    battleRef.current=next;setBattle(next);clearInput();
   };
   const startTrialBattle=(id:string)=>{
     const trial=trialById(id);if(!trial||!('hp' in trial)||!('attack' in trial))return;
