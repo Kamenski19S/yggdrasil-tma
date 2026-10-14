@@ -892,7 +892,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
           if(def.id==='shelter')continue;
           const visual=createNiflheimSealVisual(asset.scene.clone(true),def);sealVisuals.push(visual);scene.add(visual.root);
         }
-        disposeObject(asset.scene);refreshShadows();
+        refreshShadows();
       }).catch(()=>{if(alive)setStatus('Не удалось загрузить печати Нифльхейма. Открой мир снова.');});
       // Animated Scourger guards the seal visually; battle mechanics are pending.
       cachedGlbBuffer(`${BASE}img/models/Scourger_Rig_Optimized.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
