@@ -1,3 +1,4 @@
+import {amuletProgress} from './niflheimAmulet';
 import {NIDHOGG_REWARD} from './nidhoggBalance';
 import {liberationProgress} from './niflheimLiberation';
 import type {Save,HeroWeapon} from './core';
@@ -74,7 +75,7 @@ export function applyDragonQuestEvent(save:Save,event:DragonEvent):Save{
   });
  }
  if(event==='defeat'){
-  if(!p.forged||p.defeated||!p.worldFreed)return save;
+  if(!p.forged||p.defeated||!p.worldFreed||!amuletProgress(save.done).restored)return save;
   const rune=RUNE_CATALOG[(save.done.length+7)%RUNE_CATALOG.length].id;
   return add('defeated',{
    fieldHp:save.fieldHp===null?null:save.done.includes('niflheim:livingWater:used')?Math.ceil(save.fieldHp/2):save.fieldHp,

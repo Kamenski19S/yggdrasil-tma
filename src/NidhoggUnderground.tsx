@@ -1,3 +1,4 @@
+import {amuletProgress,finalDragonReady,protectedDragonFire} from './niflheimAmulet';
 import {NIDHOGG_MAX_HP,NIDHOGG_FIRE_DAMAGE,NIDHOGG_REWARD,nidhoggHitDamage} from './nidhoggBalance';
 import {createDragonFire} from './dragonFire';
 import {dragonStrikeDamage,type CombatStats} from './combatStats';
@@ -18,7 +19,11 @@ export default function NidhoggUnderground({combatStats,fieldHp,onFieldHpChange,
   const [nearDragon,setNearDragon]=useState(false);
   const [hp,setHp]=useState(Math.min(combatStats.maxHp,fieldHp??combatStats.maxHp));
   const [dragonHp,setDragonHp]=useState(NIDHOGG_MAX_HP);
-  const [heartReady,setHeartReady]=useState(whirlpoolHeart);
+  const [heartActive,setHeartActive]=useState(false);
+  const heartActiveRef=useRef(false);
+  const questRef=useRef(questDone);questRef.current=questDone;
+  const weaponRef=useRef(weapon);weaponRef.current=weapon;
+  const amulet=amuletProgress(questDone);
   const attackRef=useRef<()=>void>(()=>{});
   const healRef=useRef<(amount:number)=>void>(()=>{});
   const shieldRef=useRef<()=>void>(()=>{});
@@ -58,7 +63,7 @@ export default function NidhoggUnderground({combatStats,fieldHp,onFieldHpChange,
     let dragonBounds:THREE.Box3|undefined,encounter:ReturnType<typeof createNidhoggEncounter>|undefined;
     let pendingBreath=0;
     let shieldBones:THREE.Object3D[]=[],shieldPose:THREE.Quaternion[]=[];
-    let heroReady=false,heroLife=Math.min(combatStats.maxHp,fieldHp??combatStats.maxHp),dragonLife=NIDHOGG_MAX_HP,lastStrike=0,lastBite=0,guardUntil=0,lastHud=0,strikeCount=0,metSent=false,beaten=false,heartCharge=whirlpoolHeart?1:0;
+    let heroReady=false,heroLife=Math.min(combatStats.maxHp,fieldHp??combatStats.maxHp),dragonLife=NIDHOGG_MAX_HP,lastStrike=0,lastBite=0,guardUntil=0,lastHud=0,strikeCount=0,metSent=false,beaten=false;
     healRef.current=(amount:number)=>{heroLife=Math.min(combatRef.current.maxHp,heroLife+amount);setHp(heroLife);hpCallback.current(heroLife);};
     attackRef.current=()=>{
       const boss=encounter;
@@ -75,13 +80,14 @@ export default function NidhoggUnderground({combatStats,fieldHp,onFieldHpChange,
         dragonLife=Math.max(NIDHOGG_MAX_HP*.9,dragonLife-5);setDragonHp(Math.ceil(dragonLife));
         setStatus('Золотой меч царапает чешую, но раны мгновенно затягиваются! Нужна ковка у великана.');return;
       }
+      if(!amuletProgress(questRef.current).restored){dragonLife=NIDHOGG_MAX_HP;setDragonHp(NIDHOGG_MAX_HP);setStatus('Без Амулета хранителей не победить Нидхёгга. Собери шесть частей и восстанови его у воительницы.');return;}
       let attack=combatRef.current.attack;
       if(boostRef.current.attack>0){attack=boostedPotionDamage(attack,boostRef.current.attack);boostCallback.current('attack');}
       const damage=nidhoggHitDamage(attack,++strikeCount%5===0);
       dragonLife=Math.max(0,dragonLife-damage);setDragonHp(Math.ceil(dragonLife));
       setStatus('Погибель Нидхёгга разбивает древнюю чешую! Урон '+damage+'.');
       if(dragonLife<=0){
-        beaten=true;pendingBreath=0;dragonFire.stop();boss.anchor.visible=false;dragonBounds=undefined;
+        beaten=true;heartActiveRef.current=false;setHeartActive(false);pendingBreath=0;dragonFire.stop();boss.anchor.visible=false;dragonBounds=undefined;
         if(combatRef.current.multiplier===2){heroLife=Math.ceil(heroLife/2);setHp(heroLife);}
         eventRef.current('defeat');
         setNearDragon(false);setStatus('Нидхёгг повержен! Чешуя дракона, руна, эликсиры и '+NIDHOGG_REWARD.toLocaleString('ru-RU')+' капель бессмертия получены.');
@@ -233,15 +239,14 @@ export default function NidhoggUnderground({combatStats,fieldHp,onFieldHpChange,
         if(pendingBreath&&now>=pendingBreath){
           pendingBreath=0;
           if(distance>=16){setStatus('Vicki ушла из зоны огненного удара.');}
-          else if(now>=guardUntil&&heartCharge>0){heartCharge--;setHeartReady(false);setStatus('🌊 Сердце водоворота Морвейна поглотило удар Нидхёгга!');}
           else {
             const shielded=now<guardUntil;
-            let damage=dragonStrikeDamage(NIDHOGG_FIRE_DAMAGE,combatRef.current,shielded);
+            let damage=dragonStrikeDamage(protectedDragonFire(NIDHOGG_FIRE_DAMAGE,amuletProgress(questRef.current).restored,heartActiveRef.current),combatRef.current,shielded);
             if(boostRef.current.luck>0){if(potionDodges(boostRef.current.luck,Math.random()))damage=0;boostCallback.current('luck');}
             if(damage>0&&frostRef.current>0){damage=Math.ceil(damage*.5);frostCallback.current();}
             heroLife=Math.max(0,heroLife-damage);setHp(heroLife);hpCallback.current(heroLife);
             setStatus((shielded?'🛡️ Щит поглотил половину огненного удара. ':'🔥 Огненный удар Нидхёгга! ')+'−'+damage+' здоровья.');
-            if(heroLife<=0){heroLife=combatRef.current.maxHp;setHp(heroLife);hpCallback.current(heroLife);pos.x=0;pos.z=19;dragonLife=NIDHOGG_MAX_HP;setDragonHp(NIDHOGG_MAX_HP);setStatus('Vicki отступила к выходу. Попробуй позже — твой прогресс сохранён.');}
+            if(heroLife<=0){heartActiveRef.current=false;setHeartActive(false);heroLife=combatRef.current.maxHp;setHp(heroLife);hpCallback.current(heroLife);pos.x=0;pos.z=19;dragonLife=NIDHOGG_MAX_HP;setDragonHp(NIDHOGG_MAX_HP);setStatus('Vicki отступила к выходу. Попробуй позже — твой прогресс сохранён.');}
           }
         }
       }
@@ -273,14 +278,15 @@ export default function NidhoggUnderground({combatStats,fieldHp,onFieldHpChange,
         <div className="nidhogg-health-card"><div><b>Vicki</b><span>{Math.min(hp,combatStats.maxHp)}/{combatStats.maxHp}</span></div><div className="nidhogg-health-track" role="progressbar" aria-label="Здоровье Vicki" aria-valuemin={0} aria-valuemax={combatStats.maxHp} aria-valuenow={Math.min(hp,combatStats.maxHp)}><i style={{width:Math.max(0,Math.min(100,hp/combatStats.maxHp*100))+'%',background:'#58c49d'}}/></div></div>
         <div className="nidhogg-health-card"><div><b>Нидхёгг</b><span>{progressRef.current.defeated?0:dragonHp}/{NIDHOGG_MAX_HP}</span></div><div className="nidhogg-health-track" role="progressbar" aria-label="Здоровье Нидхёгга" aria-valuemin={0} aria-valuemax={NIDHOGG_MAX_HP} aria-valuenow={progressRef.current.defeated?0:dragonHp}><i style={{width:(progressRef.current.defeated?0:Math.max(0,dragonHp)/NIDHOGG_MAX_HP*100)+'%',background:'#e65b53'}}/></div></div>
       </div>
-      <div className="nidhogg-hud-details"><span>🌑 Обсидиан: {progressRef.current.obsidian.length}/3</span><span>❄️ Освобождено: {progressRef.current.liberation.count}/{progressRef.current.liberation.total}</span>{whirlpoolHeart&&<span>🌊 Сердце: {heartReady?'1 защита':'израсходовано'}</span>}{combatStats.multiplier===2&&<span style={{color:'#ffe18a'}}>💧 Живая вода ×2</span>}</div>
+      <div className="nidhogg-hud-details"><span>🌑 Обсидиан: {progressRef.current.obsidian.length}/3</span><span>❄️ Освобождено: {progressRef.current.liberation.count}/{progressRef.current.liberation.total}</span>{amulet.restored&&<span>🛡️ Амулет · защита 30%</span>}{whirlpoolHeart&&<span>🌊 Сердце: {heartActive?'огонь слабее на 25%':'не активировано'}</span>}{combatStats.multiplier===2&&<span style={{color:'#ffe18a'}}>💧 Живая вода ×2</span>}</div>
+      {whirlpoolHeart&&!progressRef.current.defeated&&<button disabled={heartActive||!finalDragonReady(questDone,weapon)} style={{padding:'7px 10px',border:'1px solid #80c6d9',borderRadius:8,background:'#183749',color:'#c6f4ff',fontSize:12}} onClick={()=>{if(!finalDragonReady(questRef.current,weaponRef.current))return;heartActiveRef.current=true;setHeartActive(true);setStatus('🌊 Сердце Морвейна пробуждено: огненные атаки Нидхёгга ослаблены на 25% до конца этого боя.');}}>{heartActive?'🌊 Сердце активировано':'🌊 Активировать сердце Морвейна'}</button>}
       {potions.length>0&&<button className="nidhogg-heal" onClick={()=>{const potion=potions.includes('lifeElixir')?'lifeElixir':potions.includes('northernMoss')?'northernMoss':potions.includes('hoddmimirElixir')?'hoddmimirElixir':'';if(potion&&hp<combatStats.maxHp&&onUsePotion(potion,hp)){healRef.current(potion==='northernMoss'?30:combatStats.maxHp);setStatus('Эликсир восстановил силы Vicki.');}}}>🧪 Лечение</button>}
       {nearExit&&<button className="nidhogg-exit" onClick={()=>{clear();exit.current();}}>Открыть дверь · Нифльхейм</button>}
     </div>
     <button className="mid3d-ui mid3d-strike" aria-label="Ударить Нидхёгга" onClick={()=>attackRef.current()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></button>
     <button className="mid3d-ui mid3d-block" aria-label="Прикрыться щитом" disabled={!shieldEquipped} onClick={()=>shieldRef.current()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_shield.png`} alt="" draggable={false}/></button>
     {nearOre&&<div style={{position:'absolute',bottom:112,left:'50%',transform:'translateX(-50%)',padding:9,background:'#171d2deb',color:'#ebdfff',borderRadius:10,zIndex:7,textAlign:'center'}}><div>Обсидиан бездны · {NIFL_OBSIDIAN.find(p=>p.id===nearOre)?.name}</div><button onClick={()=>{eventRef.current(('obsidian:'+nearOre) as DragonEvent);setStatus('Обсидиан бездны получен. Вернись к великану с тремя залежами.');setNearOre('');}} style={{padding:'8px 12px',marginTop:6}}>🌑 Собрать</button></div>}
-    {nearDragon&&(!progressRef.current.forged||!progressRef.current.worldFreed)&&<div style={{position:'absolute',bottom:110,left:'50%',transform:'translateX(-50%)',padding:10,background:'#1b273aeb',color:'#fff',borderRadius:8,zIndex:7,textAlign:'center'}}>{progressRef.current.worldFreed?'Чешуя дракона восстанавливается! Нужен легендарный меч.':'Нидхёгг защищён печатями оставшихся локаций. Освободи весь Нифльхейм.'} <button onClick={()=>{clear();exit.current();}} style={{marginLeft:6}}>Отступить к кузнецу</button></div>}
+    {nearDragon&&!nearOre&&(!progressRef.current.forged||!progressRef.current.worldFreed||!amulet.restored)&&<div style={{position:'absolute',bottom:110,left:'50%',transform:'translateX(-50%)',padding:10,background:'#1b273aeb',color:'#fff',borderRadius:8,zIndex:7,textAlign:'center'}}>{!progressRef.current.worldFreed?'Нидхёгг защищён печатями оставшихся локаций. Освободи весь Нифльхейм.':!amulet.restored?'Нужен Амулет хранителей: собери шесть частей и восстанови его у воительницы.':'Чешуя дракона восстанавливается! Нужен легендарный меч.'} <button onClick={()=>{clear();exit.current();}} style={{marginLeft:6}}>Отступить к кузнецу</button></div>}
     {!status&&<><div style={{position:'absolute',left:12,bottom:4,fontSize:10,color:'#aebac2',maxWidth:'55%'}}>Пещера: <a href="https://sketchfab.com/3d-models/dark-side-cave-e6347843eec64b408157dabfb8b196b2" target="_blank" rel="noopener noreferrer" style={{color:'inherit'}}>diaspora</a> · CC BY 4.0 · уменьшены текстуры, изменены масштаб и высота.</div>
     <div style={{position:'absolute',right:12,bottom:4,fontSize:10,color:'#aebac2',maxWidth:'40%'}}>Кристаллы: <a href="https://sketchfab.com/3d-models/magic-crystals-f20b3376ef9a4dff8ad27f1402087c52" target="_blank" rel="noopener noreferrer" style={{color:'inherit'}}>Enn Shtyka</a> · CC BY 4.0 · уменьшены текстуры и масштаб.</div></>}
 
