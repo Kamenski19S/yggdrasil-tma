@@ -1,3 +1,4 @@
+import {loadWorld,consumeWorldRecovery} from './worldLoading';
 import {applyPersonalPlaytestGrant,telegramLaunchUsername,redeemPersonalPlaytestCode,personalPlaytestGrantClaimed} from './personalPlaytestGrant';
 import {AMULET_NAME,amuletProgress,applyAmuletEvent} from './niflheimAmulet';
 import {CRYSTAL_NAME,applyCrystalEvent,waterCrystalProgress} from './waterCrystalQuest';
@@ -24,16 +25,20 @@ import { lootCountAdd, RUNE_CATALOG, lootDisplayName, POTION_CATALOG, BANDIT_SPE
 import { CSS } from './styles';
 import { MillScene, type MillFind } from './MillScene';
 import {millRewardSettings} from './millRewards';
-import { Midgard3D } from './Midgard3D';
-const NidhoggUnderground=React.lazy(()=>import('./NidhoggUnderground'));
-import Niflheim3D from './Niflheim3D';
+const Midgard3D=React.lazy(()=>loadWorld('midgard',()=>import('./Midgard3D').then(module=>({default:module.Midgard3D}))));
+const NidhoggUnderground=React.lazy(()=>loadWorld('underground',()=>import('./NidhoggUnderground')));
+const Niflheim3D=React.lazy(()=>loadWorld('niflheim',()=>import('./Niflheim3D')));
 
 
 
 import { VILLAGE_RESIDENTS, VILLAGE_WARD_COST, type VillageResident, villageOrder, orderMaterials, preparationDone, wardPrepared, canCompleteOrder, completeVillageOrder, restoreVillageWard } from './villageQuests';
 
 export function App() {
-  const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
+  const [screen, setScreen] = useState<Screen>(() => {
+    const recovery=consumeWorldRecovery();
+    if(!loadSave().hero)return {t:'choose'};
+    return recovery==='underground'?{t:'underground'}:recovery?{t:'realm',id:recovery}:{t:'tree'};
+  });
   const millScreenActiveRef=useRef(false);
   const [save, setSave] = useState<Save>(()=>applyPersonalPlaytestGrant(settleNiflheimSealRewards(loadSave()),telegramLaunchUsername(tg?.initDataUnsafe?.user,window.location.hash,window.location.search)));
   const [selectedArtifact,setSelectedArtifact]=useState("");
@@ -977,7 +982,7 @@ const [roadT, setRoadT] = useState(0.06);
       }
     };
 
-    return <Midgard3D
+    return <React.Suspense fallback={<div className="content">Дорога в Мидгард открывается…</div>}><Midgard3D
       h={heroDef}
       skin={save.heroSkin}
       weapon={save.heroWeapon}
@@ -1028,7 +1033,7 @@ const [roadT, setRoadT] = useState(0.06);
       gathered={save.gathered}
       stock={save.stock}
       onGather={gatherResource}
-    />;
+    /></React.Suspense>;
   }
 
   return (
