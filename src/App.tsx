@@ -1,3 +1,4 @@
+import {createArtifactCombat} from './artifactCombat';
 import {RuneExchange} from './RuneExchange';
 import {applyRuneExchange} from './runeExchange';
 import {loadWorld,consumeWorldRecovery} from './worldLoading';
@@ -65,6 +66,7 @@ export function App() {
   const [whisper, setWhisper] = useState(false);
   const [mhp, setMhp] = useState(0);
   const [hhp, setHhp] = useState(0);
+  const masterArtifact=useRef(createArtifactCombat());
   const [hmax, setHmax] = useState(0);
   const [hen, setHen] = useState(0);
   const [men, setMen] = useState(0);
@@ -426,6 +428,7 @@ const [roadT, setRoadT] = useState(0.06);
   };
   const useWhisper = (id: string) => { const idx = trialIdx(id); const q = QUESTS[id][idx]; const wrong = q.a.findIndex((_, i) => i !== q.c && i !== removed); setRemoved(wrong); setWhisper(true); haptic(); say("Шёпот ветров уносит один ответ..."); };
   const startFight = (id: string) => {
+    masterArtifact.current.reset();
     const m = MASTERS[id];
     const ash = save.powers.includes("ashBreath");
     const forgedHp=gearHp();
@@ -536,6 +539,7 @@ const [roadT, setRoadT] = useState(0.06);
     if (kind === "restore") { const restored=2+(equipped('boots')?1:0)+(gearLevel('boots')>=3?1:0);nhen=Math.min(COMBAT_ENERGY,hen+restored);log="Ты переводишь дыхание и восстанавливаешь "+restored+" деления энергии."; }
     const boost=kind==='hit'?'attack':kind==='rune'?'rune':undefined;
     if(boost&&save.potionBoosts[boost]>0){dmg=boostedPotionDamage(dmg,save.potionBoosts[boost]);consumePotionBoost(boost);log+=' Эликсир усилил удар до '+dmg+'.';}
+    if(kind==='hit')dmg=masterArtifact.current.weaponHit(save.equippedArtifact,dmg);
     const nm = mhp - dmg;
     if (nm <= 0) {
       setMhp(0); setHen(nhen); setMen(nmen); setOver("win");
@@ -557,7 +561,9 @@ const [roadT, setRoadT] = useState(0.06);
     if (heroDef!.id === "dwarf") md = Math.ceil(md * 0.75);
     let nh = hhp;
     if (heroDef!.id === "viking" && !valk && nh - md <= 0) { setValk(true); md = 0; mlog = " Крылья бури поглотили смертельный удар!"; }
-    nh = nh - md;
+    const rawHp=nh-md;
+    nh=masterArtifact.current.survive(save.equippedArtifact,rawHp,hmax||currentCombat().maxHp);
+    if(rawHp<=0&&nh>0)mlog+=' Осколок Хвергельмира спас героя: 15% здоровья!';
     setMhp(nm); setHhp(Math.max(0, nh)); setHen(nhen); setMen(nmen); setShield(false);
     if (nh <= 0 && save.powers.includes("yggdrasilCall")) {
       setSave(s => ({ ...s, powers: s.powers.filter(p => p !== "yggdrasilCall") }));
@@ -1007,6 +1013,7 @@ const [roadT, setRoadT] = useState(0.06);
       whisperResolved={save.done.includes("whisper:battle")||save.done.includes("whisper:wisdom")}
       guardianResolved={routeProgress(save).completed}
       whisperStats={{
+        artifactId:save.equippedArtifact,
         maxHp:currentCombat().maxHp,
         attack:currentCombat().attack,
         runeAttack:currentCombat().runeAttack,

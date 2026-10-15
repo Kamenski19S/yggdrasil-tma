@@ -724,7 +724,7 @@ export const guardianLootText=(id:string,battle:boolean)=>{
 };
 
 
-export type WhisperCombatStats={maxHp:number;attack:number;runeAttack:number;defense:number;power:number};
+export type WhisperCombatStats={artifactId?:string;maxHp:number;attack:number;runeAttack:number;defense:number;power:number};
 
 
 export const POTION_CATALOG=[

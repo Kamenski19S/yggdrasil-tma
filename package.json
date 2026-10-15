@@ -12,7 +12,8 @@
     "test:combat": "node scripts/test-niflheim-combat.mjs",
     "test:patrols": "node scripts/test-niflheim-patrols.mjs",
     "test:seal-combat": "node scripts/test-niflheim-seal-combat.mjs",
-    "test:steel-mill": "node scripts/test-steel-mill.mjs"
+    "test:steel-mill": "node scripts/test-steel-mill.mjs",
+    "test:artifacts": "node scripts/test-artifact-combat.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

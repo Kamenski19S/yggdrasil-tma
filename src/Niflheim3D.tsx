@@ -1,3 +1,4 @@
+import {createArtifactCombat} from './artifactCombat';
 import {BattleActions} from './BattleActions';
 import {POTION_CATALOG} from './world';
 import {NiflheimGuide} from './NiflheimGuide';
@@ -126,6 +127,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
   const [nearTrial,setNearTrial]=useState('');
   const [trialOpen,setTrialOpen]=useState('');
   const [trialMessage,setTrialMessage]=useState('');
+  const sealArtifact=useRef(createArtifactCombat()),fieldArtifact=useRef(createArtifactCombat());
   const [battle,setBattle]=useState<{id:string;hp:number;maxHp:number;heroHp:number;energy:number;guard:boolean;runeCharge:number;log:string}|null>(null);
   const battleRef=useRef(battle);battleRef.current=battle;
   const trialInfo=trialById(trialOpen==='livingWater'?'threeNornsWell':trialOpen);
@@ -152,6 +154,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     if(!sealAvailable(done,sealId)){const previous=NIFLHEIM_SEALS[def.order-2];setStatus('🔒 Эта печать ещё спит. Сначала открой «'+(previous?.location||'предыдущую локацию')+'».');return;}
     if(sealDefeated.current.has(sealId)||sealGuardianDefeated(done,sealId))return;
     if(!sealGuardianPlace.current){setStatus('Страж печати ещё загружается. Подожди немного и ударь снова.');return;}
+    sealArtifact.current.reset();
     sealSummoned.current=sealId;sealGuardianPlace.current?.(sealId);
     const hp=sealGuardianHealth(combatStatsRef.current.attack,def);
     const next={id:'sealGuardian:'+sealId,hp,maxHp:hp,heroHp:Math.max(1,sharedInventoryRef.current.hp),energy:5,guard:false,runeCharge:2,log:'Печать пробуждает стражника '+def.order+'/'+NIFLHEIM_SEALS.length+'! Он атакует Vicki.'};
@@ -164,6 +167,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       setStatus('⚔️ Подойди к стражу и дерись в мире: атака оружием, щит и перемещение. Трофей попадёт в инвентарь.');
       return;
     }
+    sealArtifact.current.reset();
     setTrialOpen('');setBattle({id,hp:trial.hp,maxHp:trial.hp,heroHp:Math.max(30,inventory.hp),energy:5,guard:false,runeCharge:2,log:'Встань на защиту Нифльхейма!'});
     clearInput();
   };
@@ -181,6 +185,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     let power=type==='hit'?combatStats.attack:type==='rune'?combatStats.runeAttack:0;
     const boost=type==='hit'?'attack':type==='rune'?'rune':null;
     if(boost&&(boosts?.[boost]||0)>0){power=boostedPotionDamage(power,boosts![boost]);onPotionBoostUsed(boost);}
+    if(type==='hit')power=sealArtifact.current.weaponHit(combatStats.artifactId,power);
     const enemyHp=Math.max(0,battle.hp-(guard?0:Math.max(1,power)));
     if(enemyHp<=0){
       if(isSeal&&sealDef){
@@ -201,14 +206,14 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     let incoming=incomingCombatDamage((trial as {attack:number}).attack,combatStats,guard);
     if((boosts?.luck||0)>0){if(potionDodges(boosts!.luck,Math.random()))incoming=0;onPotionBoostUsed('luck');}
     if(!guard&&inventory.frostGuard>0&&incoming>0){incoming=Math.ceil(incoming*.5);onFrostGuardHit();}
-    const heroHp=Math.max(0,battle.heroHp-incoming);
+    const heroHp=sealArtifact.current.survive(combatStats.artifactId,battle.heroHp-incoming,inventory.maxHp);
     onFieldHpChange(heroHp>0?heroHp:Math.max(35,Math.round(inventory.maxHp*.4)));
     if(heroHp<=0){
       setBattle(null);setStatus('Vicki отступила. Локация ещё не освобождена, но находки сохранены.');return;
     }
     setBattle({...battle,hp:enemyHp,heroHp,guard,energy:type==='shield'?Math.min(5,battle.energy+1):Math.max(1,battle.energy-1),
       runeCharge:type==='rune'?battle.runeCharge-1:battle.runeCharge,
-      log:guard?'Щит поглотил большую часть удара.':type==='rune'?'Руна рассекла морозную защиту.':'Удар оружием! Враг отвечает.'});
+      log:battle.heroHp-incoming<=0&&heroHp>0?'Осколок Хвергельмира спас Vicki: 15% здоровья!':guard?'Щит поглотил большую часть удара.':type==='rune'?'Руна рассекла морозную защиту.':'Удар оружием! Враг отвечает.'});
   };
   battleActionRef.current=battleAction;
 
@@ -223,10 +228,10 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     let incoming=incomingCombatDamage(sealGuardianDamage(stats.maxHp,def),stats,guarding);
     if((inv.potionBoosts?.luck||0)>0){if(potionDodges(inv.potionBoosts!.luck,Math.random()))incoming=0;boostUsedRef.current('luck');}
     if(!guarding&&inv.frostGuard>0&&incoming>0){incoming=Math.ceil(incoming*.5);frostHitRef.current();}
-    const heroHp=Math.max(0,current.heroHp-incoming);
+    const heroHp=sealArtifact.current.survive(stats.artifactId,current.heroHp-incoming,inv.maxHp);
     healthCallback.current(heroHp>0?heroHp:Math.max(35,Math.round(inv.maxHp*.4)));
     if(heroHp<=0){sealSummoned.current='';battleRef.current=null;setBattle(null);setStatus('Vicki отступила. Страж печати остаётся на страже.');return;}
-    const next={...current,heroHp,guard:guarding,log:guarding?'Щит смягчил сокрушительный удар.':'Страж обрушился на Vicki! −'+incoming+' здоровья.'};
+    const next={...current,heroHp,guard:guarding,log:current.heroHp-incoming<=0&&heroHp>0?'Осколок Хвергельмира спас Vicki: 15% здоровья!':guarding?'Щит смягчил сокрушительный удар.':'Страж обрушился на Vicki! −'+incoming+' здоровья.'};
     battleRef.current=next;setBattle(next);
   };
 
@@ -500,17 +505,18 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
         let damage=incomingCombatDamage(loss,combatStatsRef.current);
         if((state.potionBoosts?.luck||0)>0){if(potionDodges(state.potionBoosts!.luck,Math.random()))damage=0;boostUsedRef.current('luck');}
         if(damage>0&&state.frostGuard>0){damage=Math.ceil(damage*.5);frostHitRef.current();}
-        const hp=Math.max(1,state.hp-damage);
+        const hp=Math.max(1,fieldArtifact.current.survive(combatStatsRef.current.artifactId,state.hp-damage,state.maxHp));
+        if(state.hp-damage<=0&&hp>1)queueMicrotask(()=>{if(alive)setStatus('❄️ Осколок Хвергельмира спас Vicki: 15% здоровья!');});
         sharedInventoryRef.current={...state,hp};
         healthCallback.current(hp);
         if(hp===1)setStatus('❤️ Здоровье на исходе! Используй эликсир или отступи. Без переноса к вратам.');
-        return state.hp-hp;
+        return Math.max(0,state.hp-hp);
       },
       id=>libCallback.current(('shadow:defeated:'+id) as LiberationEvent),
       (id,role)=>libCallback.current(('guardian:defeated:'+id+':'+role) as LiberationEvent),
       (x,z)=>!niflRiverBlocked(x,z)&&x>-100&&x<100&&z>-150&&z<140,
       (kind,actor,height,delay)=>{if(kind==='enemy')combatEffects.enemySlash(actor,height,delay);else combatEffects.hit(actor,height*.55,delay);},
-      ()=>{const state=sharedInventoryRef.current;let damage=combatStatsRef.current.attack;if((state.potionBoosts?.attack||0)>0){damage=boostedPotionDamage(damage,state.potionBoosts!.attack);boostUsedRef.current('attack');}return damage;},id=>cooldownsRef.current['niflheim:liberation:shadow:'+id]||0);
+      ()=>{const state=sharedInventoryRef.current;let damage=combatStatsRef.current.attack;if((state.potionBoosts?.attack||0)>0){damage=boostedPotionDamage(damage,state.potionBoosts!.attack);boostUsedRef.current('attack');}return fieldArtifact.current.weaponHit(combatStatsRef.current.artifactId,damage);},id=>cooldownsRef.current['niflheim:liberation:shadow:'+id]||0);
     // Three unique everlasting-ice fragments mark safe snow near major locations.
     const iceShape=new THREE.OctahedronGeometry(1.15,1);
     const iceDust=new THREE.MeshBasicMaterial({color:'#d9f3ff',transparent:true,opacity:.84});
@@ -1113,6 +1119,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       if(waterSpiral){waterSpiral.rotation.y+=dt*(liberationRef.current.vampireFreed?.075:.25);const target=liberationRef.current.vampireFreed?.68:1;waterSpiral.scale.setScalar(THREE.MathUtils.lerp(waterSpiral.scale.x,target,Math.min(1,dt*.8)));}
       // Quest completion does not hide the rigged guardians; combat cooldown controls their return.
       riggedEnemies.tick(dt,now,pos,guardUntil.current>now,paused.current||document.hidden);
+      if(!paused.current&&!document.hidden&&!riggedEnemies.inCombat())fieldArtifact.current.reset();
       if(bridgeRepair?.update(dt,questRef.current.bridgeRestored,questRef.current.bridgeParts))refreshShadows();
       sourceRing.rotation.z+=dt*.12;gates.forEach(g=>{(g.material as THREE.MeshBasicMaterial).opacity=.78+Math.sin(now*.001)*.06;});
       if(now-checkAt>180){checkAt=now;
@@ -1292,7 +1299,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       <h4>Снятые печати: {sealsOpened}/{NIFLHEIM_SEALS.length}</h4>
       {sealsOpened===0?<p>Пока ни одна печать не снята.</p>:NIFLHEIM_SEALS.filter(def=>sealOpened(questDone,def.id)).map(def=><p key={def.id}>✓ {def.order}. {def.location}</p>)}
       {(liberation.count<liberation.total||sealsOpened<NIFLHEIM_SEALS.length)&&<details><summary>Оставшиеся задания и печати</summary><h4>Задания</h4>{LIBERATION_TRIALS.filter(t=>!liberation.has(t.id)).map(t=><p key={t.id}>○ {t.title} — {t.name}</p>)}<h4>Печати</h4>{NIFLHEIM_SEALS.filter(def=>!sealOpened(questDone,def.id)).map(def=><p key={def.id}>○ {def.order}. {def.location}</p>)}</details>}
-      <h3>Главное задание · Освободить Нифльхейм</h3><p>{amulet.restored?'✓':'○'} Собрать шесть частей и восстановить Амулет хранителей: {amulet.collected.length}/6.</p>{AMULET_PARTS.map(p=><p key={p.id}>{amulet.collected.includes(p.id)?'✓':'○'} {p.place}</p>)}<p>{dragon.forged?'✓':'○'} Выковать «Погибель Нидхёгга».</p><p>{liberation.vampireFreed?'✓':'○'} Получить сердце Морвейна. Активировать его вручную перед финальным боем, когда амулет и меч готовы и все локации освобождены.</p><p>{dragon.defeated?'✓ Нидхёгг повержен. Вода возвращает жизнь миру. Артефакт «Осколок Хвергельмира» находится в Чертоге: нажми «Применить», чтобы получить +2 к защите.':'○ Победить Нидхёгга. Без восстановленного амулета победа невозможна.'}</p><p>Амулет поглощает 30% силы огня, активное сердце ослабляет его ещё на 25%. Поднятый щит блокирует половину оставшегося удара.</p>
+      <h3>Главное задание · Освободить Нифльхейм</h3><p>{amulet.restored?'✓':'○'} Собрать шесть частей и восстановить Амулет хранителей: {amulet.collected.length}/6.</p>{AMULET_PARTS.map(p=><p key={p.id}>{amulet.collected.includes(p.id)?'✓':'○'} {p.place}</p>)}<p>{dragon.forged?'✓':'○'} Выковать «Погибель Нидхёгга».</p><p>{liberation.vampireFreed?'✓':'○'} Получить сердце Морвейна. Активировать его вручную перед финальным боем, когда амулет и меч готовы и все локации освобождены.</p><p>{dragon.defeated?'✓ Нидхёгг повержен. Вода возвращает жизнь миру. Артефакт «Осколок Хвергельмира» находится в Чертоге: нажми «Применить», чтобы получить +15% к защите.':'○ Победить Нидхёгга. Без восстановленного амулета победа невозможна.'}</p><p>Амулет поглощает 30% силы огня, активное сердце ослабляет его ещё на 25%. Поднятый щит блокирует половину оставшегося удара.</p>
       <p>💎 {CRYSTAL_NAME}: {crystal.gateOpen?'врата открыты':crystal.assembled?'соединён':crystal.collected.length+'/3'}. Найди осколки на двух алтарях и у воительницы в багровой пещере; после победы над драконом вернись к ней.</p>
     </section></div>}
     {mapOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Карта Нифльхейма"><button className="nifl-close" onClick={()=>setMapOpen(false)}>Закрыть</button><h3>Карта Нифльхейма</h3><p className="nifl-map-legend">❄️ Освобождение: {liberation.count}/{liberation.total}. {liberation.finished?'Нидхёгг утратил защиту мира!':'Заверши задания, чтобы ослабить Нидхёгга.'}</p><p className="nifl-map-legend">Три русла: живое, замёрзшее и пересохшее · два озера · источник Хвергельмир. Карта служит только для ориентирования. Все задания выполняются непосредственно в Нифльхейме.</p>

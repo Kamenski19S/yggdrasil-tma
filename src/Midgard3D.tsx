@@ -1,3 +1,4 @@
+import {createArtifactCombat} from './artifactCombat';
 import {BattleActions} from './BattleActions';
 import {createCombatEffects} from './combatEffects';
 import {MidgardGuide,MIDGARD_GUIDE_CSS} from './MidgardGuide';
@@ -64,6 +65,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   const activeGuardianIdRef=useRef("whisperStone");
   const activeGuardian=MIDGARD_GUARDIANS[activeGuardianId]||MIDGARD_GUARDIANS.whisperStone;
   const [whisperAnswer,setWhisperAnswer]=useState<number|null>(null);
+  const guardianArtifact=useRef(createArtifactCombat()),banditArtifact=useRef(createArtifactCombat());
+  const artifactIdRef=useRef(whisperStats.artifactId);artifactIdRef.current=whisperStats.artifactId;
   const [whisperHeroHp,setWhisperHeroHp]=useState(whisperStats.maxHp);
   const [whisperGuardHp,setWhisperGuardHp]=useState(WHISPER_GUARD.hp);
   const [whisperHeroEnergy,setWhisperHeroEnergy]=useState(whisperStats.power);
@@ -112,9 +115,9 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   banditDamageRef.current=(amount:number,guarding:boolean)=>{
     if(potionBoostsRef.current.luck>0){const dodge=potionDodges(potionBoostsRef.current.luck,Math.random());consumeBoostRef.current('luck');if(dodge)return;}
     if(!guarding&&frostGuardRef.current>0){amount=Math.max(1,Math.ceil(amount*.5));frostGuardRef.current--;onFrostGuardHit();}
-    const next=banditHpRef.current-amount;
+    const next=banditArtifact.current.survive(artifactIdRef.current,banditHpRef.current-amount,whisperStats.maxHp);
     setBanditHit(Date.now());
-    if(next<=0){banditHpRef.current=whisperStats.maxHp;setBanditHeroHp(whisperStats.maxHp);state.current.x=0;state.current.z=28;onBanditKnockout();return;}
+    if(next<=0){banditArtifact.current.reset();banditHpRef.current=whisperStats.maxHp;setBanditHeroHp(whisperStats.maxHp);state.current.x=0;state.current.z=28;onBanditKnockout();return;}
     banditHpRef.current=next;setBanditHeroHp(next);onFieldHpChange(next);
   };
   const useMidgardPotion=(id:string)=>{
@@ -158,6 +161,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     return idx<=0||MIDGARD_GUARDIAN_ORDER.slice(0,idx).every(prev=>guardianResolved.includes(prev));
   };
   const beginLocationEncounter=(id:string)=>{
+    guardianArtifact.current.reset();
     const gate=gateForLocation(id);if(gate&&!clearedGatesRef.current.has(gate.id)){onRef.current('chaosGate:'+gate.id,{x:state.current.x,z:state.current.z});return;}
     if(gate&&!repairedRef.current.has(gate.id)){onRef.current('repair:'+gate.id,{x:state.current.x,z:state.current.z});return;}
     if(!guardianPrerequisitesDone(id)){
@@ -180,6 +184,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   };
   const beginWhisperEncounter=()=>beginLocationEncounter("whisperStone");
   const beginGuardianRematch=(id:string)=>{
+    guardianArtifact.current.reset();
     const gate=gateForLocation(id);if(gate&&!clearedGatesRef.current.has(gate.id)){onRef.current('chaosGate:'+gate.id,{x:state.current.x,z:state.current.z});return;}
     if(gate&&!repairedRef.current.has(gate.id)){onRef.current('repair:'+gate.id,{x:state.current.x,z:state.current.z});return;}
     const spec=MIDGARD_GUARDIANS[id]||MIDGARD_GUARDIANS.whisperStone;
@@ -234,10 +239,10 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         if(potionBoostsRef.current.luck>0){if(potionDodges(potionBoostsRef.current.luck,Math.random()))damage=0;consumeBoostRef.current('luck');}
         if(damage>0&&!shielded&&frostGuardRef.current>0){damage=Math.max(1,Math.ceil(damage*.5));frostGuardRef.current--;onFrostGuardHit();}
         if(damage>0)combatImpactRef.current?.(shielded);
-        const next=Math.max(0,currentHp-damage);
+        const next=guardianArtifact.current.survive(artifactIdRef.current,currentHp-damage,whisperStats.maxHp);
         setWhisperHeroHp(next);setWhisperShield(false);setWhisperBusy(false);
         if(next<=0){setWhisperLog(spec.name+" оказался сильнее. Испытание можно повторить.");setWhisperPhaseSafe("defeat");}
-        else setWhisperLog(damage===0?'Эликсир удачи помог избежать удара.':shielded?"Щит принял удар. Получено урона: "+damage+".":spec.name+" отвечает ударом: −"+damage+" здоровья.");
+        else setWhisperLog(currentHp-damage<=0?'Осколок Хвергельмира спас героя: 15% здоровья!':damage===0?'Эликсир удачи помог избежать удара.':shielded?"Щит принял удар. Получено урона: "+damage+".":spec.name+" отвечает ударом: −"+damage+" здоровья.");
       },390));
     },spec.tempo));
   };
@@ -288,6 +293,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
         damage=0;
         setWhisperLog("Удар не пробивает защиту "+spec.name+". Сила героя "+whisperStats.power+"/5, требуется "+spec.requiredPower+"/5. Нужна закалка оружия и экипировки.");
       }
+      if(kind==='hit')damage=guardianArtifact.current.weaponHit(artifactIdRef.current,damage);
       const next=Math.max(0,whisperGuardHp-damage);
       if(damage>0&&guardVisualRef.current)combatImpactRef.current?.(false,guardVisualRef.current);
       setWhisperGuardHp(next);guardHitAtRef.current=performance.now();
@@ -4543,7 +4549,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       attackStartedAt=now;combatEffects.slash();
       const target=bandits.filter(b=>b.alerted&&b.hp>0&&Math.hypot(hero.position.x-b.actor.position.x,hero.position.z-b.actor.position.z)<4.0).sort((a,b)=>Math.hypot(hero.position.x-a.actor.position.x,hero.position.z-a.actor.position.z)-Math.hypot(hero.position.x-b.actor.position.x,hero.position.z-b.actor.position.z))[0];
       if(target&&!banditVictoryRef.current){
-        const damage=boostedPotionDamage(Math.max(1,Math.ceil(banditAttackRef.current/10)),potionBoostsRef.current.attack);
+        const damage=banditArtifact.current.weaponHit(artifactIdRef.current,boostedPotionDamage(Math.max(1,Math.ceil(banditAttackRef.current/10)),potionBoostsRef.current.attack));
         if(potionBoostsRef.current.attack>0)consumeBoostRef.current('attack');
         if(damage>0)combatEffects.hit(target.actor);
         target.hp=Math.max(0,target.hp-damage);
@@ -4979,6 +4985,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       if(banditAsset)BANDIT_SPECS.forEach(spec=>{
         if(Math.hypot(q.x-spec.x,q.z-spec.z)<33)spawnBandit(spec);
       });
+      if(!inventoryPauseRef.current&&!bandits.some(b=>b.alerted&&b.hp>0))banditArtifact.current.reset();
       for(const preview of bandits){
         if(preview.hp<=0){
           const elapsed=preview.deathAt?now-preview.deathAt:0;

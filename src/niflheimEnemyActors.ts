@@ -350,10 +350,11 @@ export function installNiflheimRiggedEnemies(
   }).catch(error=>console.warn('Niflheim rigged loading failed',error));
 
   let previousAnimationAt=performance.now();
-  let encounterMembers=new Set<string>(),encounterUntil=0;
+  let encounterMembers=new Set<string>(),encounterUntil=0,combatActive=false;
   const guardKey=(g:Guard)=>'guard:'+g.id;
   const shadowKey=(s:Shadow)=>'shadow:'+s.id;
   return {
+    inCombat(){return combatActive;},
     tick(dt:number,now:number,hero:{x:number;z:number},shielded:boolean,paused:boolean){
       if(!isAlive())return;
       const animationDt=paused?0:Math.min(1,Math.max(0,(now-previousAnimationAt)/1000));
@@ -372,6 +373,7 @@ export function installNiflheimRiggedEnemies(
       const threats=[...guards.filter(g=>!g.deadAt&&g.respawnAt<=realtime).map(g=>{
         const p=g.root.getWorldPosition(new THREE.Vector3());return {id:guardKey(g),role:g.role,distance:Math.hypot(p.x-hero.x,p.z-hero.z)};
       }),...shadows.filter(s=>s.active).map(s=>({id:shadowKey(s),role:'undead' as const,distance:Math.hypot(s.root.position.x-hero.x,s.root.position.z-hero.z)}))];
+      combatActive=threats.some(t=>t.distance<28);
       const live=threats.filter(t=>encounterMembers.has(t.id)&&t.distance<28);
       if(now>=encounterUntil||!live.length){
         encounterMembers=new Set(pickEncounter(threats));encounterUntil=now+12000;

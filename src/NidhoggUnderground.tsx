@@ -1,3 +1,4 @@
+import {createArtifactCombat} from './artifactCombat';
 import {NIFLHEIM_SEALS} from './niflheimSeals';
 import {amuletProgress,finalDragonReady,protectedDragonFire} from './niflheimAmulet';
 import {NIDHOGG_MAX_HP,NIDHOGG_FIRE_DAMAGE,NIDHOGG_REWARD,nidhoggHitDamage} from './nidhoggBalance';
@@ -64,6 +65,7 @@ export default function NidhoggUnderground({combatStats,fieldHp,onFieldHpChange,
     let dragonBounds:THREE.Box3|undefined,encounter:ReturnType<typeof createNidhoggEncounter>|undefined;
     let pendingBreath=0;
     let shieldBones:THREE.Object3D[]=[],shieldPose:THREE.Quaternion[]=[];
+    const artifactBattle=createArtifactCombat();
     let heroReady=false,heroLife=Math.min(combatStats.maxHp,fieldHp??combatStats.maxHp),dragonLife=NIDHOGG_MAX_HP,lastStrike=0,lastBite=0,guardUntil=0,lastHud=0,strikeCount=0,metSent=false,beaten=false;
     healRef.current=(amount:number)=>{heroLife=Math.min(combatRef.current.maxHp,heroLife+amount);setHp(heroLife);hpCallback.current(heroLife);};
     attackRef.current=()=>{
@@ -84,14 +86,14 @@ export default function NidhoggUnderground({combatStats,fieldHp,onFieldHpChange,
       if(!amuletProgress(questRef.current).restored){dragonLife=NIDHOGG_MAX_HP;setDragonHp(NIDHOGG_MAX_HP);setStatus('Без Амулета хранителей не победить Нидхёгга. Собери шесть частей и восстанови его у воительницы.');return;}
       let attack=combatRef.current.attack;
       if(boostRef.current.attack>0){attack=boostedPotionDamage(attack,boostRef.current.attack);boostCallback.current('attack');}
-      const damage=nidhoggHitDamage(attack,++strikeCount%5===0);
+      const damage=artifactBattle.weaponHit(combatRef.current.artifactId,nidhoggHitDamage(attack,++strikeCount%5===0));
       dragonLife=Math.max(0,dragonLife-damage);setDragonHp(Math.ceil(dragonLife));
       setStatus('Погибель Нидхёгга разбивает древнюю чешую! Урон '+damage+'.');
       if(dragonLife<=0){
         beaten=true;heartActiveRef.current=false;setHeartActive(false);pendingBreath=0;dragonFire.stop();boss.anchor.visible=false;dragonBounds=undefined;
         if(combatRef.current.multiplier===2){heroLife=Math.ceil(heroLife/2);setHp(heroLife);}
         eventRef.current('defeat');
-        setNearDragon(false);setStatus('Нидхёгг повержен! Артефакт «Осколок Хвергельмира» добавлен в Чертог: примени его для +2 к защите. Также получены чешуя, руна, эликсиры и '+NIDHOGG_REWARD.toLocaleString('ru-RU')+' капель бессмертия получены.');
+        setNearDragon(false);setStatus('Нидхёгг повержен! Артефакт «Осколок Хвергельмира» добавлен в Чертог: примени его для +15% к защите. Также: чешуя, руна, эликсиры и '+NIDHOGG_REWARD.toLocaleString('ru-RU')+' капель бессмертия.');
       }
     };
     shieldRef.current=()=>{if(shieldEquipped){guardUntil=performance.now()+1400;setStatus('Щит поднят: половина урона огненного удара будет поглощена.');}else setStatus('Сначала надень щит в кузнице.');};
@@ -245,9 +247,9 @@ export default function NidhoggUnderground({combatStats,fieldHp,onFieldHpChange,
             let damage=dragonStrikeDamage(protectedDragonFire(NIDHOGG_FIRE_DAMAGE,amuletProgress(questRef.current).restored,heartActiveRef.current),combatRef.current,shielded);
             if(boostRef.current.luck>0){if(potionDodges(boostRef.current.luck,Math.random()))damage=0;boostCallback.current('luck');}
             if(damage>0&&frostRef.current>0){damage=Math.ceil(damage*.5);frostCallback.current();}
-            heroLife=Math.max(0,heroLife-damage);setHp(heroLife);hpCallback.current(heroLife);
-            setStatus((shielded?'🛡️ Щит поглотил половину огненного удара. ':'🔥 Огненный удар Нидхёгга! ')+'−'+damage+' здоровья.');
-            if(heroLife<=0){heartActiveRef.current=false;setHeartActive(false);heroLife=combatRef.current.maxHp;setHp(heroLife);hpCallback.current(heroLife);pos.x=0;pos.z=19;dragonLife=NIDHOGG_MAX_HP;setDragonHp(NIDHOGG_MAX_HP);setStatus('Vicki отступила к выходу. Попробуй позже — твой прогресс сохранён.');}
+            const afterFire=heroLife-damage;heroLife=artifactBattle.survive(combatRef.current.artifactId,afterFire,combatRef.current.maxHp);setHp(heroLife);hpCallback.current(heroLife);
+            setStatus(afterFire<=0&&heroLife>0?'❄️ Осколок Хвергельмира спас Vicki: 15% здоровья!':(shielded?'🛡️ Щит поглотил половину огненного удара. ':'🔥 Огненный удар Нидхёгга! ')+'−'+damage+' здоровья.');
+            if(heroLife<=0){artifactBattle.reset();strikeCount=0;heartActiveRef.current=false;setHeartActive(false);heroLife=combatRef.current.maxHp;setHp(heroLife);hpCallback.current(heroLife);pos.x=0;pos.z=19;dragonLife=NIDHOGG_MAX_HP;setDragonHp(NIDHOGG_MAX_HP);setStatus('Vicki отступила к выходу. Попробуй позже — твой прогресс сохранён.');}
           }
         }
       }
