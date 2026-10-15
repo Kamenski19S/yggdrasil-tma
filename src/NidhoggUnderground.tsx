@@ -91,7 +91,7 @@ export default function NidhoggUnderground({combatStats,fieldHp,onFieldHpChange,
         beaten=true;heartActiveRef.current=false;setHeartActive(false);pendingBreath=0;dragonFire.stop();boss.anchor.visible=false;dragonBounds=undefined;
         if(combatRef.current.multiplier===2){heroLife=Math.ceil(heroLife/2);setHp(heroLife);}
         eventRef.current('defeat');
-        setNearDragon(false);setStatus('Нидхёгг повержен! Чешуя дракона, руна, эликсиры и '+NIDHOGG_REWARD.toLocaleString('ru-RU')+' капель бессмертия получены.');
+        setNearDragon(false);setStatus('Нидхёгг повержен! Артефакт «Осколок Хвергельмира» добавлен в Чертог: примени его для +2 к защите. Также получены чешуя, руна, эликсиры и '+NIDHOGG_REWARD.toLocaleString('ru-RU')+' капель бессмертия получены.');
       }
     };
     shieldRef.current=()=>{if(shieldEquipped){guardUntil=performance.now()+1400;setStatus('Щит поднят: половина урона огненного удара будет поглощена.');}else setStatus('Сначала надень щит в кузнице.');};

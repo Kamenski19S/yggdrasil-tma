@@ -1,3 +1,4 @@
+import {settleNiflheimArtifact} from './worldArtifacts';
 import {amuletProgress} from './niflheimAmulet';
 import {NIDHOGG_REWARD} from './nidhoggBalance';
 import {liberationProgress} from './niflheimLiberation';
@@ -80,13 +81,13 @@ export function applyDragonQuestEvent(save:Save,event:DragonEvent):Save{
  if(event==='defeat'){
   if(!p.allSealsOpen||!p.forged||p.defeated||!p.worldFreed||!amuletProgress(save.done).restored)return save;
   const rune=RUNE_CATALOG[(save.done.length+7)%RUNE_CATALOG.length].id;
-  return add('defeated',{
+  return settleNiflheimArtifact(add('defeated',{
    fieldHp:save.fieldHp===null?null:save.done.includes('niflheim:livingWater:used')?Math.ceil(save.fieldHp/2):save.fieldHp,
    immortalityDrops:save.immortalityDrops+NIDHOGG_REWARD,
    potions:[...save.potions,'hoddmimirElixir','lifeElixir'],
    runes:[...new Set([...save.runes,rune])],
    lootCounts:{...save.lootCounts,[rune]:(save.lootCounts[rune]||0)+1,hoddmimirElixir:(save.lootCounts.hoddmimirElixir||0)+1,lifeElixir:(save.lootCounts.lifeElixir||0)+1,dragonScale:1,nidhoggDropsAwarded:NIDHOGG_REWARD}
-  });
+  }));
  }
  if(event.startsWith('craft:')){
   const recipe=NIFL_CRAFTS.find(r=>r.id===event.slice(6));

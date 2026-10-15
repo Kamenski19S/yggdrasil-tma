@@ -1,3 +1,4 @@
+import {settleNiflheimArtifact} from './worldArtifacts';
 import {settleNidhoggReward} from './nidhoggBalance';
 import { EMPTY_POTION_BOOSTS, normalizePotionBoosts, type PotionBoosts } from "./potionEffects";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -397,7 +398,7 @@ export const loadSave = (): Save => {
     s.artifacts=confirmedArtifacts;
     if(typeof s.equippedArtifact!=="string"||!confirmedArtifacts.includes(s.equippedArtifact))s.equippedArtifact="";
     if (!s.watch) s.watch = Date.now();
-    return settleNidhoggReward(s as Save);
+    return settleNiflheimArtifact(settleNidhoggReward(s as Save));
   } catch {
     return { ...DEF, watch: Date.now() };
   }
@@ -619,7 +620,7 @@ export type ArtifactDef={name:string;symbol:string;world:string;description:stri
 export const ARTIFACT_INFO:Record<string,ArtifactDef>={
   midgard:{name:ARTIFACTS.midgard,symbol:"⚡",world:"Мидгард",description:"Пояс силы, полученный после завершения пути Мидгарда. Активный артефакт усиливает физическую мощь героя.",effect:"+2 к обычному удару.",attack:2},
   muspelheim:{name:ARTIFACTS.muspelheim,symbol:"🔥",world:"Муспельхейм",description:"Частица первородного огня Муспельхейма.",effect:"+1 к обычному и +1 к руническому удару.",attack:1,rune:1},
-  niflheim:{name:ARTIFACTS.niflheim,symbol:"❄️",world:"Нифльхейм",description:"Ледяной осколок из туманных вод Хвергельмира.",effect:"+2 к защите.",defense:2},
+  niflheim:{name:ARTIFACTS.niflheim,symbol:"❄️",world:"Нифльхейм",description:"Осколок возрождённого источника, полученный за победу над Нидхёггом и освобождение Нифльхейма. Холодная вода хранит силу защиты.",effect:"+2 к защите во всех мирах, пока артефакт активен.",defense:2},
   jotunheim:{name:ARTIFACTS.jotunheim,symbol:"🪨",world:"Ётунхейм",description:"Камень из земли великанов, хранящий их стойкость.",effect:"+1 к защите и +1 к общей силе.",defense:1,power:1},
   vanaheim:{name:ARTIFACTS.vanaheim,symbol:"🌬️",world:"Ванахейм",description:"Дар ветров Ванахейма, несущий движение и внутреннюю силу.",effect:"+1 к руническому удару и +1 к общей силе.",rune:1,power:1},
   alfheim:{name:ARTIFACTS.alfheim,symbol:"✨",world:"Альвхейм",description:"Светлый осколок Альвхейма, усиливающий руническую энергию.",effect:"+2 к руническому удару.",rune:2},

@@ -1324,7 +1324,7 @@ const [roadT, setRoadT] = useState(0.06);
             </div>
             <div className="hall-section artifact-hall">
               <span className="hall-icon">🏺</span><h3>Артефакты миров</h3>
-              <p>Нажми на найденный артефакт, чтобы увидеть его происхождение и силу. Одновременно можно применять один артефакт.</p>
+              <p>Артефакты — постоянные награды за завершение миров. Они дают разные бонусы во всех мирах: пояс Мидгарда усиливает удар, осколок Нифльхейма — защиту. Нажми на трофей и выбери «Применить». Активен только один; переключение бесплатное, артефакты не расходуются.</p>
               <div className="artifact-slots">{save.artifacts.length?save.artifacts.map(id=>{const item=ARTIFACT_INFO[id];if(!item)return null;return <button key={id} className={'artifact-slot'+(save.equippedArtifact===id?' on':'')} onClick={()=>{setSelectedArtifact(id);haptic();}} title={item.name}>{item.symbol}{save.equippedArtifact===id&&<small>АКТИВЕН</small>}</button>}):<span className="dim">Первый артефакт появится после полного завершения мира.</span>}</div>
               {selectedArtifact&&ARTIFACT_INFO[selectedArtifact]&&(()=>{const item=ARTIFACT_INFO[selectedArtifact],active=save.equippedArtifact===selectedArtifact;return <div className="artifact-detail"><b>{item.symbol} {item.name}</b><small>{item.world}. {item.description}</small><small><b>Эффект:</b> {item.effect}</small><button className={active?'active':''} onClick={()=>{setSave(s=>({...s,equippedArtifact:active?'':selectedArtifact}));haptic('success');say(active?item.name+' снят.':item.name+' применён. '+item.effect);}}>{active?'Снять артефакт':'Применить'}</button></div>})()}
             </div>
