@@ -425,5 +425,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 
 /* Silver bevel around the white river readouts, without extra image downloads. */
 .mill-scene .mill-flow-readout,.mill-scene .mill-rate-pill{border:3px solid transparent;background:linear-gradient(180deg,#fffefa,#f3f3ef) padding-box,linear-gradient(135deg,#66707b 0%,#fbfdff 18%,#a3adb9 38%,#e8edf3 56%,#697480 76%,#f8fbff 91%,#89939e 100%) border-box;box-shadow:inset 0 0 0 1px #ffffff,0 0 0 1px #747e88,0 2px 5px rgba(22,32,43,.25)}
+
+.rune-exchange{margin:16px 0;padding:14px;border:1px solid #b58c46;border-radius:12px;background:#172431;color:#f1e4c5}.rune-exchange h3{margin:0 0 8px;color:#f1cb7b}.rune-exchange p{font-size:13px;line-height:1.5}.rune-exchange-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.rune-exchange-fields label{display:flex;flex-direction:column;gap:5px;font-size:13px;min-width:0}.rune-exchange-fields select,.rune-exchange-fields input{width:100%;box-sizing:border-box;min-width:0;padding:10px 6px;font-size:16px;background:#f6f1e8;color:#202d36;border:1px solid #b4a17e;border-radius:7px}.rune-exchange>button{width:100%;padding:11px 6px;border:1px solid #bb934e;border-radius:8px;background:#d4aa59;color:#1b2328;font:inherit;font-size:14px;cursor:pointer}.rune-exchange>button:disabled{opacity:.5;cursor:default}.rune-exchange-preview{padding:10px;background:#0d1b27;border-radius:8px}.rune-exchange-note{color:#c6c9c5}
 `;
 

@@ -1,3 +1,5 @@
+import {RuneExchange} from './RuneExchange';
+import {applyRuneExchange} from './runeExchange';
 import {loadWorld,consumeWorldRecovery} from './worldLoading';
 import {applyPersonalPlaytestGrant,telegramLaunchUsername,redeemPersonalPlaytestCode,personalPlaytestGrantClaimed} from './personalPlaytestGrant';
 import {AMULET_NAME,amuletProgress,applyAmuletEvent} from './niflheimAmulet';
@@ -1280,6 +1282,11 @@ const [roadT, setRoadT] = useState(0.06);
               <button disabled={!q.ember||save.immortalityDrops<10} onClick={()=>rewards('supply:steel','Руническая сталь получена.')}>⚙️ Руническая сталь · 10 💧</button>
             </section>;
           })()}
+          <RuneExchange key={forgeRealm} save={save} onExchange={(from,to,quantity)=>{
+            if(applyRuneExchange(save,from,to,quantity)===save)return;
+            setSave(current=>applyRuneExchange(current,from,to,quantity));
+            haptic('success');say('Обмен выполнен: '+RUNE_CATALOG.find(r=>r.id===to)?.name+' ×'+quantity+'.');
+          }}/>
           <div className="forge-group-title">Экипировка</div>
           <div className="forge-grid">{gear.map(forgeButton)}</div>
                     <div className="forge-note"><b>Закалка действует в бою.</b> Оружие усиливает обычный удар; броня и шлем добавляют здоровье и снижают урон; щит крепче держит защиту; улучшенные сапоги помогают быстрее восстановить энергию.</div>
