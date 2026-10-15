@@ -31,7 +31,7 @@ export const NIFLHEIM_SEALS:NiflheimSealDef[]=[
  {id:'lookout',order:12,name:'Печать Иссохшей реки',location:'Пересохшее русло',x:-29.4,z:-120.4,angle:.3,drops:87000,steel:23,hits:37,damagePct:.21,runes:[rune('isaGuard','Иса','ᛁ',4),rune('nauthizEndurance','Наутиз','ᚾ',5),rune('hagalazBreak','Хагалаз','ᚺ',4)]},
  {id:'hvergelmir',order:13,name:'Печать Скованного истока',location:'Хвергельмир',x:0,z:-78,angle:0,drops:99000,steel:26,hits:39,damagePct:.22,runes:[rune('laguzFlow','Лагуз','ᛚ',5),rune('ansuzWisdom','Ансуз','ᚨ',5),rune('berkanoHeal','Беркана','ᛒ',4)]},
  {id:'nidhogg',order:14,name:'Печать Драконьего порога',location:'Логово Нидхёгга',x:49.3,z:-122.6,angle:-.5,drops:112000,steel:30,hits:42,damagePct:.23,runes:[rune('tiwazValor','Тейваз','ᛏ',5),rune('sowiloLight','Соулу','ᛋ',5),rune('algizGuard','Альгиз','ᛉ',5)]},
- {id:'livingWater',order:15,name:'Печать Живой воды',location:'Колодец живой воды',x:-22,z:-120,angle:0,drops:126000,steel:34,hits:45,damagePct:.24,runes:[rune('laguzFlow','Лагуз','ᛚ',6),rune('berkanoHeal','Беркана','ᛒ',5),rune('algizGuard','Альгиз','ᛉ',5)]}
+ {id:'livingWater',order:15,name:'Печать Живой воды',location:'Колодец живой воды',x:-18.5,z:-132,angle:0,drops:126000,steel:34,hits:45,damagePct:.24,runes:[rune('laguzFlow','Лагуз','ᛚ',6),rune('berkanoHeal','Беркана','ᛒ',5),rune('algizGuard','Альгиз','ᛉ',5)]}
 ];
 
 export const sealVictoryReward=(def:NiflheimSealDef)=>Math.floor(def.drops*.10);
@@ -110,7 +110,7 @@ type Point={x:number;z:number};
 
 /** Fallback wards work before GLB loading; interiors supply exact footprints once ready. */
 export function sealContains(def:NiflheimSealDef,p:Point){
- if(def.id==='livingWater')return Math.hypot(p.x+22,p.z+132)<8;
+ if(def.id==='livingWater')return Math.hypot(p.x+22,p.z+132)<3.2;
  const site=NIFL_LOCATIONS.find(l=>l.id===def.id)!;
  if(def.id==='forge')return Math.abs(p.x-site.x)<6.5&&p.z<site.z+1&&p.z>site.z-16;
  if(def.id==='crossing')return Math.abs(p.x+72)<5&&p.z<26&&p.z>-15;

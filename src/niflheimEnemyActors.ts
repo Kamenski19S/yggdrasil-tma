@@ -15,7 +15,7 @@ type Role='orc'|'troll'|'undead';
 type Spot={id:string;root:THREE.Group};
 type Asset={scene:THREE.Group;animations:THREE.AnimationClip[]};
 type Actor={model:THREE.Group;root:THREE.Group;mixer:THREE.AnimationMixer;role:Role;static:boolean;groundOffset:number;clips:THREE.AnimationClip[];idle:THREE.AnimationAction|null;current:THREE.AnimationAction|null;actionUntil:number};
-type Shadow={id:number;site:{x:number;z:number;place:string};root:THREE.Group;actor:Actor;healthBar:THREE.Sprite;hp:number;active:boolean;used:boolean;born:number;lastBite:number;lastHit:number};
+type Shadow={id:number;site:{x:number;z:number;place:string};root:THREE.Group;actor:Actor;healthBar:THREE.Sprite;hp:number;active:boolean;used:boolean;born:number;lastBite:number;lastHit:number;respawnAt:number};
 type Guard={id:string;actor:Actor;root:THREE.Group;origin:THREE.Vector3;role:'orc'|'troll';hp:number;maxHp:number;attack:number;hitAt:number;lastAttack:number;lastHit:number;deadAt:number;respawnAt:number;bar:THREE.Sprite};
 type OnShadowHit=(damage:number)=>number;
 type OnGuardDefeated=(id:string,role:'orc'|'troll')=>void;
@@ -48,6 +48,10 @@ export const NIFLHEIM_EXTRA_GUARDS=[
  {id:'shelterOrc',role:'orc',x:56,z:83,place:'Приют хранителей'},
  {id:'forgeOrc',role:'orc',x:-23,z:91,place:'Кузница'},
  {id:'towerOrc',role:'orc',x:54,z:-103,place:'Башня Нидхёгга'},
+ {id:'entranceOrc',role:'orc',x:10,z:113,place:'Дозор у Порога туманов'},
+ {id:'riverOrc',role:'orc',x:-30,z:57,place:'Дозор замёрзшего русла'},
+ {id:'lakeOrc',role:'orc',x:-59,z:28,place:'Патруль у ледяного озера'},
+ {id:'nornsRoadOrc',role:'orc',x:34,z:-69,place:'Дозор дороги норн'},
  {id:'crossingTroll',role:'troll',x:-88,z:-21,place:'Переправа'},
  {id:'rootsTroll',role:'troll',x:37,z:-54,place:'Сплетение корней'},
  {id:'hallOrc',role:'orc',x:-65,z:-111,place:'Южный проход Зала забытых имён'},
@@ -81,9 +85,7 @@ export const NIFLHEIM_EXTRA_GUARDS=[
 const WAVE_MS=15*60*1000;
 const BAR_WIDTH=1.05;
 const BAR_FILL_WIDTH=.98;
-const FIRST_WAVE_MS=45*1000; // First encounter is quickly visible for a new player.
 const MAX_ACTIVE_SHADOWS=3;
-const SHADOW_LIFETIME_MS=130*1000;
 const SHADOW_MAX_HP=51;
 // One visible size for each species, regardless of spawn point or building.
 const ROLE_HEIGHT={orc:7.4,troll:5.6,undead:5.2} as const;
@@ -95,7 +97,8 @@ export function installNiflheimRiggedEnemies(
  onShadowStrike:OnShadowHit,onShadowDefeated:(id:number)=>void,onGuardDefeated:OnGuardDefeated,
  canSpawn:(x:number,z:number)=>boolean,
  combatEffect:(kind:'enemy'|'hero',actor:THREE.Object3D,height:number,delay:number)=>void=()=>{},
- heroAttack:()=>number=()=>22
+ heroAttack:()=>number=()=>22,
+ shadowCooldown:(id:number)=>number=()=>0
 ){
   const loader=new GLTFLoader();
   const actors:Actor[]=[];
@@ -268,31 +271,23 @@ export function installNiflheimRiggedEnemies(
     });
   };
 
-  // Persist the wave's clock across re-entry: leaving the world never resets it.
-  const storageKey='yggdrasil-niflheim-shadow-next';
-  const readWaveClock=()=>{
-    try{
-      const stored=Number(localStorage.getItem(storageKey));
-      if(Number.isFinite(stored)&&stored>0)return stored;
-      const initial=Date.now()+FIRST_WAVE_MS;
-      localStorage.setItem(storageKey,String(initial));return initial;
-    }catch{return Date.now()+FIRST_WAVE_MS;}
-  };
-  let nextWave=readWaveClock();
-  let waveNumber=0,lastSpawnScan=0,lastWarn=0;
-  const setWaveClock=(next:number)=>{
-    nextWave=next;try{localStorage.setItem(storageKey,String(next));}catch{}
-  };
-  const createShadow=(id:number,site:(typeof NIFLHEIM_SHADOW_SITES)[number],asset:Asset)=>{
+  let lastSpawnScan=0,lastWarn=0;
+  const createShadow=(id:number,site:{x:number;z:number;place:string},asset:Asset)=>{
+    const shifts=[[0,0],[7,0],[-7,0],[0,7],[0,-7],[9,7],[-9,-7]];
+    const safe=shifts.map(([dx,dz])=>({x:site.x+dx,z:site.z+dz})).find(p=>canSpawn(p.x,p.z));
+    if(!safe)return;
+    site={...site,...safe};
     const root=new THREE.Group();root.name='Тень забытых '+(id+1)+' — '+site.place;
     root.position.set(site.x,ground(site.x,site.z),site.z);
     root.visible=false;scene.add(root);
     const actor=mountActor(root,'undead',asset);actor.static=false;
     const bar=makeBar('#b47fdd');
-    shadows.push({id,site,root,actor,healthBar:bar,hp:SHADOW_MAX_HP+id*9,active:false,used:false,born:0,lastBite:0,lastHit:0});
+    shadows.push({id,site,root,actor,healthBar:bar,hp:SHADOW_MAX_HP+id*9,active:false,used:false,born:0,lastBite:0,lastHit:0,respawnAt:Math.max(readGuard('shadow:'+id),shadowCooldown(id))});
   };
   const fadeOut=(shadow:Shadow,defeated:boolean)=>{
-    shadow.root.visible=false;shadow.healthBar.parent!.visible=false;shadow.active=false;shadow.used=true;
+    shadow.root.visible=false;shadow.healthBar.parent!.visible=false;shadow.active=false;shadow.used=false;
+    shadow.respawnAt=Date.now()+(defeated?WAVE_MS:2000);
+    if(defeated)persistGuard('shadow:'+shadow.id,shadow.respawnAt);
     if(defeated){const drops=80+(shadow.id%5)*35;notify('🌑 Тень изгнана. +'+drops+' Капель и трофей.');onShadowDefeated(shadow.id);}
   };
   const activate=(shadow:Shadow,now:number)=>{
@@ -304,8 +299,7 @@ export function installNiflheimRiggedEnemies(
     notify('🌑 Из тумана возникла Тень забытых у '+shadow.site.place+'!');
   };
 
-  // Decode once per species; fix orc timeline offsets and retarget four clips
-  // onto the shield troll's EXISTING skin before making any animation clones.
+  // Decode once per species and normalize native clips before making clones.
   const loads=(['orc','troll','undead'] as const).map(async role=>{
     try{
       const buffer=await cachedGlbBuffer(`${BASE}img/models/${NIFLHEIM_RIGGED_ASSETS[role]}`);
@@ -343,10 +337,8 @@ export function installNiflheimRiggedEnemies(
           const shifts:[[number,number],...Array<[number,number]>]=[
             [0,0],[7,0],[-7,0],[0,7],[0,-7],[9,7],[-9,-7],[12,0],[-12,0]
           ];
-          const spawn=site.role==='troll'?
-            shifts.map(([dx,dz])=>({x:site.x+dx,z:site.z+dz}))
-              .find(p=>canSpawn(p.x,p.z))||{x:site.x,z:site.z}:
-            {x:site.x,z:site.z};
+          const spawn=shifts.map(([dx,dz])=>({x:site.x+dx,z:site.z+dz}))
+              .find(p=>canSpawn(p.x,p.z))||{x:site.x,z:site.z};
           root.position.set(spawn.x,ground(spawn.x,spawn.z),spawn.z);scene.add(root);
           const actor=mountActor(root,role,asset);
           createGuard(site.id,role,root,actor);
@@ -367,12 +359,6 @@ export function installNiflheimRiggedEnemies(
       const animationDt=paused?0:Math.min(1,Math.max(0,(now-previousAnimationAt)/1000));
       previousAnimationAt=now;
       const realtime=Date.now();
-      if(realtime>=nextWave){
-        waveNumber++;
-        // At most one new wave per time window, even if the tab was suspended.
-        setWaveClock(realtime+WAVE_MS);
-        for(const shadow of shadows)if(!shadow.active)shadow.used=false;
-      }
       for(const actor of actors){
         if(actor.static){
           if(actor.root.visible){
@@ -449,11 +435,11 @@ export function installNiflheimRiggedEnemies(
           combatEffect('enemy',guard.root,ROLE_HEIGHT[guard.role],impactDelay-110);
         }
       }
-      // A zone creates an ambush only when approached in a live wave.
-      if(waveNumber>0&&now-lastSpawnScan>450){
+      // Living patrols appear on approach; only a defeated patrol waits 15 minutes.
+      if(now-lastSpawnScan>450){
         lastSpawnScan=now;
         let visible=shadows.filter(s=>s.active).length;
-        const nearby=shadows.filter(s=>!s.active&&!s.used&&
+        const nearby=shadows.filter(s=>!s.active&&Math.max(s.respawnAt,shadowCooldown(s.id))<=realtime&&
           Math.hypot(s.site.x-hero.x,s.site.z-hero.z)<29&&canSpawn(s.site.x,s.site.z))
           .sort((a,b)=>Math.hypot(a.site.x-hero.x,a.site.z-hero.z)-Math.hypot(b.site.x-hero.x,b.site.z-hero.z));
         for(const shadow of nearby){if(visible>=MAX_ACTIVE_SHADOWS)break;activate(shadow,now);visible++;}
@@ -461,7 +447,7 @@ export function installNiflheimRiggedEnemies(
       for(const shadow of shadows){
         if(!shadow.active)continue;
         const distance=Math.hypot(hero.x-shadow.root.position.x,hero.z-shadow.root.position.z);
-        if(now-shadow.born>SHADOW_LIFETIME_MS||(distance>55&&now-shadow.born>18_000)){
+        if(distance>55&&now-shadow.born>5000){
           fadeOut(shadow,false);continue;
         }
         const opacity=Math.min(1,(now-shadow.born)/1150);

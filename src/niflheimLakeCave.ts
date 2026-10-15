@@ -1,3 +1,4 @@
+import {staticTriangleCollision} from './staticTriangleCollision';
 import * as THREE from 'three';
 
 type Vertex={p:THREE.Vector3;uv:THREE.Vector2};
@@ -85,7 +86,8 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
   const groundY=(x:number,z:number)=>{const p=local(x,z);return contains(p)?root.position.y-(p.x<12?Math.max(0,p.x)*.25:3):undefined;};
   let tableBounds:THREE.Box3|undefined;
   let crystalTop:THREE.Vector3|undefined,orbMixer:THREE.AnimationMixer|undefined,orbPivot:THREE.Group|undefined;
-  const obstacleRay=new THREE.Raycaster();
+  root.updateMatrixWorld(true);
+  const shellCollision=staticTriangleCollision(root.children.filter((o):o is THREE.Mesh=>o instanceof THREE.Mesh&&o.name==='Целая гора с входом'));
   const blocked=(from:{x:number;z:number},next:{x:number;z:number})=>{
     if(ritualObstacles.some(b=>next.x>b.min.x&&next.x<b.max.x&&next.z>b.min.z&&next.z<b.max.z))return true;
     if(tableBounds&&next.x>tableBounds.min.x&&next.x<tableBounds.max.x&&next.z>tableBounds.min.z&&next.z<tableBounds.max.z)return true;
@@ -94,8 +96,8 @@ export function createLakeDescendingCave(mountain:THREE.Group,ground:(x:number,z
     if(contains(old)&&old.x>1)return true;
     const direction=new THREE.Vector3(next.x-from.x,0,next.z-from.z),distance=direction.length();
     if(!distance)return false;
-    obstacleRay.set(new THREE.Vector3(from.x,ground(from.x,from.z)+1.5,from.z),direction.normalize());obstacleRay.far=distance+.45;
-    return obstacleRay.intersectObjects(root.children.filter(o=>o.name==='Целая гора с входом'),true).length>0;
+    const y=ground(from.x,from.z)+1.5;
+    return shellCollision(new THREE.Vector3(from.x,y,from.z),new THREE.Vector3(next.x,y,next.z));
   };
   const ritualObstacles:THREE.Box3[]=[];
   const mageSpots=[-120,-60,0,60,120].map(degrees=>{const a=degrees*Math.PI/180;return new THREE.Vector3(25+18*Math.cos(a),-3,11*Math.sin(a));});

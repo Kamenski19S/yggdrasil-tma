@@ -92,6 +92,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
   const [mapOpen,setMapOpen]=useState(false);
   const [journalOpen,setJournalOpen]=useState(false);
   const [inventoryOpen,setInventoryOpen]=useState(false);
+  const cooldownsRef=useRef(locationCooldowns);cooldownsRef.current=locationCooldowns;
   const attackAction=useRef<(()=>void)|null>(null);
   const sealGuardianAction=useRef<(()=>void)|null>(null);
   const sealGuardianPlace=useRef<((id:string)=>void)|null>(null);
@@ -321,6 +322,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     let wandererObstacle:{x:number;z:number;radius:number}|undefined;
     let foundationSnow:{x:number;z:number;halfX:number;halfZ:number;height:number}|undefined;
     const wellGlowSprites:THREE.Sprite[]=[];
+    let livingSealPlace:{x:number;z:number;y:number}|undefined;
     const raisedSnowY=(x:number,z:number)=>{
       const original=niflGroundY(x,z),pad=foundationSnow;
       if(!pad)return original;
@@ -343,6 +345,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       return toY!==undefined&&toY-(fromY??raisedSnowY(from.x,from.z))>.85;
     };
     const sealInterior=(id:string,p:{x:number;z:number})=>{
+      if(id==='livingWater'&&wellObstacle)return Math.hypot(p.x-wellObstacle.x,p.z-wellObstacle.z)<wellObstacle.radius+1.2;
       if(id==='shelter'&&caveSpace)return caveSpace.inside(p.x,p.z);
       if(id==='forge'&&forgeSpace)return forgeSpace.inside(p.x,p.z);
       if(id==='memoryCave'&&memorySpace)return memorySpace.inside(p.x,p.z);
@@ -511,9 +514,9 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       },
       id=>libCallback.current(('shadow:defeated:'+id) as LiberationEvent),
       (id,role)=>libCallback.current(('guardian:defeated:'+id+':'+role) as LiberationEvent),
-      (x,z)=>!niflRiverBlocked(x,z)&&x>-95&&x<95&&z>-105&&z<125,
+      (x,z)=>!niflRiverBlocked(x,z)&&x>-100&&x<100&&z>-150&&z<140,
       (kind,actor,height,delay)=>{if(kind==='enemy')combatEffects.enemySlash(actor,height,delay);else combatEffects.hit(actor,height*.55,delay);},
-      ()=>{const state=sharedInventoryRef.current;let damage=combatStatsRef.current.attack;if((state.potionBoosts?.attack||0)>0){damage=boostedPotionDamage(damage,state.potionBoosts!.attack);boostUsedRef.current('attack');}return damage;});
+      ()=>{const state=sharedInventoryRef.current;let damage=combatStatsRef.current.attack;if((state.potionBoosts?.attack||0)>0){damage=boostedPotionDamage(damage,state.potionBoosts!.attack);boostUsedRef.current('attack');}return damage;},id=>cooldownsRef.current['niflheim:liberation:shadow:'+id]||0);
     // Three unique everlasting-ice fragments mark safe snow near major locations.
     const iceShape=new THREE.OctahedronGeometry(1.15,1);
     const iceDust=new THREE.MeshBasicMaterial({color:'#d9f3ff',transparent:true,opacity:.84});
@@ -771,6 +774,8 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       slab.position.set(landingCenter.x,worldBounds.max.y+.04,landingCenter.z);
       slab.castShadow=true;slab.receiveShadow=true;scene.add(slab);slab.updateMatrixWorld(true);
       stairWalkMeshes.push(slab);
+      livingSealPlace={x:landingCenter.x+Math.min(3.5,landingSize.x*.36),z:landingCenter.z,y:slab.position.y+.09};
+      sealVisuals.find(v=>v.id==='livingWater')?.place(livingSealPlace.x,livingSealPlace.z,livingSealPlace.y,0);
       platformBounds=new THREE.Box3().setFromObject(assembly).union(new THREE.Box3().setFromObject(slab));
       new THREE.TextureLoader().load(`${BASE}img/models/T_Forge_WhiteStone.webp`,texture=>{
         if(!alive){texture.dispose();return;}
@@ -901,6 +906,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
         if(def.id==='shelter')continue;
         const visual=createNiflheimSealVisual(cloneSkeleton(asset.scene) as THREE.Group,def,asset.animations);
         if(def.id==='nidhogg'&&towerEntrance.current){const t=towerEntrance.current;visual.place(t.center.x,t.frontZ+2.5,t.floor,0);}
+        else if(def.id==='livingWater'&&livingSealPlace)visual.place(livingSealPlace.x,livingSealPlace.z,livingSealPlace.y,0);
         else visual.place(def.x,def.z,walkingY(def.x,def.z));
         visual.update(0,sealOpened(crystalDoneRef.current,def.id),sealAvailable(crystalDoneRef.current,def.id));
         sealVisuals.push(visual);scene.add(visual.root);
