@@ -1,3 +1,4 @@
+import {STEEL_MILL_ASSET,prepareSteelWheel,steelMillMaterial,steelMillHouseFrame} from './steelMill';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { createBuildingTextures, textureBuildingPart, applyBuildingDetails } from './buildingTextures';
@@ -11,7 +12,8 @@ import {millControlActive,tickMillGiftClock} from './millRewards';
 
 export type MillFind='drops'|'potion'|'rune';
 type RiverParcel={kind:MillFind;start:number;end:number};
-export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{stored:number;balance:number;onProduce:(amount:number)=>void;onCollect:()=>void;onFind:(kind:MillFind)=>string;onBack:()=>void}){
+export function MillScene({realm='midgard',stored,balance,onProduce,onCollect,onFind,onBack}:{realm?:string;stored:number;balance:number;onProduce:(amount:number)=>void;onCollect:()=>void;onFind:(kind:MillFind)=>string;onBack:()=>void}){
+  const steelMill=realm==='niflheim';
   const mount=useRef<HTMLDivElement>(null);
   const runningRef=useRef(false);
   const wheelRef=useRef<THREE.Group|null>(null);
@@ -237,16 +239,16 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
     net.position.set(-1.3,.22,5.8);net.visible=false;scene.add(net);
 
     // Working sluice upstream: the player raises or lowers this gate to match river pressure.
-    const gateWood=new THREE.MeshStandardMaterial({map:buildingTextures.wood,color:0xffffff,roughness:.92});
-    const gateMetal=new THREE.MeshStandardMaterial({color:0x6c5c42,roughness:.72,metalness:.22});
+    const gateWood=steelMill?steelMillMaterial():new THREE.MeshStandardMaterial({map:buildingTextures.wood,color:0xffffff,roughness:.92});
+    const gateMetal=steelMill?steelMillMaterial(true):new THREE.MeshStandardMaterial({color:0x6c5c42,roughness:.72,metalness:.22});
     for(const x of [-5.75,-.25]){
       const post=new THREE.Mesh(new THREE.BoxGeometry(.32,3.3,.42),gateWood);
       post.position.set(x,1.05,-9.2);post.castShadow=post.receiveShadow=true;scene.add(post);
     }
     const crossbar=new THREE.Mesh(new THREE.BoxGeometry(5.9,.34,.42),gateWood);
     crossbar.position.set(-3,2.55,-9.2);crossbar.castShadow=true;scene.add(crossbar);
-    const gate=new THREE.Mesh(new THREE.BoxGeometry(5.05,1.35,.28),new THREE.MeshStandardMaterial({color:0x604022,roughness:.9}));
-    textureBuildingPart(gate,buildingTextures.wood,true);
+    const gate=new THREE.Mesh(new THREE.BoxGeometry(5.05,1.35,.28),steelMill?steelMillMaterial(true):new THREE.MeshStandardMaterial({color:0x604022,roughness:.9}));
+    if(!steelMill)textureBuildingPart(gate,buildingTextures.wood,true);
     gate.position.set(-3,.82,-9.2);gate.castShadow=gate.receiveShadow=true;scene.add(gate);gateRef.current=gate;
     const gateBand1=new THREE.Mesh(new THREE.BoxGeometry(5.12,.11,.34),gateMetal);gateBand1.position.set(-3,.48,-9.2);scene.add(gateBand1);
     const gateBand2=new THREE.Mesh(new THREE.BoxGeometry(5.12,.11,.34),gateMetal);gateBand2.position.set(-3,1.16,-9.2);scene.add(gateBand2);
@@ -315,7 +317,7 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
       const absolute=new URL(millHouseUrl,window.location.href).href,basePath=absolute.slice(0,absolute.lastIndexOf('/')+1);
       loader.parse(buffer,basePath,gltf=>{
         if(!alive)return;
-        const model=gltf.scene;fitAndPlace(model,{x:3.4,y:0,z:-3.3},{x:7.6,y:6.7,z:6.2});applyMillHouseTextures(model);applyBuildingDetails(model,buildingTextures);
+        const model=gltf.scene;fitAndPlace(model,{x:3.4,y:0,z:-3.3},{x:7.6,y:6.7,z:6.2});applyMillHouseTextures(model);applyBuildingDetails(model,buildingTextures);if(steelMill)steelMillHouseFrame(model);
         scene.add(model);hut.visible=roof.visible=door.visible=millWindow.visible=false;
       },error=>console.warn('[MILL HOUSE] GLB parse failed; keeping textured fallback',error));
     }).catch(error=>console.warn('[MILL HOUSE] GLB unavailable; keeping textured fallback',error));
@@ -375,8 +377,8 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
 
     // Structural mill supports: a stone pier at the house/channel edge,
     // a timber shaft from the mill wall to the hub and triangular braces.
-    const supportWood=new THREE.MeshStandardMaterial({color:0x4b2f1b,roughness:.9});
-    const supportWoodDark=new THREE.MeshStandardMaterial({color:0x332015,roughness:.94});
+    const supportWood=steelMill?steelMillMaterial():new THREE.MeshStandardMaterial({color:0x4b2f1b,roughness:.9});
+    const supportWoodDark=steelMill?steelMillMaterial(true):new THREE.MeshStandardMaterial({color:0x332015,roughness:.94});
     const supportStone=new THREE.MeshStandardMaterial({map:stoneRockTexture,color:0xe7e4dc,roughness:1});
     const addSupportBeam=(a:THREE.Vector3,b:THREE.Vector3,width=.32,depth=.32,material=supportWood)=>{
       const delta=new THREE.Vector3().subVectors(b,a);
@@ -400,10 +402,10 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
 
     const shaft=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,3.15,18),supportWoodDark);
     shaft.rotation.z=Math.PI/2;shaft.position.set(-1.42,1.35,-3.2);shaft.castShadow=true;scene.add(shaft);
-    const bearing=new THREE.Mesh(new THREE.CylinderGeometry(.46,.46,.36,20),new THREE.MeshStandardMaterial({color:0x5f4424,roughness:.82,metalness:.06}));
+    const bearing=new THREE.Mesh(new THREE.CylinderGeometry(.46,.46,.36,20),steelMill?steelMillMaterial(true):new THREE.MeshStandardMaterial({color:0x5f4424,roughness:.82,metalness:.06}));
     bearing.rotation.z=Math.PI/2;bearing.position.set(-2.74,1.35,-3.2);bearing.castShadow=true;scene.add(bearing);
 
-    const wheelUrl=`${BASE}img/models/water_wheel.glb`;
+    const wheelUrl=`${BASE}img/models/${steelMill?STEEL_MILL_ASSET:'water_wheel.glb'}`;
     cachedGlbBuffer(wheelUrl).then(buffer=>{
       if(!alive)return;
       const absolute=new URL(wheelUrl,window.location.href).href;
@@ -411,6 +413,7 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
       loader.parse(buffer,basePath,gltf=>{
         if(!alive)return;
         const model=gltf.scene;
+        if(steelMill){wheelPivot.add(prepareSteelWheel(model));setLoaded(true);return;}
         model.traverse(o=>{
           const mesh=o as THREE.Mesh;
           if(mesh.isMesh){mesh.castShadow=true;mesh.receiveShadow=true;}
@@ -446,7 +449,7 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
       }
       net.visible=now<netUntilRef.current;
       if(net.visible){parcelGroup.visible=true;parcelGroup.position.set(-1.3,.55,5.8);}
-      if(wheelRef.current&&runningRef.current)wheelRef.current.rotation.z-=dt*(.68+flowRef.current*.23+(balanced ? .18 : 0));
+      if(wheelRef.current&&runningRef.current){const amount=dt*(.68+flowRef.current*.23+(balanced ? .18 : 0));if(steelMill)wheelRef.current.rotation.x-=amount;else wheelRef.current.rotation.z-=amount;}
       if(gateRef.current){
         const targetY=.28+(flowRef.current-1)*.55;
         gateRef.current.position.y+=(targetY-gateRef.current.position.y)*Math.min(1,dt*7);
@@ -479,7 +482,7 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
       renderer.dispose();
       renderer.domElement.remove();
     };
-  },[]);
+  },[steelMill]);
 
   const collect=()=>{
     if(stored<=0)return;
@@ -492,7 +495,7 @@ export function MillScene({stored,balance,onProduce,onCollect,onFind,onBack}:{st
     <div className="mill-vignette"/>
     <div className="mill-title">
       <img className="mill-frame-img" src={`${BASE}img/models/mill_title_panel.png`} alt=""/>
-      <b>МЕЛЬНИЦА БЕССМЕРТИЯ</b>
+      <b>{steelMill?'СТАЛЬНАЯ МЕЛЬНИЦА':'МЕЛЬНИЦА БЕССМЕРТИЯ'}</b>
     </div>
 
     <div className="mill-top-stats">
