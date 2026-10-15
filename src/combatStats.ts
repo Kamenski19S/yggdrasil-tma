@@ -4,7 +4,8 @@ import {RUNE_CATALOG} from './world';
 export type CombatStats={attack:number;runeAttack:number;maxHp:number;defense:number;shieldDefense:number;multiplier:number};
 export const livingWaterUsed=(done:readonly string[])=>done.includes('niflheim:livingWater:used');
 export const livingWaterActive=(done:readonly string[])=>livingWaterUsed(done)&&!done.includes('niflheim:dragon:defeated');
-export function equipmentCombatStats(save:Save,hero:{hp:number;str:number;en:number}):CombatStats{
+export const realmRuneAttackBonus=(realm:string)=>realm==='niflheim'?6:0;
+export function equipmentCombatStats(save:Save,hero:{hp:number;str:number;en:number},realm='midgard'):CombatStats{
  const level=(id:string)=>Math.max(0,Number(save.forgeLevels[id])||0);
  const equipped=(id:string)=>save.equippedGear.includes(id as any);
  const armor=equipped('armor')?level('armor'):0,helmet=equipped('helmet')?level('helmet'):0;
@@ -15,7 +16,7 @@ export function equipmentCombatStats(save:Save,hero:{hp:number;str:number;en:num
  const multiplier=livingWaterActive(save.done)?2:1;
  return {multiplier,
   attack:(hero.str+WEAPON_POWER[save.heroWeapon]+level(save.heroWeapon)+runeBonus('attack')+(artifact?.attack||0))*multiplier,
-  runeAttack:(hero.en+2+runeBonus('rune')+(artifact?.rune||0))*multiplier,
+  runeAttack:(hero.en+2+runeBonus('rune')+(artifact?.rune||0)+realmRuneAttackBonus(realm))*multiplier,
   maxHp:(hero.hp+(equipped('armor')?8+armor*8:0)+(equipped('helmet')?3+helmet*3:0))*multiplier,
   defense:(Math.floor((armor+helmet)/2)+(equipped('armor')?1:0)+Math.floor(shield/3)+runeBonus('defense')+(artifact?.defense||0))*multiplier,
   shieldDefense:(equipped('shield')?1+shield:0)*multiplier};

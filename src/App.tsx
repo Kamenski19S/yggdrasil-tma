@@ -1,7 +1,7 @@
 import {applyPersonalPlaytestGrant,telegramLaunchUsername,redeemPersonalPlaytestCode,personalPlaytestGrantClaimed} from './personalPlaytestGrant';
 import {AMULET_NAME,amuletProgress,applyAmuletEvent} from './niflheimAmulet';
 import {CRYSTAL_NAME,applyCrystalEvent,waterCrystalProgress} from './waterCrystalQuest';
-import {equipmentCombatStats,livingWaterActive} from './combatStats';
+import {equipmentCombatStats,livingWaterActive,realmRuneAttackBonus} from './combatStats';
 import {applyMemoryEvent} from './niflheimMemoryQuest';
 import {settleNiflheimSealRewards,applyNiflheimSealEvent,type NiflheimSealEvent} from './niflheimSeals';
 import {applyDragonQuestEvent,dragonProgress,NIFL_CRAFTS,niflCraftUnlocked,type DragonEvent} from './niflheimDragonQuest';
@@ -233,7 +233,7 @@ const [roadT, setRoadT] = useState(0.06);
     return key==='power'?base+(level>=3?1:0):base+(level-1);
   };
   const activeArtifactDef=()=>ARTIFACT_INFO[save.equippedArtifact];
-  const currentCombat=()=>equipmentCombatStats(save,heroDef||{hp:100,str:10,en:10});
+  const currentCombat=()=>equipmentCombatStats(save,heroDef||{hp:100,str:10,en:10},screen.t==='underground'?'niflheim':screen.t==='forge'?forgeRealm:'id' in screen?screen.id:'midgard');
   const heroPowerPips=()=>{
     if(!heroDef)return 1;
     const gearForge=gearLevel('armor')+gearLevel('helmet')+gearLevel('shield')+gearLevel('boots');
@@ -522,7 +522,7 @@ const [roadT, setRoadT] = useState(0.06);
     if (kind === "rune") {
       if (hen < 2) { say("Для рунического удара нужно 2 деления энергии."); return; }
       setCombatFx({kind:"rune",key:Date.now()});
-      nhen = hen - 2; dmg = heroDef!.en + 2 + activeRuneBonus('rune') + (activeArtifactDef()?.rune||0) + rnd(5);
+      nhen = hen - 2; dmg = heroDef!.en + 2 + activeRuneBonus('rune') + (activeArtifactDef()?.rune||0) + realmRuneAttackBonus(screen.t==='fight'?screen.id:'midgard') + rnd(5);
       log = "Руническое заклинание вспыхивает: −" + dmg + " хозяину.";
     }
     if (kind === "shield") { if(hen<1){say("Нет энергии, чтобы удержать щит.");return;} nhen=hen-1;nshield = true; log = "Ты поднимаешь щит — удар ослабнет."; }
