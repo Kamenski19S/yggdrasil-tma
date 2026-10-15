@@ -1,3 +1,4 @@
+import {applyPersonalPlaytestGrant,telegramLaunchUsername} from './personalPlaytestGrant';
 import {AMULET_NAME,amuletProgress,applyAmuletEvent} from './niflheimAmulet';
 import {CRYSTAL_NAME,applyCrystalEvent,waterCrystalProgress} from './waterCrystalQuest';
 import {equipmentCombatStats,livingWaterActive} from './combatStats';
@@ -34,7 +35,7 @@ import { VILLAGE_RESIDENTS, VILLAGE_WARD_COST, type VillageResident, villageOrde
 export function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
   const millScreenActiveRef=useRef(false);
-  const [save, setSave] = useState<Save>(()=>settleNiflheimSealRewards(loadSave()));
+  const [save, setSave] = useState<Save>(()=>applyPersonalPlaytestGrant(settleNiflheimSealRewards(loadSave()),telegramLaunchUsername(tg?.initDataUnsafe?.user,window.location.hash,window.location.search)));
   const [selectedArtifact,setSelectedArtifact]=useState("");
   const [pick, setPick] = useState("viking");
   const [heroTab,setHeroTab]=useState<"equipment"|"story">("equipment");
