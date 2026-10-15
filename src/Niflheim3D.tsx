@@ -1,3 +1,4 @@
+import {dangerouslyLowHp} from './niflheimCombat';
 import {createFirstSeal} from './niflheimFirstSeal';
 import {NIFLHEIM_SEALS,sealVictoryReward,sealOpeningReward,sealById,sealOpened,sealGuardianDefeated,sealAvailable,openedSealCount,createNiflheimSealVisual,sealContains,sealBlocksEntry,sealGuardianHealth,sealGuardianDamage,sealViewHint,type NiflheimSealEvent} from './niflheimSeals';
 import {installSealGuardian} from './niflheimSealGuardian';
@@ -157,7 +158,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     clearInput();
   };
   const battleAction=(type:'hit'|'shield'|'rune')=>{
-    if(!battle)return;
+    if(!battle||inventoryOpen)return;
     const isSeal=battle.id.startsWith('sealGuardian:');
     const sealId=isSeal?battle.id.slice('sealGuardian:'.length):'';
     const sealDef=isSeal?sealById(sealId):undefined;
@@ -214,7 +215,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     if(!battle?.id.startsWith('sealGuardian:'))return;
     const timer=window.setInterval(()=>{
       const current=battleRef.current;
-      if(!current||!current.id.startsWith('sealGuardian:'))return;
+      if(paused.current||document.hidden||!current||!current.id.startsWith('sealGuardian:'))return;
       const sealId=current.id.slice('sealGuardian:'.length),def=sealById(sealId);if(!def)return;
       const stats=combatStatsRef.current,inv=sharedInventoryRef.current;
       const guarding=guardUntil.current>performance.now();
@@ -571,6 +572,14 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     for(let i=0;i<160;i++){snowCoords[i*3]=(hash(i,51)*110-55)*NIFL_SCALE;snowCoords[i*3+1]=hash(i,52)*18+2;snowCoords[i*3+2]=(hash(i,53)*140-70)*NIFL_SCALE;}
     snowPoints.setAttribute('position',new THREE.BufferAttribute(snowCoords,3));scene.add(new THREE.Points(snowPoints,new THREE.PointsMaterial({color:'#edf8ff',size:.11,transparent:true,opacity:.7})));
     const hero=new THREE.Group();hero.rotation.y=Math.PI;scene.add(hero);
+    const dangerCanvas=document.createElement('canvas');dangerCanvas.width=128;dangerCanvas.height=128;
+    const dangerContext=dangerCanvas.getContext('2d')!;
+    dangerContext.beginPath();dangerContext.moveTo(64,8);dangerContext.lineTo(120,112);dangerContext.lineTo(8,112);dangerContext.closePath();
+    dangerContext.fillStyle='#e71932';dangerContext.fill();dangerContext.strokeStyle='#fff1d6';dangerContext.lineWidth=6;dangerContext.stroke();
+    dangerContext.fillStyle='#ffffff';dangerContext.font='bold 78px sans-serif';dangerContext.textAlign='center';dangerContext.fillText('!',64,98);
+    const dangerTexture=new THREE.CanvasTexture(dangerCanvas);textures.add(dangerTexture);
+    const dangerMaterial=new THREE.SpriteMaterial({map:dangerTexture,transparent:true,depthTest:false,depthWrite:false});
+    const dangerSign=new THREE.Sprite(dangerMaterial);dangerSign.name='Опасно: здоровье Vicki 15% или ниже';dangerSign.position.y=8.1;dangerSign.scale.set(2.1,2.1,1);dangerSign.renderOrder=30;dangerSign.visible=false;hero.add(dangerSign);
     const combatEffects=createCombatEffects(scene,hero);let lastGuardFx=0;
     let mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,attack:THREE.AnimationAction|undefined,attackUntil=0,shieldBones:THREE.Object3D[]=[],shieldBase:THREE.Quaternion[]=[],moving=false,currentAction:THREE.AnimationAction|undefined;
     const disposeObject=(root:THREE.Object3D)=>{root.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}});};
@@ -1050,6 +1059,8 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
         undergroundCallback.current({...returnPosition});return;
       }
       hero.position.set(pos.x,walkingY(pos.x,pos.z),pos.z);
+      dangerSign.visible=dangerouslyLowHp(battleRef.current?.heroHp??sharedInventoryRef.current.hp,sharedInventoryRef.current.maxHp);
+      dangerMaterial.opacity=.8+.2*Math.sin(now*.006);
       wandererIdle?.(now);
       wandererTurn?.(dt,pos.x,pos.z);
       shieldBones.forEach((b,i)=>b.quaternion.copy(shieldBase[i]));mixer?.update(dt);lakeCave?.update(dt);memoryTable?.update(dt,now*.001);
@@ -1131,6 +1142,14 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
   const sealActive=!!currentSeal&&sealAvailable(questDone,currentSeal.id);
   const sealCanPay=!!currentSeal&&sealActive&&sealWon&&sealWallet.drops>=currentSeal.drops&&sealWallet.steel>=currentSeal.steel&&currentSeal.runes.every(r=>sealRuneCount(r.id)>=r.amount);
   const sealsOpened=openedSealCount(questDone);
+  const lowHealth=dangerouslyLowHp(battle?.heroHp??inventory.hp,inventory.maxHp);
+  const drinkFromBag=(id:string)=>{
+    const current=battleRef.current;
+    if(!current){inventory.onUsePotion(id);return;}
+    if(!useBattlePotion(id,current.heroHp))return;
+    const heroHp=id==='lifeElixir'||id==='hoddmimirElixir'?inventory.maxHp:id==='northernMoss'?Math.min(inventory.maxHp,current.heroHp+30):current.heroHp;
+    const next={...current,heroHp};battleRef.current=next;setBattle(next);
+  };
   return <div className="nifl-world"><style>{CSS}</style><div className="nifl-mount" ref={mount}/>
     <div className="mid3d-ui mid3d-top">
       <button className="mid3d-top-btn" aria-label="Карта Нифльхейма" onClick={()=>{clearInput();setMapOpen(true);}}><img className="mid3d-top-button-art" src={`${BASE}img/models/ui_map.png`} alt="" draggable={false}/></button>
@@ -1141,8 +1160,8 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     <button className="mid3d-ui mid3d-joy nifl-joystick" aria-label="Управление Vicki: тяни в нужном направлении" onPointerDown={startStick} onPointerMove={steerStick} onPointerUp={stopStick} onPointerCancel={stopStick} onLostPointerCapture={stopStick}><img src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/><span className="mid3d-knob" ref={stick}/></button>
     <button className="mid3d-ui mid3d-block" aria-label="Прикрыться щитом" disabled={!shieldEquipped} onClick={()=>{if(!paused.current){clearInput();guardUntil.current=performance.now()+1250;}}}><img className="mid3d-control-art" src={`${BASE}img/models/ui_shield.png`} alt="" draggable={false}/></button>
     <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" onClick={()=>attackAction.current?.()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></button>
-    <button className="mid3d-ui mid3d-action" style={{top:125}} aria-label="Запас рун и эликсиров" onClick={()=>{clearInput();setInventoryOpen(true);}}><img className="mid3d-control-art" src={`${BASE}img/models/ui_inventory.png`} alt="" draggable={false}/></button>
-    {inventoryOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Запас Vicki"><h3>Запас Vicki</h3><p>🧿 {AMULET_NAME}: {amulet.restored?'восстановлен · защита от дракона 30%':amulet.collected.length+'/6 частей'}</p><p>🌊 Сердце Морвейна: {liberation.vampireFreed?'в рюкзаке · активируется перед финальным боем':'не получено'}</p><p>💎 {CRYSTAL_NAME}: {crystal.gateOpen?'установлен во вратах Муспельхейма':crystal.assembled?'целый кристалл · 1 шт.':crystal.collected.length+'/3 осколков'}</p><InventorySection kind="potions" {...inventory}/><InventorySection kind="runes" {...inventory}/><button onClick={()=>setInventoryOpen(false)}>Вернуться в игру</button></section></div>}
+    <button className="mid3d-ui mid3d-action" style={{top:125,zIndex:inventoryOpen?5:25,filter:lowHealth?'drop-shadow(0 0 9px #ff2945)':undefined}} aria-label={lowHealth?'Опасно: мало здоровья. Открыть сумочку с зельями':'Запас рун и эликсиров'} onClick={()=>{clearInput();setInventoryOpen(true);}}><img className="mid3d-control-art" src={`${BASE}img/models/ui_inventory.png`} alt="" draggable={false}/></button>
+    {inventoryOpen&&<div className="nifl-overlay" style={{zIndex:40}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Запас Vicki"><h3>Запас Vicki</h3><p>🧿 {AMULET_NAME}: {amulet.restored?'восстановлен · защита от дракона 30%':amulet.collected.length+'/6 частей'}</p><p>🌊 Сердце Морвейна: {liberation.vampireFreed?'в рюкзаке · активируется перед финальным боем':'не получено'}</p><p>💎 {CRYSTAL_NAME}: {crystal.gateOpen?'установлен во вратах Муспельхейма':crystal.assembled?'целый кристалл · 1 шт.':crystal.collected.length+'/3 осколков'}</p><InventorySection kind="potions" {...inventory} hp={battle?.heroHp??inventory.hp} onUsePotion={drinkFromBag}/><InventorySection kind="runes" {...inventory}/><button onClick={()=>setInventoryOpen(false)}>Вернуться в игру</button></section></div>}
     {currentSeal&&!modalActive&&<div className="nifl-seal-prompt" role="group" aria-label="Условия снятия печати">
       <b>{currentSeal.order}/{NIFLHEIM_SEALS.length} · {currentSeal.name}</b>
       <div className="nifl-seal-costs" aria-label="Стоимость снятия">
@@ -1290,7 +1309,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       <p className="nifl-map-legend">Кристалл на столе: <a href="https://sketchfab.com/3d-models/crystals-from-space-557ff4a9f4b74ff1a367d7cc7fc77e24" target="_blank" rel="noopener noreferrer">Crystals From Space — Grenade_Apple</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Сохранена вся группа кристаллов, уменьшены текстуры, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Странница девяти миров: <a href="https://sketchfab.com/3d-models/hit2-female-swordsman-bfc0c40414ce4e37bea0567ce4a36792" target="_blank" rel="noopener noreferrer">HIT2 Female swordsman — enzohao</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры; сохранены скелет и геометрия. В Нифльхейме встречается возле колодца норн.</p>
       <p className="nifl-map-legend">Охранники-орки (в том числе заменившие геометрических стражей): <a href="https://sketchfab.com/3d-models/low-poly-orc-62f1637181cb4f6aa38897f5b7ab5edf" target="_blank" rel="noopener noreferrer">Low-poly Orc — Riltariki</a>, CC BY 4.0. Оптимизирован GLB, сохранены кости и девять анимаций, материалы преобразованы в современный PBR и тонированы в холодные оттенки Нифльхейма.</p>
-      <p className="nifl-map-legend">Охранник-тролль: <a href="https://sketchfab.com/3d-models/rigged-and-animation-stylized-troll-6f7584d88b134785bf1916ca2523a07c" target="_blank" rel="noopener noreferrer">Rigged and animation stylized Troll — AlekseiPresnaykov</a>, CC BY 4.0. Текстуры сжаты, исходный скелет и анимация сохранены; оружие меняется на секиру.</p>
+      <p className="nifl-map-legend">Пещерные тролли: <a href="https://sketchfab.com/3d-models/troll-bceb1cb47186457c8571a23e6aff1b8e" target="_blank" rel="noopener noreferrer">Troll — SJunior3d</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Текстуры уменьшены до 512 px, сокращены избыточные ключи; сохранены геометрия, скелет, оружие и восемь анимаций. Изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Тень забытых: <a href="https://sketchfab.com/3d-models/ancient-undead-egyptian-warrior-rigged-animated-250d1e5c12ae413884813bb25860ef9d" target="_blank" rel="noopener noreferrer">Ancient Undead Egyptian Warrior Rigged Animated — fabip</a>, CC BY 4.0. Текстура уменьшена, кости и анимация сохранены, затемнённый материал используется для призрачных нападений.</p>
       <p className="nifl-map-legend">Колодец трёх норн: та же оригинальная игровая модель <code>Midgard_Well_Three_Norns_V1_YUP.glb</code>, что и в Мидгарде. Для Нифльхейма увеличена высота, камень покрыт холодным оттенком, свечение заменено на ледяное голубое; колодец остаётся непроходимым.</p>
       <p className="nifl-map-legend">Водная спираль: <a href="https://sketchfab.com/3d-models/water-splash-spiral-282e1a5d84f5472281e72f35987775e7" target="_blank" rel="noopener noreferrer">Water Splash Spiral — Will VFX</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Упрощена геометрия, обновлён материал воды, изменены масштаб и размещение.</p>

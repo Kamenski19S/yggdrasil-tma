@@ -1,8 +1,9 @@
+import {pickEncounter} from './niflheimCombat';
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {clone as cloneSkeleton} from 'three/examples/jsm/utils/SkeletonUtils.js';
 import {BASE,cachedGlbBuffer,type HeroWeapon} from './core';
-import {normalizeOrcAnimations,retargetOrcAnimationsToShieldTroll} from './niflheimRigRetarget';
+import {normalizeOrcAnimations} from './niflheimRigRetarget';
 
 /**
  * Niflheim combat actors. One decoded GLB per species, SkeletonUtils clones
@@ -20,7 +21,7 @@ type OnShadowHit=(damage:number)=>number;
 type OnGuardDefeated=(id:string,role:'orc'|'troll')=>void;
 export const NIFLHEIM_RIGGED_ASSETS:Record<Role,string>={
   orc:'Niflheim_Orc_Rigged_Lite.glb',
-  troll:'Niflheim_Troll_Rigged_Lite.glb',
+  troll:'Niflheim_Cave_Troll_Lite.glb',
   undead:'Niflheim_Undead_Rigged_Lite.glb'
 };
 
@@ -149,7 +150,7 @@ export function installNiflheimRiggedEnemies(
       }
     });
     const mixer=new THREE.AnimationMixer(model);
-    const clip=asset.animations.find(a=>/ANM_IDLE|Take 001/i.test(a.name))||asset.animations[0];
+    const clip=asset.animations.find(a=>/^idle$|ANM_IDLE|Take 001/i.test(a.name))||asset.animations[0];
     const idle=clip?mixer.clipAction(clip):null;
     idle?.play();
     const actor={model,root,mixer,role,static:true,groundOffset:0,clips:asset.animations,idle,current:idle,actionUntil:0} satisfies Actor;
@@ -176,9 +177,10 @@ export function installNiflheimRiggedEnemies(
   const playAction=(actor:Actor,type:'attack'|'hurt'|'death',now:number)=>{
     if(actor.role==='undead')return;
     // Finish a visible attack even when Vicki lands a hit during the swing.
-    if(type==='hurt'&&now<actor.actionUntil&&/LIGHT_ATTACK|ATTACK_CRIT/i.test(actor.current?.getClip().name||''))return;
-    const pattern=type==='attack'?/LIGHT_ATTACK|ATTACK_CRIT/i:type==='hurt'?/DAMAGED/i:/DEATH/i;
-    const clip=actor.clips.find(c=>pattern.test(c.name));if(!clip)return;
+    if(type==='hurt'&&now<actor.actionUntil&&/LIGHT_ATTACK|ATTACK_CRIT|^attack[12]$/i.test(actor.current?.getClip().name||''))return;
+    const pattern=type==='attack'?/LIGHT_ATTACK|ATTACK_CRIT|^attack[12]$/i:type==='hurt'?/DAMAGED|take_damage/i:/DEATH/i;
+    const options=actor.clips.filter(c=>pattern.test(c.name));
+    const clip=options[type==='attack'?Math.floor(Math.random()*options.length):0];if(!clip)return;
     const action=actor.mixer.clipAction(clip);
     if(actor.current!==action){actor.current?.fadeOut(.1);action.reset().fadeIn(.1).play();actor.current=action;}else action.reset().play();
     action.setLoop(THREE.LoopOnce,1);action.clampWhenFinished=false;
@@ -186,7 +188,7 @@ export function installNiflheimRiggedEnemies(
   };
   const resetAction=(actor:Actor,now:number,moving=false)=>{
     if(now<actor.actionUntil)return;
-    const clip=moving?actor.clips.find(c=>c.name==='ANM_WALK'):undefined;
+    const clip=moving?actor.clips.find(c=>/^(ANM_WALK|walk)$/i.test(c.name)):undefined;
     const desired=clip?actor.mixer.clipAction(clip):actor.idle;
     if(!desired||actor.current===desired)return;
     actor.current?.fadeOut(.12);
@@ -229,19 +231,13 @@ export function installNiflheimRiggedEnemies(
     .catch(()=>null);
   const attachGuardWeapon=(actor:Actor)=>{
     const model=actor.model,role=actor.role;
-    if(role==='undead')return;
+    if(role==='undead'||role==='troll')return;
     if(role==='orc'){
       // Source Axe_07 is skinned with the wrong bind offsets; otherwise it
       // floats across the waist instead of staying inside the closed fist.
       model.traverse(o=>{
         const mesh=o as THREE.Mesh;
         if(mesh.isMesh&&(o.name==='Object_25'||o.name==='Axe'||mesh.geometry?.name?.includes('Axe_07')))o.visible=false;
-      });
-    }else if(role==='troll'){
-      // Source "meat" prop is a separate skinned mesh, NOT part of his body.
-      model.traverse(o=>{
-        const mesh=o as THREE.Mesh;
-        if(mesh.isMesh&&(o.name==='Object_290'||o.name==='Weapon_Weapon1_0'||mesh.geometry?.name?.includes('Weapon_Weapon1_0')))o.visible=false;
       });
     }
     axeTemplate.then(template=>{
@@ -250,26 +246,7 @@ export function installNiflheimRiggedEnemies(
       const hand=model.getObjectByName(role==='orc'?'Bip001_R_Hand_017':'Wrist_R_0241');
       if(!hand){console.warn('No fist bone for',role);return;}
       const axe=template.clone(true);
-      axe.name=role==='orc'?'Секира орка в правой руке':'Ледяная двулезвийная секира зелёного гоблина';
-      if(role==='troll'){
-        // Icy-steel tint makes the axe visibly different from the red shield
-        // and old meat prop, without additional draw calls or lights.
-        const adapted=new Map<THREE.Material,THREE.Material>();
-        axe.traverse(node=>{
-          if(!(node instanceof THREE.Mesh))return;
-          const rework=(source:THREE.Material)=>{
-            if(adapted.has(source))return adapted.get(source)!;
-            const material=source.clone();
-            if(material instanceof THREE.MeshStandardMaterial){
-              material.color.lerp(new THREE.Color('#8bd7e8'),.44);
-              material.emissive.set('#1d5a82');material.emissiveIntensity=.3;
-              material.roughness=Math.min(material.roughness,.48);
-            }
-            adapted.set(source,material);return material;
-          };
-          node.material=Array.isArray(node.material)?node.material.map(rework):rework(node.material);
-        });
-      }
+      axe.name='Секира орка в правой руке';
       axe.updateMatrixWorld(true);
       const box=new THREE.Box3().setFromObject(axe),size=box.getSize(new THREE.Vector3());
       if(size.y<.0001)return;
@@ -341,12 +318,7 @@ export function installNiflheimRiggedEnemies(
     const byRole=new Map(records.filter((x):x is NonNullable<typeof x>=>x!==null).map(x=>[x.role,x.asset] as const));
     const orc=byRole.get('orc'),troll=byRole.get('troll');
     if(orc)normalizeOrcAnimations(orc);
-    if(troll){
-      try{
-        if(retargetOrcAnimationsToShieldTroll(orc??null,troll))
-          console.info('Shield troll: orc walk/attack/hurt/death retargeted to original skeleton');
-      }catch(error){console.warn('Troll retarget failed; original rig preserved',error);}
-    }
+    if(troll)normalizeOrcAnimations(troll); // Normalize the new troll's own clips; never retarget the old goblin rig.
     for(const role of ['orc','troll','undead'] as const){
       const asset=byRole.get(role);if(!asset)continue;
         for(const spot of spots){
@@ -365,7 +337,7 @@ export function installNiflheimRiggedEnemies(
         for(const site of NIFLHEIM_EXTRA_GUARDS){
           if(site.role!==role)continue;
           const root=new THREE.Group();
-          root.name=site.place+': '+(role==='orc'?'орк-страж':'зелёный гоблин');
+          root.name=site.place+': '+(role==='orc'?'орк-страж':'пещерный тролль');
           // New patrols must stand on reachable snow, not a river mesh.
           // Preserve the authored point where already walkable.
           const shifts:[[number,number],...Array<[number,number]>]=[
@@ -386,6 +358,9 @@ export function installNiflheimRiggedEnemies(
   }).catch(error=>console.warn('Niflheim rigged loading failed',error));
 
   let previousAnimationAt=performance.now();
+  let encounterMembers=new Set<string>(),encounterUntil=0;
+  const guardKey=(g:Guard)=>'guard:'+g.id;
+  const shadowKey=(s:Shadow)=>'shadow:'+s.id;
   return {
     tick(dt:number,now:number,hero:{x:number;z:number},shielded:boolean,paused:boolean){
       if(!isAlive())return;
@@ -407,9 +382,18 @@ export function installNiflheimRiggedEnemies(
         }
       }
       if(paused)return;
+      // Recruit nearby species together every 12 seconds; never teleport an ally.
+      const threats=[...guards.filter(g=>!g.deadAt&&g.respawnAt<=realtime).map(g=>{
+        const p=g.root.getWorldPosition(new THREE.Vector3());return {id:guardKey(g),role:g.role,distance:Math.hypot(p.x-hero.x,p.z-hero.z)};
+      }),...shadows.filter(s=>s.active).map(s=>({id:shadowKey(s),role:'undead' as const,distance:Math.hypot(s.root.position.x-hero.x,s.root.position.z-hero.z)}))];
+      const live=threats.filter(t=>encounterMembers.has(t.id)&&t.distance<28);
+      if(now>=encounterUntil||!live.length){
+        encounterMembers=new Set(pickEncounter(threats));encounterUntil=now+12000;
+        if(encounterMembers.size>1)notify('⚠️ Совместная атака! Противников: '+encounterMembers.size+'. Держи зелье наготове.');
+      }
       for(const guard of guards){
         if(guard.deadAt){
-          if(now-guard.deadAt>1150){guard.root.visible=false;guard.bar.parent!.visible=false;guard.deadAt=0;}
+          if(now-guard.deadAt>Math.max(1150,guard.actor.actionUntil-guard.deadAt)){guard.root.visible=false;guard.bar.parent!.visible=false;guard.deadAt=0;}
           continue;
         }
         if(guard.respawnAt>Date.now())continue;
@@ -421,12 +405,14 @@ export function installNiflheimRiggedEnemies(
         }
         const place=guard.root.getWorldPosition(new THREE.Vector3());
         const dist=Math.hypot(place.x-hero.x,place.z-hero.z);
+        const engaged=encounterMembers.has(guardKey(guard));
+        if(!engaged)guard.hitAt=0;
         // Resolve damage at the downstroke, using the current range and shield.
         if(guard.hitAt&&now>=guard.hitAt){
           guard.hitAt=0;
           if(dist<6){
             if(shielded)notify('🛡️ Щит отразил удар стража.');
-            else{const loss=onShadowStrike(guard.attack);notify('⚔️ '+(guard.role==='orc'?'Орк':'Зелёный гоблин')+' атакует! −'+loss+' здоровья.');}
+            else{const loss=onShadowStrike(guard.attack);notify('⚔️ '+(guard.role==='orc'?'Орк':'Тролль')+' атакует! −'+loss+' здоровья.');}
           }
         }
         // Preserve 21 goblin patrols without rendering every skinned mesh
@@ -437,7 +423,7 @@ export function installNiflheimRiggedEnemies(
         const showBar=dist<34;
         guard.bar.parent!.visible=showBar;
         if(showBar)updateBarPosition(guard.actor,guard.bar);
-        if(dist>24){resetAction(guard.actor,now);continue;}
+        if(!engaged||dist>24){resetAction(guard.actor,now);continue;}
         guard.root.rotation.y=Math.atan2(hero.x-place.x,hero.z-place.z);
         if(guard.role==='troll'){
           // Leave the torso upright. The goblin's dedicated right-arm animation
@@ -446,12 +432,12 @@ export function installNiflheimRiggedEnemies(
           guard.actor.model.rotation.z=0;
         }
         // Local chase radius keeps a guard at its building instead of letting it roam through walls.
-        const walking=dist>4.6&&dist<14;
+        const walking=dist>4.6&&dist<22;
         resetAction(guard.actor,now,walking);
         if(walking){
-          const step=Math.min(dist-4.6,(guard.role==='troll'?1.05:1.5)*dt);
+          const step=Math.min(dist-4.6,(guard.role==='troll'?1.7:1.8)*dt);
           const nx=place.x+(hero.x-place.x)/dist*step,nz=place.z+(hero.z-place.z)/dist*step;
-          if(Math.hypot(nx-guard.origin.x,nz-guard.origin.z)<4.2&&canSpawn(nx,nz)){
+          if(Math.hypot(nx-guard.origin.x,nz-guard.origin.z)<(guard.root.parent===scene?14:4.2)&&canSpawn(nx,nz)){
             if(guard.root.parent===scene)guard.root.position.set(nx,ground(nx,nz)+guard.actor.groundOffset,nz);
             else{guard.root.position.x+=nx-place.x;guard.root.position.z+=nz-place.z;}
           }
@@ -481,7 +467,8 @@ export function installNiflheimRiggedEnemies(
         const opacity=Math.min(1,(now-shadow.born)/1150);
         shadow.root.scale.setScalar(Math.max(.001,opacity));
         shadow.root.rotation.y=Math.atan2(hero.x-shadow.root.position.x,hero.z-shadow.root.position.z);
-        const approach=Math.min(Math.max(0,distance-3.7),1.9*dt);
+        const engaged=encounterMembers.has(shadowKey(shadow));
+        const approach=engaged?Math.min(Math.max(0,distance-3.7),1.9*dt):0;
         if(approach>0&&distance<39){
           const nx=shadow.root.position.x+(hero.x-shadow.root.position.x)/distance*approach;
           const nz=shadow.root.position.z+(hero.z-shadow.root.position.z)/distance*approach;
@@ -490,7 +477,7 @@ export function installNiflheimRiggedEnemies(
           }
         }
         shadow.actor.mixer.update(animationDt);updateBarPosition(shadow.actor,shadow.healthBar);
-        if(distance<4.5&&now-shadow.lastBite>3300){
+        if(engaged&&distance<4.5&&now-shadow.lastBite>3300){
           shadow.lastBite=now;
           combatEffect('enemy',shadow.root,ROLE_HEIGHT.undead,120);
           if(shielded){
@@ -526,7 +513,7 @@ export function installNiflheimRiggedEnemies(
           onGuardDefeated(guard.id,guard.role);
         }else{
           playAction(guard.actor,'hurt',now);
-          notify('⚔️ '+(guard.role==='orc'?'Орк':'Зелёный гоблин')+': '+guard.hp+'/'+guard.maxHp+' здоровья.');
+          notify('⚔️ '+(guard.role==='orc'?'Орк':'Тролль')+': '+guard.hp+'/'+guard.maxHp+' здоровья.');
         }
         return true;
       }
