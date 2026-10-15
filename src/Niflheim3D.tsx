@@ -1,3 +1,4 @@
+import {NiflheimGuide} from './NiflheimGuide';
 import {dangerouslyLowHp} from './niflheimCombat';
 import {createFirstSeal} from './niflheimFirstSeal';
 import {NIFLHEIM_SEALS,sealVictoryReward,sealOpeningReward,sealById,sealOpened,sealGuardianDefeated,sealAvailable,openedSealCount,createNiflheimSealVisual,sealContains,sealBlocksEntry,sealGuardianHealth,sealGuardianDamage,sealViewHint,type NiflheimSealEvent} from './niflheimSeals';
@@ -91,6 +92,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
   const crystalCallback=useRef(onCrystalEvent);crystalCallback.current=onCrystalEvent;
   const [mapOpen,setMapOpen]=useState(false);
   const [journalOpen,setJournalOpen]=useState(false);
+  const [guideOpen,setGuideOpen]=useState(false);
   const [inventoryOpen,setInventoryOpen]=useState(false);
   const cooldownsRef=useRef(locationCooldowns);cooldownsRef.current=locationCooldowns;
   const attackAction=useRef<(()=>void)|null>(null);
@@ -102,7 +104,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
   const guardUntil=useRef(0);
   const [selected,setSelected]=useState('');
   const [status,setStatus]=useState('Vicki входит в Нифльхейм…');
-  const paused=useRef(false);paused.current=doorOpening||mapOpen||journalOpen||inventoryOpen||!!selected;
+  const paused=useRef(false);paused.current=doorOpening||mapOpen||journalOpen||guideOpen||inventoryOpen||!!selected;
   const movementPaused=useRef(false);
   useEffect(()=>{if(!status)return;const timeout=window.setTimeout(()=>setStatus(''),5000);return()=>window.clearTimeout(timeout);},[status]);
   const quest=memoryQuest(questDone),questRef=useRef(quest);questRef.current=quest;
@@ -236,11 +238,11 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
   const [questDialog,setQuestDialog]=useState<'girl'|'source'|'seal'|'bridge'|'tower'|null>(null);
   const [questMessage,setQuestMessage]=useState('');
   const [sealTarget,setSealTarget]=useState('');
-  const modalActive=amuletDialog||crystalDialog||mapOpen||journalOpen||inventoryOpen||!!questDialog||!!trialOpen||!!battle||!!selected;
+  const modalActive=amuletDialog||crystalDialog||mapOpen||journalOpen||guideOpen||inventoryOpen||!!questDialog||!!trialOpen||!!battle||!!selected;
   paused.current=paused.current||amuletDialog||crystalDialog||!!questDialog||!!trialOpen||!!battle;
   // The compact seal battle HUD must not disable Vicki's main joystick.
   // Keep the rest of the world/combat systems paused, but allow movement during this one battle.
-  movementPaused.current=doorOpening||mapOpen||journalOpen||inventoryOpen||!!selected||amuletDialog||crystalDialog||!!questDialog||!!trialOpen||!!(battle&&!battle.id.startsWith('sealGuardian:'));
+  movementPaused.current=doorOpening||mapOpen||journalOpen||guideOpen||inventoryOpen||!!selected||amuletDialog||crystalDialog||!!questDialog||!!trialOpen||!!(battle&&!battle.id.startsWith('sealGuardian:'));
   const emitMemory=(event:MemoryEvent)=>{onMemoryEvent(event);};
   const info=NIFL_LOCATIONS.find(l=>l.id===selected);
   const nearest=NIFL_LOCATIONS.find(l=>l.id===near);
@@ -1173,7 +1175,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
   return <div className="nifl-world"><style>{CSS}</style><div className="nifl-mount" ref={mount}/>
     <div className="mid3d-ui mid3d-top">
       <button className="mid3d-top-btn" aria-label="Карта Нифльхейма" onClick={()=>{clearInput();setMapOpen(true);}}><img className="mid3d-top-button-art" src={`${BASE}img/models/ui_map.png`} alt="" draggable={false}/></button>
-      <button type="button" className="mid3d-realm-title nifl-realm-title" aria-label="Открыть журнал испытаний Нифльхейма" onPointerDown={e=>e.stopPropagation()} onClick={()=>{clearInput();setJournalOpen(true);}}><img className="mid3d-top-button-art" src={`${BASE}img/models/ui_niflheim.webp`} alt="" draggable={false}/></button>
+      <button type="button" className="mid3d-realm-title nifl-realm-title" aria-label="Открыть летопись Нифльхейма" onPointerDown={e=>e.stopPropagation()} onClick={()=>{clearInput();setGuideOpen(true);}}><img className="mid3d-top-button-art" src={`${BASE}img/models/ui_niflheim.webp`} alt="" draggable={false}/></button>
       <button className="mid3d-top-btn" aria-label="Мельница капель бессмертия" onClick={()=>{clearInput();remember.current({...position.current});onOpenMill();}}><img className="mid3d-top-button-art" src={`${BASE}img/models/ui_mill.png`} alt="" draggable={false}/></button>
     </div>
     {status&&!modalActive&&<div className="nifl-status">{status}</div>}
@@ -1283,6 +1285,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       <button onClick={healInBattle}>🧪 Эликсир</button>
       <button onClick={()=>{onFieldHpChange(battle.heroHp);setBattle(null);setStatus('Vicki отступила — бой можно повторить позже.');}}>Отступить</button>
     </section></div>}
+    {guideOpen&&<NiflheimGuide done={questDone} onClose={()=>setGuideOpen(false)}/>}
     {journalOpen&&<div className="nifl-overlay"><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Журнал испытаний Нифльхейма">
       <button className="nifl-close" onClick={()=>setJournalOpen(false)}>Закрыть</button>
       <h3>📜 Задания Нифльхейма: {liberation.count}/{liberation.total}</h3>
