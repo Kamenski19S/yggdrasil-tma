@@ -94,9 +94,11 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
   const [inventoryOpen,setInventoryOpen]=useState(false);
   const cooldownsRef=useRef(locationCooldowns);cooldownsRef.current=locationCooldowns;
   const attackAction=useRef<(()=>void)|null>(null);
-  const sealGuardianAction=useRef<(()=>void)|null>(null);
+  const sealGuardianImpact=useRef<(()=>void)|null>(null);
+  const sealGuardianDefeat=useRef<(()=>void)|null>(null);
+  const battleActionRef=useRef<((type:'hit'|'shield'|'rune')=>void)|null>(null);
   const sealGuardianPlace=useRef<((id:string)=>void)|null>(null);
-  const sealHeroStrike=useRef<(()=>void)|null>(null);
+  const sealHeroStrike=useRef<(()=>boolean)|null>(null);
   const guardUntil=useRef(0);
   const [selected,setSelected]=useState('');
   const [status,setStatus]=useState('Vicki входит в Нифльхейм…');
@@ -167,7 +169,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     if(type==='rune'&&(!inventory.equippedRune||battle.runeCharge<1))return;
     if(type==='shield'&&!shieldEquipped){setBattle({...battle,log:'Для защиты сначала нужен щит.'});return;}
     const guard=type==='shield';
-    if(isSeal){if(guard)guardUntil.current=performance.now()+1250;else sealHeroStrike.current?.();}
+    if(isSeal){if(guard)guardUntil.current=performance.now()+1250;else if(!sealHeroStrike.current?.())return;}
     const boosts=inventory.potionBoosts;
     let power=type==='hit'?combatStats.attack:type==='rune'?combatStats.runeAttack:0;
     const boost=type==='hit'?'attack':type==='rune'?'rune':null;
@@ -175,7 +177,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     const enemyHp=Math.max(0,battle.hp-(guard?0:Math.max(1,power)));
     if(enemyHp<=0){
       if(isSeal&&sealDef){
-        sealDefeated.current.add(sealId);sealSummoned.current='';battleRef.current=null;setBattle(null);onSealEvent(('guardianDefeated:'+sealId) as NiflheimSealEvent);
+        sealGuardianDefeat.current?.();sealDefeated.current.add(sealId);sealSummoned.current='';battleRef.current=null;setBattle(null);onSealEvent(('guardianDefeated:'+sealId) as NiflheimSealEvent);
         setStatus('⚔️ Страж '+sealDef.order+'/'+NIFLHEIM_SEALS.length+' побеждён! +'+sealVictoryReward(sealDef).toLocaleString('ru-RU')+' капель. Теперь можно снять печать.');
         return;
       }
@@ -201,6 +203,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       runeCharge:type==='rune'?battle.runeCharge-1:battle.runeCharge,
       log:guard?'Щит поглотил большую часть удара.':type==='rune'?'Руна рассекла морозную защиту.':'Удар оружием! Враг отвечает.'});
   };
+  battleActionRef.current=battleAction;
   const healInBattle=()=>{
     if(!battle)return;
     const potion=['lifeElixir','northernMoss','hoddmimirElixir'].find(id=>inventory.potions.includes(id));
@@ -212,30 +215,22 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     }
   };
 
-  useEffect(()=>{
-    if(!battle?.id.startsWith('sealGuardian:'))return;
-    const timer=window.setInterval(()=>{
-      const current=battleRef.current;
-      if(paused.current||document.hidden||!current||!current.id.startsWith('sealGuardian:'))return;
-      const sealId=current.id.slice('sealGuardian:'.length),def=sealById(sealId);if(!def)return;
-      const stats=combatStatsRef.current,inv=sharedInventoryRef.current;
-      const guarding=guardUntil.current>performance.now();
-      let incoming=incomingCombatDamage(sealGuardianDamage(stats.maxHp,def),stats,guarding);
-      if((inv.potionBoosts?.luck||0)>0){if(potionDodges(inv.potionBoosts!.luck,Math.random()))incoming=0;boostUsedRef.current('luck');}
-      if(!guarding&&inv.frostGuard>0&&incoming>0){incoming=Math.ceil(incoming*.5);frostHitRef.current();}
-      sealGuardianAction.current?.();
-      const heroHp=Math.max(0,current.heroHp-incoming);
-      healthCallback.current(heroHp>0?heroHp:Math.max(35,Math.round(inv.maxHp*.4)));
-      if(heroHp<=0){
-        sealSummoned.current='';battleRef.current=null;setBattle(null);
-        setStatus('Vicki отступила. Страж печати остаётся на страже.');
-        return;
-      }
-      const next={...current,heroHp,guard:guarding,log:guarding?'Щит поглотил большую часть удара стража.':'Страж печати наносит удар! Vicki теряет здоровье.'};
-      battleRef.current=next;setBattle(next);
-    },2400);
-    return()=>window.clearInterval(timer);
-  },[battle?.id]);
+  // The visual landing drives damage. The seal battle itself must never pause this clock.
+  sealGuardianImpact.current=()=>{
+    const current=battleRef.current;
+    if(movementPaused.current||document.hidden||!current?.id.startsWith('sealGuardian:'))return;
+    const def=sealById(current.id.slice('sealGuardian:'.length));if(!def)return;
+    const stats=combatStatsRef.current,inv=sharedInventoryRef.current;
+    const guarding=guardUntil.current>performance.now();
+    let incoming=incomingCombatDamage(sealGuardianDamage(stats.maxHp,def),stats,guarding);
+    if((inv.potionBoosts?.luck||0)>0){if(potionDodges(inv.potionBoosts!.luck,Math.random()))incoming=0;boostUsedRef.current('luck');}
+    if(!guarding&&inv.frostGuard>0&&incoming>0){incoming=Math.ceil(incoming*.5);frostHitRef.current();}
+    const heroHp=Math.max(0,current.heroHp-incoming);
+    healthCallback.current(heroHp>0?heroHp:Math.max(35,Math.round(inv.maxHp*.4)));
+    if(heroHp<=0){sealSummoned.current='';battleRef.current=null;setBattle(null);setStatus('Vicki отступила. Страж печати остаётся на страже.');return;}
+    const next={...current,heroHp,guard:guarding,log:guarding?'Щит смягчил сокрушительный удар.':'Страж обрушился на Vicki! −'+incoming+' здоровья.'};
+    battleRef.current=next;setBattle(next);
+  };
 
   const [questNear,setQuestNear]=useState('');
   const [questDialog,setQuestDialog]=useState<'girl'|'source'|'seal'|'bridge'|'tower'|null>(null);
@@ -276,7 +271,8 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     let firstSeal:ReturnType<typeof createFirstSeal>|undefined;
     const sealVisuals:ReturnType<typeof createNiflheimSealVisual>[]=[];
     let sealGuardian:ReturnType<typeof installSealGuardian>|undefined;
-    sealGuardianAction.current=()=>sealGuardian?.strike();
+    sealGuardianDefeat.current=()=>sealGuardian?.defeat();
+    let pendingSealStrike:{id:string;at:number}|null=null;
     let lakeCave:ReturnType<typeof createLakeDescendingCave>|undefined;
     cachedGlbBuffer(`${BASE}img/models/Niflheim_Dry_River_Rocks.glb`).then(buffer=>new GLTFLoader().parseAsync(buffer,`${BASE}img/models/`)).then(asset=>{
       if(!alive){disposeObject(asset.scene);return;}
@@ -955,8 +951,8 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
         const firstPoint={x:sealGuardian.root.position.x,z:sealGuardian.root.position.z,angle:sealGuardian.root.rotation.y};
         sealGuardianPlace.current=(id:string)=>{
           if(!sealGuardian)return;
-          if(id==='shelter'){sealGuardian.moveTo(firstPoint.x,firstPoint.z,firstPoint.angle);return;}
-          const point=sealVisuals.find(v=>v.id===id)?.guardianPoint();if(point)sealGuardian.moveTo(point.x,point.z,point.angle);
+          if(id==='shelter'){sealGuardian.moveTo(firstPoint.x,firstPoint.z,firstPoint.angle,walkingY(firstPoint.x,firstPoint.z));return;}
+          const point=sealVisuals.find(v=>v.id===id)?.guardianPoint();if(point)sealGuardian.moveTo(point.x,point.z,point.angle,walkingY(point.x,point.z));
         };
         refreshShadows();
       }).catch(()=>{/* Await asset upload; preserve the existing scene. */});
@@ -1008,14 +1004,24 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       mixer=new THREE.AnimationMixer(model);const findClip=(...names:string[])=>names.map(name=>THREE.AnimationClip.findByName(gltf.animations,name)).find(Boolean);
       const idleClip=findClip('idle','sword_idle')||gltf.animations[0],walkClip=findClip('walk_loop','walk')||idleClip;
       const attackClip=findClip('sword_attack','attack');if(attackClip)attack=mixer.clipAction(attackClip);
-      sealHeroStrike.current=()=>{if(!attack)return;combatEffects.slash();currentAction?.fadeOut(.08);attack.reset().setLoop(THREE.LoopOnce,1);attack.clampWhenFinished=true;attack.setEffectiveWeight(1);attack.fadeIn(.05).play();currentAction=attack;attackUntil=performance.now()+Math.max(650,attack.getClip().duration*1000);};
+      sealHeroStrike.current=()=>{if(!attack||performance.now()<attackUntil)return false;combatEffects.slash();currentAction?.fadeOut(.08);attack.reset().setLoop(THREE.LoopOnce,1);attack.clampWhenFinished=true;attack.setEffectiveWeight(1);attack.fadeIn(.05).play();currentAction=attack;attackUntil=performance.now()+Math.max(650,attack.getClip().duration*1000);return true;};
       attackAction.current=()=>{
+        if(movementPaused.current||document.hidden)return;
+        if(battleRef.current?.id.startsWith('sealGuardian:')){battleActionRef.current?.('hit');return;}
+        if(pendingSealStrike||performance.now()<attackUntil)return;
         const done=crystalDoneRef.current,pos=position.current;
         const sealId=nearbySeal(pos);
         if(sealId){
           const def=sealById(sealId)!;
           if(!sealAvailable(done,sealId)){const previous=NIFLHEIM_SEALS[def.order-2];setStatus('🔒 Сначала открой «'+(previous?.location||'предыдущую локацию')+'».');return;}
-          if(!sealDefeated.current.has(sealId)&&!sealGuardianDefeated(done,sealId))startSealBattle(sealId);
+          if(!sealDefeated.current.has(sealId)&&!sealGuardianDefeated(done,sealId)){
+            if(!attack||!sealGuardianPlace.current){setStatus('Меч и страж ещё загружаются. Подожди немного.');return;}
+            const seal=sealId==='shelter'?firstSeal:sealVisuals.find(v=>v.id===sealId);
+            if(!seal){setStatus('Кольцо печати ещё загружается. Подожди немного.');return;}
+            if(Math.hypot(seal.root.position.x-pos.x,seal.root.position.z-pos.z)>8.5){setStatus('Подойди ближе к кольцу, чтобы ударить мечом.');return;}
+            clearInput();hero.rotation.y=Math.atan2(seal.root.position.x-pos.x,seal.root.position.z-pos.z);
+            sealHeroStrike.current?.();pendingSealStrike={id:sealId,at:performance.now()+380};
+          }
           else setStatus('Страж '+def.order+'/'+NIFLHEIM_SEALS.length+' побеждён. Оплати '+def.drops.toLocaleString('ru-RU')+' капель, руны и сталь, чтобы снять печать.');
           return;
         }
@@ -1053,8 +1059,16 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       const pos=position.current;
       firstSeal?.update(now*.001,sealOpened(crystalDoneRef.current,'shelter'),dt);
       sealVisuals.forEach(v=>v.update(now*.001,sealOpened(crystalDoneRef.current,v.id),sealAvailable(crystalDoneRef.current,v.id),dt));
+      if(pendingSealStrike&&now>=pendingSealStrike.at){
+        const id=pendingSealStrike.id;pendingSealStrike=null;
+        if(!movementPaused.current&&!document.hidden){
+          const seal=id==='shelter'?firstSeal:sealVisuals.find(v=>v.id===id);if(seal)combatEffects.hit(seal.root,0);
+          startSealBattle(id);
+        }
+      }
       const summonedSeal=sealSummoned.current;
-      sealGuardian?.update(dt,!!summonedSeal&&!sealDefeated.current.has(summonedSeal),!!summonedSeal&&!sealOpened(crystalDoneRef.current,summonedSeal));
+      const landed=sealGuardian?.update(dt,!!summonedSeal&&!sealDefeated.current.has(summonedSeal),!summonedSeal||!sealOpened(crystalDoneRef.current,summonedSeal),movementPaused.current||document.hidden,pos);
+      if(landed){combatEffects.enemyHit(hero);sealGuardianImpact.current?.();}
       if(!wandererLoading&&!wandererPresent&&Math.hypot(pos.x-wandererX,pos.z-wandererZ)<60)loadWanderer();
       if(previousFindCount!==questRef.current.found.length){previousFindCount=questRef.current.found.length;memoryFinds.update(questRef.current.found.map(f=>f.id));refreshShadows();}
       if(sourceBasin.update(dt,now*.001,questRef.current.restored,questRef.current.step))refreshShadows();
@@ -1129,7 +1143,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       wellGlowSprites.forEach((sprite,i)=>{(sprite.material as THREE.SpriteMaterial).opacity=.54+.12*Math.sin(performance.now()*.0017+i*2);});
       renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
-    return()=>{sealVisuals.forEach(v=>v.dispose());riggedEnemies.dispose();glowTrails.dispose();memoryTable?.dispose();sourceBasin.dispose();venetianBridges.dispose();rootsBridge.dispose();combatEffects.dispose();towerEntrance.current?.dispose();towerEntrance.current=null;attackAction.current=null;sealGuardianPlace.current=null;guardUntil.current=0;alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});rivers.dispose();forgeSpace?.dispose();mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());sun.shadow.dispose();renderer.dispose();renderer.domElement.remove();};
+    return()=>{sealVisuals.forEach(v=>v.dispose());riggedEnemies.dispose();glowTrails.dispose();memoryTable?.dispose();sourceBasin.dispose();venetianBridges.dispose();rootsBridge.dispose();combatEffects.dispose();towerEntrance.current?.dispose();towerEntrance.current=null;attackAction.current=null;sealGuardianPlace.current=null;sealGuardianDefeat.current=null;guardUntil.current=0;alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);clear();remember.current({...position.current});rivers.dispose();forgeSpace?.dispose();mixer?.stopAllAction();scene.traverse((o:any)=>{if(o.isMesh||o.isPoints||o.isSprite||o.isLine){o.geometry?.dispose();if(o.isInstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(m){for(const v of Object.values(m))if(v instanceof THREE.Texture)textures.add(v);m.dispose();}}}});textures.forEach(t=>t.dispose());sun.shadow.dispose();renderer.dispose();renderer.domElement.remove();};
   },[weapon,shieldAsset,shieldEquipped]);
   const steerStick=(event:React.PointerEvent<HTMLButtonElement>)=>{
     if(pointerId.current!==event.pointerId)return;
@@ -1164,7 +1178,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     </div>
     {status&&!modalActive&&<div className="nifl-status">{status}</div>}
     <button className="mid3d-ui mid3d-joy nifl-joystick" aria-label="Управление Vicki: тяни в нужном направлении" onPointerDown={startStick} onPointerMove={steerStick} onPointerUp={stopStick} onPointerCancel={stopStick} onLostPointerCapture={stopStick}><img src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/><span className="mid3d-knob" ref={stick}/></button>
-    <button className="mid3d-ui mid3d-block" aria-label="Прикрыться щитом" disabled={!shieldEquipped} onClick={()=>{if(!paused.current){clearInput();guardUntil.current=performance.now()+1250;}}}><img className="mid3d-control-art" src={`${BASE}img/models/ui_shield.png`} alt="" draggable={false}/></button>
+    <button className="mid3d-ui mid3d-block" aria-label="Прикрыться щитом" disabled={!shieldEquipped} onClick={()=>{if(battleRef.current?.id.startsWith('sealGuardian:')){battleActionRef.current?.('shield');return;}if(!paused.current){clearInput();guardUntil.current=performance.now()+1250;}}}><img className="mid3d-control-art" src={`${BASE}img/models/ui_shield.png`} alt="" draggable={false}/></button>
     <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" onClick={()=>attackAction.current?.()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></button>
     <button className="mid3d-ui mid3d-action" style={{top:125,zIndex:inventoryOpen?5:25,filter:lowHealth?'drop-shadow(0 0 9px #ff2945)':undefined}} aria-label={lowHealth?'Опасно: мало здоровья. Открыть сумочку с зельями':'Запас рун и эликсиров'} onClick={()=>{clearInput();setInventoryOpen(true);}}><img className="mid3d-control-art" src={`${BASE}img/models/ui_inventory.png`} alt="" draggable={false}/></button>
     {inventoryOpen&&<div className="nifl-overlay" style={{zIndex:40}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Запас Vicki"><h3>Запас Vicki</h3><p>🧿 {AMULET_NAME}: {amulet.restored?'восстановлен · защита от дракона 30%':amulet.collected.length+'/6 частей'}</p><p>🌊 Сердце Морвейна: {liberation.vampireFreed?'в рюкзаке · активируется перед финальным боем':'не получено'}</p><p>💎 {CRYSTAL_NAME}: {crystal.gateOpen?'установлен во вратах Муспельхейма':crystal.assembled?'целый кристалл · 1 шт.':crystal.collected.length+'/3 осколков'}</p><InventorySection kind="potions" {...inventory} hp={battle?.heroHp??inventory.hp} onUsePotion={drinkFromBag}/><InventorySection kind="runes" {...inventory}/><button onClick={()=>setInventoryOpen(false)}>Вернуться в игру</button></section></div>}
@@ -1333,7 +1347,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       <p className="nifl-map-legend">Лестница: <a href="https://sketchfab.com/3d-models/the-staircase-step-ladder-20e23588d08d4cae986dc1e208d1c969" target="_blank" rel="noopener noreferrer">Mehdi Shahsavana (@ahmagh2e)</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Убраны верхний пролёт и надписи; сохранены нижние ступени и площадка.</p>
       <p className="nifl-map-legend">Ледяной дом: <a href="https://sketchfab.com/3d-models/igloo-224f673917e6486eb08c496baf77ce84" target="_blank" rel="noopener noreferrer">Igloo — Vera4Art</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Уменьшены текстуры, убрана исходная площадка, изменены масштаб и размещение.</p>
       <p className="nifl-map-legend">Печать Мёртвого узла: <a href="https://sketchfab.com/3d-models/magical-gyroscope-a3f110c0d2944a2dbff78709eb8f3984" target="_blank" rel="noopener noreferrer">Magical Gyroscope — reddification</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Удалена нижняя подставка, уменьшены текстуры; сохранены две анимации. Материалы изменены на тёмное серебро с багровым свечением.</p>
-      <p className="nifl-map-legend">Страж первой печати: <a href="https://sketchfab.com/3d-models/scourger-rig-deb9b27965064f85a7f482599f5a69a8" target="_blank" rel="noopener noreferrer">Scourger Rig — DM-913</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Текстуры уменьшены до 512 px, скелет и четыре анимации сохранены. Установлен для предварительного осмотра; бой добавим отдельно.</p>
+      <p className="nifl-map-legend">Стражи печатей: <a href="https://sketchfab.com/3d-models/scourger-rig-deb9b27965064f85a7f482599f5a69a8" target="_blank" rel="noopener noreferrer">Scourger Rig — DM-913</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Текстуры уменьшены до 512 px, скелет и четыре анимации сохранены. Общий страж всех печатей: взлёт, сокрушительный удар и урон при приземлении.</p>
       <p className="nifl-map-legend">Великан: <a href="https://sketchfab.com/3d-models/lowpoly-giant-warrior-rigged-66588f8fd6f64212abe49c7c6cababa9" target="_blank" rel="noopener noreferrer">Lowpoly Giant Warrior (rigged) — luch.pok (lvintoniyak)</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Убраны крупные браслеты, осветлена кожа, уменьшены текстуры; изменены масштаб и размещение, добавлены поза сидя и подъём с камня.</p>
     </section></div>}
     {info&&!questDialog&&!trialOpen&&!battle&&!mapOpen&&!inventoryOpen&&<div className="nifl-overlay" style={{zIndex:11}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label={info.name}><h3>{info.name}</h3><p>{info.text}</p>{trialById(info.id)&&<p>❄️ Задание: {trialById(info.id)?.name} — {liberation.has(info.id)?'выполнено':'ещё не выполнено'}. Чтобы выполнить, подойди к локации.</p>}{info.id==='forge'&&<p>Подойди к освещённому входу, чтобы войти в кузницу.</p>}<button onClick={()=>setSelected('')}>Продолжить путь</button></section></div>}

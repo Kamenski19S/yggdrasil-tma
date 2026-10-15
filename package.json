@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "prebuild": "node scripts/materialize-ice-assets.mjs",
     "test:combat": "node scripts/test-niflheim-combat.mjs",
-    "test:patrols": "node scripts/test-niflheim-patrols.mjs"
+    "test:patrols": "node scripts/test-niflheim-patrols.mjs",
+    "test:seal-combat": "node scripts/test-niflheim-seal-combat.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
