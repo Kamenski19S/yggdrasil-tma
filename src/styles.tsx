@@ -220,6 +220,7 @@ button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 .whisper-combat-energy{display:flex;align-items:center;justify-content:space-between;padding:0 15% 8px;pointer-events:none}
 .whisper-combat-energy .whisper-pips{margin:0;gap:5px}
 .whisper-combat-energy .whisper-pip{display:block;width:10px;height:10px;border-color:rgba(195,245,208,.55);box-shadow:inset 0 1px 2px rgba(0,0,0,.5)}
+.battle-rune-cell{display:flex;flex-direction:column;align-items:center;min-width:0}.battle-rune-cell>.whisper-combat-action{width:100%}.battle-rune-change{border:0;background:rgba(8,15,11,.75);color:#ffe2a4;font:inherit;font-size:10px;border-radius:6px;padding:3px 5px;margin-top:4px;cursor:pointer;touch-action:manipulation}
 .whisper-combat-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;align-items:start}
 .whisper-combat-action{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;padding:0;border:0;background:none;color:#fff6e5;text-align:center;font:inherit;touch-action:manipulation;cursor:pointer}
 .whisper-combat-icon{position:relative;display:grid;place-items:center;width:min(100%,64px);aspect-ratio:1;border:3px ridge #d6a352;border-radius:50%;background:radial-gradient(circle at 48% 40%,#55402a 0%,#241d17 65%,#100e0d 100%);box-shadow:inset 0 0 0 2px #5d3b20,inset 0 0 16px rgba(0,0,0,.75),0 4px 9px rgba(0,0,0,.6),0 0 0 1px #281709;color:#ffd06d;font-size:34px;line-height:1;text-shadow:0 0 11px #ffb341,0 2px 3px #211008}

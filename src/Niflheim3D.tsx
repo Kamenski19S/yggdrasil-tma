@@ -1,3 +1,5 @@
+import {BattleActions} from './BattleActions';
+import {POTION_CATALOG} from './world';
 import {NiflheimGuide} from './NiflheimGuide';
 import {dangerouslyLowHp} from './niflheimCombat';
 import {createFirstSeal} from './niflheimFirstSeal';
@@ -52,7 +54,7 @@ import {NIFL_SCALE,NIFL_SOURCE,NIFL_ENTRANCE_ARCS,NIFL_LOCATIONS,NIFL_RIVERS,NIF
 
 const hash=(x:number,z:number)=>{const n=Math.sin(x*127.1+z*311.7)*43758.5453;return n-Math.floor(n);};
 const CSS=`
-.nifl-seal-battle{position:absolute;inset:0;z-index:22;pointer-events:none;color:#fff;font-family:inherit}.nifl-seal-health{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:12px;justify-content:space-between}.nifl-seal-fighter{background:#152532df;border:1px solid #b79a62;border-radius:11px;padding:7px 10px;display:flex;flex-direction:column;gap:3px;min-width:0;width:43%;font-size:12px;text-shadow:0 1px #000}.nifl-seal-fighter b{font-size:13px}.nifl-seal-fighter span{font-size:11px}.nifl-seal-meter{width:100%;height:7px;background:#314652;border-radius:6px;overflow:hidden}.nifl-seal-meter i{display:block;height:100%;border-radius:6px}.nifl-seal-controls{position:absolute;bottom:10px;left:6px;right:6px;text-align:center}.nifl-seal-energy{display:flex;align-items:center;justify-content:center;gap:5px;margin:0 auto 7px;max-width:100%;height:29px;background:#122330bb;border-radius:9px;padding:2px 4px}.nifl-seal-energy span{width:12px;height:12px;border-radius:50%;border:1px solid #b7d9d1;flex:none}.nifl-seal-energy small{font-size:10px;line-height:1.15;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:68%;color:#fff}.nifl-seal-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}.nifl-seal-actions button{pointer-events:auto;display:flex;align-items:center;flex-direction:column;gap:2px;background:#172839bf;border:1px solid #bda16b;border-radius:10px;padding:5px 2px;color:#fff;font-family:inherit;min-width:0;min-height:70px;text-shadow:0 1px #000}.nifl-seal-actions button:disabled{opacity:.45}.nifl-seal-actions img{width:42px;height:42px;object-fit:contain}.nifl-seal-actions b{font-size:10px;line-height:1.1}.nifl-seal-rune{font-size:36px;color:#d9b976;line-height:42px}.nifl-seal-retreat{pointer-events:auto;border:0;color:#e6d5af;background:#152535cc;padding:3px 13px;border-radius:8px;font-size:10px;margin-top:4px}
+.nifl-seal-battle{position:absolute;inset:0;z-index:22;pointer-events:none;color:#fff;font-family:inherit}.nifl-seal-health{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:12px;justify-content:space-between}.nifl-seal-fighter{background:#152532df;border:1px solid #b79a62;border-radius:11px;padding:7px 10px;display:flex;flex-direction:column;gap:3px;min-width:0;width:43%;font-size:12px;text-shadow:0 1px #000}.nifl-seal-fighter b{font-size:13px}.nifl-seal-fighter span{font-size:11px}.nifl-seal-meter{width:100%;height:7px;background:#314652;border-radius:6px;overflow:hidden}.nifl-seal-meter i{display:block;height:100%;border-radius:6px}.nifl-seal-controls{pointer-events:auto;position:absolute;bottom:10px;left:6px;right:6px;text-align:center}.nifl-seal-energy{display:flex;align-items:center;justify-content:center;gap:5px;margin:0 auto 7px;max-width:100%;height:29px;background:#122330bb;border-radius:9px;padding:2px 4px}.nifl-seal-energy span{width:12px;height:12px;border-radius:50%;border:1px solid #b7d9d1;flex:none}.nifl-seal-energy small{font-size:10px;line-height:1.15;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:68%;color:#fff}.nifl-seal-retreat{pointer-events:auto;border:0;color:#e6d5af;background:#152535cc;padding:3px 13px;border-radius:8px;font-size:10px;margin-top:4px}
 
 .nifl-quest-near,.nifl-quest-panel{background:#14212dee!important;color:#f0e1ba!important;border:1px solid #bda16b!important}.nifl-quest-panel{max-width:430px!important}.nifl-quest-panel button,.nifl-quest-near button{background:#172b3d!important;color:#f0e1ba!important;border:1px solid #bda16b!important}.nifl-rune-choices{display:flex;gap:8px}.nifl-rune-choices button{flex:1;min-width:0;font-size:11px!important}.nifl-rune-choices span{display:block;font-size:30px}.nifl-quest-progress{position:absolute;bottom:63px;top:auto;left:10px;transform:none;font-size:10px;padding:4px 7px;color:#f0e1ba;background:#14212ddb;border:1px solid #bda16b;border-radius:8px;pointer-events:none;white-space:nowrap}
 
@@ -94,6 +96,8 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
   const [journalOpen,setJournalOpen]=useState(false);
   const [guideOpen,setGuideOpen]=useState(false);
   const [inventoryOpen,setInventoryOpen]=useState(false);
+  const [battleInventoryTab,setBattleInventoryTab]=useState<'runes'|'potions'|null>(null);
+  const [lastBattlePotion,setLastBattlePotion]=useState('');
   const cooldownsRef=useRef(locationCooldowns);cooldownsRef.current=locationCooldowns;
   const attackAction=useRef<(()=>void)|null>(null);
   const sealGuardianImpact=useRef<(()=>void)|null>(null);
@@ -104,7 +108,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
   const guardUntil=useRef(0);
   const [selected,setSelected]=useState('');
   const [status,setStatus]=useState('Vicki входит в Нифльхейм…');
-  const paused=useRef(false);paused.current=doorOpening||mapOpen||journalOpen||guideOpen||inventoryOpen||!!selected;
+  const paused=useRef(false);paused.current=doorOpening||mapOpen||journalOpen||guideOpen||inventoryOpen||!!battleInventoryTab||!!selected;
   const movementPaused=useRef(false);
   useEffect(()=>{if(!status)return;const timeout=window.setTimeout(()=>setStatus(''),5000);return()=>window.clearTimeout(timeout);},[status]);
   const quest=memoryQuest(questDone),questRef=useRef(quest);questRef.current=quest;
@@ -163,7 +167,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     clearInput();
   };
   const battleAction=(type:'hit'|'shield'|'rune')=>{
-    if(!battle||inventoryOpen)return;
+    if(!battle||inventoryOpen||battleInventoryTab)return;
     const isSeal=battle.id.startsWith('sealGuardian:');
     const sealId=isSeal?battle.id.slice('sealGuardian:'.length):'';
     const sealDef=isSeal?sealById(sealId):undefined;
@@ -206,16 +210,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       log:guard?'Щит поглотил большую часть удара.':type==='rune'?'Руна рассекла морозную защиту.':'Удар оружием! Враг отвечает.'});
   };
   battleActionRef.current=battleAction;
-  const healInBattle=()=>{
-    if(!battle)return;
-    const potion=['lifeElixir','northernMoss','hoddmimirElixir'].find(id=>inventory.potions.includes(id));
-    if(!potion){setBattle({...battle,log:'Лечебных эликсиров больше нет.'});return;}
-    if(battle.heroHp>=inventory.maxHp){setBattle({...battle,log:'Здоровье уже полное.'});return;}
-    if(useBattlePotion(potion,battle.heroHp)){
-      const heroHp=potion==='northernMoss'?Math.min(inventory.maxHp,battle.heroHp+30):inventory.maxHp;
-      const next={...battle,heroHp,log:'Эликсир восстановил здоровье.'};battleRef.current=next;setBattle(next);
-    }
-  };
+
 
   // The visual landing drives damage. The seal battle itself must never pause this clock.
   sealGuardianImpact.current=()=>{
@@ -238,11 +233,11 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
   const [questDialog,setQuestDialog]=useState<'girl'|'source'|'seal'|'bridge'|'tower'|null>(null);
   const [questMessage,setQuestMessage]=useState('');
   const [sealTarget,setSealTarget]=useState('');
-  const modalActive=amuletDialog||crystalDialog||mapOpen||journalOpen||guideOpen||inventoryOpen||!!questDialog||!!trialOpen||!!battle||!!selected;
+  const modalActive=amuletDialog||crystalDialog||mapOpen||journalOpen||guideOpen||inventoryOpen||!!battleInventoryTab||!!questDialog||!!trialOpen||!!battle||!!selected;
   paused.current=paused.current||amuletDialog||crystalDialog||!!questDialog||!!trialOpen||!!battle;
   // The compact seal battle HUD must not disable Vicki's main joystick.
   // Keep the rest of the world/combat systems paused, but allow movement during this one battle.
-  movementPaused.current=doorOpening||mapOpen||journalOpen||guideOpen||inventoryOpen||!!selected||amuletDialog||crystalDialog||!!questDialog||!!trialOpen||!!(battle&&!battle.id.startsWith('sealGuardian:'));
+  movementPaused.current=doorOpening||mapOpen||journalOpen||guideOpen||inventoryOpen||!!battleInventoryTab||!!selected||amuletDialog||crystalDialog||!!questDialog||!!trialOpen||!!(battle&&!battle.id.startsWith('sealGuardian:'));
   const emitMemory=(event:MemoryEvent)=>{onMemoryEvent(event);};
   const info=NIFL_LOCATIONS.find(l=>l.id===selected);
   const nearest=NIFL_LOCATIONS.find(l=>l.id===near);
@@ -1170,7 +1165,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     if(!current){inventory.onUsePotion(id);return;}
     if(!useBattlePotion(id,current.heroHp))return;
     const heroHp=id==='lifeElixir'||id==='hoddmimirElixir'?inventory.maxHp:id==='northernMoss'?Math.min(inventory.maxHp,current.heroHp+30):current.heroHp;
-    const next={...current,heroHp};battleRef.current=next;setBattle(next);
+    const next={...current,heroHp,log:(POTION_CATALOG.find(p=>p.id===id)?.name||'Эликсир')+' использован.'};battleRef.current=next;setBattle(next);setLastBattlePotion(id);setBattleInventoryTab(null);
   };
   return <div className="nifl-world"><style>{CSS}</style><div className="nifl-mount" ref={mount}/>
     <div className="mid3d-ui mid3d-top">
@@ -1183,6 +1178,11 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     <button className="mid3d-ui mid3d-block" aria-label="Прикрыться щитом" disabled={!shieldEquipped} onClick={()=>{if(battleRef.current?.id.startsWith('sealGuardian:')){battleActionRef.current?.('shield');return;}if(!paused.current){clearInput();guardUntil.current=performance.now()+1250;}}}><img className="mid3d-control-art" src={`${BASE}img/models/ui_shield.png`} alt="" draggable={false}/></button>
     <button className="mid3d-ui mid3d-strike" aria-label="Удар оружием" onClick={()=>attackAction.current?.()}><img className="mid3d-control-art" src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></button>
     <button className="mid3d-ui mid3d-action" style={{top:125,zIndex:inventoryOpen?5:25,filter:lowHealth?'drop-shadow(0 0 9px #ff2945)':undefined}} aria-label={lowHealth?'Опасно: мало здоровья. Открыть сумочку с зельями':'Запас рун и эликсиров'} onClick={()=>{clearInput();setInventoryOpen(true);}}><img className="mid3d-control-art" src={`${BASE}img/models/ui_inventory.png`} alt="" draggable={false}/></button>
+    {battleInventoryTab&&battle&&<div className="nifl-overlay" style={{zIndex:45}} onPointerDown={e=>e.stopPropagation()}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label={battleInventoryTab==='runes'?'Выбор боевой руны':'Выбор боевого эликсира'}>
+      <h3>{battleInventoryTab==='runes'?'Выбор боевой руны':'Боевой пояс'}</h3><p>Пока выбираешь, бой приостановлен.{battleInventoryTab==='runes'?' Смена руны не тратит заряд. Для удара нажми её кнопку в бою.':''}</p>
+      <InventorySection kind={battleInventoryTab} {...inventory} hp={battle.heroHp} onUsePotion={drinkFromBag} onEquipRune={id=>{inventory.onEquipRune(id);setBattleInventoryTab(null);}}/>
+      <button onClick={()=>setBattleInventoryTab(null)}>Вернуться к бою</button>
+    </section></div>}
     {inventoryOpen&&<div className="nifl-overlay" style={{zIndex:40}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Запас Vicki"><h3>Запас Vicki</h3><p>🧿 {AMULET_NAME}: {amulet.restored?'восстановлен · защита от дракона 30%':amulet.collected.length+'/6 частей'}</p><p>🌊 Сердце Морвейна: {liberation.vampireFreed?'в рюкзаке · активируется перед финальным боем':'не получено'}</p><p>💎 {CRYSTAL_NAME}: {crystal.gateOpen?'установлен во вратах Муспельхейма':crystal.assembled?'целый кристалл · 1 шт.':crystal.collected.length+'/3 осколков'}</p><InventorySection kind="potions" {...inventory} hp={battle?.heroHp??inventory.hp} onUsePotion={drinkFromBag}/><InventorySection kind="runes" {...inventory}/><button onClick={()=>setInventoryOpen(false)}>Вернуться в игру</button></section></div>}
     {currentSeal&&!modalActive&&<div className="nifl-seal-prompt" role="group" aria-label="Условия снятия печати">
       <b>{currentSeal.order}/{NIFLHEIM_SEALS.length} · {currentSeal.name}</b>
@@ -1264,14 +1264,11 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
         <div className="nifl-seal-fighter"><b>Валькирия</b><span>♥ {battle.heroHp}/{inventory.maxHp}</span><div className="nifl-seal-meter"><i style={{width:Math.max(0,100*battle.heroHp/inventory.maxHp)+'%',background:'#63d58f'}}/></div></div>
         <div className="nifl-seal-fighter"><b>Страж печати · {sealById(battle.id.slice('sealGuardian:'.length))?.order}/{NIFLHEIM_SEALS.length}</b><span>♥ {battle.hp}/{battle.maxHp}</span><div className="nifl-seal-meter"><i style={{width:Math.max(0,100*battle.hp/battle.maxHp)+'%',background:'#d7717e'}}/></div></div>
       </div>
-      <div className="nifl-seal-controls">
+      <div className="nifl-seal-controls" onPointerDown={e=>e.stopPropagation()}>
         <div className="nifl-seal-energy">{Array.from({length:5},(_,i)=><span key={i} style={{background:i<battle.energy?'#35cf94':'#354b56'}}/>)}<small>{battle.log}</small></div>
-        <div className="nifl-seal-actions">
-          <button disabled={battle.energy<1} onClick={()=>battleAction('hit')}><img src={`${BASE}img/models/ui_attack.png`} alt=""/><b>Удар оружием</b></button>
-          <button disabled={!shieldEquipped} onClick={()=>battleAction('shield')}><img src={`${BASE}img/models/ui_shield.png`} alt=""/><b>Поднять щит</b></button>
-          <button disabled={!inventory.equippedRune||battle.runeCharge<1} onClick={()=>battleAction('rune')}><span className="nifl-seal-rune">ᛉ</span><b>Руна</b></button>
-          <button onClick={healInBattle}><img src={`${BASE}img/models/ui_inventory.png`} alt=""/><b>Эликсир</b></button>
-        </div>
+        <BattleActions equippedRune={inventory.equippedRune} potions={inventory.potions} lastPotion={lastBattlePotion} hitDisabled={battle.energy<1||!!battleInventoryTab||inventoryOpen} shieldDisabled={!shieldEquipped||!!battleInventoryTab||inventoryOpen} runeDisabled={!inventory.equippedRune||battle.runeCharge<1||!!battleInventoryTab||inventoryOpen} potionDisabled={!!battleInventoryTab||inventoryOpen}
+          attackHint={inventory.potionBoosts?.attack?`+30% · ещё ${inventory.potionBoosts.attack}`:'сила оружия'} runeHint={battle.runeCharge<1?'заряды исчерпаны':inventory.potionBoosts?.rune?`+30% · ещё ${inventory.potionBoosts.rune}`:`рунический удар · ${battle.runeCharge}/2`}
+          onHit={()=>battleAction('hit')} onShield={()=>battleAction('shield')} onRune={()=>battleAction('rune')} onPotion={()=>{clearInput();setBattleInventoryTab('potions');}} onChooseRune={()=>{clearInput();setBattleInventoryTab('runes');}}/>
         <button className="nifl-seal-retreat" onClick={()=>{onFieldHpChange(battle.heroHp);sealSummoned.current='';battleRef.current=null;setBattle(null);setStatus('Vicki отступила — бой можно повторить позже.');}}>Отступить</button>
       </div>
     </div>}
@@ -1282,7 +1279,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       <button disabled={battle.energy<1} onClick={()=>battleAction('hit')}>⚔️ Ударить</button>
       <button disabled={!shieldEquipped} onClick={()=>battleAction('shield')}>🛡️ Щит</button>
       <button disabled={!inventory.equippedRune||battle.runeCharge<1} onClick={()=>battleAction('rune')}>ᛉ Руна</button>
-      <button onClick={healInBattle}>🧪 Эликсир</button>
+      <button onClick={()=>{clearInput();setBattleInventoryTab('potions');}}>🧪 Выбрать эликсир</button><button onClick={()=>{clearInput();setBattleInventoryTab('runes');}}>Сменить руну</button>
       <button onClick={()=>{onFieldHpChange(battle.heroHp);setBattle(null);setStatus('Vicki отступила — бой можно повторить позже.');}}>Отступить</button>
     </section></div>}
     {guideOpen&&<NiflheimGuide done={questDone} onClose={()=>setGuideOpen(false)}/>}

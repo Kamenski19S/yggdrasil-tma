@@ -1,3 +1,4 @@
+import {BattleActions} from './BattleActions';
 import {createCombatEffects} from './combatEffects';
 import {MidgardGuide,MIDGARD_GUIDE_CSS} from './MidgardGuide';
 import {REPEAT_ASH_CHANCE} from './woodEconomy';
@@ -19,16 +20,6 @@ import { potionBoostKind, boostedPotionDamage, potionDodges, type PotionBoosts, 
 import { MidgardMap } from './MidgardMap';
 import { InventorySection, SparkDrop } from './inventory';
 
-const RUNE_BUTTON_ART:Record<string,string>={
-  fehuWealth:"rune_fehu.png",uruzStrength:"rune_uruz.png",thurisazStrike:"rune_thurisaz.png",ansuzWisdom:"rune_ansuz.png",raidoPath:"rune_raidho.png",kenazShard:"rune_kenaz.png",geboGift:"rune_gebo.png",wunjoLuck:"rune_wunjo.png",
-  hagalazBreak:"rune_hagalaz.png",nauthizEndurance:"rune_nauthiz.png",isaGuard:"rune_isa.png",jeraHarvest:"rune_jera.png",eihwazResilience:"rune_eihwaz.png",perthroFate:"rune_perthro.png",algizGuard:"rune_algiz.png",sowiloLight:"rune_sowilo.png",
-  tiwazValor:"rune_tiwaz.png",berkanoHeal:"rune_berkana.png",ehwazMotion:"rune_ehwaz.png",mannazMind:"rune_mannaz.png",laguzFlow:"rune_laguz.png",ingwazReserve:"rune_ingwaz.png",dagazDawn:"rune_dagaz.png",othalaLegacy:"rune_othala.png"
-};
-const POTION_BUTTON_ART:Record<string,string>={
-  lifeElixir:"elixir_life.png",northernMoss:"elixir_heal.png",frostDraught:"elixir_frost.png",hoddmimirElixir:"elixir_defense.png",manaElixir:"elixir_mana.png",strengthElixir:"elixir_damage.png",luckElixir:"elixir_luck.png"
-};
-const runeButtonSrc=(id:string)=>`${BASE}img/models/${RUNE_BUTTON_ART[id]||"rune_kenaz.png"}`;
-const potionButtonSrc=(id:string)=>`${BASE}img/models/${POTION_BUTTON_ART[id]||"elixir_life.png"}?v=complete-frame-2`;
 
 
 
@@ -51,6 +42,7 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
   const [banditHeroHp,setBanditHeroHp]=useState(fieldHp===null?whisperStats.maxHp:Math.min(whisperStats.maxHp,fieldHp));
   const [inventoryOpen,setInventoryOpen]=useState(false);
   const [battlePotionOpen,setBattlePotionOpen]=useState(false);
+  const [battleRuneOpen,setBattleRuneOpen]=useState(false);
   const [lastBattlePotion,setLastBattlePotion]=useState("");
   const inventoryPauseRef=useRef(false);
   const [banditOpponent,setBanditOpponent]=useState<{id:string;name:string;hp:number;maxHp:number}|null>(null);
@@ -5495,18 +5487,21 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       <div className="whisper-question">{activeGuardian.question.q}</div>
       {activeGuardian.question.a.map((answer,i)=><button key={answer} className={"whisper-answer"+(whisperAnswer!==null?(i===activeGuardian.question.c?" good":i===whisperAnswer?" bad":" off"):"")} onClick={()=>answerWhisperInWorld(i)}>{answer}</button>)}
     </div>}
-    {whisperPhase==="fight"&&!battlePotionOpen&&<div className="mid3d-ui whisper-combat-hud" onPointerDown={e=>e.stopPropagation()}>
+    {whisperPhase==="fight"&&!battlePotionOpen&&!battleRuneOpen&&<div className="mid3d-ui whisper-combat-hud" onPointerDown={e=>e.stopPropagation()}>
       <div className="whisper-combat-log" role="status" aria-live="polite">{whisperLog}</div>
       <div className="whisper-combat-energy">
         <span className="whisper-pips" aria-label={`Сила героя: ${whisperStats.power} из 5`} title={`Сила героя ${whisperStats.power}/5`}>{whisperPips(whisperStats.power)}</span>
         <span className="whisper-pips" aria-label={`Сила ${activeGuardian.name}: ${activeGuardian.power} из 5`} title={`Сила ${activeGuardian.name} ${activeGuardian.power}/5`}>{whisperPips(activeGuardian.power)}</span>
       </div>
-      <div className="whisper-combat-actions">
-        <button className="whisper-combat-action" disabled={whisperBusy} onClick={()=>whisperFightAction("hit")}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={`${BASE}img/models/ui_attack.png`} alt="" draggable={false}/></span><b>Удар оружием</b><small>{potionBoosts.attack?`+30% · ещё ${potionBoosts.attack}`:"сила оружия"}</small></button>
-        <button className="whisper-combat-action shield" disabled={whisperBusy} onClick={()=>whisperFightAction("shield")}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={`${BASE}img/models/ui_shield.png`} alt="" draggable={false}/></span><b>Поднять щит</b><small>защита</small></button>
-        <button className="whisper-combat-action rune" disabled={whisperBusy} onClick={()=>whisperFightAction("rune")}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={runeButtonSrc(equippedRune)} alt="" draggable={false}/></span><b>Руна {RUNE_CATALOG.find(r=>r.id===equippedRune)?.name||"Кеназ"}</b><small>{potionBoosts.rune?`+30% · ещё ${potionBoosts.rune}`:"рунический удар"}</small></button>
-        <button className="whisper-combat-action rest" disabled={whisperBusy||potions.length===0} onClick={()=>setBattlePotionOpen(true)}><span className="whisper-combat-icon custom-art" aria-hidden="true"><img src={potionButtonSrc(lastBattlePotion||potions.find(id=>POTION_BUTTON_ART[id])||"lifeElixir")} alt="" draggable={false}/></span><b>Эликсир</b><small>{potions.length?potions.length+" в запасе":"нет"}</small></button>
-      </div>
+      <BattleActions equippedRune={equippedRune} potions={potions} lastPotion={lastBattlePotion} hitDisabled={whisperBusy} shieldDisabled={whisperBusy} runeDisabled={whisperBusy} potionDisabled={whisperBusy}
+        attackHint={potionBoosts.attack?`+30% · ещё ${potionBoosts.attack}`:'сила оружия'} runeHint={potionBoosts.rune?`+30% · ещё ${potionBoosts.rune}`:'рунический удар'}
+        onHit={()=>whisperFightAction('hit')} onShield={()=>whisperFightAction('shield')} onRune={()=>whisperFightAction('rune')} onPotion={()=>setBattlePotionOpen(true)} onChooseRune={()=>{if(!whisperBusy)setBattleRuneOpen(true);}}/>
+
+    </div>}
+    {battleRuneOpen&&whisperPhase==="fight"&&<div className="mid3d-ui whisper-cloud battle-potion-panel" role="dialog" aria-modal="true" aria-label="Выбор боевой руны" onPointerDown={e=>e.stopPropagation()}>
+      <h3>Выбор боевой руны</h3><p>Выбор не тратит ход. Удар выбранной руной выполняется кнопкой в бою.</p>
+      <InventorySection kind="runes" potions={potions} runes={runes} equippedRune={equippedRune} lootCounts={runeCounts} runeLevels={runeLevels} hp={whisperHeroHp} maxHp={whisperStats.maxHp} frostGuard={frostGuard} potionBoosts={potionBoosts} onUsePotion={()=>{}} onEquipRune={id=>{onEquipRune(id);setBattleRuneOpen(false);}}/>
+      <button className="whisper-close" onClick={()=>setBattleRuneOpen(false)}>Вернуться к бою</button>
     </div>}
     {battlePotionOpen&&whisperPhase==="fight"&&<div className="mid3d-ui whisper-cloud battle-potion-panel" onPointerDown={e=>e.stopPropagation()}>
       <h3>🧪 Боевой пояс</h3><p>Выбор не тратит ход. После применения страж атакует.</p>
