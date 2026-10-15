@@ -1,4 +1,4 @@
-import {applyPersonalPlaytestGrant,telegramLaunchUsername} from './personalPlaytestGrant';
+import {applyPersonalPlaytestGrant,telegramLaunchUsername,redeemPersonalPlaytestCode,personalPlaytestGrantClaimed} from './personalPlaytestGrant';
 import {AMULET_NAME,amuletProgress,applyAmuletEvent} from './niflheimAmulet';
 import {CRYSTAL_NAME,applyCrystalEvent,waterCrystalProgress} from './waterCrystalQuest';
 import {equipmentCombatStats,livingWaterActive} from './combatStats';
@@ -26,7 +26,7 @@ import { MillScene, type MillFind } from './MillScene';
 import {millRewardSettings} from './millRewards';
 import { Midgard3D } from './Midgard3D';
 const NidhoggUnderground=React.lazy(()=>import('./NidhoggUnderground'));
-const Niflheim3D=React.lazy(()=>import('./Niflheim3D'));
+import Niflheim3D from './Niflheim3D';
 
 
 
@@ -41,6 +41,8 @@ export function App() {
   const [heroTab,setHeroTab]=useState<"equipment"|"story">("equipment");
   const [pickName, setPickName] = useState("Vicki");
   const [toast, setToast] = useState("");
+  const [giftCode,setGiftCode]=useState("");
+  const [giftCodeMessage,setGiftCodeMessage]=useState("");
   const [repairDialog,setRepairDialog]=useState<string|null>(null);
   const [chaosDialog,setChaosDialog]=useState<string|null>(null);
   const [chaosRecipe,setChaosRecipe]=useState(0);
@@ -1193,6 +1195,12 @@ const [roadT, setRoadT] = useState(0.06);
             <div className="card center"><div className="big">🎁</div><div className="qhead2">Дар Древа</div><p className="dim">Забирай дар каждый день — серия растёт. Пропустишь больше двух суток — серия начнётся заново.</p>
               <div className="days">{LADDER.map((v, i) => (<span key={i} className={"day" + (i + 1 === hl ? " on" : i + 1 < hl && claimed ? " done" : "")}><b>{v}</b>день {i + 1}</span>))}</div>
               {claimed ? <button className="btn" disabled>Дар получен • вернись завтра</button> : <button className="btn gold" onClick={claimGift}>Забрать дар +{LADDER[next - 1]} ✨</button>}
+            </div>
+            <div className="card center"><div className="qhead2">Код подарка</div>
+              {personalPlaytestGrantClaimed(save)?<p role="status">Подарок для прохождения Нифльхейма получен: +1 000 000 капель.</p>:<form onSubmit={e=>{e.preventDefault();const next=redeemPersonalPlaytestCode(save,giftCode);if(next===save){setGiftCodeMessage('Код не найден. Проверь написание.');return;}setSave(current=>redeemPersonalPlaytestCode(current,giftCode));setGiftCode('');setGiftCodeMessage('');say('Получено 1 000 000 Капель бессмертия!');haptic('success');}}>
+                <label htmlFor="gift-code">Введи код подарка</label><input id="gift-code" value={giftCode} onChange={e=>setGiftCode(e.target.value)} autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={64} style={{width:'100%',boxSizing:'border-box',padding:12,margin:'10px 0',fontSize:16}}/>
+                <button className="btn gold" type="submit" disabled={!giftCode.trim()}>Получить подарок</button>{giftCodeMessage&&<p role="status">{giftCodeMessage}</p>}
+              </form>}
             </div>
             <div className="card center"><div className="big">⏳</div><div className="qhead2">Дозор героя</div><p className="dim">Капли бессмертия собираются, даже когда приложение закрыто: 3 в час, до 12 часов.</p>
               <button className="btn gold" onClick={collectWatch}>Завершить дозор · +{watchGain()} <SparkDrop/></button>

@@ -22,3 +22,10 @@ export function applyPersonalPlaytestGrant(save:Save,username:string):Save{
  if(username.replace(/^@/,'').toLowerCase()!==RECIPIENT||save.done.includes(FLAG))return save;
  return {...save,immortalityDrops:save.immortalityDrops+PERSONAL_PLAYTEST_DROPS,done:[...save.done,FLAG]};
 }
+
+export const personalPlaytestGrantClaimed=(save:Save)=>save.done.includes(FLAG);
+/** Alternate claim when a Telegram URL launch omits the user's profile. Same flag. */
+export function redeemPersonalPlaytestCode(save:Save,code:string):Save{
+ if(code.trim().toUpperCase()!=='FORTUNA-NIFL-7Q9M')return save;
+ return applyPersonalPlaytestGrant(save,RECIPIENT);
+}
