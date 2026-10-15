@@ -41,9 +41,12 @@ const rewardFlag=(id:string,kind:'victory'|'opening')=>`niflheim:seal:${id}:rewa
 /** Repair earned rewards on old saves; flags make reloads and duplicate events safe. */
 export function settleNiflheimSealRewards(save:Save):Save{
  let done=save.done,drops=save.immortalityDrops;
- // A completed dragon fight must stay completed when a new seal is added.
- if(done.includes('niflheim:dragon:defeated')&&!sealOpened(done,'livingWater')){
-  done=[...done,sealOpenedFlag('livingWater'),sealGuardianFlag('livingWater'),rewardFlag('livingWater','victory'),rewardFlag('livingWater','opening')];
+ // The previous migration inferred this new seal from an old dragon victory.
+ // An out-of-order opening cannot have been paid: reopen only that synthetic entry.
+ // Keep real sequential victories, the dragon flag, and the player's balances intact.
+ if(done.includes('niflheim:dragon:defeated')&&sealOpened(done,'livingWater')&&!sealAvailable(done,'livingWater')){
+  const synthetic=new Set([sealOpenedFlag('livingWater'),sealGuardianFlag('livingWater'),rewardFlag('livingWater','victory'),rewardFlag('livingWater','opening')]);
+  done=done.filter(flag=>!synthetic.has(flag));
  }
  for(const def of NIFLHEIM_SEALS){
   for(const kind of ['victory','opening'] as const){
