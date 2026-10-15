@@ -1,7 +1,7 @@
 import {amuletProgress} from './niflheimAmulet';
 import {NIDHOGG_REWARD} from './nidhoggBalance';
 import {liberationProgress} from './niflheimLiberation';
-import {allNiflheimSealsOpened} from './niflheimSeals';
+import {allNiflheimSealsOpened,sealOpened} from './niflheimSeals';
 import type {Save,HeroWeapon} from './core';
 import {RUNE_CATALOG} from './world';
 
@@ -52,7 +52,7 @@ export function applyDragonQuestEvent(save:Save,event:DragonEvent):Save{
   return !p.has('obsidian:'+id)&&NIFL_OBSIDIAN.some(o=>o.id===id)?add('obsidian:'+id):save;
  }
  if(event==='livingWater'){
-  if(!p.liberation.has('threeNornsWell')||!p.forged||p.defeated||save.done.includes('niflheim:livingWater:used'))return save;
+  if(!sealOpened(save.done,'livingWater')||!p.liberation.has('threeNornsWell')||!p.forged||p.defeated||save.done.includes('niflheim:livingWater:used'))return save;
   return {...save,done:[...save.done,'niflheim:livingWater:used'],fieldHp:save.fieldHp===null?null:save.fieldHp*2};
  }
  if(event==='ember'){
@@ -78,7 +78,7 @@ export function applyDragonQuestEvent(save:Save,event:DragonEvent):Save{
   });
  }
  if(event==='defeat'){
-  if(!p.forged||p.defeated||!p.worldFreed||!amuletProgress(save.done).restored)return save;
+  if(!p.allSealsOpen||!p.forged||p.defeated||!p.worldFreed||!amuletProgress(save.done).restored)return save;
   const rune=RUNE_CATALOG[(save.done.length+7)%RUNE_CATALOG.length].id;
   return add('defeated',{
    fieldHp:save.fieldHp===null?null:save.done.includes('niflheim:livingWater:used')?Math.ceil(save.fieldHp/2):save.fieldHp,

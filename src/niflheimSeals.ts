@@ -12,7 +12,7 @@ export type NiflheimSealDef={
 const rune=(id:string,name:string,symbol:string,amount:number):NiflheimSealRune=>({id,name,symbol,amount});
 
 /**
- * Fourteen seals define the main Niflheim progression.
+ * Fifteen seals define the main Niflheim progression.
  * Threshold and the Nine-World Stranger are deliberately not sealed.
  * Coordinates are world-space and can be fine-tuned independently of the balance table.
  */
@@ -30,8 +30,30 @@ export const NIFLHEIM_SEALS:NiflheimSealDef[]=[
  {id:'threeNornsWell',order:11,name:'Печать Нити судьбы',location:'Колодец трёх норн',x:62,z:-64,angle:0,drops:76000,steel:20,hits:35,damagePct:.20,runes:[rune('perthroFate','Перт','ᛈ',4),rune('laguzFlow','Лагуз','ᛚ',4),rune('dagazDawn','Дагаз','ᛞ',4)]},
  {id:'lookout',order:12,name:'Печать Иссохшей реки',location:'Пересохшее русло',x:-29.4,z:-120.4,angle:.3,drops:87000,steel:23,hits:37,damagePct:.21,runes:[rune('isaGuard','Иса','ᛁ',4),rune('nauthizEndurance','Наутиз','ᚾ',5),rune('hagalazBreak','Хагалаз','ᚺ',4)]},
  {id:'hvergelmir',order:13,name:'Печать Скованного истока',location:'Хвергельмир',x:0,z:-78,angle:0,drops:99000,steel:26,hits:39,damagePct:.22,runes:[rune('laguzFlow','Лагуз','ᛚ',5),rune('ansuzWisdom','Ансуз','ᚨ',5),rune('berkanoHeal','Беркана','ᛒ',4)]},
- {id:'nidhogg',order:14,name:'Печать Драконьего порога',location:'Логово Нидхёгга',x:49.3,z:-122.6,angle:-.5,drops:112000,steel:30,hits:42,damagePct:.23,runes:[rune('tiwazValor','Тейваз','ᛏ',5),rune('sowiloLight','Соулу','ᛋ',5),rune('algizGuard','Альгиз','ᛉ',5)]}
+ {id:'nidhogg',order:14,name:'Печать Драконьего порога',location:'Логово Нидхёгга',x:49.3,z:-122.6,angle:-.5,drops:112000,steel:30,hits:42,damagePct:.23,runes:[rune('tiwazValor','Тейваз','ᛏ',5),rune('sowiloLight','Соулу','ᛋ',5),rune('algizGuard','Альгиз','ᛉ',5)]},
+ {id:'livingWater',order:15,name:'Печать Живой воды',location:'Колодец живой воды',x:-22,z:-120,angle:0,drops:126000,steel:34,hits:45,damagePct:.24,runes:[rune('laguzFlow','Лагуз','ᛚ',6),rune('berkanoHeal','Беркана','ᛒ',5),rune('algizGuard','Альгиз','ᛉ',5)]}
 ];
+
+export const sealVictoryReward=(def:NiflheimSealDef)=>Math.floor(def.drops*.10);
+export const sealOpeningReward=(def:NiflheimSealDef)=>Math.floor(def.drops*.15);
+const rewardFlag=(id:string,kind:'victory'|'opening')=>`niflheim:seal:${id}:reward:${kind}`;
+
+/** Repair earned rewards on old saves; flags make reloads and duplicate events safe. */
+export function settleNiflheimSealRewards(save:Save):Save{
+ let done=save.done,drops=save.immortalityDrops;
+ // A completed dragon fight must stay completed when a new seal is added.
+ if(done.includes('niflheim:dragon:defeated')&&!sealOpened(done,'livingWater')){
+  done=[...done,sealOpenedFlag('livingWater'),sealGuardianFlag('livingWater'),rewardFlag('livingWater','victory'),rewardFlag('livingWater','opening')];
+ }
+ for(const def of NIFLHEIM_SEALS){
+  for(const kind of ['victory','opening'] as const){
+   const earned=kind==='victory'?(sealGuardianDefeated(done,def.id)||sealOpened(done,def.id)):sealOpened(done,def.id);
+   const flag=rewardFlag(def.id,kind);
+   if(earned&&!done.includes(flag)){done=[...done,flag];drops+=kind==='victory'?sealVictoryReward(def):sealOpeningReward(def);}
+  }
+ }
+ return done===save.done?save:{...save,done,immortalityDrops:drops};
+}
 
 export const sealById=(id:string)=>NIFLHEIM_SEALS.find(s=>s.id===id);
 export const sealOpenedFlag=(id:string)=>`niflheim:seal:${id}:opened`;
@@ -60,7 +82,7 @@ export function applyNiflheimSealEvent(save:Save,event:NiflheimSealEvent):Save{
  if(!def)return save;
  if(type==='guardianDefeated'){
   if(!sealAvailable(save.done,id)||sealGuardianDefeated(save.done,id))return save;
-  return {...save,done:[...new Set([...save.done,sealGuardianFlag(id)])]};
+  return settleNiflheimSealRewards({...save,done:[...new Set([...save.done,sealGuardianFlag(id)])]});
  }
  if(type!=='open'||!canOpenNiflheimSeal(save,id))return save;
  const lootCounts={...save.lootCounts},forgeLevels={...save.forgeLevels};let runes=save.runes,equippedRune=save.equippedRune;
@@ -73,18 +95,19 @@ export function applyNiflheimSealEvent(save:Save,event:NiflheimSealEvent):Save{
    if(equippedRune===need.id)equippedRune='';
   }
  }
- return {...save,
+ return settleNiflheimSealRewards({...save,
   immortalityDrops:save.immortalityDrops-def.drops,
   runeSteel:save.runeSteel-def.steel,
   runes,equippedRune,lootCounts,forgeLevels,
   done:[...new Set([...save.done,sealGuardianFlag(id),sealOpenedFlag(id)])]
- };
+ });
 }
 
 type Point={x:number;z:number};
 
 /** Fallback wards work before GLB loading; interiors supply exact footprints once ready. */
 export function sealContains(def:NiflheimSealDef,p:Point){
+ if(def.id==='livingWater')return Math.hypot(p.x+22,p.z+132)<8;
  const site=NIFL_LOCATIONS.find(l=>l.id===def.id)!;
  if(def.id==='forge')return Math.abs(p.x-site.x)<6.5&&p.z<site.z+1&&p.z>site.z-16;
  if(def.id==='crossing')return Math.abs(p.x+72)<5&&p.z<26&&p.z>-15;

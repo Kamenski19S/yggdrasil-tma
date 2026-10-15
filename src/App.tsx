@@ -2,7 +2,7 @@ import {AMULET_NAME,amuletProgress,applyAmuletEvent} from './niflheimAmulet';
 import {CRYSTAL_NAME,applyCrystalEvent,waterCrystalProgress} from './waterCrystalQuest';
 import {equipmentCombatStats,livingWaterActive} from './combatStats';
 import {applyMemoryEvent} from './niflheimMemoryQuest';
-import {applyNiflheimSealEvent,type NiflheimSealEvent} from './niflheimSeals';
+import {settleNiflheimSealRewards,applyNiflheimSealEvent,type NiflheimSealEvent} from './niflheimSeals';
 import {applyDragonQuestEvent,dragonProgress,NIFL_CRAFTS,niflCraftUnlocked,type DragonEvent} from './niflheimDragonQuest';
 import {applyLiberationEvent,liberationProgress,type LiberationEvent} from './niflheimLiberation';
 import { VIKA_STORY, HERO_PROFILE_CSS } from './vikaStory';
@@ -34,7 +34,7 @@ import { VILLAGE_RESIDENTS, VILLAGE_WARD_COST, type VillageResident, villageOrde
 export function App() {
   const [screen, setScreen] = useState<Screen>(() => (loadSave().hero ? { t: "tree" } : { t: "choose" }));
   const millScreenActiveRef=useRef(false);
-  const [save, setSave] = useState<Save>(loadSave);
+  const [save, setSave] = useState<Save>(()=>settleNiflheimSealRewards(loadSave()));
   const [selectedArtifact,setSelectedArtifact]=useState("");
   const [pick, setPick] = useState("viking");
   const [heroTab,setHeroTab]=useState<"equipment"|"story">("equipment");
