@@ -18,6 +18,11 @@ try{
  const center=box.getCenter(new THREE.Vector3());assert(center.distanceTo(pivot.position)<.01,'Pivot lies on the axle');
  const waterFraction=(.12-box.min.y)/size.y;assert(waterFraction>.27&&waterFraction<.34,'Lower third of the wheel stays in water');
  for(const angle of [Math.PI/4,Math.PI/2,Math.PI]){pivot.rotation.x=angle;pivot.updateMatrixWorld(true);const spinning=new THREE.Box3().setFromObject(pivot);assert(Math.abs(spinning.min.x-box.min.x)<.001);assert(Math.abs(spinning.max.x-box.max.x)<.001,'No axle wobble');}
- const frame=new THREE.Group(),beam=new THREE.Mesh(new THREE.BoxGeometry(),new THREE.MeshStandardMaterial()),wall=new THREE.Mesh(new THREE.BoxGeometry(),new THREE.MeshStandardMaterial());beam.name='timber_beam';wall.name='house_wall';frame.add(beam,wall);const original=wall.material;steelMillHouseFrame(frame);assert(beam.material.metalness>.7);assert.equal(wall.material,original);assert(steelMillMaterial().metalness>.7);
- console.log('PASS: single 300 KB wheel, preserved credit/license, asset materialization, 12472 triangles, stable X axle, lower-third immersion, steel frame and unchanged masonry.');
+ const frame=new THREE.Group(),beam=new THREE.Mesh(new THREE.BoxGeometry(),new THREE.MeshStandardMaterial()),wall=new THREE.Mesh(new THREE.BoxGeometry(),new THREE.MeshStandardMaterial());beam.name='timber_beam';wall.name='Main_Walls';wall.material.name='Dark_Timber_Wall';frame.add(beam,wall);const original=wall.material;steelMillHouseFrame(frame);assert(beam.material.metalness>.7);assert.equal(wall.material,original);assert(steelMillMaterial().metalness>.7);
+ const {millProductionRate,millRewardSettings,millControlActive,tickMillGiftClock}=await server.ssrLoadModule('/src/millRewards.ts');
+ for(const diff of [0,1,2])for(const seconds of [0,4,5,99])assert.equal(millProductionRate('niflheim',diff,seconds),12);
+ assert.equal(millProductionRate('midgard',0,10),6);assert.equal(millProductionRate('midgard',1,10),2);assert.equal(millProductionRate('midgard',2,10),1);
+ const rewards=millRewardSettings('niflheim');assert.equal(rewards.dropsMin,600);assert.equal(rewards.dropsMin+rewards.dropsRange-1,1200);assert.equal(rewards.potionQuantity,5);assert.equal(rewards.runeQuantity,4);
+ assert.equal(millControlActive(true,20000,null),false);assert.equal(tickMillGiftClock(1000,1000,false,true).ready,false);assert.equal(tickMillGiftClock(1000,1000,true,true).ready,true);
+ console.log('PASS: single 300 KB wheel, preserved credit/license, asset materialization, 12472 triangles, stable X axle, lower-third immersion, steel frame and unchanged Dark_Timber_Wall masonry, fixed 12/s steel rate, realm-specific gifts and regulation requirements.');
 }finally{await server.close();}

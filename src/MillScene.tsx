@@ -6,7 +6,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { BASE, cachedGlbBuffer } from './core';
-import {millControlActive,tickMillGiftClock} from './millRewards';
+import {millControlActive,tickMillGiftClock,millProductionRate,millRewardSettings} from './millRewards';
 
 
 
@@ -14,6 +14,7 @@ export type MillFind='drops'|'potion'|'rune';
 type RiverParcel={kind:MillFind;start:number;end:number};
 export function MillScene({realm='midgard',stored,balance,onProduce,onCollect,onFind,onBack}:{realm?:string;stored:number;balance:number;onProduce:(amount:number)=>void;onCollect:()=>void;onFind:(kind:MillFind)=>string;onBack:()=>void}){
   const steelMill=realm==='niflheim';
+  const rewards=millRewardSettings(realm);
   const mount=useRef<HTMLDivElement>(null);
   const runningRef=useRef(false);
   const wheelRef=useRef<THREE.Group|null>(null);
@@ -68,20 +69,21 @@ export function MillScene({realm='midgard',stored,balance,onProduce,onCollect,on
     const id=window.setInterval(()=>{
       if(!runningRef.current)return;
       const diff=Math.abs(flowRef.current-pressureRef.current);
-      let rate=1;
+      let balancedSeconds=0;
       if(diff===0){
         const next=Math.min(99,comboRef.current+1);
         comboRef.current=next;setCombo(next);
-        rate=4+Math.min(2,Math.floor(next/5));
+        balancedSeconds=next;
       }else{
         comboRef.current=0;setCombo(0);
-        rate=diff===1?2:1;
+
       }
+      const rate=millProductionRate(realm,diff,balancedSeconds);
       setLiveRate(rate);
       onProduce(rate);
     },1000);
     return()=>{runningRef.current=false;window.clearInterval(id);};
-  },[running,onProduce]);
+  },[running,onProduce,realm]);
 
   useEffect(()=>{
     if(!running){warningRef.current=0;parcelRef.current=null;setParcel(null);lastAdjustedAtRef.current=null;setRecentControl(false);return;}
@@ -184,10 +186,13 @@ export function MillScene({realm='midgard',stored,balance,onProduce,onCollect,on
     const mapleBarkTexture=loadMillTexture('MapleTree_Bark_Lite.webp');
     const mapleLeavesTexture=loadGreenMillTexture('MapleTree_Leaves_Lite.webp');
 
-    scene.add(new THREE.HemisphereLight(0xe2efff,0x5b4a36,1.1));
+    scene.add(new THREE.HemisphereLight(0xe2efff,steelMill?0x8b9299:0x5b4a36,steelMill?1.4:1.1));
+    if(steelMill){
+      const fill=new THREE.DirectionalLight(0xe6f0ff,.85);fill.position.set(11,9,14);fill.target.position.set(3.4,2.5,-3.3);scene.add(fill,fill.target);
+    }
     const sun=new THREE.DirectionalLight(0xffefd0,1.5);
     sun.position.set(-8,14,9);sun.castShadow=true;
-    sun.shadow.mapSize.set(1024,1024);scene.add(sun);
+    sun.shadow.mapSize.set(1024,1024);sun.shadow.bias=-.0003;sun.shadow.normalBias=.04;scene.add(sun);
 
     // The mill channel is a real recessed trench rather than water painted over grass.
     // Existing Midgard textures make this scene part of the same world instead of a dark prototype.
@@ -514,12 +519,12 @@ export function MillScene({realm='midgard',stored,balance,onProduce,onCollect,on
     {!!collected&&<div className="mill-collected">+{collected} золотых капель</div>}
 
     {hint&&<div className="mill-river-hint" role="status">{hint}</div>}
-    {parcel&&<button className="mill-icon-btn mill-net-btn" aria-label="Поймать находку водосборником" title="Поймать находку" onClick={catchParcel}>
+    {parcel&&<button className="mill-icon-btn mill-net-btn" aria-label="Поймать находку водосборником" title={`Подарок: ${rewards.dropsMin}–${rewards.dropsMin+rewards.dropsRange-1} капель, ${rewards.potionQuantity} эликсиров или ${rewards.runeQuantity} руны`} onClick={catchParcel}>
       <img className="mill-frame-img" src={`${BASE}img/models/frame_top_side_360w.png`} alt=""/>
       <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M9 16h30L32 38H16Z" fill="#352a15" stroke="#f0c866" strokeWidth="2"/><path d="m15 17 4 20m5-20v20m9-20-4 20M12 24h24M14 31h20" stroke="#c69a44" strokeWidth="1.4"/><path d="M24 4c-5 7-5 11 0 11s5-4 0-11" fill="#f0c866"/></svg>
     </button>}
 
-    <div className="mill-rate-pill"><span>{running?(recentControl?(flow===pressure?"Регулировка · капли и подарки":"Подстрой шлюз для подарков"):"Без регулировки · только капли"):"Напор меняется"}</span><b>{running?("+"+(liveRate||1)+" / сек"):"0 / сек"}</b></div>
+    <div className="mill-rate-pill"><span>{running?(recentControl?(flow===pressure?"Регулировка · капли и подарки":"Подстрой шлюз для подарков"):"Без регулировки · только капли"):"Напор меняется"}</span><b>{running?("+"+(liveRate||millProductionRate(realm,Math.abs(flow-pressure),combo))+" / сек"):"0 / сек"}</b></div>
 
     <div className="mill-sluice">
       <img className="mill-frame-img" src={`${BASE}img/models/mill_pressure_plus_minus.png`} alt=""/>

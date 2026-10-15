@@ -14,3 +14,13 @@ export function tickMillGiftClock(remainingMs:number,elapsedMs:number,active:boo
  const remaining=Math.max(0,remainingMs-(active&&balanced?Math.max(0,Math.min(1000,elapsedMs)):0));
  return {remainingMs:remaining,ready:active&&balanced&&remaining===0};
 }
+
+export function millRewardSettings(realm:string){
+ return realm==='niflheim'
+  ?{dropsMin:600,dropsRange:601,potionQuantity:5,runeQuantity:4}
+  :{dropsMin:MILL_BONUS_DROPS_MIN,dropsRange:MILL_BONUS_DROPS_RANGE,potionQuantity:MILL_POTION_QUANTITY,runeQuantity:MILL_RUNE_QUANTITY};
+}
+export function millProductionRate(realm:string,difference:number,balancedSeconds:number){
+ if(realm==='niflheim')return 12;
+ return difference===0?4+Math.min(2,Math.floor(balancedSeconds/5)):difference===1?2:1;
+}

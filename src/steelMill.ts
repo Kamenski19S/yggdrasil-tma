@@ -13,7 +13,7 @@ export function prepareSteelWheel(model:THREE.Group){
 export function steelMillHouseFrame(root:THREE.Object3D){
  const steel=steelMillMaterial();let changed=false;
  root.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const materials=Array.isArray(o.material)?o.material:[o.material];
-  const adapted=materials.map(m=>{const name=(o.name+' '+m.name).toLowerCase();if(!/frame|beam|post|rail|brace|batten|ridge|timber/.test(name)||/glass|window/.test(name))return m;changed=true;return steel;});
+  const adapted=materials.map(m=>{const name=o.name.toLowerCase();if(!/frame|beam|post|rail|brace|batten|ridge/.test(name)||/glass|glow/.test(name))return m;changed=true;return steel;});
   o.material=Array.isArray(o.material)?adapted:adapted[0];
  });if(!changed)steel.dispose();
 }
