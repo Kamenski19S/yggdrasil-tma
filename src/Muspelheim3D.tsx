@@ -29,6 +29,13 @@ export default function Muspelheim3D(props:Props){
   const loader=new GLTFLoader();
   loader.load(`${BASE}img/models/Muspelheim_Terrain_300m.glb`,g=>{
    if(!alive){dispose(g.scene);return;}
+   // Reuse the embedded ground image; mirrored neighbours share identical edges.
+   const anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+   g.scene.traverse(o=>{if(o instanceof THREE.Mesh){for(const material of Array.isArray(o.material)?o.material:[o.material]){
+    const map=(material as THREE.MeshStandardMaterial).map;if(!map)continue;
+    map.wrapS=map.wrapT=THREE.MirroredRepeatWrapping;map.repeat.set(8,8);
+    map.anisotropy=anisotropy;map.magFilter=THREE.LinearFilter;map.minFilter=THREE.LinearMipmapLinearFilter;map.generateMipmaps=true;map.needsUpdate=true;
+   }}});
    scene.add(g.scene);g.scene.name='Muspelheim editable terrain';sample=createTerrainSampler(g.scene);terrainReady=true;ready();
   },undefined,()=>{if(alive){setStatus('Площадка не загрузилась. Проверь соединение и повтори.');setFailed(true);}});
   loader.load(`${BASE}img/models/Vika-3d-animated-optimized.glb`,g=>{
