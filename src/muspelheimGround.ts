@@ -38,13 +38,17 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
      float roadAmount=texture2D(roadMask,roadUv).r;
      roadAmount*=step(0.,roadUv.x)*step(roadUv.x,1.)*step(0.,roadUv.y)*step(roadUv.y,1.)*(1.-chasmBank);
      vec2 roadTile=1.-abs(mod(roadWorldPosition.xz/18.,2.)-1.);
-     vec4 roadColor=texture2D(map,vec2(.507,.003)+roadTile*vec2(.486,.994));
-     diffuseColor.rgb=mix(diffuseColor.rgb,diffuse*roadColor.rgb,roadAmount);
+     vec4 roadColor=texture2D(map,vec2(.690,.003)+roadTile*vec2(.125,.994));
+     // Use the slab center of the road panel, excluding its lava-covered shoulders.
+     // Muted, slightly lighter stone keeps the route readable in the warm world light.
+     float roadGray=dot(roadColor.rgb,vec3(.2126,.7152,.0722));
+     vec3 roadStone=mix(roadColor.rgb,vec3(roadGray),.78)*1.25+vec3(.075,.082,.09);
+     diffuseColor.rgb=mix(diffuseColor.rgb,diffuse*roadStone,roadAmount);
      float bankGray=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
      diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.075,.079,.09)+bankGray*.13,chasmBank);
      #endif`);
    };
-   ground.customProgramCacheKey=()=> 'muspelheim-ground-roads-v3';
+   ground.customProgramCacheKey=()=> 'muspelheim-ground-wide-stone-roads-v4';
    ground.needsUpdate=true;
   }
  });
