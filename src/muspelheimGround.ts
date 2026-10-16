@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import {createRoadMask,ROAD_BOUNDS} from './muspelheimRoads';
 import {loadCobbleTextures} from './muspelheimCobble';
 
-// Preserve the lava atlas. Sample only the interior of one supplied stone for
-// a continuous granite surface, excluding every mortar gap and bevel.
+// Keep the original stone layout. Its mortar mask exposes the same lava ground
+// beneath the road, including the ground's UVs, shading and surface properties.
 export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:number,assetBase:string){
  const roadMask=createRoadMask(),cobble=loadCobbleTextures(assetBase,maxAnisotropy);
  root.traverse(object=>{
@@ -39,29 +39,28 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
      vec2 roadUv=(roadWorldPosition.xz-vec2(${ROAD_BOUNDS.minX},${ROAD_BOUNDS.minZ}))/vec2(${ROAD_BOUNDS.maxX-ROAD_BOUNDS.minX},${ROAD_BOUNDS.maxZ-ROAD_BOUNDS.minZ});
      float roadAmount=texture2D(roadMask,roadUv).r;
      roadAmount*=step(0.,roadUv.x)*step(roadUv.x,1.)*step(0.,roadUv.y)*step(roadUv.y,1.)*(1.-chasmBank);
-     // This inset lies entirely inside the first stone in all three source maps.
-     vec2 stonePhase=mod(roadWorldPosition.xz/.8,2.);
-     vec2 stoneMirror=1.-abs(stonePhase-1.);
-     vec2 cobbleUv=vec2(.020)+stoneMirror*.025;
+     vec2 cobbleUv=roadWorldPosition.xz/32.;
      vec3 roadSurface=texture2D(cobbleSurface,cobbleUv).rgb;
+     // AO is white on stone and dark inside gaps: apply every road property only to stone.
+     float stoneAmount=roadAmount*smoothstep(.40,.72,roadSurface.r);
      vec3 roadColor=texture2D(cobbleColor,cobbleUv).rgb;
-     diffuseColor.rgb=mix(diffuseColor.rgb,diffuse*roadColor*(.80+.20*roadSurface.r),roadAmount);
+     diffuseColor.rgb=mix(diffuseColor.rgb,diffuse*roadColor*(.80+.20*roadSurface.r),stoneAmount);
      float bankGray=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
      diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.075,.079,.09)+bankGray*.13,chasmBank);
      #endif`);
     shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
      #ifdef USE_MAP
      vec3 cobbleBump=texture2D(cobbleNormal,cobbleUv).xyz*2.-1.;
-     cobbleBump.xy*=.25*(1.-2.*step(vec2(1.),stonePhase));
+     cobbleBump.xy*=.65;
      vec3 cobbleViewNormal=normalize(mat3(viewMatrix)*vec3(cobbleBump.x,cobbleBump.z,cobbleBump.y));
-     normal=normalize(mix(normal,cobbleViewNormal,roadAmount));
+     normal=normalize(mix(normal,cobbleViewNormal,stoneAmount));
      #endif`);
     shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
      #ifdef USE_MAP
-     roughnessFactor=mix(roughnessFactor,max(.75,roadSurface.g),roadAmount);
+     roughnessFactor=mix(roughnessFactor,max(.75,roadSurface.g),stoneAmount);
      #endif`);
    };
-   ground.customProgramCacheKey=()=> 'muspelheim-continuous-stone-no-joints-v8';
+   ground.customProgramCacheKey=()=> 'muspelheim-cobble-open-lava-gaps-v9';
    ground.needsUpdate=true;
   }
  });
