@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import {createRoadMask,ROAD_BOUNDS} from './muspelheimRoads';
 import {loadCobbleTextures} from './muspelheimCobble';
 
-// Preserve the left atlas panel for lava and tile the supplied cobblestone material
-// in world coordinates at a fixed scale across curves and junctions.
+// Preserve the lava atlas. Sample only the interior of one supplied stone for
+// a continuous granite surface, excluding every mortar gap and bevel.
 export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:number,assetBase:string){
  const roadMask=createRoadMask(),cobble=loadCobbleTextures(assetBase,maxAnisotropy);
  root.traverse(object=>{
@@ -39,7 +39,10 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
      vec2 roadUv=(roadWorldPosition.xz-vec2(${ROAD_BOUNDS.minX},${ROAD_BOUNDS.minZ}))/vec2(${ROAD_BOUNDS.maxX-ROAD_BOUNDS.minX},${ROAD_BOUNDS.maxZ-ROAD_BOUNDS.minZ});
      float roadAmount=texture2D(roadMask,roadUv).r;
      roadAmount*=step(0.,roadUv.x)*step(roadUv.x,1.)*step(0.,roadUv.y)*step(roadUv.y,1.)*(1.-chasmBank);
-     vec2 cobbleUv=roadWorldPosition.xz/32.;
+     // This inset lies entirely inside the first stone in all three source maps.
+     vec2 stonePhase=mod(roadWorldPosition.xz/.8,2.);
+     vec2 stoneMirror=1.-abs(stonePhase-1.);
+     vec2 cobbleUv=vec2(.020)+stoneMirror*.025;
      vec3 roadSurface=texture2D(cobbleSurface,cobbleUv).rgb;
      vec3 roadColor=texture2D(cobbleColor,cobbleUv).rgb;
      diffuseColor.rgb=mix(diffuseColor.rgb,diffuse*roadColor*(.80+.20*roadSurface.r),roadAmount);
@@ -49,7 +52,7 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
     shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
      #ifdef USE_MAP
      vec3 cobbleBump=texture2D(cobbleNormal,cobbleUv).xyz*2.-1.;
-     cobbleBump.xy*=.65;
+     cobbleBump.xy*=.25*(1.-2.*step(vec2(1.),stonePhase));
      vec3 cobbleViewNormal=normalize(mat3(viewMatrix)*vec3(cobbleBump.x,cobbleBump.z,cobbleBump.y));
      normal=normalize(mix(normal,cobbleViewNormal,roadAmount));
      #endif`);
@@ -58,7 +61,7 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
      roughnessFactor=mix(roughnessFactor,max(.75,roadSurface.g),roadAmount);
      #endif`);
    };
-   ground.customProgramCacheKey=()=> 'muspelheim-cobble-dark-joints-v7';
+   ground.customProgramCacheKey=()=> 'muspelheim-continuous-stone-no-joints-v8';
    ground.needsUpdate=true;
   }
  });
