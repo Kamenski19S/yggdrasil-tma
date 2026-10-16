@@ -43,7 +43,7 @@ export function createMuspelheimGateway(arch:THREE.Object3D,door:THREE.Object3D,
  return {group,update,
   mountTorches(source:THREE.Object3D){
    if(torches)return;group.updateWorldMatrix(true,true);const ray=new THREE.Raycaster();
-   torches=createGatewayTorches(source,(x,y)=>{const origin=group.localToWorld(new THREE.Vector3(x,y,100));ray.set(origin,new THREE.Vector3(0,0,-1));const hit=ray.intersectObject(arch,true)[0];if(!hit)throw Error('Torch column surface is missing');return group.worldToLocal(hit.point.clone()).z;});
+   torches=createGatewayTorches(source,(x,y,face)=>{const origin=group.localToWorld(new THREE.Vector3(x,y,face*100));ray.set(origin,new THREE.Vector3(0,0,-face));const hit=ray.intersectObject(arch,true)[0];if(!hit)throw Error('Torch column surface is missing');return group.worldToLocal(hit.point.clone()).z;});
    group.add(torches.group);
   },
   updateProximity(dt:number,unlocked:boolean,x:number,z:number){
