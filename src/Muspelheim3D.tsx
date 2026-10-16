@@ -35,7 +35,7 @@ export default function Muspelheim3D(props:Props){
   },undefined,()=>{if(alive){setStatus('Площадка не загрузилась. Проверь соединение и повтори.');setFailed(true);}});
   loader.load(`${BASE}img/models/Vika-3d-animated-optimized.glb`,g=>{
    if(!alive){dispose(g.scene);return;}
-   const b=new THREE.Box3().setFromObject(g.scene),scale=8.2/Math.max(.01,b.max.y-b.min.y);g.scene.scale.setScalar(scale);g.scene.position.y=-b.min.y*scale;hero.add(g.scene);
+   const b=new THREE.Box3().setFromObject(g.scene),scale=13.94/Math.max(.01,b.max.y-b.min.y);g.scene.scale.setScalar(scale);g.scene.position.y=-b.min.y*scale;hero.add(g.scene);
    mixer=new THREE.AnimationMixer(g.scene);
    const find=(...names:string[])=>names.map(n=>THREE.AnimationClip.findByName(g.animations,n)).find(Boolean);
    const i=find('idle','sword_idle')||g.animations[0],w=find('walk_loop','walk')||i;
