@@ -1,6 +1,6 @@
 const TARGET='yggdrasil:world-recovery-target';
 const RECOVERY_WINDOW=60_000;
-export type LoadedWorld='midgard'|'niflheim'|'underground';
+export type LoadedWorld='midgard'|'niflheim'|'muspelheim'|'underground';
 
 /** Retry a stale deployment once with fresh HTML; never clear the player's save. */
 export async function loadWorld<T>(world:LoadedWorld,loader:()=>Promise<T>):Promise<T>{
@@ -27,6 +27,6 @@ export async function loadWorld<T>(world:LoadedWorld,loader:()=>Promise<T>):Prom
 export function consumeWorldRecovery():LoadedWorld|null{
  try{
   const world=sessionStorage.getItem(TARGET);sessionStorage.removeItem(TARGET);
-  return world==='midgard'||world==='niflheim'||world==='underground'?world:null;
+  return world==='midgard'||world==='niflheim'||world==='muspelheim'||world==='underground'?world:null;
  }catch{return null;}
 }

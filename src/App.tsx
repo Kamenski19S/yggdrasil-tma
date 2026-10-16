@@ -30,6 +30,7 @@ import { MillScene, type MillFind } from './MillScene';
 import {millRewardSettings} from './millRewards';
 const Midgard3D=React.lazy(()=>loadWorld('midgard',()=>import('./Midgard3D').then(module=>({default:module.Midgard3D}))));
 const NidhoggUnderground=React.lazy(()=>loadWorld('underground',()=>import('./NidhoggUnderground')));
+const Muspelheim3D=React.lazy(()=>loadWorld('muspelheim',()=>import('./Muspelheim3D')));
 const Niflheim3D=React.lazy(()=>loadWorld('niflheim',()=>import('./Niflheim3D')));
 
 
@@ -646,6 +647,8 @@ const [roadT, setRoadT] = useState(0.06);
 
       {screen.t === "realm" && (() => {
   const realm = REALMS.find(r => r.id === screen.id)!;
+
+  if(realm.id==='muspelheim'){const crystal=waterCrystalProgress(save.done);return <React.Suspense fallback={<div className="content">Дорога в Муспельхейм открывается…</div>}><Muspelheim3D gateOpen={crystal.gateOpen} canOpenGate={crystal.canOpenGate} assembled={crystal.assembled} briefed={crystal.strangerBriefed} onInstallCrystal={()=>{setSave(s=>applyCrystalEvent(s,'openGate'));haptic('success');say('Кристалл установлен. Первые врата Муспельхейма открыты!');}} onTrial={()=>openGate(realm)}/></React.Suspense>;}
 
   if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D sealWallet={{drops:save.immortalityDrops,steel:save.runeSteel}} onSealEvent={(event:NiflheimSealEvent)=>setSave(s=>applyNiflheimSealEvent(s,event))} onAmuletEvent={event=>setSave(s=>applyAmuletEvent(s,event))} onCrystalEvent={event=>setSave(s=>applyCrystalEvent(s,event))} combatStats={currentCombat()} onPotionBoostUsed={consumePotionBoost} onFrostGuardHit={()=>setSave(s=>({...s,frostGuard:Math.max(0,s.frostGuard-1)}))} questDone={save.done} onMemoryEvent={event=>setSave(s=>applyMemoryEvent(s,event))} onDragonEvent={(event:DragonEvent)=>setSave(s=>applyDragonQuestEvent(s,event))} onLiberationEvent={(event:LiberationEvent)=>setSave(s=>applyLiberationEvent(s,event))} onFieldHpChange={hp=>setSave(s=>({...s,fieldHp:hp}))} useBattlePotion={useInventoryPotion} locationCooldowns={save.locationCooldowns} onEnterUnderground={position=>{niflheimReturn.current={...position};go({t:"underground"});}} initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")} onOpenMill={()=>{setMillRealm("niflheim");go({t:"mill"});}} inventory={{potions:save.potions,runes:save.runes,equippedRune:save.equippedRune,lootCounts:save.lootCounts,runeLevels:save.forgeLevels,hp:Math.min(currentCombat().maxHp,save.fieldHp??currentCombat().maxHp),maxHp:currentCombat().maxHp,frostGuard:save.frostGuard,potionBoosts:save.potionBoosts,onUsePotion:useInventoryPotion,onEquipRune:equipInventoryRune,onFuseRune:fuseInventoryRune}} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")}/></React.Suspense>;
 
