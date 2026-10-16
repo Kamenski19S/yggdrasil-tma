@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 export const GATEWAY_ASSETS=['Muspelheim_Ancient_Gateway.glb','Muspelheim_Round_Door.glb'] as const;
 export const GATEWAY_POSITION={x:0,z:140};
+export const GATEWAY_SCALE=.5;
 export const GATEWAY_CREDIT={author:'-X-ScornGames',title:"Ancient-Gateway-X-'South'",url:'https://sketchfab.com/3d-models/ancient-gateway-x-south-876bfce2fe3c45488d5eab1f7b32fefd'};
 export function createMuspelheimGateway(arch:THREE.Object3D,door:THREE.Object3D,initiallyOpen:boolean){
  const group=new THREE.Group();group.name='Muspelheim first gateway';
  const bounds=new THREE.Box3().setFromObject(arch),center=bounds.getCenter(new THREE.Vector3()),scale=82/(bounds.max.x-bounds.min.x);
  arch.scale.multiplyScalar(scale);arch.position.set(-center.x*scale,-bounds.min.y*scale,-center.z*scale);group.add(arch);
  door.position.set(0,8,-20);group.add(door);
- group.position.set(GATEWAY_POSITION.x,0,GATEWAY_POSITION.z);
+ group.position.set(GATEWAY_POSITION.x,0,GATEWAY_POSITION.z);group.scale.setScalar(GATEWAY_SCALE);
  group.traverse(o=>{if(o instanceof THREE.Mesh)for(const material of Array.isArray(o.material)?o.material:[o.material]){
   const m=material as THREE.MeshStandardMaterial;m.metalness=.08;m.roughness=.95;m.emissive.set(0);m.emissiveIntensity=0;
   m.onBeforeCompile=shader=>{shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
@@ -27,15 +28,15 @@ export function createMuspelheimGateway(arch:THREE.Object3D,door:THREE.Object3D,
  // Cached center stair profile: raycasts run once, never in the render loop.
  group.updateWorldMatrix(true,true);const ray=new THREE.Raycaster(),profile:number[]=[];
  for(let z=-40;z<=40;z++){
-  ray.set(new THREE.Vector3(GATEWAY_POSITION.x,20,GATEWAY_POSITION.z+z),new THREE.Vector3(0,-1,0));
+  ray.set(new THREE.Vector3(GATEWAY_POSITION.x,20*GATEWAY_SCALE,GATEWAY_POSITION.z+z*GATEWAY_SCALE),new THREE.Vector3(0,-1,0));
   const hit=ray.intersectObject(arch,true).find(h=>h.face&&h.face.normal.clone().transformDirection(h.object.matrixWorld).y>.4);
   profile.push(hit?Math.max(0,hit.point.y):0);
  }
  return {group,update,get opening(){return opening;},
-  floorAt(x:number,z:number,base:number){const dx=x-GATEWAY_POSITION.x,dz=z-GATEWAY_POSITION.z;if(Math.abs(dx)>13||Math.abs(dz)>40)return base;const t=dz+40,i=Math.min(79,Math.floor(t));return Math.max(base,THREE.MathUtils.lerp(profile[i],profile[i+1],t-i));},
-  blocks(x:number,z:number,radius=5){const dx=Math.abs(x-GATEWAY_POSITION.x),dz=z-GATEWAY_POSITION.z+20;
-   const stone=dx>17-radius&&dx<41+radius&&Math.abs(z-GATEWAY_POSITION.z)<34+radius;
-   const closed=opening<.94&&dx<17+radius&&Math.abs(dz)<2+radius;
+  floorAt(x:number,z:number,base:number){const dx=(x-GATEWAY_POSITION.x)/GATEWAY_SCALE,dz=(z-GATEWAY_POSITION.z)/GATEWAY_SCALE;if(Math.abs(dx)>13||Math.abs(dz)>40)return base;const t=dz+40,i=Math.min(79,Math.floor(t));return Math.max(base,THREE.MathUtils.lerp(profile[i],profile[i+1],t-i));},
+  blocks(x:number,z:number,radius=5){const dx=Math.abs(x-GATEWAY_POSITION.x)/GATEWAY_SCALE,dz=(z-GATEWAY_POSITION.z)/GATEWAY_SCALE+20,r=radius/GATEWAY_SCALE;
+   const stone=dx>17-r&&dx<41+r&&Math.abs((z-GATEWAY_POSITION.z)/GATEWAY_SCALE)<34+r;
+   const closed=opening<.94&&dx<17+r&&Math.abs(dz)<2+r;
    return stone||closed;
   }
  };

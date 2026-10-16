@@ -18,13 +18,16 @@ for(const fps of [20,60,120]){
 const shortTurn={yaw:Math.PI-.02,targetYaw:Math.PI-.02,turnTime:.2};for(let i=0;i<120;i++)updateFollowCamera(shortTurn,Math.sin(.04),Math.cos(.04),1/60);assert.ok(Math.abs(shortTurn.yaw-Math.PI)<.2);
 assert.equal(safeCameraOffset(0,0,0,(x,z)=>z>=10&&z<=12).distance,8);
 assert.equal(safeCameraOffset(0,0,0,()=>false).distance,32);
-const {GATEWAY_ASSETS,createMuspelheimGateway,GATEWAY_POSITION}=await moduleAt('src/muspelheimGateway.ts');
+const {GATEWAY_ASSETS,createMuspelheimGateway,GATEWAY_POSITION,GATEWAY_SCALE}=await moduleAt('src/muspelheimGateway.ts');
 const loader=new GLTFLoader();loader.register(()=>({name:'texture-stub',loadTexture:()=>Promise.resolve(new THREE.Texture())}));
 const models=[];for(const file of GATEWAY_ASSETS){const b=readFileSync('public/img/models/'+file);assert.equal(b.readUInt32LE(8),b.length);models.push((await loader.parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'')).scene);}
-const entrance=createMuspelheimGateway(models[0],models[1],false),x=GATEWAY_POSITION.x,z=GATEWAY_POSITION.z-20;
+const entrance=createMuspelheimGateway(models[0],models[1],false),x=GATEWAY_POSITION.x,z=GATEWAY_POSITION.z-20*GATEWAY_SCALE;
+assert.deepEqual(entrance.group.position.toArray(),[0,0,140]);
+assert.equal(entrance.group.scale.x,.5);
+const width=new THREE.Box3().setFromObject(entrance.group).getSize(new THREE.Vector3()).x;assert.ok(Math.abs(width-41)<.01);
 assert.equal(entrance.blocks(x,z),true);entrance.update(.5,true);assert.equal(entrance.blocks(x,z),true);entrance.update(.6,true);assert.equal(entrance.opening,1);assert.equal(entrance.blocks(x,z),false);
 assert.ok(entrance.group.getObjectByName('DoorLeft').rotation.y>1.5);assert.ok(entrance.group.getObjectByName('DoorRight').rotation.y< -1.5);
-assert.equal(entrance.blocks(x+25,z),true);assert.ok(entrance.floorAt(x,z,0)>6);assert.equal(entrance.floorAt(100,z,0),0);
+assert.equal(entrance.blocks(x+25*GATEWAY_SCALE,z),true);assert.ok(entrance.floorAt(x,z,0)>6*GATEWAY_SCALE);assert.equal(entrance.floorAt(100,z,0),0);
 for(let p=100;p<185;p+=.25){const y=entrance.floorAt(0,p,0);assert.ok(Number.isFinite(y)&&y>=0&&y<12);}
 entrance.update(2,false);assert.equal(entrance.opening,0);assert.equal(entrance.blocks(x,z),true);
 const app=readFileSync('src/Muspelheim3D.tsx','utf8');assert.match(app,/gateIsOpen.current=props.gateOpen/);assert.match(app,/controlYaw.current=viewYaw.current/);
