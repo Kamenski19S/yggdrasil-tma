@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {BASE} from './core';
 import {createTerrainSampler,clampMuspelheimPosition} from './muspelheimTerrain';
+import {configureMuspelheimGround} from './muspelheimGround';
 
 type Props={gateOpen:boolean;canOpenGate:boolean;assembled:boolean;briefed:boolean;onInstallCrystal:()=>void;onTrial:()=>void};
 function dispose(root:THREE.Object3D){
@@ -29,18 +30,12 @@ export default function Muspelheim3D(props:Props){
   const loader=new GLTFLoader();
   loader.load(`${BASE}img/models/Muspelheim_Terrain_300m.glb`,g=>{
    if(!alive){dispose(g.scene);return;}
-   // Reuse the embedded ground image; mirrored neighbours share identical edges.
-   const anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
-   g.scene.traverse(o=>{if(o instanceof THREE.Mesh){for(const material of Array.isArray(o.material)?o.material:[o.material]){
-    const map=(material as THREE.MeshStandardMaterial).map;if(!map)continue;
-    map.wrapS=map.wrapT=THREE.MirroredRepeatWrapping;map.repeat.set(8,8);
-    map.anisotropy=anisotropy;map.magFilter=THREE.LinearFilter;map.minFilter=THREE.LinearMipmapLinearFilter;map.generateMipmaps=true;map.needsUpdate=true;
-   }}});
+   configureMuspelheimGround(g.scene,renderer.capabilities.getMaxAnisotropy());
    scene.add(g.scene);g.scene.name='Muspelheim editable terrain';sample=createTerrainSampler(g.scene);terrainReady=true;ready();
   },undefined,()=>{if(alive){setStatus('Площадка не загрузилась. Проверь соединение и повтори.');setFailed(true);}});
   loader.load(`${BASE}img/models/Vika-3d-animated-optimized.glb`,g=>{
    if(!alive){dispose(g.scene);return;}
-   const b=new THREE.Box3().setFromObject(g.scene),scale=6.1/Math.max(.01,b.max.y-b.min.y);g.scene.scale.setScalar(scale);g.scene.position.y=-b.min.y*scale;hero.add(g.scene);
+   const b=new THREE.Box3().setFromObject(g.scene),scale=8.2/Math.max(.01,b.max.y-b.min.y);g.scene.scale.setScalar(scale);g.scene.position.y=-b.min.y*scale;hero.add(g.scene);
    mixer=new THREE.AnimationMixer(g.scene);
    const find=(...names:string[])=>names.map(n=>THREE.AnimationClip.findByName(g.animations,n)).find(Boolean);
    const i=find('idle','sword_idle')||g.animations[0],w=find('walk_loop','walk')||i;
@@ -53,7 +48,7 @@ export default function Muspelheim3D(props:Props){
   window.addEventListener('keydown',keydown);window.addEventListener('keyup',keyup);window.addEventListener('blur',clear);document.addEventListener('visibilitychange',clear);
   const resize=()=>{const w=mount.clientWidth,h=mount.clientHeight;if(!w||!h)return;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();};
   const observer=new ResizeObserver(resize);observer.observe(mount);resize();
-  const clock=new THREE.Clock();camera.position.set(position.current.x,30,position.current.z+35);
+  const clock=new THREE.Clock();camera.position.set(position.current.x,20,position.current.z+32);
   function tick(){
    if(!alive)return;frame=requestAnimationFrame(tick);const dt=Math.min(clock.getDelta(),.05);
    let x=input.current.x+(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0);
@@ -62,7 +57,7 @@ export default function Muspelheim3D(props:Props){
    if(length&&terrainReady&&heroReady&&!document.hidden&&!paused.current){x/=Math.max(1,length);z/=Math.max(1,length);const p=clampMuspelheimPosition(position.current.x+x*18*dt,position.current.z+z*18*dt);const y=sample?.(p.x,p.z);if(y!=null&&Math.abs(y-hero.position.y)<3){position.current=p;moving=true;hero.rotation.y=Math.atan2(x,z);}}
    const p=position.current;hero.position.set(p.x,sample?.(p.x,p.z)??0,p.z);
    const action=moving?walk:idle;if(action&&action!==current){current?.fadeOut(.18);action.reset().fadeIn(.18).play();current=action;}
-   mixer?.update(dt);camera.position.lerp(new THREE.Vector3(p.x,hero.position.y+30,p.z+35),1-Math.exp(-6*dt));camera.lookAt(p.x,hero.position.y+2,p.z);renderer.render(scene,camera);
+   mixer?.update(dt);camera.position.lerp(new THREE.Vector3(p.x,hero.position.y+20,p.z+32),1-Math.exp(-6*dt));camera.lookAt(p.x,hero.position.y+3,p.z-18);renderer.render(scene,camera);
   }
   tick();return()=>{alive=false;cancelAnimationFrame(frame);clear();observer.disconnect();window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();dispose(scene);renderer.dispose();renderer.domElement.remove();};
  },[retry]);
