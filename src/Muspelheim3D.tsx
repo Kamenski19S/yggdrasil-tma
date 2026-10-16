@@ -12,7 +12,7 @@ function dispose(root:THREE.Object3D){
  geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());
 }
 export default function Muspelheim3D(props:Props){
- const host=useRef<HTMLDivElement>(null),input=useRef({x:0,z:0}),position=useRef({x:0,z:110});
+ const host=useRef<HTMLDivElement>(null),input=useRef({x:0,z:0}),position=useRef({x:0,z:192.5});
  const [status,setStatus]=useState('Загрузка площадки Муспельхейма…'),[retry,setRetry]=useState(0),[failed,setFailed]=useState(false),[gate,setGate]=useState(false);
  const paused=useRef(false);paused.current=gate;
  useEffect(()=>{
@@ -30,6 +30,7 @@ export default function Muspelheim3D(props:Props){
   const loader=new GLTFLoader();
   loader.load(`${BASE}img/models/Muspelheim_Terrain_300m.glb`,g=>{
    if(!alive){dispose(g.scene);return;}
+   g.scene.scale.multiply(new THREE.Vector3(1.75,1,1.75));
    configureMuspelheimGround(g.scene,renderer.capabilities.getMaxAnisotropy());
    scene.add(g.scene);g.scene.name='Muspelheim editable terrain';sample=createTerrainSampler(g.scene);terrainReady=true;ready();
   },undefined,()=>{if(alive){setStatus('Площадка не загрузилась. Проверь соединение и повтори.');setFailed(true);}});

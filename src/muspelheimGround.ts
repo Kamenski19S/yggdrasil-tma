@@ -7,8 +7,8 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
   if(!(object instanceof THREE.Mesh))return;
   for(const material of Array.isArray(object.material)?object.material:[object.material]){
    const ground=material as THREE.MeshStandardMaterial,map=ground.map;if(!map)continue;
-   // Undo the atlas UV inset before applying eight repetitions in each direction.
-   map.repeat.set(8/.495,8/.998);map.offset.set(-.001*8/.495,-.001*8/.998);
+   // Undo the atlas UV inset before applying fourteen repetitions across the expanded ground.
+   map.repeat.set(14/.495,14/.998);map.offset.set(-.001*14/.495,-.001*14/.998);
    map.wrapS=map.wrapT=THREE.ClampToEdgeWrapping;
    map.anisotropy=Math.min(8,maxAnisotropy);map.needsUpdate=true;
    ground.onBeforeCompile=shader=>{

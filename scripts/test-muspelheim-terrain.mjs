@@ -10,7 +10,8 @@ const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Buffe
 const mesh=new THREE.Mesh(geo);const sample=createTerrainSampler(mesh);
 assert.equal(sample(.5,.5),1.5);assert.equal(sample(1.5,1.5),5.5);assert.equal(sample(2,2),8);assert.equal(sample(-1,0),null);
 geo.attributes.position.setY(0,-4);assert.equal(sample(0,0),-4);
-assert.deepEqual(clampMuspelheimPosition(200,-200),{x:147,z:-147});
+mesh.scale.set(1.75,1,1.75);const expandedSample=createTerrainSampler(mesh);assert.ok(Math.abs(expandedSample(.875,.875)+.5)<1e-6);assert.equal(expandedSample(3.6,0),null);
+assert.deepEqual(clampMuspelheimPosition(400,-400),{x:259.5,z:-259.5});
 const b=readFileSync(new URL('../public/img/models/Muspelheim_Terrain_300m.glb',import.meta.url));
 assert.equal(b.readUInt32LE(0),0x46546c67);assert.equal(b.readUInt32LE(8),b.length);
 const json=JSON.parse(b.subarray(20,20+b.readUInt32LE(12)).toString());

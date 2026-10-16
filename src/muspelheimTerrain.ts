@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-export const MUSPELHEIM_SIZE=300;
+export const MUSPELHEIM_SIZE=525;
 export const MUSPELHEIM_MARGIN=3;
 /** O(1) height lookup on the exported grid, including its b-c triangle diagonal.
  * Reads live Y coordinates: sculpting the grid also updates walking height. */
