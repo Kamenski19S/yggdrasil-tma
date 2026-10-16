@@ -7,7 +7,7 @@ const ground=transformSync(readFileSync('src/muspelheimTerrain.ts','utf8'),{load
 const groundURL='data:text/javascript;base64,'+Buffer.from(ground).toString('base64');
 const source=transformSync(readFileSync('src/muspelheimRockWalls.ts','utf8'),{loader:'ts',format:'esm'}).code.replace('from "three"',`from ${JSON.stringify(import.meta.resolve('three'))}`).replace('from "./muspelheimTerrain"',`from ${JSON.stringify(groundURL)}`);
 const {rockWallLayout,rockWallBlocks,moveAlongRockWalls,makeBasaltWall,ROCK_ASSETS,ROCK_CREDITS}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
-const layout=rockWallLayout();assert.equal(layout.length,68);assert.equal(rockWallBlocks(layout,0,0),false);assert.equal(rockWallBlocks(layout,0,192.5),false);
+const layout=rockWallLayout({x:0,z:130,halfWidth:20.5});assert.equal(layout.length,108);assert.equal(rockWallBlocks(layout,0,0),false);assert.equal(rockWallBlocks(layout,0,192.5),false);
 for(let i=-262.5;i<=262.5;i+=1){assert.ok(rockWallBlocks(layout,i,262.5));assert.ok(rockWallBlocks(layout,i,-262.5));assert.ok(rockWallBlocks(layout,262.5,i));assert.ok(rockWallBlocks(layout,-262.5,i));}
 for(let angle=0;angle<Math.PI*2;angle+=.01){let p={x:0,z:0};for(let i=0;i<1300;i++)p=moveAlongRockWalls(layout,p,{x:p.x+Math.cos(angle)*.9,z:p.z+Math.sin(angle)*.9});assert.ok(Math.abs(p.x)<250&&Math.abs(p.z)<250);assert.ok(!rockWallBlocks(layout,p.x,p.z));}
 assert.ok(new Set(layout.map(r=>r.height)).size>20);
@@ -19,6 +19,6 @@ for(let kind=0;kind<ROCK_ASSETS.length;kind++){
  const data=readFileSync('public/img/models/'+ROCK_ASSETS[kind]);const model=await loader.parseAsync(data.buffer.slice(data.byteOffset,data.byteOffset+data.byteLength),'');
  const wall=makeBasaltWall(model.scene,kind,layout,8);wall.traverse(o=>{if(o instanceof THREE.InstancedMesh){instanceCount+=o.count;const size=o.geometry.boundingBox.getSize(new THREE.Vector3());assert.ok(size.distanceTo(new THREE.Vector3(1,1,1))<1e-5);assert.ok(o.geometry.boundingBox.min.y>-1e-5);}});
 }
-assert.equal(instanceCount,68);
+assert.equal(instanceCount,layout.length);
 assert.ok(bytes<3e6);assert.ok(triangles<=21000);
 console.log('Rock walls: perimeter sealed at 1-unit intervals, radial walking blocked, spawn clear, heights varied, GLBs/credits valid.',{bytes,triangles});

@@ -1,4 +1,5 @@
 import React,{useEffect,useRef,useState} from 'react';
+import './muspelheimUI.css';
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {BASE} from './core';
@@ -7,6 +8,8 @@ import {configureMuspelheimGround} from './muspelheimGround';
 import {GATEWAY_ASSETS,GATEWAY_CREDIT,GATEWAY_POSITION,GATEWAY_SCALE,createMuspelheimGateway,type MuspelheimGateway} from './muspelheimGateway';
 import {screenMoveToWorld,updateFollowCamera,safeCameraOffset,type FollowCameraState} from './muspelheimCamera';
 import {ROCK_ASSETS,ROCK_CREDITS,rockWallLayout,rockWallBlocks,moveAlongRockWalls,makeBasaltWall} from './muspelheimRockWalls';
+
+const GATEWAY_WALL_ANCHOR={x:GATEWAY_POSITION.x,z:GATEWAY_POSITION.z-20*GATEWAY_SCALE,halfWidth:41*GATEWAY_SCALE};
 
 type Props={gateOpen:boolean;canOpenGate:boolean;assembled:boolean;briefed:boolean;onInstallCrystal:()=>void;onTrial:()=>void};
 function dispose(root:THREE.Object3D){
@@ -29,7 +32,7 @@ export default function Muspelheim3D(props:Props){
   scene.add(new THREE.HemisphereLight('#ffdfb0','#332127',2.3));const sun=new THREE.DirectionalLight('#ffb776',2);sun.position.set(30,70,20);scene.add(sun);
   const camera=new THREE.PerspectiveCamera(48,1,.1,650),hero=new THREE.Group();scene.add(hero);
   let sample:((x:number,z:number)=>number|null)|undefined,mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,current:THREE.AnimationAction|undefined;
-  const wallRocks=rockWallLayout();
+  const wallRocks=rockWallLayout(GATEWAY_WALL_ANCHOR);
   const follow:FollowCameraState={yaw:viewYaw.current,targetYaw:viewYaw.current,turnTime:0};
   let terrainReady=false,heroReady=false,wallsReady=0,loadError=false,entrance:MuspelheimGateway|undefined;
   const entranceAssets:Array<THREE.Object3D|undefined>=[];
@@ -89,18 +92,23 @@ export default function Muspelheim3D(props:Props){
  const pointer=useRef<number|null>(null);
  const move=(e:React.PointerEvent<HTMLDivElement>)=>{if(pointer.current!==e.pointerId)return;const b=e.currentTarget.getBoundingClientRect();input.current={x:THREE.MathUtils.clamp((e.clientX-b.left-b.width/2)/42,-1,1),z:THREE.MathUtils.clamp((e.clientY-b.top-b.height/2)/42,-1,1)};};
  const stop=()=>{pointer.current=null;input.current={x:0,z:0};};
- return <section style={{position:'relative',flex:1,minHeight:0,overflow:'hidden',background:'#24110e',touchAction:'none'}} aria-label="Муспельхейм">
+ return <section className="muspelheim-world" style={{position:'relative',flex:1,minHeight:0,overflow:'hidden',background:'#24110e',touchAction:'none'}} aria-label="Муспельхейм">
   <div ref={host} style={{position:'absolute',inset:0}}/>
-  <div style={{position:'absolute',top:12,left:12,right:12,display:'flex',justifyContent:'space-between',alignItems:'start',gap:8,color:'#ffe2ac',textShadow:'0 2px 3px #000'}}><b>Муспельхейм</b><div style={{display:'flex',gap:6}}><button className="btn" style={{width:'auto',padding:'6px 9px',fontSize:12}} onClick={()=>{stop();setMapOpen(true);}}>Карта</button><button className="btn" style={{width:'auto',padding:'6px 9px',fontSize:12}} onClick={()=>{stop();setGate(true);}}>Первые врата</button></div></div>
-  <div role="status" style={{position:'absolute',bottom:14,left:150,right:12,color:'#ffe2ac',fontSize:12,textShadow:'0 2px 3px #000'}}>{status}{failed&&<button className="btn" onClick={()=>setRetry(v=>v+1)}>Повторить загрузку</button>}</div>
+  <div className="muspelheim-toolbar"><b>Муспельхейм</b><div style={{display:'flex',gap:6}}><button className="muspelheim-btn" onClick={()=>{stop();setMapOpen(true);}}>Карта</button><button className="muspelheim-btn" onClick={()=>{stop();setGate(true);}}>Первые врата</button></div></div>
+  <div role="status" style={{position:'absolute',bottom:14,left:150,right:12,color:'#ffe2ac',fontSize:12,textShadow:'0 2px 3px #000'}}>{status}{failed&&<button className="muspelheim-btn" onClick={()=>setRetry(v=>v+1)}>Повторить загрузку</button>}</div>
   <div role="group" aria-label="Управление Vicki" onPointerDown={e=>{if(pointer.current!==null)return;controlYaw.current=viewYaw.current;pointer.current=e.pointerId;e.currentTarget.setPointerCapture(e.pointerId);move(e);}} onPointerMove={move} onPointerUp={stop} onPointerCancel={stop} onLostPointerCapture={stop} style={{position:'absolute',bottom:20,left:20,width:108,height:108,borderRadius:'50%',border:'3px solid #b88839',background:'#27170dbb',display:'grid',placeItems:'center',color:'#edce89',touchAction:'none',userSelect:'none'}}>✥</div>
   {mapOpen&&<div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',background:'#000a',padding:16}}><div role="dialog" aria-modal="true" aria-label="Карта Муспельхейма" className="card" style={{maxWidth:420,maxHeight:'85%',overflowY:'auto',padding:16,background:'#291911',color:'#ffe2ac'}}><h3>Карта Муспельхейма</h3>
-   <svg viewBox="0 0 300 300" style={{display:'block',width:'100%',maxHeight:240,background:'#42251d',borderRadius:8}} aria-label="Скальный периметр и положение Vicki"><rect x="12" y="12" width="276" height="276" rx="14" fill="#573122" stroke="#77777c" strokeWidth="18"/><path d={`M ${150+GATEWAY_POSITION.x/525*276-6} ${150+GATEWAY_POSITION.z/525*276} h 12`} stroke="#ff8e35" strokeWidth="5"/><circle cx={150+position.current.x/525*276} cy={150+position.current.z/525*276} r="5" fill="#ffd45f"/></svg>
-   <p style={{fontSize:12}}>Золотая точка — Vicki. Серый пояс — скальный хребет. Оранжевая отметка — первые врата.</p><h4>Авторство моделей</h4>
+   <svg viewBox="0 0 300 300" style={{display:'block',width:'100%',maxHeight:240,background:'#42251d',borderRadius:8}} aria-label="Скальный периметр и положение Vicki"><rect x="12" y="12" width="276" height="276" rx="14" fill="#573122" stroke="#77777c" strokeWidth="18"/>{[-1,1].map(side=><polyline key={side} points={rockWallLayout(GATEWAY_WALL_ANCHOR).filter(r=>r.section==='entrance'&&Math.sign(r.x-GATEWAY_POSITION.x)===side).map(r=>`${150+r.x/525*276},${150+r.z/525*276}`).join(' ')} fill="none" stroke="#77777c" strokeWidth="7" strokeLinecap="round"/>)}<path d={`M ${150+GATEWAY_POSITION.x/525*276-6} ${150+GATEWAY_POSITION.z/525*276} h 12`} stroke="#ff8e35" strokeWidth="5"/><circle cx={150+position.current.x/525*276} cy={150+position.current.z/525*276} r="5" fill="#ffd45f"/></svg>
+   <p style={{fontSize:12}}>Золотая точка — Vicki. Серые дуги — скальный хребет и ограда у входа. Оранжевая отметка — первые врата.</p><h4>Авторство моделей</h4>
    {ROCK_CREDITS.map(c=><p key={c.author} style={{fontSize:12}}><a href={c.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{c.title} — {c.author}</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>CC BY 4.0</a>.</p>)}
    <p style={{fontSize:12}}>Проход: <a href={GATEWAY_CREDIT.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{GATEWAY_CREDIT.title} — {GATEWAY_CREDIT.author}</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>CC BY 4.0</a>.</p>
    <p style={{fontSize:12}}>Круглая дверь: <a href="https://www.cgtrader.com/items/1933395/download-page" target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>Entrance Door to Chamber — CGTrader</a>. Предоставлена для проекта; оптимизирована, разделена на створки, добавлены шарниры и открытие, изменены цвет и размещение.</p>
-   <p style={{fontSize:11}}>Изменения: упрощена геометрия, сжаты текстуры, материал приведён к тёмному базальту, мох обесцвечен и затемнён; изменены масштаб и размещение.</p><button className="btn" onClick={()=>setMapOpen(false)}>Закрыть карту</button></div></div>}
-  {gate&&<div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',background:'#0008',padding:18}}><div className="card" role="dialog" aria-modal="true" aria-label="Первые врата Муспельхейма" style={{maxWidth:380,padding:18,background:'#291911',color:'#ffe2ac'}}><h3>Первые врата Муспельхейма</h3>{props.gateOpen?<><p>Кристалл установлен. Первые врата открыты.</p><button className="btn gold" onClick={props.onTrial}>Испытание Сурта</button></>:<><p>{props.canOpenGate?'Странница указала путь. Установи Кристалл первозданной воды во врата.':props.assembled&&!props.briefed?'Вернись к Страннице девяти миров в Нифльхейме и поговори о Муспельхейме.':'Получи Кристалл первозданной воды в Нифльхейме и поговори со Странницей девяти миров.'}</p><button className="btn gold" disabled={!props.canOpenGate} onClick={props.onInstallCrystal}>Вставить кристалл</button></>}<button className="btn" onClick={()=>setGate(false)}>Продолжить путь</button></div></div>}
+   <p style={{fontSize:11}}>Изменения: упрощена геометрия, сжаты текстуры, материал приведён к тёмному базальту, мох обесцвечен и затемнён; изменены масштаб и размещение.</p><button className="muspelheim-btn" onClick={()=>setMapOpen(false)}>Закрыть карту</button></div></div>}
+  {gate&&<div className="muspelheim-gate-backdrop" onClick={()=>setGate(false)}><div className="muspelheim-gate-panel" role="dialog" aria-modal="true" aria-label="Первые врата Муспельхейма" onClick={e=>e.stopPropagation()}>
+   <h3>Первые врата</h3>
+   <p>{props.gateOpen?'Кристалл установлен. Первые врата открыты.':props.canOpenGate?'Установи Кристалл первозданной воды во врата.':props.assembled&&!props.briefed?'Поговори со Странницей девяти миров в Нифльхейме о Муспельхейме.':'Получи Кристалл первозданной воды в Нифльхейме и поговори со Странницей.'}</p>
+   <div className="muspelheim-gate-actions">{props.gateOpen?<button className="muspelheim-btn primary" onClick={props.onTrial}>Испытание Сурта</button>:<button className="muspelheim-btn primary" disabled={!props.canOpenGate} onClick={props.onInstallCrystal}>Вставить кристалл</button>}<button className="muspelheim-btn" onClick={()=>setGate(false)}>Продолжить</button></div>
+  </div></div>}
+
  </section>;
 }

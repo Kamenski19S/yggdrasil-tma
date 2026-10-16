@@ -6,8 +6,18 @@ export const ROCK_CREDITS=[
  {title:'Free_cliff_rock',author:'Kwinto',url:'https://sketchfab.com/3d-models/free-cliff-rock-75fb6b34dc0d46259dedc8c7cd94e7b7'},
  {title:'Big Rock 1B',author:'Andrei.D',url:'https://sketchfab.com/3d-models/big-rock-1b-44c96d506d55496598b6b92dec8b1049'},
 ];
-export type WallRock={kind:number;x:number;z:number;y:number;yaw:number;width:number;height:number;depth:number};
-export function rockWallLayout():WallRock[]{
+export type WallRock={kind:number;x:number;z:number;y:number;yaw:number;width:number;height:number;depth:number;section?:'entrance'};
+export type GatewayWallAnchor={x:number;z:number;halfWidth:number};
+export function gatewayWingRockLayout(gateway:GatewayWallAnchor):WallRock[]{
+ const rocks:WallRock[]=[],half=MUSPELHEIM_SIZE/2,near=gateway.halfWidth+6.5,far=half-13.5;
+ for(const side of [-1,1])for(let i=0;i<20;i++){
+  const t=i/19,angle=t*Math.PI/2,dx=(far-near)*Math.cos(angle),dz=100*Math.sin(angle),seed=i+(side>0?3:0);
+  rocks.push({kind:i===0?2:(i+(side>0?1:0))%3,x:gateway.x+side*(near+(far-near)*Math.sin(angle)),z:gateway.z+100*(1-Math.cos(angle)),y:-2.5,
+   yaw:Math.atan2(-dz,side*dx),width:25+19*t+(seed%3),height:24+26*t+(seed*3%7),depth:18+14*t,section:'entrance'});
+ }
+ return rocks;
+}
+export function rockWallLayout(gateway?:GatewayWallAnchor):WallRock[]{
  const rocks:WallRock[]=[],half=MUSPELHEIM_SIZE/2,step=MUSPELHEIM_SIZE/16;
  for(let side=0;side<4;side++)for(let i=0;i<16;i++){
   const seed=side*16+i,t=-half+(i+.5)*step,edge=half+6;
@@ -15,6 +25,7 @@ export function rockWallLayout():WallRock[]{
   rocks.push({kind:(i+side*2)%3,x,z,y:-5,yaw:side*Math.PI/2,width:64+(seed*7%13),height:52+(seed*17%49),depth:54+(seed*11%13)});
  }
  for(const x of [-half,half])for(const z of [-half,half])rocks.push({kind:2,x,z,y:-6,yaw:0,width:78,height:65,depth:78});
+ if(gateway)rocks.push(...gatewayWingRockLayout(gateway));
  return rocks;
 }
 export function rockWallBlocks(rocks:WallRock[],x:number,z:number,radius=5){

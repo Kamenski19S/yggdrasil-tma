@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {transformSync} from 'esbuild';
+import {buildSync} from 'esbuild';
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
-async function moduleAt(path){let code=transformSync(readFileSync(path,'utf8'),{loader:'ts',format:'esm'}).code.replace('from "three"',`from ${JSON.stringify(import.meta.resolve('three'))}`);return import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));}
+async function moduleAt(path){let code=buildSync({entryPoints:[path],bundle:true,write:false,format:'esm',platform:'node',external:['three']}).outputFiles[0].text.replaceAll('from "three"',`from ${JSON.stringify(import.meta.resolve('three'))}`);return import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));}
 const {screenMoveToWorld,updateFollowCamera,safeCameraOffset}=await moduleAt('src/muspelheimCamera.ts');
 assert.ok(Math.abs(screenMoveToWorld(0,-1,Math.PI).z-1)<1e-8);
 assert.ok(Math.abs(screenMoveToWorld(0,-1,-Math.PI/2).x-1)<1e-8);
@@ -25,7 +25,18 @@ const entrance=createMuspelheimGateway(models[0],models[1],false),x=GATEWAY_POSI
 assert.deepEqual(entrance.group.position.toArray(),[0,0,140]);
 assert.equal(entrance.group.scale.x,.5);
 const width=new THREE.Box3().setFromObject(entrance.group).getSize(new THREE.Vector3()).x;assert.ok(Math.abs(width-41)<.01);
-assert.equal(entrance.blocks(x,z),true);entrance.update(.5,true);assert.equal(entrance.blocks(x,z),true);entrance.update(.6,true);assert.equal(entrance.opening,1);assert.equal(entrance.blocks(x,z),false);
+const {rockWallLayout,rockWallBlocks}=await moduleAt('src/muspelheimRockWalls.ts');
+const rocks=rockWallLayout({x:GATEWAY_POSITION.x,z,halfWidth:41*GATEWAY_SCALE});
+function canReachWorld(){
+ const size=245,limit=122,seen=new Uint8Array(size*size),queue=new Int32Array(size*size);let head=0,tail=0;
+ const id=(x,z)=>(x+limit)*size+z+limit,start=id(0,96),target=id(0,45);queue[tail++]=start;seen[start]=1;
+ while(head<tail){const cell=queue[head++];if(cell===target)return true;const gx=Math.floor(cell/size)-limit,gz=cell%size-limit;
+  for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=gx+dx,nz=gz+dz;if(Math.abs(nx)>limit||Math.abs(nz)>limit)continue;const next=id(nx,nz);if(seen[next])continue;seen[next]=1;if(rockWallBlocks(rocks,nx*2,nz*2)||entrance.blocks(nx*2,nz*2))continue;queue[tail++]=next;}
+ }
+ return false;
+}
+assert.equal(canReachWorld(),false,'Closed entrance must not be bypassed around either curved wall');
+assert.equal(entrance.blocks(x,z),true);entrance.update(.5,true);assert.equal(entrance.blocks(x,z),true);entrance.update(.6,true);assert.equal(entrance.opening,1);assert.equal(entrance.blocks(x,z),false);assert.equal(canReachWorld(),true,'Open gateway must retain a walkable central route');
 assert.ok(entrance.group.getObjectByName('DoorLeft').rotation.y>1.5);assert.ok(entrance.group.getObjectByName('DoorRight').rotation.y< -1.5);
 assert.equal(entrance.blocks(x+25*GATEWAY_SCALE,z),true);assert.ok(entrance.floorAt(x,z,0)>6*GATEWAY_SCALE);assert.equal(entrance.floorAt(100,z,0),0);
 for(let p=100;p<185;p+=.25){const y=entrance.floorAt(0,p,0);assert.ok(Number.isFinite(y)&&y>=0&&y<12);}
