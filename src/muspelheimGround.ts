@@ -43,8 +43,6 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
      vec3 roadSurface=texture2D(cobbleSurface,cobbleUv).rgb;
      vec3 roadColor=texture2D(cobbleColor,cobbleUv).rgb;
      diffuseColor.rgb=mix(diffuseColor.rgb,diffuse*roadColor*(.80+.20*roadSurface.r),roadAmount);
-     // AO identifies the recesses between stones without adding light to their tops.
-     float roadGlow=(1.-smoothstep(.15,.60,roadSurface.r))*roadAmount;
      float bankGray=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
      diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.075,.079,.09)+bankGray*.13,chasmBank);
      #endif`);
@@ -59,12 +57,8 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
      #ifdef USE_MAP
      roughnessFactor=mix(roughnessFactor,max(.75,roadSurface.g),roadAmount);
      #endif`);
-    shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
-     #ifdef USE_MAP
-     totalEmissiveRadiance+=vec3(.035,.20,.38)*roadGlow;
-     #endif`);
    };
-   ground.customProgramCacheKey=()=> 'muspelheim-cobble-material-blue-joints-v6';
+   ground.customProgramCacheKey=()=> 'muspelheim-cobble-dark-joints-v7';
    ground.needsUpdate=true;
   }
  });
