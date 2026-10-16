@@ -12,6 +12,9 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
    map.wrapS=map.wrapT=THREE.ClampToEdgeWrapping;
    map.anisotropy=Math.min(8,maxAnisotropy);map.needsUpdate=true;
    ground.onBeforeCompile=shader=>{
+    shader.vertexShader='varying float chasmBank;\n'+shader.vertexShader;
+    shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>\nvec3 bankNormal=normalize(mat3(modelMatrix)*normal);\nfloat bankY=(modelMatrix*vec4(position,1.)).y;\nchasmBank=(1.-smoothstep(.65,.98,abs(bankNormal.y)))*smoothstep(.2,2.,-bankY);`);
+    shader.fragmentShader='varying float chasmBank;\n'+shader.fragmentShader;
     shader.fragmentShader=shader.fragmentShader.replace('#include <map_pars_fragment>',`#include <map_pars_fragment>
      #ifdef USE_MAP
      vec2 groundHash(vec2 cell){return fract(sin(vec2(dot(cell,vec2(127.1,311.7)),dot(cell,vec2(269.5,183.3))))*43758.5453);}
@@ -28,9 +31,11 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
      #endif`);
     shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`#ifdef USE_MAP
      diffuseColor*=groundBlend(vMapUv);
+     float bankGray=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
+     diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.075,.079,.09)+bankGray*.13,chasmBank);
      #endif`);
    };
-   ground.customProgramCacheKey=()=> 'muspelheim-ground-atlas-blend-v1';
+   ground.customProgramCacheKey=()=> 'muspelheim-ground-chasm-basalt-v2';
    ground.needsUpdate=true;
   }
  });

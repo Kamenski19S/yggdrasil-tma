@@ -9,7 +9,7 @@ assert.ok(Math.abs(screenMoveToWorld(0,-1,Math.PI).z-1)<1e-8);
 assert.ok(Math.abs(screenMoveToWorld(0,-1,-Math.PI/2).x-1)<1e-8);
 for(const fps of [20,60,120]){
  const state={yaw:0,targetYaw:0,turnTime:0};let old=state.yaw;
- for(let i=0;i<fps*4;i++){updateFollowCamera(state,0,1,1/fps);assert.ok(Math.abs(state.yaw-old)<=1.8/fps+1e-8);old=state.yaw;}
+ for(let i=0;i<fps*4;i++){updateFollowCamera(state,0,1,1/fps);assert.ok(Math.abs(state.yaw-old)<=1.35/fps+1e-8);old=state.yaw;}
  assert.ok(Math.abs(Math.abs(state.yaw)-Math.PI)<.01);
  const basis=state.yaw,move=screenMoveToWorld(0,-1,basis);assert.ok(move.z>.999);
  for(let i=0;i<fps*3;i++)updateFollowCamera(state,move.x,move.z,1/fps);
@@ -25,13 +25,14 @@ const entrance=createMuspelheimGateway(models[0],models[1],false),x=GATEWAY_POSI
 assert.deepEqual(entrance.group.position.toArray(),[0,0,140]);
 assert.equal(entrance.group.scale.x,.5);
 const width=new THREE.Box3().setFromObject(entrance.group).getSize(new THREE.Vector3()).x;assert.ok(Math.abs(width-41)<.01);
+const {chasmBlocks}=await moduleAt('src/muspelheimChasm.ts');
 const {rockWallLayout,rockWallBlocks}=await moduleAt('src/muspelheimRockWalls.ts');
 const rocks=rockWallLayout({x:GATEWAY_POSITION.x,z,halfWidth:41*GATEWAY_SCALE});
 function canReachWorld(){
  const size=245,limit=122,seen=new Uint8Array(size*size),queue=new Int32Array(size*size);let head=0,tail=0;
- const id=(x,z)=>(x+limit)*size+z+limit,start=id(0,96),target=id(0,45);queue[tail++]=start;seen[start]=1;
+ const id=(x,z)=>(x+limit)*size+z+limit,start=id(0,109),target=id(0,45);queue[tail++]=start;seen[start]=1;
  while(head<tail){const cell=queue[head++];if(cell===target)return true;const gx=Math.floor(cell/size)-limit,gz=cell%size-limit;
-  for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=gx+dx,nz=gz+dz;if(Math.abs(nx)>limit||Math.abs(nz)>limit)continue;const next=id(nx,nz);if(seen[next])continue;seen[next]=1;if(rockWallBlocks(rocks,nx*2,nz*2)||entrance.blocks(nx*2,nz*2))continue;queue[tail++]=next;}
+  for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=gx+dx,nz=gz+dz;if(Math.abs(nx)>limit||Math.abs(nz)>limit)continue;const next=id(nx,nz);if(seen[next])continue;seen[next]=1;if(chasmBlocks(nx*2,nz*2)||rockWallBlocks(rocks,nx*2,nz*2)||entrance.blocks(nx*2,nz*2))continue;queue[tail++]=next;}
  }
  return false;
 }

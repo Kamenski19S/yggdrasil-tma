@@ -10,8 +10,8 @@ export function updateFollowCamera(state:FollowCameraState,dx:number,dz:number,d
   state.turnTime+=dt;
  }
  // Hold the last view at rest. A short delay absorbs tiny steering corrections.
- if(state.turnTime>=.18){const delta=Math.atan2(Math.sin(state.targetYaw-state.yaw),Math.cos(state.targetYaw-state.yaw));
-  state.yaw+=Math.max(-1.8*dt,Math.min(1.8*dt,delta*(1-Math.exp(-3.8*dt))));
+ if(state.turnTime>=.22){const delta=Math.atan2(Math.sin(state.targetYaw-state.yaw),Math.cos(state.targetYaw-state.yaw));
+  state.yaw+=Math.max(-1.35*dt,Math.min(1.35*dt,delta*(1-Math.exp(-3*dt))));
  }
  return state.yaw;
 }

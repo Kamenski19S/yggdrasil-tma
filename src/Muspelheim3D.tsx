@@ -2,6 +2,7 @@ import React,{useEffect,useRef,useState} from 'react';
 import './muspelheimUI.css';
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
+import {BRIDGE_ASSET,BRIDGE_CREDIT,BRIDGE_SPAWN,chasmBlocks,carveEntranceChasm,createEntranceBridge,createChasmLava} from './muspelheimChasm';
 import {BASE} from './core';
 import {createTerrainSampler,clampMuspelheimPosition} from './muspelheimTerrain';
 import {configureMuspelheimGround} from './muspelheimGround';
@@ -18,7 +19,7 @@ function dispose(root:THREE.Object3D){
  geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());
 }
 export default function Muspelheim3D(props:Props){
- const host=useRef<HTMLDivElement>(null),input=useRef({x:0,z:0}),position=useRef({x:0,z:192.5});
+ const host=useRef<HTMLDivElement>(null),input=useRef({x:0,z:0}),position=useRef({...BRIDGE_SPAWN});
  const [status,setStatus]=useState('Загрузка площадки Муспельхейма…'),[retry,setRetry]=useState(0),[failed,setFailed]=useState(false),[gate,setGate]=useState(false),[mapOpen,setMapOpen]=useState(false);
  const viewYaw=useRef(0),controlYaw=useRef(0),gateIsOpen=useRef(props.gateOpen);gateIsOpen.current=props.gateOpen;
  const paused=useRef(false);paused.current=gate||mapOpen;
@@ -32,14 +33,16 @@ export default function Muspelheim3D(props:Props){
   scene.add(new THREE.HemisphereLight('#ffdfb0','#332127',2.3));const sun=new THREE.DirectionalLight('#ffb776',2);sun.position.set(30,70,20);scene.add(sun);
   const camera=new THREE.PerspectiveCamera(48,1,.1,650),hero=new THREE.Group();scene.add(hero);
   let sample:((x:number,z:number)=>number|null)|undefined,mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,current:THREE.AnimationAction|undefined;
+  const lava=createChasmLava();scene.add(lava.mesh);let bridge:ReturnType<typeof createEntranceBridge>|undefined;
   const wallRocks=rockWallLayout(GATEWAY_WALL_ANCHOR);
   const follow:FollowCameraState={yaw:viewYaw.current,targetYaw:viewYaw.current,turnTime:0};
   let terrainReady=false,heroReady=false,wallsReady=0,loadError=false,entrance:MuspelheimGateway|undefined;
   const entranceAssets:Array<THREE.Object3D|undefined>=[];
-  const blocked=(x:number,z:number)=>rockWallBlocks(wallRocks,x,z)||(entrance?.blocks(x,z)??false);
-  const heightAt=(x:number,z:number)=>{const base=sample?.(x,z);return base==null?null:entrance?.floorAt(x,z,base)??base;};
-  const ready=()=>{if(terrainReady&&heroReady&&wallsReady===ROCK_ASSETS.length&&entrance&&!loadError)setStatus('Муспельхейм · Исследуй площадку.');};
+  const blocked=(x:number,z:number)=>chasmBlocks(x,z)||rockWallBlocks(wallRocks,x,z)||(entrance?.blocks(x,z)??false);
+  const heightAt=(x:number,z:number)=>{const base=sample?.(x,z);if(base==null)return null;const deck=bridge?.floorAt(x,z);if(deck!=null)return Math.max(base,deck);return entrance?.floorAt(x,z,base)??base;};
+  const ready=()=>{if(terrainReady&&heroReady&&wallsReady===ROCK_ASSETS.length&&entrance&&bridge&&!loadError)setStatus('Гиннунгагап · Мост к первым вратам.');};
   const loader=new GLTFLoader();
+  loader.load(`${BASE}img/models/${BRIDGE_ASSET}`,g=>{if(!alive){dispose(g.scene);return;}bridge=createEntranceBridge(g.scene);scene.add(bridge.group);g.scene.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});ready();},undefined,()=>{if(alive){loadError=true;setStatus('Мост не загрузился. Повтори загрузку.');setFailed(true);}});
   GATEWAY_ASSETS.forEach((asset,index)=>loader.load(`${BASE}img/models/${asset}`,g=>{
    if(!alive){dispose(g.scene);return;}entranceAssets[index]=g.scene;
    if(entranceAssets[0]&&entranceAssets[1]){entrance=createMuspelheimGateway(entranceAssets[0],entranceAssets[1],gateIsOpen.current);scene.add(entrance.group);ready();}
@@ -54,6 +57,7 @@ export default function Muspelheim3D(props:Props){
   loader.load(`${BASE}img/models/Muspelheim_Terrain_300m.glb`,g=>{
    if(!alive){dispose(g.scene);return;}
    g.scene.scale.multiply(new THREE.Vector3(1.75,1,1.75));
+   carveEntranceChasm(g.scene);
    configureMuspelheimGround(g.scene,renderer.capabilities.getMaxAnisotropy());
    scene.add(g.scene);g.scene.name='Muspelheim editable terrain';sample=createTerrainSampler(g.scene);terrainReady=true;ready();
   },undefined,()=>{if(alive){loadError=true;setStatus('Площадка не загрузилась. Проверь соединение и повтори.');setFailed(true);}});
@@ -72,20 +76,21 @@ export default function Muspelheim3D(props:Props){
   window.addEventListener('keydown',keydown);window.addEventListener('keyup',keyup);window.addEventListener('blur',clear);document.addEventListener('visibilitychange',clear);
   const resize=()=>{const w=mount.clientWidth,h=mount.clientHeight;if(!w||!h)return;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();};
   const observer=new ResizeObserver(resize);observer.observe(mount);resize();
+  const lookTarget=new THREE.Vector3(position.current.x,3,position.current.z-18);
   const clock=new THREE.Clock();camera.position.set(position.current.x,20,position.current.z+32);
   function tick(){
    if(!alive)return;frame=requestAnimationFrame(tick);const dt=Math.min(clock.getDelta(),.05);
    let x=input.current.x+(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0);
    let z=input.current.z+(keys.has('KeyS')||keys.has('ArrowDown')?1:0)-(keys.has('KeyW')||keys.has('ArrowUp')?1:0);
    const length=Math.hypot(x,z);let moving=false,dx=0,dz=0;
-   if(length&&terrainReady&&heroReady&&entrance&&wallsReady===ROCK_ASSETS.length&&!document.hidden&&!paused.current){x/=Math.max(1,length);z/=Math.max(1,length);const world=screenMoveToWorld(x,z,controlYaw.current);x=world.x;z=world.z;const p=moveAlongRockWalls(wallRocks,position.current,clampMuspelheimPosition(position.current.x+x*18*dt,position.current.z+z*18*dt));let next=p;if(blocked(p.x,p.z)){const from=position.current;next=!blocked(p.x,from.z)?{x:p.x,z:from.z}:!blocked(from.x,p.z)?{x:from.x,z:p.z}:from;}const y=heightAt(next.x,next.z);if(y!=null&&Math.abs(y-hero.position.y)<(Math.abs(next.x-GATEWAY_POSITION.x)<13*GATEWAY_SCALE&&Math.abs(next.z-GATEWAY_POSITION.z)<42*GATEWAY_SCALE?8*GATEWAY_SCALE:3)){dx=next.x-position.current.x;dz=next.z-position.current.z;moving=Math.hypot(dx,dz)>.00001;position.current=next;if(moving)hero.rotation.y=Math.atan2(dx,dz);}}
+   if(length&&terrainReady&&heroReady&&entrance&&bridge&&!loadError&&wallsReady===ROCK_ASSETS.length&&!document.hidden&&!paused.current){x/=Math.max(1,length);z/=Math.max(1,length);const world=screenMoveToWorld(x,z,controlYaw.current);x=world.x;z=world.z;const p=moveAlongRockWalls(wallRocks,position.current,clampMuspelheimPosition(position.current.x+x*18*dt,position.current.z+z*18*dt));let next=p;if(blocked(p.x,p.z)){const from=position.current;next=!blocked(p.x,from.z)?{x:p.x,z:from.z}:!blocked(from.x,p.z)?{x:from.x,z:p.z}:from;}const y=heightAt(next.x,next.z);if(y!=null&&Math.abs(y-hero.position.y)<(Math.abs(next.x-GATEWAY_POSITION.x)<13*GATEWAY_SCALE&&Math.abs(next.z-GATEWAY_POSITION.z)<42*GATEWAY_SCALE?8*GATEWAY_SCALE:3)){dx=next.x-position.current.x;dz=next.z-position.current.z;moving=Math.hypot(dx,dz)>.00001;position.current=next;if(moving)hero.rotation.y=Math.atan2(dx,dz);}}
    const p=position.current;hero.position.set(p.x,heightAt(p.x,p.z)??0,p.z);entrance?.update(paused.current?0:dt,gateIsOpen.current);
    const action=moving?walk:idle;if(action&&action!==current){current?.fadeOut(.18);action.reset().fadeIn(.18).play();current=action;}
-   mixer?.update(dt);viewYaw.current=updateFollowCamera(follow,dx,dz,dt);
+   lava.update(paused.current?0:dt);mixer?.update(dt);viewYaw.current=updateFollowCamera(follow,dx,dz,dt);
    const offset=safeCameraOffset(p.x,p.z,follow.yaw,(x,z)=>rockWallBlocks(wallRocks,x,z,2)||(entrance?.blocks(x,z,2)??false));
-   camera.position.lerp(new THREE.Vector3(p.x+offset.x,hero.position.y+20,p.z+offset.z),1-Math.exp(-6*dt));
+   camera.position.lerp(new THREE.Vector3(p.x+offset.x,hero.position.y+20,p.z+offset.z),1-Math.exp(-4.5*dt));
    if(rockWallBlocks(wallRocks,camera.position.x,camera.position.z,2)||(entrance?.blocks(camera.position.x,camera.position.z,2)??false))camera.position.set(p.x+offset.x,hero.position.y+20,p.z+offset.z);
-   const lookAhead=18*offset.distance/32;camera.lookAt(p.x-Math.sin(follow.yaw)*lookAhead,hero.position.y+3,p.z-Math.cos(follow.yaw)*lookAhead);renderer.render(scene,camera);
+   const lookAhead=18*offset.distance/32;lookTarget.lerp(new THREE.Vector3(p.x-Math.sin(follow.yaw)*lookAhead,hero.position.y+3,p.z-Math.cos(follow.yaw)*lookAhead),1-Math.exp(-5*dt));camera.lookAt(lookTarget);renderer.render(scene,camera);
   }
   tick();return()=>{alive=false;cancelAnimationFrame(frame);clear();observer.disconnect();window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();for(const asset of entranceAssets)if(asset&&!asset.parent)dispose(asset);dispose(scene);renderer.dispose();renderer.domElement.remove();};
  },[retry]);
@@ -98,11 +103,12 @@ export default function Muspelheim3D(props:Props){
   <div role="status" style={{position:'absolute',bottom:14,left:150,right:12,color:'#ffe2ac',fontSize:12,textShadow:'0 2px 3px #000'}}>{status}{failed&&<button className="muspelheim-btn" onClick={()=>setRetry(v=>v+1)}>Повторить загрузку</button>}</div>
   <div role="group" aria-label="Управление Vicki" onPointerDown={e=>{if(pointer.current!==null)return;controlYaw.current=viewYaw.current;pointer.current=e.pointerId;e.currentTarget.setPointerCapture(e.pointerId);move(e);}} onPointerMove={move} onPointerUp={stop} onPointerCancel={stop} onLostPointerCapture={stop} style={{position:'absolute',bottom:20,left:20,width:108,height:108,borderRadius:'50%',border:'3px solid #b88839',background:'#27170dbb',display:'grid',placeItems:'center',color:'#edce89',touchAction:'none',userSelect:'none'}}>✥</div>
   {mapOpen&&<div style={{position:'absolute',inset:0,display:'grid',placeItems:'center',background:'#000a',padding:16}}><div role="dialog" aria-modal="true" aria-label="Карта Муспельхейма" className="card" style={{maxWidth:420,maxHeight:'85%',overflowY:'auto',padding:16,background:'#291911',color:'#ffe2ac'}}><h3>Карта Муспельхейма</h3>
-   <svg viewBox="0 0 300 300" style={{display:'block',width:'100%',maxHeight:240,background:'#42251d',borderRadius:8}} aria-label="Скальный периметр и положение Vicki"><rect x="12" y="12" width="276" height="276" rx="14" fill="#573122" stroke="#77777c" strokeWidth="18"/>{[-1,1].map(side=><polyline key={side} points={rockWallLayout(GATEWAY_WALL_ANCHOR).filter(r=>r.section==='entrance'&&Math.sign(r.x-GATEWAY_POSITION.x)===side).map(r=>`${150+r.x/525*276},${150+r.z/525*276}`).join(' ')} fill="none" stroke="#77777c" strokeWidth="7" strokeLinecap="round"/>)}<path d={`M ${150+GATEWAY_POSITION.x/525*276-6} ${150+GATEWAY_POSITION.z/525*276} h 12`} stroke="#ff8e35" strokeWidth="5"/><circle cx={150+position.current.x/525*276} cy={150+position.current.z/525*276} r="5" fill="#ffd45f"/></svg>
-   <p style={{fontSize:12}}>Золотая точка — Vicki. Серые дуги — скальный хребет и ограда у входа. Оранжевая отметка — первые врата.</p><h4>Авторство моделей</h4>
+   <svg viewBox="0 0 300 300" style={{display:'block',width:'100%',maxHeight:240,background:'#42251d',borderRadius:8}} aria-label="Скальный периметр и положение Vicki"><rect x="12" y="12" width="276" height="276" rx="14" fill="#573122" stroke="#77777c" strokeWidth="18"/>{[-1,1].map(side=><polyline key={side} points={rockWallLayout(GATEWAY_WALL_ANCHOR).filter(r=>r.section==='entrance'&&Math.sign(r.x-GATEWAY_POSITION.x)===side).map(r=>`${150+r.x/525*276},${150+r.z/525*276}`).join(' ')} fill="none" stroke="#77777c" strokeWidth="7" strokeLinecap="round"/>)}<rect x="32" y="236" width="236" height="36" fill="#140d14"/><path d="M150 233 V273" stroke="#a5a7ad" strokeWidth="10"/><path d={`M ${150+GATEWAY_POSITION.x/525*276-6} ${150+GATEWAY_POSITION.z/525*276} h 12`} stroke="#ff8e35" strokeWidth="5"/><circle cx={150+position.current.x/525*276} cy={150+position.current.z/525*276} r="5" fill="#ffd45f"/></svg>
+   <p style={{fontSize:12}}>Золотая точка — Vicki. Серые дуги — скальный хребет и ограда у входа. Оранжевая отметка — первые врата. Светлая полоса — мост над огненной бездной Гиннунгагап.</p><h4>Авторство моделей</h4>
    {ROCK_CREDITS.map(c=><p key={c.author} style={{fontSize:12}}><a href={c.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{c.title} — {c.author}</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>CC BY 4.0</a>.</p>)}
    <p style={{fontSize:12}}>Проход: <a href={GATEWAY_CREDIT.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{GATEWAY_CREDIT.title} — {GATEWAY_CREDIT.author}</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>CC BY 4.0</a>.</p>
    <p style={{fontSize:12}}>Круглая дверь: <a href="https://www.cgtrader.com/items/1933395/download-page" target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>Entrance Door to Chamber — CGTrader</a>. Предоставлена для проекта; оптимизирована, разделена на створки, добавлены шарниры и открытие, изменены цвет и размещение.</p>
+   <p style={{fontSize:12}}>Мост: <a href={BRIDGE_CREDIT.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{BRIDGE_CREDIT.title} — {BRIDGE_CREDIT.author}</a>. CC BY 4.0. Упрощён, сжаты текстуры, изменены пропорции и цвет на каменный.</p>
    <p style={{fontSize:11}}>Изменения: упрощена геометрия, сжаты текстуры, материал приведён к тёмному базальту, мох обесцвечен и затемнён; изменены масштаб и размещение.</p><button className="muspelheim-btn" onClick={()=>setMapOpen(false)}>Закрыть карту</button></div></div>}
   {gate&&<div className="muspelheim-gate-backdrop" onClick={()=>setGate(false)}><div className="muspelheim-gate-panel" role="dialog" aria-modal="true" aria-label="Первые врата Муспельхейма" onClick={e=>e.stopPropagation()}>
    <h3>Первые врата</h3>
