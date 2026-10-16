@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {createGatewayRunes} from './muspelheimRunes';
 export const GATEWAY_ASSETS=['Muspelheim_Ancient_Gateway.glb','Muspelheim_Round_Door.glb'] as const;
 export const GATEWAY_POSITION={x:0,z:140};
 export const GATEWAY_SCALE=.5;
@@ -16,14 +17,20 @@ export function createMuspelheimGateway(arch:THREE.Object3D,door:THREE.Object3D,
     float lightness=dot(sampledDiffuseColor.rgb,vec3(.2126,.7152,.0722));
     float blueMark=smoothstep(.025,.13,max(sampledDiffuseColor.b,sampledDiffuseColor.g)-sampledDiffuseColor.r)*step(sampledDiffuseColor.g*.8,sampledDiffuseColor.b);
     vec3 basalt=vec3(.47,.44,.42)*lightness;
-    vec3 amber=vec3(1.0,.24,.025)*max(.28,lightness)*1.5;
-    diffuseColor.rgb=diffuse*mix(basalt,amber,blueMark);
+    vec3 crimson=vec3(.85,.006,.045)*max(.35,lightness)*1.8;
+    diffuseColor.rgb=diffuse*mix(basalt,crimson,blueMark);
    #endif`);};
-  m.customProgramCacheKey=()=> 'muspelheim-gateway-basalt-amber-v1';m.needsUpdate=true;
+  m.customProgramCacheKey=()=> 'muspelheim-gateway-basalt-crimson-v2';m.needsUpdate=true;
  }});
+ group.updateWorldMatrix(true,true);const runeRay=new THREE.Raycaster();
+ const runes=createGatewayRunes((x,y,side)=>{
+  const origin=door.localToWorld(new THREE.Vector3(x,y,side*100));runeRay.set(origin,new THREE.Vector3(0,0,-side));
+  const hit=runeRay.intersectObjects([arch,door],true)[0];
+  return (hit?door.worldToLocal(hit.point.clone()).z:side*4.3)+side*.45;
+ });door.add(runes.group);
  const left=door.getObjectByName('DoorLeft'),right=door.getObjectByName('DoorRight');if(!left||!right)throw Error('Round door hinges are missing');
- let opening=initiallyOpen?1:0;
- function update(dt:number,open:boolean){opening=THREE.MathUtils.clamp(opening+(open?1:-1)*dt/.95,0,1);const eased=opening*opening*(3-2*opening);left!.rotation.y=eased*Math.PI*.52;right!.rotation.y=-eased*Math.PI*.52;}
+ let opening=initiallyOpen?1:0,nearby=false;
+ function update(dt:number,open:boolean){runes.update(dt);opening=THREE.MathUtils.clamp(opening+(open?1:-1)*dt/.95,0,1);const eased=opening*opening*(3-2*opening);left!.rotation.y=eased*Math.PI*.52;right!.rotation.y=-eased*Math.PI*.52;}
  update(0,initiallyOpen);
  // Cached center stair profile: raycasts run once, never in the render loop.
  group.updateWorldMatrix(true,true);const ray=new THREE.Raycaster(),profile:number[]=[];
@@ -32,7 +39,13 @@ export function createMuspelheimGateway(arch:THREE.Object3D,door:THREE.Object3D,
   const hit=ray.intersectObject(arch,true).find(h=>h.face&&h.face.normal.clone().transformDirection(h.object.matrixWorld).y>.4);
   profile.push(hit?Math.max(0,hit.point.y):0);
  }
- return {group,update,get opening(){return opening;},
+ return {group,update,
+  updateProximity(dt:number,unlocked:boolean,x:number,z:number){
+   const dx=Math.abs(x-GATEWAY_POSITION.x),dz=Math.abs(z-(GATEWAY_POSITION.z-20*GATEWAY_SCALE));
+   // A wider release zone avoids flickering and keeps the doorway safe during passage.
+   nearby=unlocked&&(nearby?dx<16&&dz<36:dx<12&&dz<28);
+   update(dt,nearby);
+  },get opening(){return opening;},
   floorAt(x:number,z:number,base:number){const dx=(x-GATEWAY_POSITION.x)/GATEWAY_SCALE,dz=(z-GATEWAY_POSITION.z)/GATEWAY_SCALE;if(Math.abs(dx)>13||Math.abs(dz)>40)return base;const t=dz+40,i=Math.min(79,Math.floor(t));return Math.max(base,THREE.MathUtils.lerp(profile[i],profile[i+1],t-i));},
   blocks(x:number,z:number,radius=5){const dx=Math.abs(x-GATEWAY_POSITION.x)/GATEWAY_SCALE,dz=(z-GATEWAY_POSITION.z)/GATEWAY_SCALE+20,r=radius/GATEWAY_SCALE;
    const stone=dx>17-r&&dx<41+r&&Math.abs((z-GATEWAY_POSITION.z)/GATEWAY_SCALE)<34+r;

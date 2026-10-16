@@ -42,5 +42,29 @@ assert.ok(entrance.group.getObjectByName('DoorLeft').rotation.y>1.5);assert.ok(e
 assert.equal(entrance.blocks(x+25*GATEWAY_SCALE,z),true);assert.ok(entrance.floorAt(x,z,0)>6*GATEWAY_SCALE);assert.equal(entrance.floorAt(100,z,0),0);
 for(let p=100;p<185;p+=.25){const y=entrance.floorAt(0,p,0);assert.ok(Number.isFinite(y)&&y>=0&&y<12);}
 entrance.update(2,false);assert.equal(entrance.opening,0);assert.equal(entrance.blocks(x,z),true);
+// The crystal unlocks proximity control; it does not leave the leaves permanently open.
+for(const side of [-1,1]){
+ entrance.update(2,false);entrance.updateProximity(2,false,0,z+side*15);assert.equal(entrance.opening,0,'Locked gate must ignore proximity');
+ entrance.updateProximity(2,true,0,z+side*45);assert.equal(entrance.opening,0,'Unlocked distant gate starts shut');
+ entrance.updateProximity(1,true,0,z+side*26);assert.equal(entrance.opening,1,'Approach from either direction opens');
+ entrance.updateProximity(1,true,0,z+side*29);assert.equal(entrance.opening,1,'Hysteresis prevents closing at trigger boundary');
+ entrance.updateProximity(2,true,0,z);assert.equal(entrance.opening,1,'Door remains open while Vicki is in passage');
+ entrance.updateProximity(1,true,0,z-side*40);assert.equal(entrance.opening,0,'Door closes after Vicki leaves on opposite side');
+}
+for(const side of [-1,1])for(const fps of [20,60,120]){
+ entrance.update(2,false);let position=z+side*45;
+ for(let i=0;i<fps*5;i++){
+  entrance.updateProximity(1/fps,true,0,position);
+  const next=position-side*18/fps;if(!entrance.blocks(0,next))position=next;
+ }
+ assert.ok(side*(position-z)<-35,'Actual collision-controlled movement must pass in both directions');
+}
+const runeGroup=entrance.group.getObjectByName('Procedural blue rune circle');assert.ok(runeGroup);assert.equal(runeGroup.children.length,2);
+for(const mesh of runeGroup.children){assert.ok(mesh.geometry.attributes.position.count>500);assert.equal(mesh.material.toneMapped,false);}
 const app=readFileSync('src/Muspelheim3D.tsx','utf8');assert.match(app,/gateIsOpen.current=props.gateOpen/);assert.match(app,/controlYaw.current=viewYaw.current/);
 console.log('Muspelheim camera/gateway: smooth reversal at 20/60/120 FPS, stable input basis, camera obstacles, hinged opening, sealed passage and cached stair heights passed');
+entrance.update(2,false);entrance.group.updateWorldMatrix(true,true);
+const visibilityRay=new THREE.Raycaster(),strokePositions=runeGroup.getObjectByName('Blue rune strokes').geometry.attributes.position;
+let visible=0;for(let i=0;i<strokePositions.count;i+=4){const local=new THREE.Vector3().fromBufferAttribute(strokePositions,i),side=Math.sign(local.z),point=runeGroup.localToWorld(local);visibilityRay.set(new THREE.Vector3(point.x,point.y,point.z+side*100),new THREE.Vector3(0,0,-side));const hit=visibilityRay.intersectObject(models[0],true)[0];if(!hit||side*(hit.point.z-point.z)<.3)visible++;}
+assert.ok(visible/(strokePositions.count/4)>.9,'Runes must be placed on the visible stone surface rather than behind the arch');
+console.log('Bidirectional proximity passage at 20/60/120 FPS, locked crystal, hysteresis, safe closure and visible rune placement passed');
