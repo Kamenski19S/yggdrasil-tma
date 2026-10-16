@@ -23,7 +23,7 @@ export const ROAD_CURVES = [
  [1061,736,943,860,970,884,1006,966],
  [1006,966,1034,1033,1061,1103,1078,1143],
 ] as const;
-export const ROAD_WIDTH=30;
+export const ROAD_WIDTH=15;
 export const ROAD_BOUNDS={minX:-525,maxX:525,minZ:-458.75,maxZ:140};
 export function roadWorldPoint(x:number,y:number){return {x:(x-703)*.8,z:-420+y*550/1285};}
 export function roadLines(){return ROAD_CURVES.map(c=>Array.from({length:65},(_,i)=>{

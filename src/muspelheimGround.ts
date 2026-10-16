@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import {createRoadMask,ROAD_BOUNDS} from './muspelheimRoads';
 
-// The GLB embeds a two-panel atlas: ground on the left, road on the right.
-// Keep samples inset from the white divider and the outer edges.
+// Preserve the left atlas panel for the lava ground. The road uses world-sized
+// granite slabs so their proportions stay fixed across curves and junctions.
 export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:number){
  const roadMask=createRoadMask();
  root.traverse(object=>{
@@ -21,6 +21,29 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
     shader.fragmentShader=shader.fragmentShader.replace('#include <map_pars_fragment>',`#include <map_pars_fragment>
      #ifdef USE_MAP
      vec2 groundHash(vec2 cell){return fract(sin(vec2(dot(cell,vec2(127.1,311.7)),dot(cell,vec2(269.5,183.3))))*43758.5453);}
+     float graniteNoise(vec2 p){
+      vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+      return mix(mix(groundHash(i).x,groundHash(i+vec2(1.,0.)).x,f.x),mix(groundHash(i+vec2(0.,1.)).x,groundHash(i+vec2(1.)).x,f.x),f.y);
+     }
+     // Staggered granite slabs with thin, softly glowing blue joints.
+     vec4 graniteRoad(vec2 p){
+      vec2 slabSize=vec2(5.4,4.0);
+      float row=floor(p.y/slabSize.y);
+      vec2 q=(p+vec2(mod(row,2.)*slabSize.x*.5,0.))/slabSize;
+      vec2 cell=floor(q),f=fract(q);
+      vec2 edge=min(f,1.-f)*slabSize;
+      float distanceToJoint=min(edge.x,edge.y)+(graniteNoise(p*1.7)-.5)*.055;
+      float aa=max(fwidth(distanceToJoint),.018);
+      float joint=1.-smoothstep(.045-aa,.09+aa,distanceToJoint);
+      float halo=1.-smoothstep(.06,.30+aa,distanceToJoint);
+      float grain=graniteNoise(p*15.0),fleck=graniteNoise(p*32.0);
+      float slabTone=.027+groundHash(cell).x*.016+graniteNoise(p*.7)*.012;
+      vec3 stone=vec3(.78,.86,1.)*slabTone;
+      stone+=(grain-.5)*.019+smoothstep(.80,.96,fleck)*.025;
+      stone*=.64+.36*smoothstep(.08,.30,distanceToJoint);
+      stone=mix(stone,vec3(.007,.014,.023),joint);
+      return vec4(stone,joint*.65+halo*.16);
+     }
      vec4 groundPatch(vec2 uv,vec2 cell){
       vec2 p=uv+groundHash(cell)*19.0;
       vec2 mirrored=1.0-abs(mod(p,2.0)-1.0);
@@ -37,18 +60,21 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
      vec2 roadUv=(roadWorldPosition.xz-vec2(${ROAD_BOUNDS.minX},${ROAD_BOUNDS.minZ}))/vec2(${ROAD_BOUNDS.maxX-ROAD_BOUNDS.minX},${ROAD_BOUNDS.maxZ-ROAD_BOUNDS.minZ});
      float roadAmount=texture2D(roadMask,roadUv).r;
      roadAmount*=step(0.,roadUv.x)*step(roadUv.x,1.)*step(0.,roadUv.y)*step(roadUv.y,1.)*(1.-chasmBank);
-     vec2 roadTile=1.-abs(mod(roadWorldPosition.xz/18.,2.)-1.);
-     vec4 roadColor=texture2D(map,vec2(.690,.003)+roadTile*vec2(.125,.994));
-     // Use the slab center of the road panel, excluding its lava-covered shoulders.
-     // Muted, slightly lighter stone keeps the route readable in the warm world light.
-     float roadGray=dot(roadColor.rgb,vec3(.2126,.7152,.0722));
-     vec3 roadStone=mix(roadColor.rgb,vec3(roadGray),.78)*1.25+vec3(.075,.082,.09);
-     diffuseColor.rgb=mix(diffuseColor.rgb,diffuse*roadStone,roadAmount);
+     float roadGlow=0.;
+     if(roadAmount>.001){
+      vec4 granite=graniteRoad(roadWorldPosition.xz);
+      diffuseColor.rgb=mix(diffuseColor.rgb,diffuse*granite.rgb,roadAmount);
+      roadGlow=granite.a*roadAmount;
+     }
      float bankGray=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
      diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.075,.079,.09)+bankGray*.13,chasmBank);
      #endif`);
+    shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
+     #ifdef USE_MAP
+     totalEmissiveRadiance+=vec3(.035,.20,.38)*roadGlow;
+     #endif`);
    };
-   ground.customProgramCacheKey=()=> 'muspelheim-ground-wide-stone-roads-v4';
+   ground.customProgramCacheKey=()=> 'muspelheim-dark-granite-blue-joints-v5';
    ground.needsUpdate=true;
   }
  });
