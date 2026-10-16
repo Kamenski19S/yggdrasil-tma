@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {MUSPELHEIM_SIZE} from './muspelheimTerrain';
+import {MUSPELHEIM_SIZE,WORLD_OUTLINE} from './muspelheimTerrain';
 export const ROCK_ASSETS=['Muspelheim_Basalt_Cliff.glb','Muspelheim_Basalt_Ridge.glb','Muspelheim_Basalt_Boulder.glb'] as const;
 export const ROCK_CREDITS=[
  {title:'Cliff | Low-Poly | Game-ready',author:'kEam',url:'https://sketchfab.com/3d-models/cliff-low-poly-game-ready-918dc8e1b1f0443993a251c1302510bf'},
@@ -18,13 +18,15 @@ export function gatewayWingRockLayout(gateway:GatewayWallAnchor):WallRock[]{
  return rocks;
 }
 export function rockWallLayout(gateway?:GatewayWallAnchor):WallRock[]{
- const rocks:WallRock[]=[],half=MUSPELHEIM_SIZE/2,step=MUSPELHEIM_SIZE/16;
- for(let side=0;side<4;side++)for(let i=0;i<16;i++){
-  const seed=side*16+i,t=-half+(i+.5)*step,edge=half+6;
-  const [x,z]=side===0?[t,-edge]:side===1?[edge,t]:side===2?[-t,edge]:[-edge,-t];
-  rocks.push({kind:(i+side*2)%3,x,z,y:-5,yaw:side*Math.PI/2,width:64+(seed*7%13),height:52+(seed*17%49),depth:54+(seed*11%13)});
+ const rocks:WallRock[]=[];let seed=0;
+ for(let side=0;side<WORLD_OUTLINE.length;side++){
+  const [ax,az]=WORLD_OUTLINE[side],[bx,bz]=WORLD_OUTLINE[(side+1)%WORLD_OUTLINE.length],dx=bx-ax,dz=bz-az,length=Math.hypot(dx,dz),count=Math.ceil(length/(MUSPELHEIM_SIZE/16));
+  for(let i=0;i<count;i++,seed++){
+   const t=(i+.5)/count,x=ax+dx*t-dz/length*6,z=az+dz*t+dx/length*6;
+   rocks.push({kind:(seed+side*2)%3,x,z,y:-5,yaw:Math.atan2(-dz,dx),width:64+(seed*7%13),height:52+(seed*17%49),depth:54+(seed*11%13)});
+  }
  }
- for(const x of [-half,half])for(const z of [-half,half])rocks.push({kind:2,x,z,y:-6,yaw:0,width:78,height:65,depth:78});
+ for(const [x,z] of WORLD_OUTLINE)rocks.push({kind:2,x,z,y:-6,yaw:0,width:78,height:65,depth:78});
  if(gateway)rocks.push(...gatewayWingRockLayout(gateway));
  return rocks;
 }

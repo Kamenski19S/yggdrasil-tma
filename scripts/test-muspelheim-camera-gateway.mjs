@@ -29,7 +29,7 @@ const {chasmBlocks}=await moduleAt('src/muspelheimChasm.ts');
 const {rockWallLayout,rockWallBlocks}=await moduleAt('src/muspelheimRockWalls.ts');
 const rocks=rockWallLayout({x:GATEWAY_POSITION.x,z,halfWidth:41*GATEWAY_SCALE});
 function canReachWorld(){
- const size=245,limit=122,seen=new Uint8Array(size*size),queue=new Int32Array(size*size);let head=0,tail=0;
+ const size=531,limit=265,seen=new Uint8Array(size*size),queue=new Int32Array(size*size);let head=0,tail=0;
  const id=(x,z)=>(x+limit)*size+z+limit,start=id(0,109),target=id(0,45);queue[tail++]=start;seen[start]=1;
  while(head<tail){const cell=queue[head++];if(cell===target)return true;const gx=Math.floor(cell/size)-limit,gz=cell%size-limit;
   for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=gx+dx,nz=gz+dz;if(Math.abs(nx)>limit||Math.abs(nz)>limit)continue;const next=id(nx,nz);if(seen[next])continue;seen[next]=1;if(chasmBlocks(nx*2,nz*2)||rockWallBlocks(rocks,nx*2,nz*2)||entrance.blocks(nx*2,nz*2))continue;queue[tail++]=next;}
