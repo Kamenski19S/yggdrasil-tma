@@ -10,17 +10,20 @@ const GLYPHS=[
  [[0,-1,0,1],[0,.2,-.6,.8],[0,.2,.6,.8]],
  [[0,1,-.65,0],[-.65,0,0,-1],[0,-1,.65,0],[.65,0,0,1]],
 ];
+// Follow the fixed stone arch, ending on its two lower jambs instead of the steps.
+export const RUNE_ANGLES=Array.from({length:24},(_,i)=>-Math.PI/4+i*(Math.PI*1.5)/23);
+export function runeCenter(angle:number){return {x:21*Math.cos(angle),y:16+21*Math.sin(angle)};}
 export function createGatewayRunes(surfaceAt?:(x:number,y:number,side:number)=>number){
  const group=new THREE.Group();group.name='Procedural blue rune circle';
  function geometry(width:number){
   const vertices:number[]=[],indices:number[]=[];
   for(const side of [-1,1])for(let i=0;i<24;i++){
-   const angle=i*Math.PI*2/24,c=Math.cos(angle),s=Math.sin(angle),depth=surfaceAt?.(c*21,16+s*21,side)??side*4.3;
+   const angle=RUNE_ANGLES[i],c=Math.cos(angle),s=Math.sin(angle),center=runeCenter(angle),depth=surfaceAt?.(center.x,center.y,side)??side*4.3;
    for(const [ax,ay,bx,by] of GLYPHS[i%GLYPHS.length]){
     const length=Math.hypot(bx-ax,by-ay),nx=-(by-ay)/length*width/2,ny=(bx-ax)/length*width/2,start=vertices.length/3;
     for(const [x,y] of [[ax+nx,ay+ny],[ax-nx,ay-ny],[bx+nx,by+ny],[bx-nx,by-ny]]){
      // Local up points out from the circle, following the fixed stone ring.
-     vertices.push(c*21+c*y-s*x,16+s*21+s*y+c*x,depth);
+     vertices.push(center.x+c*y-s*x,center.y+s*y+c*x,depth);
     }
     indices.push(start,start+1,start+2,start+2,start+1,start+3);
    }

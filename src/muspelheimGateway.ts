@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {createGatewayTorches} from './muspelheimTorches';
 import {createGatewayRunes} from './muspelheimRunes';
 export const GATEWAY_ASSETS=['Muspelheim_Ancient_Gateway.glb','Muspelheim_Round_Door.glb'] as const;
 export const GATEWAY_POSITION={x:0,z:140};
@@ -29,8 +30,8 @@ export function createMuspelheimGateway(arch:THREE.Object3D,door:THREE.Object3D,
   return (hit?door.worldToLocal(hit.point.clone()).z:side*4.3)+side*.45;
  });door.add(runes.group);
  const left=door.getObjectByName('DoorLeft'),right=door.getObjectByName('DoorRight');if(!left||!right)throw Error('Round door hinges are missing');
- let opening=initiallyOpen?1:0,nearby=false;
- function update(dt:number,open:boolean){runes.update(dt);opening=THREE.MathUtils.clamp(opening+(open?1:-1)*dt/.95,0,1);const eased=opening*opening*(3-2*opening);left!.rotation.y=eased*Math.PI*.52;right!.rotation.y=-eased*Math.PI*.52;}
+ let opening=initiallyOpen?1:0,nearby=false,torches:ReturnType<typeof createGatewayTorches>|undefined;
+ function update(dt:number,open:boolean){runes.update(dt);torches?.update(dt);opening=THREE.MathUtils.clamp(opening+(open?1:-1)*dt/.95,0,1);const eased=opening*opening*(3-2*opening);left!.rotation.y=eased*Math.PI*.52;right!.rotation.y=-eased*Math.PI*.52;}
  update(0,initiallyOpen);
  // Cached center stair profile: raycasts run once, never in the render loop.
  group.updateWorldMatrix(true,true);const ray=new THREE.Raycaster(),profile:number[]=[];
@@ -40,6 +41,11 @@ export function createMuspelheimGateway(arch:THREE.Object3D,door:THREE.Object3D,
   profile.push(hit?Math.max(0,hit.point.y):0);
  }
  return {group,update,
+  mountTorches(source:THREE.Object3D){
+   if(torches)return;group.updateWorldMatrix(true,true);const ray=new THREE.Raycaster();
+   torches=createGatewayTorches(source,(x,y)=>{const origin=group.localToWorld(new THREE.Vector3(x,y,100));ray.set(origin,new THREE.Vector3(0,0,-1));const hit=ray.intersectObject(arch,true)[0];if(!hit)throw Error('Torch column surface is missing');return group.worldToLocal(hit.point.clone()).z;});
+   group.add(torches.group);
+  },
   updateProximity(dt:number,unlocked:boolean,x:number,z:number){
    const dx=Math.abs(x-GATEWAY_POSITION.x),dz=Math.abs(z-(GATEWAY_POSITION.z-20*GATEWAY_SCALE));
    // A wider release zone avoids flickering and keeps the doorway safe during passage.
