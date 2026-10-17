@@ -13,8 +13,9 @@ const loader=new GLTFLoader();loader.register(()=>({name:'texture-stub',loadText
 const model=await loader.parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'');
 const volcano=createMuspelheimVolcano(model.scene,0),bounds=new THREE.Box3().setFromObject(volcano.root),size=bounds.getSize(new THREE.Vector3());
 for(const [value,target] of [[size.x,VOLCANO_SIZE.width],[size.y,VOLCANO_SIZE.height],[size.z,VOLCANO_SIZE.depth]])assert.ok(Math.abs(value-target)<1e-5);
-assert.ok(bounds.min.x>-490&&bounds.max.x<0&&bounds.min.z>-435&&bounds.max.z<-100,'Massif stays inside rear-left walls, away from entry');
-assert.ok(size.x<=182.01&&size.z<=182.01&&bounds.max.y<65,'Volcano must be smaller and sunk into the ground');
+assert.ok(bounds.min.x>-490&&bounds.max.x<0&&bounds.min.z>-445&&bounds.max.z<-100,'Massif stays inside rear-left walls, away from entry');
+assert.ok(bounds.min.z+458.75>=15&&bounds.min.z+458.75<=40,'Volcano must stand close to the rear wall');
+assert.ok(size.x>220&&size.z<=182.01&&bounds.max.y>60&&bounds.max.y<75,'Massif must be wider and slightly higher with its base still buried');
 volcano.root.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const p=o.geometry.attributes.position,v=new THREE.Vector3();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);if(Math.abs(v.x-VOLCANO_POSITION.x)>=VOLCANO_SIZE.width*.45||Math.abs(v.z-VOLCANO_POSITION.z)>=VOLCANO_SIZE.depth*.45)assert.ok(v.y<=-.99,'Every outer rim vertex must sit below the ground');}});
 assert.equal(volcano.floorAt(0,218),null);assert.equal(volcano.floorAt(-500,-300),null);
 let hits=0;for(let x=bounds.min.x+10;x<bounds.max.x;x+=20)for(let z=bounds.min.z+10;z<bounds.max.z;z+=20){const y=volcano.floorAt(x,z);if(y!==null){assert.ok(Number.isFinite(y)&&y>=bounds.min.y-.01&&y<=bounds.max.y+.01);hits++;}}
