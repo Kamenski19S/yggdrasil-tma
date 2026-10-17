@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {buildSync} from 'esbuild';
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
+const code=buildSync({entryPoints:['src/muspelheimSurtThrone.ts'],bundle:true,write:false,format:'esm',platform:'node',external:['three']}).outputFiles[0].text.replaceAll('from "three"',`from ${JSON.stringify(import.meta.resolve('three'))}`);
+const {createSurtThrone,SURT_THRONE_CREDIT,SURT_THRONE_HEIGHT,SURT_THRONE_POSITION}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const data=readFileSync('public/img/models/Muspelheim_Surt_Throne.glb'),doc=JSON.parse(data.subarray(20,20+data.readUInt32LE(12)));assert.equal(doc.asset.extras.source,SURT_THRONE_CREDIT.url);assert.ok(doc.asset.extras.author.startsWith(SURT_THRONE_CREDIT.author));assert.ok(data.length<3e6);
+const triangles=doc.meshes.reduce((sum,m)=>sum+m.primitives.reduce((sum,p)=>sum+doc.accessors[p.indices].count/3,0),0);assert.ok(triangles<20000);
+const loader=new GLTFLoader();loader.register(()=>({name:'textures',loadTexture:()=>Promise.resolve(new THREE.Texture())}));const model=(await loader.parseAsync(data.buffer.slice(data.byteOffset,data.byteOffset+data.byteLength),'')).scene;
+const t=createSurtThrone(model),b=t.bounds;assert.ok(Math.abs(b.min.y-40.05)<1e-5);assert.ok(Math.abs(b.max.y-b.min.y-SURT_THRONE_HEIGHT)<1e-5);assert.ok(b.min.x>-350&&b.max.x<-280&&b.min.z>-443&&b.max.z<-420,'Throne stays inside castle by rear door');assert.equal(t.blocks(SURT_THRONE_POSITION.x,SURT_THRONE_POSITION.z),true);assert.equal(t.blocks(-315,-410),false);assert.equal(t.blocks(-315.35,-380.8),false);
+console.log('Surt throne: attribution, optimized asset, grounded placement near inner door, central approach and main entrance clearance passed',{bytes:data.length,triangles,bounds:[b.min.toArray(),b.max.toArray()]});
