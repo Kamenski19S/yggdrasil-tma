@@ -12,10 +12,10 @@ assert.ok(triangles<40000);
 const loader=new GLTFLoader();loader.register(()=>({name:'texture-stub',loadTexture:()=>Promise.resolve(new THREE.Texture())}));
 const model=await loader.parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'');
 const volcano=createMuspelheimVolcano(model.scene,0),bounds=new THREE.Box3().setFromObject(volcano.root),size=bounds.getSize(new THREE.Vector3());
-for(const [value,target] of [[size.x,VOLCANO_SIZE.width],[size.y,VOLCANO_SIZE.height],[size.z,VOLCANO_SIZE.depth]])assert.ok(Math.abs(value-target)<1e-5);
+for(const [value,target] of [[size.x,VOLCANO_SIZE.width],[size.z,VOLCANO_SIZE.depth]])assert.ok(Math.abs(value-target)<1e-5);
 assert.ok(bounds.min.x>-490&&bounds.max.x<0&&bounds.max.z<-100,'Massif remains at the rear left, away from entry');
 assert.ok(bounds.min.z<-458.75,'Rear foothills must merge into the back wall');
-assert.ok(size.x>=330&&size.z>=330&&bounds.max.y>60&&bounds.max.y<75,'Volcano needs a substantially broader footprint without growing taller');
+assert.ok(size.x>=330&&size.z>=330&&bounds.max.y>80&&bounds.max.y<110,'Existing rim peaks must now rise above the castle while retaining the footprint');
 let summit;
 volcano.root.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const p=o.geometry.attributes.position,v=new THREE.Vector3();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);if(!summit||v.y>summit.y)summit=v.clone();}});
 assert.ok(summit.z>-425&&summit.x>-490,'Summit for the future house must remain inside the world');
@@ -25,5 +25,9 @@ volcano.root.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const p=o.geometr
 assert.equal(volcano.floorAt(0,218),null);assert.equal(volcano.floorAt(-500,-300),null);
 let hits=0;for(let x=bounds.min.x+10;x<bounds.max.x;x+=20)for(let z=bounds.min.z+10;z<bounds.max.z;z+=20){const y=volcano.floorAt(x,z);if(y!==null){assert.ok(Number.isFinite(y)&&y>=bounds.min.y-.01&&y<=bounds.max.y+.01);hits++;}}
 assert.ok(hits>50,'Walking height must cover the imported surface');
+const sectors=Array(12).fill(0);
+volcano.root.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const p=o.geometry.attributes.position,v=new THREE.Vector3();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);const angle=(Math.atan2(v.z-VOLCANO_POSITION.z,v.x-VOLCANO_POSITION.x)+Math.PI*2)%(Math.PI*2),sector=Math.min(11,Math.floor(angle/(Math.PI*2)*12));sectors[sector]=Math.max(sectors[sector],v.y);}});
+assert.ok(sectors.some(y=>y>80),'Some peaks must rise above the castle');assert.ok(sectors.some(y=>y>60&&y<76.5),'Some peaks remain a little below the castle');console.log('Rim sector heights',sectors.map(Math.round));
+console.log('Peak height',bounds.max.y);
 console.log('Volcano: optimized GLB, credit, bounds, rear-left wall clearance and walking surface passed', {bytes:b.length,triangles,hits,center:VOLCANO_POSITION});
 if(process.env.VOLCANO_PREVIEW){const meshes=[];volcano.root.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const p=o.geometry.attributes.position,v=new THREE.Vector3();const vertices=Array.from({length:p.count},(_,i)=>v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld).toArray());meshes.push({vertices,indices:Array.from(o.geometry.index.array)});});writeFileSync(process.env.VOLCANO_PREVIEW,JSON.stringify(meshes));}
