@@ -15,7 +15,7 @@ const triangles=doc.meshes.reduce((sum,m)=>sum+m.primitives.reduce((n,p)=>n+doc.
 const tower=createSurtTower(asset.gltf.scene),b=tower.buildingBounds;
 assert.ok(b.min.z>-450&&b.max.z<-370&&b.min.x>-400&&b.max.x<-200,'Building stays on rear summit, before the back wall');
 assert.ok(Math.abs(b.min.y-SURT_TOWER_BASE_Y)<1e-5,'Castle bottom stays at the chosen Vicki ledge height');
-assert.equal(tower.blocks(0,218),false);assert.equal(tower.blocks(SURT_TOWER_POSITION.x,SURT_TOWER_POSITION.z),true);
+assert.equal(tower.blocks(0,218),false);
 assert.equal(tower.root.getObjectByName('Summit rock foundation'),undefined,'No raised foundation may obstruct the approach');
 const approachZ=b.max.z;
 for(let z=approachZ+2;z<approachZ+12;z+=2)assert.equal(tower.blocks(SURT_TOWER_POSITION.x,z),false,'The former platform approach remains open');

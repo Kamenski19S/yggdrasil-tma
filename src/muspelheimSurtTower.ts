@@ -15,7 +15,14 @@ export function createSurtTower(model:THREE.Object3D){
  const fit=new THREE.Group();fit.scale.setScalar(scale);fit.add(offset);fit.position.set(x,floorY,z);root.add(fit);
  model.traverse(o=>{if(o instanceof THREE.Mesh){o.receiveShadow=true;o.castShadow=true;}});root.updateWorldMatrix(true,true);
  const buildingBounds=new THREE.Box3().setFromObject(fit);
- return {root,floorY,buildingBounds,
-  blocks:(px:number,pz:number,padding=1.5)=>px>buildingBounds.min.x-padding&&px<buildingBounds.max.x+padding&&pz>buildingBounds.min.z-padding&&pz<buildingBounds.max.z+padding,
+ // Check the actual walls, leaving the courtyard available for walking.
+ const ray=new THREE.Raycaster(),cache=new Map<string,boolean>();
+ const wallBlocks=(px:number,pz:number,padding:number)=>{
+  if(px<buildingBounds.min.x-padding||px>buildingBounds.max.x+padding||pz<buildingBounds.min.z-padding||pz>buildingBounds.max.z+padding)return false;
+  const key=`${Math.round(px*2)},${Math.round(pz*2)},${padding}`;const saved=cache.get(key);if(saved!==undefined)return saved;
+  let blocked=false;ray.near=0;ray.far=padding+.5;
+  for(let i=0;i<8&&!blocked;i++){const a=i*Math.PI/4;ray.set(new THREE.Vector3(px,floorY+4,pz),new THREE.Vector3(Math.cos(a),0,Math.sin(a)));blocked=ray.intersectObject(fit,true).length>0;}
+  if(cache.size>12000)cache.clear();cache.set(key,blocked);return blocked;
  };
+ return {root,floorY,buildingBounds,blocks:(px:number,pz:number,padding=1.5)=>wallBlocks(px,pz,padding)};
 }
