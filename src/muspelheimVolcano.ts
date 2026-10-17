@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 export const VOLCANO_ASSET='Muspelheim_Volcano.glb';
-export const VOLCANO_POSITION={x:-335,z:-342};
-export const VOLCANO_SIZE={width:230,height:86,depth:182};
+export const VOLCANO_POSITION={x:-315,z:-385};
+export const VOLCANO_SIZE={width:340,height:86,depth:340};
 export const VOLCANO_CREDIT={title:'Rocky hell terrain',author:'Nicothin',url:'https://sketchfab.com/3d-models/rocky-hell-terrain-6a4c6f4bd2f24cb1a3f63adf426b2774'};
-/** Preserve the imported hierarchy and texture; place the whole massif inside the rear-left wall. */
+/** Preserve the imported hierarchy and texture; extend the rear foothills into the back wall, leaving the summit inside the playable world. */
 export function createMuspelheimVolcano(model:THREE.Object3D,groundY:number){
  model.updateWorldMatrix(true,true);
  const bounds=new THREE.Box3().setFromObject(model),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
