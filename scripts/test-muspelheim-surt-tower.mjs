@@ -14,10 +14,11 @@ const doc=JSON.parse(asset.bytes.subarray(20,20+asset.bytes.readUInt32LE(12)));a
 const triangles=doc.meshes.reduce((sum,m)=>sum+m.primitives.reduce((n,p)=>n+doc.accessors[p.indices].count/3,0),0);assert.ok(triangles<45000);
 const tower=createSurtTower(asset.gltf.scene,volcano.floorAt),b=tower.buildingBounds;
 assert.ok(b.min.z>-435&&b.max.z<-350&&b.min.x>-400&&b.max.x<-200,'Building stays on rear summit, before the back wall');
-assert.ok(tower.floorY>45&&tower.floorY<70,'Foundation is anchored high on the volcano');
-assert.ok(Math.abs(b.min.y-(tower.floorY-.3))<1e-5,'Castle base must sit in the foundation');
-assert.equal(tower.floorAt(0,218),null);assert.equal(tower.blocks(0,218),false);assert.equal(tower.blocks(SURT_TOWER_POSITION.x,SURT_TOWER_POSITION.z),true);
-const mesh=tower.root.getObjectByName('Summit rock foundation'),positions=mesh.geometry.attributes.position;
-for(let i=1;i<positions.count;i+=2){const x=positions.getX(i),z=positions.getZ(i),terrain=Math.max(0,volcano.floorAt(x,z)??0);assert.ok(positions.getY(i+1)<=terrain-.99,'Foundation skirt must reach into rock');assert.ok(positions.getY(i)>=terrain-.01,'Foundation top must be above its edge support');}
-console.log('Surt tower: optimized GLB/credit, rear summit placement, grounded base, continuous support and building collision passed',{bytes:asset.bytes.length,triangles,floorY:tower.floorY,bounds:[b.min.toArray(),b.max.toArray()]});
+assert.ok(Math.abs(b.min.y-(tower.floorY-.3))<1e-5,'Castle base is slightly embedded in the approach surface');
+assert.equal(tower.blocks(0,218),false);assert.equal(tower.blocks(SURT_TOWER_POSITION.x,SURT_TOWER_POSITION.z),true);
+assert.equal(tower.root.getObjectByName('Summit rock foundation'),undefined,'No raised foundation may obstruct the approach');
+const approachZ=b.max.z;
+assert.ok(Math.abs(tower.floorY-Math.max(0,volcano.floorAt(SURT_TOWER_POSITION.x,approachZ)??0))<1e-5,'Castle meets the natural front approach height');
+for(let z=approachZ+2;z<approachZ+12;z+=2)assert.equal(tower.blocks(SURT_TOWER_POSITION.x,z),false,'The former platform approach remains open');
+console.log('Surt tower: optimized asset, attribution, rear placement, natural approach and removed foundation passed',{bytes:asset.bytes.length,triangles,floorY:tower.floorY,bounds:[b.min.toArray(),b.max.toArray()]});
 if(process.env.TOWER_PREVIEW){const meshes=[];for(const root of [volcano.root,tower.root])root.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const p=o.geometry.attributes.position,v=new THREE.Vector3();meshes.push({kind:root===tower.root?'tower':'volcano',vertices:Array.from({length:p.count},(_,i)=>v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld).toArray()),indices:Array.from(o.geometry.index.array)});});writeFileSync(process.env.TOWER_PREVIEW,JSON.stringify(meshes));}
