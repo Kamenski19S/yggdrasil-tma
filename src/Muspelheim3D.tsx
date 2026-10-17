@@ -1,4 +1,4 @@
-import {clearSummitBowl,createSummitFloor} from './muspelheimSummit';
+import {createSummitFloor} from './muspelheimSummit';
 import {SURT_TOWER_ASSET,SURT_TOWER_POSITION,SURT_TOWER_CREDIT,createSurtTower} from './muspelheimSurtTower';
 import {VOLCANO_ASSET,VOLCANO_POSITION,VOLCANO_CREDIT,createMuspelheimVolcano} from './muspelheimVolcano';
 import React,{useEffect,useRef,useState} from 'react';
@@ -68,11 +68,11 @@ export default function Muspelheim3D(props:Props){
    const i=find('idle','sword_idle')||g.animations[0],w=find('walk_loop','walk')||i;
    if(i)idle=mixer.clipAction(i);if(w)walk=mixer.clipAction(w);idle?.play();current=idle;heroReady=true;ready();
   }).catch(()=>{if(alive){loadError=true;setStatus('Vicki не загрузилась. Проверь соединение и повтори.');setFailed(true);}});
-  const attachTower=()=>{if(!volcano||!towerSource||tower)return;tower=createSurtTower(towerSource);scene.add(tower.root);towerSource=undefined;ready();};
+  const attachTower=()=>{if(!volcano||!towerSource||tower)return;tower=createSurtTower(towerSource);scene.add(tower.root);towerSource=undefined;summit=createSummitFloor(`${BASE}img/`,renderer.capabilities.getMaxAnisotropy(),volcano.root,tower.buildingBounds);scene.add(summit.root);summit.ready.then(()=>{if(alive){summitReady=true;ready();}},()=>{if(alive){loadError=true;setStatus('Кладка у замка не загрузилась. Повтори загрузку.');setFailed(true);}});ready();};
   loader.load(`${BASE}img/models/${SURT_TOWER_ASSET}`,g=>{if(!alive){dispose(g.scene);return;}towerSource=g.scene;attachTower();},undefined,()=>{if(alive){loadError=true;setStatus('Башня Сурта не загрузилась. Повтори загрузку.');setFailed(true);}});
   loader.load(`${BASE}img/models/${VOLCANO_ASSET}`,g=>{
    if(!alive){dispose(g.scene);return;}
-   volcano=createMuspelheimVolcano(g.scene,0);clearSummitBowl(volcano.root);scene.add(volcano.root);summit=createSummitFloor(`${BASE}img/`,renderer.capabilities.getMaxAnisotropy());scene.add(summit.root);summit.ready.then(()=>{if(alive){summitReady=true;ready();}},()=>{if(alive){loadError=true;setStatus('Кладка у замка не загрузилась. Повтори загрузку.');setFailed(true);}});attachTower();ready();
+   volcano=createMuspelheimVolcano(g.scene,0);scene.add(volcano.root);attachTower();ready();
   },undefined,()=>{if(alive){loadError=true;setStatus('Вулкан не загрузился. Повтори загрузку.');setFailed(true);}});
   loader.load(`${BASE}img/models/${TORCH_ASSET}`,g=>{if(!alive){dispose(g.scene);return;}torchSource=g.scene;attachTorches();},undefined,()=>{if(alive){loadError=true;setStatus('Факелы не загрузились. Повтори загрузку.');setFailed(true);}});
   loader.load(`${BASE}img/models/${BRIDGE_ASSET}`,g=>{if(!alive){dispose(g.scene);return;}bridge=createEntranceBridge(g.scene,bridgeTexture);scene.add(bridge.group);g.scene.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});ready();},undefined,()=>{if(alive){loadError=true;setStatus('Мост не загрузился. Повтори загрузку.');setFailed(true);}});
