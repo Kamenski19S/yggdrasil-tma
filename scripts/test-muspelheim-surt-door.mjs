@@ -22,3 +22,7 @@ console.log('Surt gate: separated textured leaves, arm-reach trigger, safe passa
 
 const t=await tower(),ray=new THREE.Raycaster();for(let i=0;i<60;i++)t.updateProximity(1/60,t.door.x,t.door.z+5);
 for(const y of [44,48,53]){ray.set(new THREE.Vector3(t.door.x,y,t.door.z+5),new THREE.Vector3(0,0,-1));ray.far=10;const hits=ray.intersectObject(t.root,true);console.log('open doorway ray',y,hits.map(h=>({name:h.object.name,distance:h.distance})));assert.equal(hits.length,0,'The visible open gate must have a clear geometric passage');}
+
+const savedRaycast=THREE.Mesh.prototype.raycast;let calls=0;THREE.Mesh.prototype.raycast=function(...args){calls++;return savedRaycast.apply(this,args);};
+const start=performance.now();for(let i=0;i<20000;i++){t.blocks(-348+(i%130)*.5,-442+(Math.floor(i/130)%125)*.5,i%2?1.5:2);if(i%100===0)t.updateProximity(1/60,t.door.x,t.door.z+5);}
+THREE.Mesh.prototype.raycast=savedRaycast;assert.equal(calls,0,'Movement and camera collision must not raycast the castle model');console.log('20,000 wall/camera checks without model raycasts',Math.round(performance.now()-start),'ms');

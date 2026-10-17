@@ -23,3 +23,11 @@ const stone=f.root.children[0],lava=f.root.children[2];assert.equal(lava.positio
 const shader={uniforms:{},fragmentShader:'#include <map_fragment>'};stone.material.onBeforeCompile(shader,{});assert.ok(shader.fragmentShader.includes('discard'));
 f.update(1);assert.equal(lava.material.uniforms.time.value,1);
 console.log('Crater only: original mountain geometry preserved, shoreline confined, courtyard covered, lava joints and animation passed',{freeCourtyardSamples:free,shoreRange:[Math.min(...f.shore.radii),Math.max(...f.shore.radii)]});
+
+const yard=f.root.children[1],yardBounds=new THREE.Box3().setFromObject(yard);
+for(const axis of ['x','z']){assert.ok(Math.abs(yardBounds.min[axis]-t.buildingBounds.min[axis])<1e-4);assert.ok(Math.abs(yardBounds.max[axis]-t.buildingBounds.max[axis])<1e-4);}
+for(let x=t.buildingBounds.min.x;x<t.buildingBounds.max.x;x+=2)for(let z=t.buildingBounds.min.z;z<t.buildingBounds.max.z;z+=2)assert.equal(f.floorAt(x,z),SUMMIT_FLOOR_Y,'Every part of the castle uses the same paved floor');
+v.root.traverse(o=>{if(!(o instanceof THREE.Mesh))return;for(const material of Array.isArray(o.material)?o.material:[o.material]){const shader={uniforms:{},vertexShader:THREE.ShaderLib.standard.vertexShader,fragmentShader:THREE.ShaderLib.standard.fragmentShader};material.onBeforeCompile(shader,{});assert.equal(shader.vertexShader.split('varying vec3 castleRockPosition;').length-1,1,'Rock clipping must be injected once per material');assert.ok(shader.fragmentShader.includes('castleRockPosition.y>39.750000'));
+assert.ok(shader.fragmentShader.includes(`castleRockPosition.x>=${t.buildingBounds.min.x.toFixed(6)}`));}}
+);
+console.log('Courtyard: full wall-to-wall paving, flat walk height, lava underlay and rock clipping restricted to castle bounds passed');

@@ -32,15 +32,26 @@ export function createSurtTower(model:THREE.Object3D){
  }
  if(gateTriangles<100)throw Error('Surt gate could not be separated from castle');
  let opening=0,nearby=false;
- const ray=new THREE.Raycaster(),cache=new Map<string,boolean>();
+ // Slice static walls once at body height and index the resulting lines by spatial cell.
+ // Movement and camera checks then use distances to nearby lines instead of model raycasts.
+ const cellSize=4,segments:Array<[number,number,number,number]>=[],cells=new Map<string,number[]>(),sliceY=floorY+4;
+ const points=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()];
+ for(const mesh of sourceMeshes){const p=mesh.geometry.getAttribute('position'),index=mesh.geometry.index;if(!index)continue;
+  for(let i=0;i<index.count;i+=3){for(let k=0;k<3;k++)points[k].fromBufferAttribute(p,index.getX(i+k)).applyMatrix4(mesh.matrixWorld);
+   const cuts:THREE.Vector3[]=[];for(let k=0;k<3;k++){const a=points[k],b=points[(k+1)%3];if((a.y<=sliceY&&b.y>sliceY)||(b.y<=sliceY&&a.y>sliceY))cuts.push(a.clone().lerp(b,(sliceY-a.y)/(b.y-a.y)));}
+   if(cuts.length!==2)continue;const [a,b]=cuts,id=segments.length;segments.push([a.x,a.z,b.x,b.z]);
+   for(let cx=Math.floor(Math.min(a.x,b.x)/cellSize);cx<=Math.floor(Math.max(a.x,b.x)/cellSize);cx++)for(let cz=Math.floor(Math.min(a.z,b.z)/cellSize);cz<=Math.floor(Math.max(a.z,b.z)/cellSize);cz++){const key=`${cx},${cz}`,bucket=cells.get(key);if(bucket)bucket.push(id);else cells.set(key,[id]);}
+  }
+ }
  const wallBlocks=(px:number,pz:number,padding:number)=>{
   if(px<buildingBounds.min.x-padding||px>buildingBounds.max.x+padding||pz<buildingBounds.min.z-padding||pz>buildingBounds.max.z+padding)return false;
   const dx=Math.abs(px-door.x),dz=Math.abs(pz-door.z);
   if(dx<door.halfWidth-padding&&dz<4)return opening<.93;
-  const key=`${Math.round(px*2)},${Math.round(pz*2)},${padding}`;const saved=cache.get(key);if(saved!==undefined)return saved;
-  let blocked=false;ray.near=0;ray.far=padding+.5;
-  for(let i=0;i<8&&!blocked;i++){const a=i*Math.PI/4;ray.set(new THREE.Vector3(px,floorY+4,pz),new THREE.Vector3(Math.cos(a),0,Math.sin(a)));blocked=ray.intersectObject(fit,true).length>0;}
-  if(cache.size>12000)cache.clear();cache.set(key,blocked);return blocked;
+  for(let cx=Math.floor((px-padding)/cellSize);cx<=Math.floor((px+padding)/cellSize);cx++)for(let cz=Math.floor((pz-padding)/cellSize);cz<=Math.floor((pz+padding)/cellSize);cz++)for(const id of cells.get(`${cx},${cz}`)??[]){
+   const [ax,az,bx,bz]=segments[id],vx=bx-ax,vz=bz-az,t=THREE.MathUtils.clamp(((px-ax)*vx+(pz-az)*vz)/Math.max(.000001,vx*vx+vz*vz),0,1);
+   if((px-ax-t*vx)**2+(pz-az-t*vz)**2<padding**2)return true;
+  }
+  return false;
  };
  const updateProximity=(dt:number,px:number,pz:number)=>{
   const dx=Math.abs(px-door.x),dz=Math.abs(pz-door.z);

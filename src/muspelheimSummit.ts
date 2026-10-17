@@ -18,6 +18,15 @@ export function craterShore(volcano:THREE.Object3D){
 }
 export function createSummitFloor(assetBase:string,maxAnisotropy:number,volcano:THREE.Object3D,castleBounds:THREE.Box3){
  const shore=craterShore(volcano);
+ const cutMaterials=new Set<THREE.Material>();
+ // Cut rock only above the castle floor and inside its walls; preserve every exterior peak.
+ volcano.traverse(o=>{if(!(o instanceof THREE.Mesh))return;for(const material of Array.isArray(o.material)?o.material:[o.material]){
+  if(cutMaterials.has(material))continue;cutMaterials.add(material);
+  const m=material as THREE.MeshStandardMaterial,previous=m.onBeforeCompile;
+  m.onBeforeCompile=(shader,renderer)=>{previous.call(m,shader,renderer);shader.vertexShader='varying vec3 castleRockPosition;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>\ncastleRockPosition=(modelMatrix*vec4(position,1.)).xyz;`);shader.fragmentShader='varying vec3 castleRockPosition;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
+   if(castleRockPosition.x>=${castleBounds.min.x.toFixed(6)}&&castleRockPosition.x<=${castleBounds.max.x.toFixed(6)}&&castleRockPosition.z>=${castleBounds.min.z.toFixed(6)}&&castleRockPosition.z<=${castleBounds.max.z.toFixed(6)}&&castleRockPosition.y>${(SUMMIT_FLOOR_Y-.3).toFixed(6)})discard;`);};m.customProgramCacheKey=()=> 'volcano-castle-interior-cut-v1';m.needsUpdate=true;
+ }});
+
  const root=new THREE.Group();root.name='Lava-filled volcanic bowl with continuous cobble courtyard';
  const cobble=loadCobbleTextures(assetBase,maxAnisotropy);
  const material=new THREE.MeshStandardMaterial({map:cobble.color,aoMap:cobble.surface,roughnessMap:cobble.surface,normalMap:cobble.normal,roughness:1,metalness:0,normalScale:new THREE.Vector2(.65,.65)});
@@ -33,11 +42,15 @@ export function createSummitFloor(assetBase:string,maxAnisotropy:number,volcano:
  // Avoid coplanar overlap where the courtyard and crater paving meet.
  const yardMaterial=material.clone();yardMaterial.onBeforeCompile=material.onBeforeCompile;yardMaterial.customProgramCacheKey=material.customProgramCacheKey;yardMaterial.polygonOffset=true;yardMaterial.polygonOffsetFactor=-1;yardMaterial.polygonOffsetUnits=-1;
  const yard=new THREE.Mesh(yardGeometry,yardMaterial);yard.name='Cobble floor inside castle walls';yard.receiveShadow=true;root.add(yard);
- const lava=createChasmLava();lava.mesh.geometry.dispose();(lava.mesh as THREE.Mesh).geometry=geometry.clone();lava.mesh.rotation.set(0,0,0);lava.mesh.position.set(0,-.22,0);lava.mesh.name='Boiling lava confined to the central crater';
+ const lava=createChasmLava();lava.mesh.geometry.dispose();
+ const lavaGeometry=new THREE.BufferGeometry(),lavaPositions=[...vertices,...Array.from(yp.array)],lavaIndices=[...indices,...Array.from(yardGeometry.index!.array,n=>n+vertices.length/3)];
+ lavaGeometry.setAttribute('position',new THREE.Float32BufferAttribute(lavaPositions,3));lavaGeometry.setIndex(lavaIndices);lavaGeometry.computeBoundingSphere();(lava.mesh as THREE.Mesh).geometry=lavaGeometry;lava.mesh.rotation.set(0,0,0);lava.mesh.position.set(0,-.22,0);lava.mesh.name='Boiling lava confined to crater and castle floor';
+
  // The shared lava shader expects XY coordinates; use world XZ for the horizontal bowl mesh.
  (lava.mesh.material as THREE.ShaderMaterial).vertexShader=(lava.mesh.material as THREE.ShaderMaterial).vertexShader.replace('p=position.xy','p=position.xz');
  const lavaMaterial=lava.mesh.material as THREE.ShaderMaterial;
  lavaMaterial.fragmentShader=lavaMaterial.fragmentShader.replace('gl_FragColor=vec4(color,1.);',`vec2 cell=floor(p*.42);vec2 center=cell+.5;float phase=fract(time*.22+hash(cell));float bubble=1.-smoothstep(.025,.075,abs(length(p*.42-center)-phase*.42));color+=vec3(.8,.22,.015)*bubble*sin(phase*3.14159)*.35;gl_FragColor=vec4(color,1.);`);
  root.add(lava.mesh);
- return {root,shore,ready:cobble.ready,update:lava.update,floorAt:(x:number,z:number)=>shore.contains(x,z)||(x>=castleBounds.min.x&&x<=castleBounds.max.x&&z>=castleBounds.min.z&&z<=castleBounds.max.z)?SUMMIT_FLOOR_Y:null,dispose:()=>cobble.dispose()};
+ const floorAt=(x:number,z:number)=>shore.contains(x,z)||(x>=castleBounds.min.x&&x<=castleBounds.max.x&&z>=castleBounds.min.z&&z<=castleBounds.max.z)?SUMMIT_FLOOR_Y:null;
+ return {root,shore,ready:cobble.ready,update:lava.update,floorAt,dispose:()=>cobble.dispose()};
 }
