@@ -11,9 +11,9 @@ export function expandMuspelheimTerrain(root:THREE.Object3D){
  if(!source||!source.parent)throw Error('Terrain mesh parent is missing');
  root.updateWorldMatrix(true,true);const original=source,p=original.geometry.getAttribute('position'),uv=original.geometry.getAttribute('uv'),side=Math.sqrt(p.count),inverse=original.matrixWorld.clone().invert();
  const x0=p.getX(0),z0=p.getZ(0),dx=p.getX(1)-x0,dz=p.getZ(side)-z0;
- const rects=[[-525,525,-458.75,-262.5],[-525,-262.5,-262.5,110],[262.5,525,-262.5,110]];
+ const rects=[[-525,525,-458.75,-262.5],[-525,-262.5,-262.5,108.5],[262.5,525,-262.5,108.5],[-525,-262.5,108.5,110],[262.5,525,108.5,110]];
  for(const [minX,maxX,minZ,maxZ] of rects){
-  const nx=Math.ceil((maxX-minX)/7),nz=Math.ceil((maxZ-minZ)/7),vertices:number[]=[],uvs:number[]=[],indices:number[]=[],v=new THREE.Vector3();
+  const nx=Math.ceil((maxX-minX)/3.5),nz=Math.ceil((maxZ-minZ)/3.5),vertices:number[]=[],uvs:number[]=[],indices:number[]=[],v=new THREE.Vector3();
   for(let j=0;j<=nz;j++)for(let i=0;i<=nx;i++){
    v.set(THREE.MathUtils.lerp(minX,maxX,i/nx),0,THREE.MathUtils.lerp(minZ,maxZ,j/nz)).applyMatrix4(inverse);vertices.push(v.x,v.y,v.z);
    const gx=(v.x-x0)/dx,gz=(v.z-z0)/dz;uvs.push(uv.getX(0)+gx*(uv.getX(1)-uv.getX(0))+gz*(uv.getX(side)-uv.getX(0)),uv.getY(0)+gx*(uv.getY(1)-uv.getY(0))+gz*(uv.getY(side)-uv.getY(0)));

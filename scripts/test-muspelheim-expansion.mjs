@@ -14,7 +14,7 @@ let original;root.traverse(o=>{if(!original&&o instanceof THREE.Mesh)original=o;
 const oldPositions=original.geometry.attributes.position.array.slice(),oldUV=original.geometry.attributes.uv.array.slice();
 expandMuspelheimTerrain(root);
 assert.deepEqual(original.geometry.attributes.position.array,oldPositions,'Entrance vertices must remain unchanged');assert.deepEqual(original.geometry.attributes.uv.array,oldUV,'Entrance UVs must remain unchanged');
-let triangles=0;root.traverse(o=>{if(o instanceof THREE.Mesh)triangles+=o.geometry.index.count/3;});assert.ok(triangles<90000);
+let triangles=0;root.traverse(o=>{if(o instanceof THREE.Mesh)triangles+=o.geometry.index.count/3;});assert.ok(triangles<180000);
 const sample=createTerrainSampler(root);for(let x=-510;x<=510;x+=17)for(let z=-445;z<=95;z+=17)assert.ok(Math.abs(sample(x,z))<.001,`Missing floor at ${x},${z}`);
 for(const x of [-262.5,262.5])for(let z=-260;z<=100;z+=3)for(const offset of [-.001,0,.001])assert.ok(Math.abs(sample(x+offset,z))<.001,'Side seam must remain walkable');
 for(let x=-510;x<=510;x+=13)for(const offset of [-.001,0,.001])assert.ok(Math.abs(sample(x,-262.5+offset))<.001,'North seam must remain walkable');
