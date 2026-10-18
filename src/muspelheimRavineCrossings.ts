@@ -53,14 +53,15 @@ export function createRavineCrossings(source:THREE.Object3D){
  glow.rotation.x=-Math.PI/2;glow.rotation.z=-Math.atan2(p.tz,p.tx);glow.position.set(p.x,-SURT_RAVINE_DEPTH-RAVINE_PIT_EXTRA_DEPTH+.2,p.z);root.add(glow);
  return root;
 }
+export function isRavineAbyss(x:number,z:number){return ravinePitDepth(x,z)<-28;}
 export type RavineStep='walk'|'blocked'|'fall';
-export function classifyRavineStep(sample:(x:number,z:number)=>number|null,from:{x:number;z:number},to:{x:number;z:number}):RavineStep{
+export function classifyRavineStep(sample:(x:number,z:number)=>number|null,from:{x:number;z:number},to:{x:number;z:number},canFallAt:(x:number,z:number)=>boolean=()=>true):RavineStep{
  const length=Math.hypot(to.x-from.x,to.z-from.z);if(length<1e-8)return 'walk';
  const steps=Math.max(1,Math.ceil(length/.25));let previous=sample(from.x,from.z);if(previous==null)return 'blocked';
  for(let i=1;i<=steps;i++){
-  const y=sample(THREE.MathUtils.lerp(from.x,to.x,i/steps),THREE.MathUtils.lerp(from.z,to.z,i/steps));if(y==null)return 'fall';
+  const x=THREE.MathUtils.lerp(from.x,to.x,i/steps),z=THREE.MathUtils.lerp(from.z,to.z,i/steps),y=sample(x,z);if(y==null)return canFallAt(x,z)?'fall':'blocked';
   const delta=y-previous,limit=length/steps*1.4+.08;
-  if(delta>limit)return 'blocked';if(delta<-limit)return 'fall';previous=y;
+  if(delta>limit)return 'blocked';if(delta<-limit)return canFallAt(x,z)?'fall':'blocked';previous=y;
  }
  return 'walk';
 }
