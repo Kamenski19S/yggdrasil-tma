@@ -9,7 +9,7 @@ const axis=new THREE.CatmullRomCurve3([
  new THREE.Vector3(-85,0,-495),
 ],false,'centripetal');
 export const SURT_RAVINE_LINE=axis.getPoints(160).map(p=>({x:p.x,z:p.z}));
-export const SURT_RAVINE_DEPTH=66;
+export const SURT_RAVINE_DEPTH=82;
 export const SURT_RAVINE_SITES=[{x:-420,z:-100},{x:-315,z:-114},{x:-75,z:-255}] as const;
 function distanceToAxis(x:number,z:number){
  let distance=Infinity;
@@ -26,22 +26,22 @@ export function surtRavineDepth(x:number,z:number){
  let depth=-SURT_RAVINE_DEPTH*(1-THREE.MathUtils.smoothstep(d,32+variation,59+variation));
  // Cut a long southern approach into the bank, with tapered shoulders.
  const descent=1-THREE.MathUtils.smoothstep(Math.abs(x+365),13,30);
- if(z>=-110&&z<=30)depth=THREE.MathUtils.lerp(depth,-66*(1-THREE.MathUtils.smoothstep(z,-110,30)),descent);
+ if(z>=-110&&z<=30)depth=THREE.MathUtils.lerp(depth,-SURT_RAVINE_DEPTH*(1-THREE.MathUtils.smoothstep(z,-110,30)),descent);
  // A separate northern ascent leads toward the volcano after traversing the floor.
  const ascent=1-THREE.MathUtils.smoothstep(Math.abs(x+270),13,29);
- if(z<-125&&z>-230){const ramp=-66*THREE.MathUtils.smoothstep(z,-225,-125);depth=THREE.MathUtils.lerp(depth,ramp,ascent);}
+ if(z<-125&&z>-230){const ramp=-SURT_RAVINE_DEPTH*THREE.MathUtils.smoothstep(z,-225,-125);depth=THREE.MathUtils.lerp(depth,ramp,ascent);}
  return depth;
 }
 /** Sculpt the loaded GLB and its expanded grid in world space; the live sampler
  * then uses these exact triangles for walking, including both approaches. */
-export function carveSurtRavine(root:THREE.Object3D){
+export function carveSurtRavine(root:THREE.Object3D,extraDepth:(x:number,z:number)=>number=()=>0){
  root.updateWorldMatrix(true,true);
  root.traverse(o=>{
   if(!(o instanceof THREE.Mesh))return;
   const p=o.geometry.getAttribute('position'),v=new THREE.Vector3(),inverse=o.matrixWorld.clone().invert();
   for(let i=0;i<p.count;i++){
    v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);
-   v.y+=surtRavineDepth(v.x,v.z);v.applyMatrix4(inverse);p.setXYZ(i,v.x,v.y,v.z);
+   v.y+=surtRavineDepth(v.x,v.z)+extraDepth(v.x,v.z);v.applyMatrix4(inverse);p.setXYZ(i,v.x,v.y,v.z);
   }
   p.needsUpdate=true;o.geometry.computeVertexNormals();o.geometry.computeBoundingBox();o.geometry.computeBoundingSphere();
  });

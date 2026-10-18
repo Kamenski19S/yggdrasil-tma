@@ -46,7 +46,8 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
      vec3 roadColor=texture2D(cobbleColor,cobbleUv).rgb;
      diffuseColor.rgb=mix(diffuseColor.rgb,diffuse*roadColor*(.80+.20*roadSurface.r),stoneAmount);
      float bankGray=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
-     diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.075,.079,.09)+bankGray*.13,chasmBank);
+     float ravineBasalt=smoothstep(8.,32.,-roadWorldPosition.y)*(1.-smoothstep(0.,35.,roadWorldPosition.z));
+     diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.075,.079,.09)+bankGray*.13,max(chasmBank,ravineBasalt*.94));
      #endif`);
     shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
      #ifdef USE_MAP
@@ -60,7 +61,7 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
      roughnessFactor=mix(roughnessFactor,max(.75,roadSurface.g),stoneAmount);
      #endif`);
    };
-   ground.customProgramCacheKey=()=> 'muspelheim-cobble-open-lava-gaps-v9';
+   ground.customProgramCacheKey=()=> 'muspelheim-cobble-basalt-ravine-v10';
    ground.needsUpdate=true;
   }
  });
