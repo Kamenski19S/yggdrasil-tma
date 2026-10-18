@@ -770,6 +770,7 @@ export const RUNE_CATALOG:RuneDef[]=[
 
 
 export const lootDisplayName=(id:string)=>{
+  if(id==='muspelheimFireGold')return 'Огненное золото';
   const weaponNames:Record<string,string>={default:'Основное оружие',sword2:'Меч II',swordBig:'Большой меч',swordGolden:'Золотой меч',knife:'Боевой кинжал',dagger2:'Кинжал II',axe:'Северный топор',axeSmall:'Малый топор',axeDouble:'Двойной топор',mace:'Малый молот',hammerDouble:'Двойной молот',spear:'Копьё',claymore:'Клеймор',scythe:'Боевая коса'};
   const shieldNames:Record<string,string>={'Shield_Round.glb':'Круглый щит','Shield_Round_2.glb':'Серебряный щит','Shield_Heater.glb':'Щит','Shield_Heater_2.glb':'Щит II','Shield_Celtic_Golden.glb':'Золотой щит'};
   return weaponNames[id]||shieldNames[id]||RUNE_CATALOG.find(r=>r.id===id)?.name||POTION_CATALOG.find(p=>p.id===id)?.name||id;

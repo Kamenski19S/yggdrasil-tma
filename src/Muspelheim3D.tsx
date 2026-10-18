@@ -1,3 +1,6 @@
+import {carveMineApproach,mineApproachFloorAt,mineApproachRocks,createMineEntrance,MINE_DOOR,MINE_PATH} from './muspelheimMineEntrance';
+import {createAshDwarf} from './ashDwarf';
+import {FIRE_GOLD_COST} from './muspelheimMineQuest';
 import {RAVINE_BRIDGE_ASSET,RAVINE_BRIDGE_CREDIT,ravinePitDepth,ravineBridgeFloorAt,createRavineCrossings,ravineRockLayout,ravineRockBlocks,classifyRavineStep,RAVINE_RESTART,RAVINE_CROSSINGS} from './muspelheimRavineCrossings';
 import {carveSurtRavine,SURT_RAVINE_LINE,SURT_RAVINE_SITES} from './muspelheimSurtRavine';
 import {SURT_THRONE_ASSET,SURT_THRONE_CREDIT,createSurtThrone} from './muspelheimSurtThrone';
@@ -22,7 +25,7 @@ import {ROCK_ASSETS,ROCK_CREDITS,rockWallLayout,rockWallBlocks,moveAlongRockWall
 
 const GATEWAY_WALL_ANCHOR={x:GATEWAY_POSITION.x,z:GATEWAY_POSITION.z-20*GATEWAY_SCALE,halfWidth:41*GATEWAY_SCALE};
 
-type Props={gateOpen:boolean;canOpenGate:boolean;assembled:boolean;briefed:boolean;onInstallCrystal:()=>void;onTrial:()=>void};
+export type Props={onEnterMine:()=>void;startPosition?:{x:number;z:number};minePaid:boolean;fireGold:number;onPayKeeper:()=>void;gateOpen:boolean;canOpenGate:boolean;assembled:boolean;briefed:boolean;onInstallCrystal:()=>void;onTrial:()=>void};
 function dispose(root:THREE.Object3D){
  const textures=new Set<THREE.Texture>(),materials=new Set<THREE.Material>(),geometries=new Set<THREE.BufferGeometry>();
  root.traverse(o=>{if(o instanceof THREE.Mesh||o instanceof THREE.Points||o instanceof THREE.Sprite){if(o instanceof THREE.Mesh||o instanceof THREE.Points)geometries.add(o.geometry);if(o instanceof THREE.InstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){materials.add(m);Object.values(m).forEach(v=>{if(v instanceof THREE.Texture)textures.add(v);});}}});
@@ -30,10 +33,11 @@ function dispose(root:THREE.Object3D){
 }
 export default function Muspelheim3D(props:Props){
  const sprint=useRef(false);
- const host=useRef<HTMLDivElement>(null),input=useRef({x:0,z:0}),position=useRef({...BRIDGE_SPAWN});
- const [status,setStatus]=useState('Загрузка площадки Муспельхейма…'),[retry,setRetry]=useState(0),[failed,setFailed]=useState(false),[gate,setGate]=useState(false),[mapOpen,setMapOpen]=useState(false);
+ const host=useRef<HTMLDivElement>(null),input=useRef({x:0,z:0}),position=useRef({...props.startPosition??BRIDGE_SPAWN});
+ const [nearMine,setNearMine]=useState(false),[mineOpen,setMineOpen]=useState(false),[keeperDialog,setKeeperDialog]=useState(false),[nearKeeper,setNearKeeper]=useState(false),[status,setStatus]=useState('Загрузка площадки Муспельхейма…'),[retry,setRetry]=useState(0),[failed,setFailed]=useState(false),[gate,setGate]=useState(false),[mapOpen,setMapOpen]=useState(false);
  const viewYaw=useRef(0),controlYaw=useRef(0),gateIsOpen=useRef(props.gateOpen);gateIsOpen.current=props.gateOpen;
- const paused=useRef(false);paused.current=gate||mapOpen;
+ const paused=useRef(false);paused.current=gate||mapOpen||keeperDialog;
+ const minePaid=useRef(props.minePaid);minePaid.current=props.minePaid;const openMine=useRef<()=>void>(()=>{});
  useEffect(()=>{
   const mount=host.current;if(!mount)return;
   let alive=true,frame=0,renderer:THREE.WebGLRenderer;
@@ -45,7 +49,9 @@ export default function Muspelheim3D(props:Props){
   const camera=new THREE.PerspectiveCamera(48,1,.1,650),hero=new THREE.Group();scene.add(hero);
   let sample:((x:number,z:number)=>number|null)|undefined,mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,run:THREE.AnimationAction|undefined,current:THREE.AnimationAction|undefined;
   const lava=createChasmLava();scene.add(lava.mesh);let bridge:ReturnType<typeof createEntranceBridge>|undefined;
-  const wallRocks=rockWallLayout(GATEWAY_WALL_ANCHOR),ravineRocks=ravineRockLayout();
+  const wallRocks=rockWallLayout(GATEWAY_WALL_ANCHOR),ravineRocks=[...ravineRockLayout(),...mineApproachRocks()];
+  const mineEntrance=createMineEntrance(`${BASE}img/`);scene.add(mineEntrance.root);openMine.current=()=>{mineEntrance.open();setMineOpen(true);};
+  const keeper=createAshDwarf('keeper');keeper.root.scale.setScalar(1.5);keeper.root.position.set(-301,40,-366);scene.add(keeper.root);let proximityTimer=0;
   let crossingReady=false;
   let falling=false,fallVelocity=0,fallTime=0,respawnNotice=0,ravineVisited=false,snapCamera=false;
   const follow:FollowCameraState={yaw:viewYaw.current,targetYaw:viewYaw.current,turnTime:0};
@@ -57,8 +63,8 @@ export default function Muspelheim3D(props:Props){
   let roadMask:ReturnType<typeof configureMuspelheimGround>|undefined;
   let terrainReady=false,bridgeTextureReady=false,torchesReady=false,torchSource:THREE.Object3D|undefined,heroReady=false,wallsReady=0,loadError=false,entrance:MuspelheimGateway|undefined;
   const entranceAssets:Array<THREE.Object3D|undefined>=[];
-  const blocked=(x:number,z:number)=>chasmBlocks(x,z)||(throne?.blocks(x,z)??false)||(tower?.blocks(x,z)??false)||rockWallBlocks(wallRocks,x,z)||ravineRockBlocks(ravineRocks,x,hero.position.y,z)||(entrance?.blocks(x,z)??false);
-  const heightAt=(x:number,z:number)=>{const paved=summit?.floorAt(x,z);if(paved!=null)return paved;const base=sample?.(x,z);if(base==null)return null;const crossing=ravineBridgeFloorAt(x,z);if(crossing!=null)return Math.max(base,crossing);const deck=bridge?.floorAt(x,z);if(deck!=null)return Math.max(base,deck);const surface=Math.max(base,volcano?.floorAt(x,z)??base,summit?.floorAt(x,z)??base);return entrance?.floorAt(x,z,surface)??surface;};
+  const blocked=(x:number,z:number)=>mineEntrance.blocks(x,z)||chasmBlocks(x,z)||(throne?.blocks(x,z)??false)||(tower?.blocks(x,z)??false)||rockWallBlocks(wallRocks,x,z)||ravineRockBlocks(ravineRocks,x,hero.position.y,z)||(entrance?.blocks(x,z)??false);
+  const heightAt=(x:number,z:number)=>{const approach=mineApproachFloorAt(x,z);if(approach!=null)return approach;const paved=summit?.floorAt(x,z);if(paved!=null)return paved;const base=sample?.(x,z);if(base==null)return null;const crossing=ravineBridgeFloorAt(x,z);if(crossing!=null)return Math.max(base,crossing);const deck=bridge?.floorAt(x,z);if(deck!=null)return Math.max(base,deck);const surface=Math.max(base,volcano?.floorAt(x,z)??base,summit?.floorAt(x,z)??base);return entrance?.floorAt(x,z,surface)??surface;};
   const loadingTimeout=window.setTimeout(()=>{if(alive&&!loadError){loadError=true;setStatus(heroReady?'Загрузка мира затянулась. Повтори загрузку.':'Загрузка Vicki затянулась. Повтори загрузку.');setFailed(true);}},60000);
   const ready=()=>{if(crossingReady&&terrainReady&&heroReady&&volcano&&tower&&throne&&summitReady&&wallsReady===ROCK_ASSETS.length&&entrance&&bridge&&bridgeTextureReady&&torchesReady&&!loadError){window.clearTimeout(loadingTimeout);setStatus('Гиннунгагап · Мост к первым вратам.');}else if(!loadError)setStatus(heroReady?'Загрузка окружения Муспельхейма…':'Загрузка Vicki…');};
   const bridgeTexture=new THREE.TextureLoader().load(`${BASE}img/${BRIDGE_TEXTURE}`,()=>{if(!alive){bridgeTexture.dispose();return;}bridgeTextureReady=true;ready();},undefined,()=>{if(alive){loadError=true;setStatus('Текстура моста не загрузилась. Повтори загрузку.');setFailed(true);}});
@@ -102,6 +108,7 @@ export default function Muspelheim3D(props:Props){
    expandMuspelheimTerrain(g.scene);
    carveEntranceChasm(g.scene);
    carveSurtRavine(g.scene,ravinePitDepth);
+   carveMineApproach(g.scene);
    roadMask=configureMuspelheimGround(g.scene,renderer.capabilities.getMaxAnisotropy(),`${BASE}img/`);
    scene.add(g.scene);g.scene.name='Muspelheim editable terrain';sample=createTerrainSampler(g.scene);
    roadGlow=createRoadGlow(sample,renderer.getDrawingBufferSize(new THREE.Vector2()).y);scene.add(roadGlow.points);
@@ -135,7 +142,8 @@ export default function Muspelheim3D(props:Props){
    if(respawnNotice>0&&!paused.current){respawnNotice-=dt;if(respawnNotice<=0)setStatus('Ущелье Сурта · Осторожно: падение в пучину смертельно.');}
    const p=position.current;
    if(!ravineVisited&&terrainReady&&!loadError&&p.z<0&&(sample?.(p.x,p.z)??0)<-8){ravineVisited=true;setStatus('Ущелье Сурта · Падение в пучину смертельно. Держись середины подвесного моста.');}
-   hero.position.set(p.x,falling?hero.position.y:heightAt(p.x,p.z)??0,p.z);entrance?.updateProximity(paused.current?0:dt,gateIsOpen.current,p.x,p.z);tower?.updateProximity(paused.current?0:dt,p.x,p.z);
+   hero.position.set(p.x,falling?hero.position.y:heightAt(p.x,p.z)??0,p.z);entrance?.updateProximity(paused.current?0:dt,gateIsOpen.current,p.x,p.z);tower?.updateProximity(paused.current?0:dt,p.x,p.z,minePaid.current);
+   mineEntrance.update(paused.current?0:dt);keeper.update(clock.elapsedTime);proximityTimer+=dt;if(proximityTimer>.15){proximityTimer=0;setNearMine(mineEntrance.near(p.x,p.z));setNearKeeper(Math.hypot(p.x+308,p.z+368)<24&&hero.position.y>25);}
    if(walk)walk.timeScale=running&&!run?1.6:1;
    const action=moving&&!falling?(running?run??walk:walk):idle;if(action&&action!==current){current?.fadeOut(.18);action.reset().fadeIn(.18).play();current=action;}
    lava.update(paused.current?0:dt);summit?.update(paused.current?0:dt);mixer?.update(dt);viewYaw.current=updateFollowCamera(follow,dx,dz,dt);
@@ -151,7 +159,7 @@ export default function Muspelheim3D(props:Props){
    camera.position.set(clearCamera.x,clearCamera.y,clearCamera.z);
    const lookAhead=18*offset.distance/32;lookTarget.lerp(new THREE.Vector3(p.x-Math.sin(follow.yaw)*lookAhead,hero.position.y+3,p.z-Math.cos(follow.yaw)*lookAhead),1-Math.exp(-5*dt));camera.lookAt(lookTarget);renderer.render(scene,camera);
   }
-  tick();return()=>{alive=false;window.clearTimeout(loadingTimeout);cancelAnimationFrame(frame);clear();observer.disconnect();window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();for(const asset of entranceAssets)if(asset&&!asset.parent)dispose(asset);if(torchSource)dispose(torchSource);if(towerSource)dispose(towerSource);dispose(scene);summit?.dispose();roadMask?.dispose();bridgeTexture.dispose();renderer.dispose();renderer.domElement.remove();};
+  tick();return()=>{alive=false;window.clearTimeout(loadingTimeout);cancelAnimationFrame(frame);clear();observer.disconnect();window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();for(const asset of entranceAssets)if(asset&&!asset.parent)dispose(asset);if(torchSource)dispose(torchSource);if(towerSource)dispose(towerSource);dispose(scene);summit?.dispose();roadMask?.dispose();bridgeTexture.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();};
  },[retry]);
  const pointer=useRef<number|null>(null);
  const move=(e:React.PointerEvent<HTMLDivElement>)=>{if(pointer.current!==e.pointerId)return;const b=e.currentTarget.getBoundingClientRect();input.current={x:THREE.MathUtils.clamp((e.clientX-b.left-b.width/2)/42,-1,1),z:THREE.MathUtils.clamp((e.clientY-b.top-b.height/2)/42,-1,1)};};
@@ -166,6 +174,8 @@ export default function Muspelheim3D(props:Props){
     <polygon points={WORLD_OUTLINE.map(([x,z])=>{const p=muspelheimMapPoint(x,z);return `${p.x},${p.y}`;}).join(' ')} fill="#573122" stroke="#77777c" strokeWidth="8"/>
     <polyline points={SURT_RAVINE_LINE.map(p=>{const m=muspelheimMapPoint(p.x,p.z);return `${m.x},${m.y}`;}).join(' ')} fill="none" stroke="#110e17" strokeWidth={112*276/1050} strokeLinejoin="round"/>
     {RAVINE_CROSSINGS.map((p,i)=><g key={`crossing-${i}`} transform={`translate(${muspelheimMapPoint(p.x,p.z).x},${muspelheimMapPoint(p.x,p.z).y}) rotate(${-Math.atan2(p.tx,p.tz)*180/Math.PI})`}><rect x="-1.5" y="-11" width="3" height="22" fill="#d2b38b" stroke="#251b18" strokeWidth=".7"/></g>)}
+    <polyline points={MINE_PATH.map(p=>{const m=muspelheimMapPoint(p.x,p.z);return `${m.x},${m.y}`;}).join(' ')} fill="none" stroke="#d9aa66" strokeWidth="2"/>
+    <circle cx={muspelheimMapPoint(MINE_DOOR.x,MINE_DOOR.z).x} cy={muspelheimMapPoint(MINE_DOOR.x,MINE_DOOR.z).y} r="3" fill="#ffb754"/><text x={muspelheimMapPoint(MINE_DOOR.x,MINE_DOOR.z).x+5} y={muspelheimMapPoint(MINE_DOOR.x,MINE_DOOR.z).y} fontSize="8" fill="#ffe2ac">Шахта</text>
     {SURT_RAVINE_SITES.map((p,i)=><circle key={`ravine-${i}`} cx={muspelheimMapPoint(p.x,p.z).x} cy={muspelheimMapPoint(p.x,p.z).y} r="3" fill="#554454"/>)}
     {roadLines().map((line,i)=><polyline key={`road-${i}`} points={line.map(p=>{const m=muspelheimMapPoint(p.x,p.z);return `${m.x},${m.y}`;}).join(' ')} fill="none" stroke="#c6a787" strokeWidth={ROAD_WIDTH*276/1050} strokeLinecap="round" strokeLinejoin="round"/>)}
     {[-1,1].map(side=><polyline key={side} points={rockWallLayout(GATEWAY_WALL_ANCHOR).filter(r=>r.section==='entrance'&&Math.sign(r.x-GATEWAY_POSITION.x)===side).map(r=>{const p=muspelheimMapPoint(r.x,r.z);return `${p.x},${p.y}`;}).join(' ')} fill="none" stroke="#77777c" strokeWidth="5" strokeLinecap="round"/>)}
@@ -189,10 +199,13 @@ export default function Muspelheim3D(props:Props){
    <p style={{fontSize:12}}>Мост: <a href={BRIDGE_CREDIT.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{BRIDGE_CREDIT.title} — {BRIDGE_CREDIT.author}</a>. CC BY 4.0. Упрощён, сжаты текстуры, изменены пропорции, добавлена готическая каменная текстура, созданная для Yggdrasil.</p>
    <p style={{fontSize:11}}>Изменения: упрощена геометрия, сжаты текстуры, материал приведён к тёмному базальту, мох обесцвечен и затемнён; изменены масштаб и размещение.</p><button className="muspelheim-btn" onClick={()=>setMapOpen(false)}>Закрыть карту</button></div></div>}
   <button className="muspelheim-btn" style={{position:'absolute',bottom:128,right:18,touchAction:'none'}} aria-label="Удерживать для бега" onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);sprint.current=true;}} onPointerUp={()=>{sprint.current=false;}} onPointerCancel={()=>{sprint.current=false;}} onLostPointerCapture={()=>{sprint.current=false;}}>Бег ⚡</button>
+  {nearMine&&!mapOpen&&!gate&&!keeperDialog&&<button className="muspelheim-btn primary" style={{position:'absolute',bottom:190,right:16}} onClick={()=>{stop();if(!mineOpen)openMine.current();else props.onEnterMine();}}>{mineOpen?'Войти в пепельную шахту':'Открыть дверь шахты'}</button>}
+  {nearKeeper&&!mapOpen&&!gate&&!keeperDialog&&<button className="muspelheim-btn primary" style={{position:'absolute',bottom:190,right:16}} onClick={()=>{stop();setKeeperDialog(true);}}>Хранитель врат</button>}
+  {keeperDialog&&<div className="muspelheim-gate-backdrop"><div className="muspelheim-gate-panel" role="dialog" aria-label="Хранитель огненных врат"><h3>Хранитель огненных врат</h3><p>{props.minePaid?'Огненное золото принято. Путь к Сурту открыт.':'Для прохода к Сурту принеси '+FIRE_GOLD_COST+' огненного золота из пепельной шахты в ущелье. Победи её охрану и забери запас из сокровищницы.'}</p><p>Огненное золото: {props.fireGold}</p><div className="muspelheim-gate-actions">{!props.minePaid&&<button className="muspelheim-btn primary" disabled={props.fireGold<FIRE_GOLD_COST} onClick={()=>{props.onPayKeeper();setStatus('Огненное золото передано хранителю. Путь к Сурту открыт.');setKeeperDialog(false);}}>Передать {FIRE_GOLD_COST} золота</button>}<button className="muspelheim-btn" onClick={()=>setKeeperDialog(false)}>Продолжить</button></div></div></div>}
   {gate&&<div className="muspelheim-gate-backdrop" onClick={()=>setGate(false)}><div className="muspelheim-gate-panel" role="dialog" aria-modal="true" aria-label="Первые врата Муспельхейма" onClick={e=>e.stopPropagation()}>
    <h3>Первые врата</h3>
    <p>{props.gateOpen?'Кристалл установлен. Врата открываются при приближении с любой стороны.':props.canOpenGate?'Установи Кристалл первозданной воды во врата.':props.assembled&&!props.briefed?'Поговори со Странницей девяти миров в Нифльхейме о Муспельхейме.':'Получи Кристалл первозданной воды в Нифльхейме и поговори со Странницей.'}</p>
-   <div className="muspelheim-gate-actions">{props.gateOpen?<button className="muspelheim-btn primary" onClick={props.onTrial}>Испытание Сурта</button>:<button className="muspelheim-btn primary" disabled={!props.canOpenGate} onClick={props.onInstallCrystal}>Вставить кристалл</button>}<button className="muspelheim-btn" onClick={()=>setGate(false)}>Продолжить</button></div>
+   <p>{props.minePaid?'Хранитель принял огненное золото. Путь к Сурту открыт.':'Для пути к Сурту найди пепельную шахту в ущелье и принеси хранителю у замка огненное золото.'}</p><div className="muspelheim-gate-actions">{props.gateOpen?<button className="muspelheim-btn primary" disabled={!props.minePaid} onClick={props.onTrial}>Испытание Сурта</button>:<button className="muspelheim-btn primary" disabled={!props.canOpenGate} onClick={props.onInstallCrystal}>Вставить кристалл</button>}<button className="muspelheim-btn" onClick={()=>setGate(false)}>Продолжить</button></div>
   </div></div>}
 
  </section>;

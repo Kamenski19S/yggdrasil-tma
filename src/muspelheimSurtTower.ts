@@ -53,11 +53,11 @@ export function createSurtTower(model:THREE.Object3D){
   }
   return false;
  };
- const updateProximity=(dt:number,px:number,pz:number)=>{
+ const updateProximity=(dt:number,px:number,pz:number,unlocked=true)=>{
   const dx=Math.abs(px-door.x),dz=Math.abs(pz-door.z);
   nearby=nearby?dx<8&&dz<9:dx<6&&dz<5.5;
   const inThreshold=dx<door.halfWidth+1&&dz<3;
-  const target=nearby||inThreshold;
+  const target=unlocked&&(nearby||inThreshold);
   opening=THREE.MathUtils.clamp(opening+(target?1:-1)*dt/.8,0,1);const eased=opening*opening*(3-2*opening);
   hinges[0].rotation.y=-eased*Math.PI*.53;hinges[1].rotation.y=eased*Math.PI*.53;root.updateWorldMatrix(true,true);
  };
