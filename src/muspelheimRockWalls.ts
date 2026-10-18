@@ -30,15 +30,16 @@ export function rockWallLayout(gateway?:GatewayWallAnchor):WallRock[]{
  if(gateway)rocks.push(...gatewayWingRockLayout(gateway));
  return rocks;
 }
-export function rockWallBlocks(rocks:WallRock[],x:number,z:number,radius=5){
- return rocks.some(r=>{const c=Math.cos(r.yaw),s=Math.sin(r.yaw),dx=x-r.x,dz=z-r.z;
+export function rockWallBlocks(rocks:WallRock[],x:number,z:number,radius=5,footY?:number,bodyHeight=14){
+ return rocks.some(r=>{if(footY!=null&&(footY+bodyHeight<r.y||footY>r.y+r.height))return false;const c=Math.cos(r.yaw),s=Math.sin(r.yaw),dx=x-r.x,dz=z-r.z;
   return Math.abs(c*dx-s*dz)<r.width/2+radius&&Math.abs(s*dx+c*dz)<r.depth/2+radius;
  });
 }
-export function moveAlongRockWalls(rocks:WallRock[],from:{x:number;z:number},to:{x:number;z:number}){
- if(!rockWallBlocks(rocks,to.x,to.z))return to;
- if(!rockWallBlocks(rocks,to.x,from.z))return {x:to.x,z:from.z};
- if(!rockWallBlocks(rocks,from.x,to.z))return {x:from.x,z:to.z};
+export function moveAlongRockWalls(rocks:WallRock[],from:{x:number;z:number},to:{x:number;z:number},footY?:number){
+ const radius=footY==null?5:2;
+ if(!rockWallBlocks(rocks,to.x,to.z,radius,footY))return to;
+ if(!rockWallBlocks(rocks,to.x,from.z,radius,footY))return {x:to.x,z:from.z};
+ if(!rockWallBlocks(rocks,from.x,to.z,radius,footY))return {x:from.x,z:to.z};
  return from;
 }
 export function makeBasaltWall(source:THREE.Object3D,kind:number,rocks:WallRock[],anisotropy:number){
