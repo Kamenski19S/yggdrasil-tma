@@ -5,7 +5,7 @@ import {SURT_RAVINE_LINE,SURT_RAVINE_DEPTH} from './muspelheimSurtRavine';
 const lengths=[0];
 for(let i=1;i<SURT_RAVINE_LINE.length;i++)lengths.push(lengths[i-1]+Math.hypot(SURT_RAVINE_LINE[i].x-SURT_RAVINE_LINE[i-1].x,SURT_RAVINE_LINE[i].z-SURT_RAVINE_LINE[i-1].z));
 export const RAVINE_RESTART={x:-365,z:26};
-export const RAVINE_BRIDGE_WIDTH=17;
+export const RAVINE_BRIDGE_WIDTH=11;
 export const RAVINE_BRIDGE_LENGTH=84;
 export const RAVINE_PIT_EXTRA_DEPTH=140;
 export const RAVINE_CROSSINGS=[-317].map(x=>{
@@ -34,44 +34,18 @@ export function ravineBridgeFloorAt(x:number,z:number){
 }
 export const RAVINE_BRIDGE_ASSET='Muspelheim_Damaged_Rope_Bridge.glb';
 export const RAVINE_BRIDGE_CREDIT={title:'LP slightly damaged wooden bridge',author:'Dawid',url:'https://sketchfab.com/3d-models/lp-slightly-damaged-wooden-bridge-f57422aa52934ed0a088269b59e4bb9d'};
-// Rasterized from the actual boards, so every visible missing plank is interactive.
-const CELL=.25,COLS=Math.ceil(RAVINE_BRIDGE_WIDTH/CELL)+1,ROWS=Math.ceil(RAVINE_BRIDGE_LENGTH/CELL)+1;
-let deckMask:Uint8Array|undefined;
-export function ravineBridgeGapAt(x:number,z:number){
- if(!deckMask)return false;
- const q=bridgeLocal(RAVINE_CROSSINGS[0],x,z);
- if(Math.abs(q.along)>RAVINE_BRIDGE_LENGTH/2-.8||Math.abs(q.across)>RAVINE_BRIDGE_WIDTH/2-.35)return false;
- const c=Math.round((q.across+RAVINE_BRIDGE_WIDTH/2)/CELL),r=Math.round((q.along+RAVINE_BRIDGE_LENGTH/2)/CELL);
- // A foot spans ordinary seams; only a real opening under the whole foot trips her.
- for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++)if(deckMask[(r+dr)*COLS+c+dc])return false;
- return true;
-}
-export function crossesRavineGap(from:{x:number;z:number},to:{x:number;z:number}){
- const n=Math.max(1,Math.ceil(Math.hypot(to.x-from.x,to.z-from.z)/.12));
- for(let i=1;i<=n;i++)if(ravineBridgeGapAt(THREE.MathUtils.lerp(from.x,to.x,i/n),THREE.MathUtils.lerp(from.z,to.z,i/n)))return true;
- return false;
-}
 export function createRavineCrossings(source:THREE.Object3D){
  const root=new THREE.Group();root.name='Single long damaged rope bridge';
  const group=new THREE.Group(),p=RAVINE_CROSSINGS[0];group.position.set(p.x,0,p.z);group.rotation.y=Math.atan2(p.tx,p.tz);root.add(group);
- const mask=new Uint8Array(COLS*ROWS);deckMask=mask;
  source.updateWorldMatrix(true,true);
  source.traverse(o=>{
   if(!(o instanceof THREE.Mesh))return;
-  const geometry=o.geometry.clone().applyMatrix4(o.matrixWorld),positions=geometry.getAttribute('position'),index=geometry.index;
-  // Build a compact top-down collision mask, ignoring ropes hanging below the boards.
-  for(let t=0;t<(index?.count??positions.count);t+=3){
-   const ids=[0,1,2].map(k=>index?index.getX(t+k):t+k),v=ids.map(i=>new THREE.Vector3().fromBufferAttribute(positions,i));
-   if(v.some(q=>q.y< -3||q.y>2))continue;
-   const [a,b,c]=v,den=(b.z-c.z)*(a.x-c.x)+(c.x-b.x)*(a.z-c.z);if(Math.abs(den)<.015)continue;
-   const x0=Math.max(0,Math.floor((Math.min(...v.map(q=>q.x))+8.5)/CELL)),x1=Math.min(COLS-1,Math.ceil((Math.max(...v.map(q=>q.x))+8.5)/CELL));
-   const z0=Math.max(0,Math.floor((Math.min(...v.map(q=>q.z))+42)/CELL)),z1=Math.min(ROWS-1,Math.ceil((Math.max(...v.map(q=>q.z))+42)/CELL));
-   for(let r=z0;r<=z1;r++)for(let col=x0;col<=x1;col++){
-    const x=col*CELL-8.5,z=r*CELL-42,u=((b.z-c.z)*(x-c.x)+(c.x-b.x)*(z-c.z))/den,w=((c.z-a.z)*(x-c.x)+(a.x-c.x)*(z-c.z))/den;
-    if(u>=-.01&&w>=-.01&&u+w<=1.01)mask[r*COLS+col]=1;
-   }
+  const geometry=o.geometry.clone().applyMatrix4(o.matrixWorld),positions=geometry.getAttribute('position');
+  // Source deck is 17 units wide; narrow boards and floor collision together.
+  for(let i=0;i<positions.count;i++){
+   positions.setX(i,positions.getX(i)*RAVINE_BRIDGE_WIDTH/17);
+   positions.setY(i,positions.getY(i)+ravineBridgeHeight(positions.getZ(i))-.55);
   }
-  for(let i=0;i<positions.count;i++)positions.setY(i,positions.getY(i)+ravineBridgeHeight(positions.getZ(i))-.55);
   geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();
   const mesh=new THREE.Mesh(geometry,o.material);mesh.name='Damaged wooden deck with ropes underneath';group.add(mesh);
  });
@@ -91,9 +65,24 @@ export function classifyRavineStep(sample:(x:number,z:number)=>number|null,from:
  return 'walk';
 }
 
+/** Fill both exposed ends below the perimeter rocks, down to the ravine floor. */
+export function ravineEndRockLayout():WallRock[]{
+ const ends=[{x:-525,z:ravineFrame(-525,-92).z},{x:ravineFrame(-80,-458.75).x,z:-458.75}];
+ const rocks:WallRock[]=[];
+ for(const [end,p] of ends.entries()){
+  const f=ravineFrame(p.x,p.z);
+  for(let column=0;column<7;column++)for(let tier=0;tier<3;tier++){
+   const across=-66+column*22;
+   rocks.push({kind:(column+tier+end)%3,x:p.x+f.nx*across,z:p.z+f.nz*across,
+    y:-91+tier*34,yaw:Math.atan2(-f.nz,f.nx)+(column%2?.035:-.035),width:32,height:49+tier*2,depth:34});
+  }
+ }
+ return rocks;
+}
+
 /** Reuse the perimeter GLBs, embedded into both banks instead of freestanding walls. */
 export function ravineRockLayout():WallRock[]{
- const rocks:WallRock[]=[];
+ const rocks:WallRock[]=ravineEndRockLayout();
  for(let i=5;i<SURT_RAVINE_LINE.length-4;i+=4){
   const p=SURT_RAVINE_LINE[i],f=ravineFrame(p.x,p.z);
   for(const side of [-1,1]){
