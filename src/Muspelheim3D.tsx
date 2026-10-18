@@ -17,7 +17,7 @@ import {COBBLE_CREDIT} from './muspelheimCobble';
 import {createRoadGlow} from './muspelheimRoadGlow';
 import {roadLines,ROAD_WIDTH} from './muspelheimRoads';
 import {GATEWAY_ASSETS,GATEWAY_CREDIT,GATEWAY_POSITION,GATEWAY_SCALE,createMuspelheimGateway,type MuspelheimGateway} from './muspelheimGateway';
-import {screenMoveToWorld,updateFollowCamera,safeCameraOffset,type FollowCameraState} from './muspelheimCamera';
+import {screenMoveToWorld,updateFollowCamera,safeCameraOffset,terrainSafeCameraPosition,type FollowCameraState} from './muspelheimCamera';
 import {ROCK_ASSETS,ROCK_CREDITS,rockWallLayout,rockWallBlocks,moveAlongRockWalls,makeBasaltWall} from './muspelheimRockWalls';
 
 const GATEWAY_WALL_ANCHOR={x:GATEWAY_POSITION.x,z:GATEWAY_POSITION.z-20*GATEWAY_SCALE,halfWidth:41*GATEWAY_SCALE};
@@ -140,9 +140,15 @@ export default function Muspelheim3D(props:Props){
    const action=moving&&!falling?(running?run??walk:walk):idle;if(action&&action!==current){current?.fadeOut(.18);action.reset().fadeIn(.18).play();current=action;}
    lava.update(paused.current?0:dt);summit?.update(paused.current?0:dt);mixer?.update(dt);viewYaw.current=updateFollowCamera(follow,dx,dz,dt);
    const offset=safeCameraOffset(p.x,p.z,follow.yaw,(x,z)=>(throne?.blocks(x,z,2)??false)||(tower?.blocks(x,z,2)??false)||rockWallBlocks(wallRocks,x,z,2)||ravineRockBlocks(ravineRocks,x,hero.position.y+20,z,2)||(entrance?.blocks(x,z,2)??false));
-   if(snapCamera){camera.position.set(p.x+offset.x,hero.position.y+20,p.z+offset.z);lookTarget.set(p.x,hero.position.y+3,p.z-18);snapCamera=false;}
-   camera.position.lerp(new THREE.Vector3(p.x+offset.x,hero.position.y+20,p.z+offset.z),1-Math.exp(-4.5*dt));
+   const cameraFocus={x:p.x,y:hero.position.y+12,z:p.z};
+   const cameraSurface=(x:number,z:number)=>sample?.(x,z)??null;
+   const desiredCamera=terrainSafeCameraPosition(cameraFocus,{x:p.x+offset.x,y:hero.position.y+20,z:p.z+offset.z},cameraSurface);
+   if(snapCamera){camera.position.set(desiredCamera.x,desiredCamera.y,desiredCamera.z);lookTarget.set(p.x,hero.position.y+3,p.z-18);snapCamera=false;}
+   camera.position.lerp(new THREE.Vector3(desiredCamera.x,desiredCamera.y,desiredCamera.z),1-Math.exp(-4.5*dt));
    if((throne?.blocks(camera.position.x,camera.position.z,2)??false)||(tower?.blocks(camera.position.x,camera.position.z,2)??false)||rockWallBlocks(wallRocks,camera.position.x,camera.position.z,2)||ravineRockBlocks(ravineRocks,camera.position.x,camera.position.y,camera.position.z,2)||(entrance?.blocks(camera.position.x,camera.position.z,2)??false))camera.position.set(p.x+offset.x,hero.position.y+20,p.z+offset.z);
+   // Smoothing and obstacle fallback can cut through a bank even when the target is safe.
+   const clearCamera=terrainSafeCameraPosition(cameraFocus,camera.position,cameraSurface);
+   camera.position.set(clearCamera.x,clearCamera.y,clearCamera.z);
    const lookAhead=18*offset.distance/32;lookTarget.lerp(new THREE.Vector3(p.x-Math.sin(follow.yaw)*lookAhead,hero.position.y+3,p.z-Math.cos(follow.yaw)*lookAhead),1-Math.exp(-5*dt));camera.lookAt(lookTarget);renderer.render(scene,camera);
   }
   tick();return()=>{alive=false;window.clearTimeout(loadingTimeout);cancelAnimationFrame(frame);clear();observer.disconnect();window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();for(const asset of entranceAssets)if(asset&&!asset.parent)dispose(asset);if(torchSource)dispose(torchSource);if(towerSource)dispose(towerSource);dispose(scene);summit?.dispose();roadMask?.dispose();bridgeTexture.dispose();renderer.dispose();renderer.domElement.remove();};

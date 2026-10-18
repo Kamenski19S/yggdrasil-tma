@@ -21,3 +21,23 @@ export function safeCameraOffset(x:number,z:number,yaw:number,blocked:(x:number,
  for(let d=1;d<=FOLLOW_DISTANCE;d++){if(blocked(x+sx*d,z+sz*d)){distance=Math.max(0,d-2);break;}}
  return {x:sx*distance,z:sz*distance,distance};
 }
+
+type CameraPoint={x:number;y:number;z:number};
+/** Keep both the camera and its sight line above the sculpted terrain.
+ * On steep banks, shorten the view before lifting it excessively. */
+export function terrainSafeCameraPosition(focus:CameraPoint,desired:CameraPoint,sample:(x:number,z:number)=>number|null,clearance=4):CameraPoint{
+ const dx=desired.x-focus.x,dz=desired.z-focus.z;
+ let scale=1;
+ for(let attempt=0;attempt<10;attempt++){
+  const x=focus.x+dx*scale,z=focus.z+dz*scale;
+  const steps=Math.max(1,Math.ceil(Math.hypot(x-focus.x,z-focus.z)/.5));
+  let y=desired.y;
+  for(let i=1;i<=steps;i++){
+   const t=i/steps,height=sample(focus.x+(x-focus.x)*t,focus.z+(z-focus.z)*t);
+   if(height!=null)y=Math.max(y,focus.y+(height+clearance-focus.y)/t);
+  }
+  if(y<=focus.y+36||attempt===9)return {x,y,z};
+  scale*=.7;
+ }
+ return {...desired};
+}
