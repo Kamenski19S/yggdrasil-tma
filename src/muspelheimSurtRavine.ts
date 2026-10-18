@@ -10,7 +10,7 @@ const axis=new THREE.CatmullRomCurve3([
 ],false,'centripetal');
 export const SURT_RAVINE_LINE=axis.getPoints(160).map(p=>({x:p.x,z:p.z}));
 export const SURT_RAVINE_DEPTH=82;
-export const SURT_RAVINE_SITES=[{x:-420,z:-100},{x:-315,z:-114},{x:-75,z:-255}] as const;
+export const SURT_RAVINE_SITES=[{x:-420,z:-100},{x:-230,z:-135},{x:-75,z:-255}] as const;
 function distanceToAxis(x:number,z:number){
  let distance=Infinity;
  for(let i=1;i<SURT_RAVINE_LINE.length;i++){

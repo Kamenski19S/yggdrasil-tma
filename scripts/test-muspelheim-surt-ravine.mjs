@@ -7,7 +7,7 @@ async function moduleAt(path){const code=buildSync({entryPoints:[path],bundle:tr
 const {expandMuspelheimTerrain,createTerrainSampler}=await moduleAt('src/muspelheimTerrain.ts');
 const {carveEntranceChasm}=await moduleAt('src/muspelheimChasm.ts');
 const {carveSurtRavine,canWalkRavine,SURT_RAVINE_LINE,SURT_RAVINE_SITES}=await moduleAt('src/muspelheimSurtRavine.ts');
-const {ravinePitDepth,ravineBridgeFloorAt,RAVINE_CROSSINGS,RAVINE_BRIDGE_LENGTH,RAVINE_BRIDGE_WIDTH,classifyRavineStep,bridgeLocal,ravineBridgeHeight,ravineRockLayout,ravineRockBlocks,createRavineCrossings,RAVINE_RESTART}=await moduleAt('src/muspelheimRavineCrossings.ts');
+const {ravinePitDepth,ravineBridgeFloorAt,RAVINE_CROSSINGS,RAVINE_BRIDGE_LENGTH,RAVINE_BRIDGE_WIDTH,classifyRavineStep,bridgeLocal,ravineBridgeHeight,ravineRockLayout,ravineRockBlocks,createRavineCrossings,RAVINE_RESTART,ravineBridgeGapAt,crossesRavineGap}=await moduleAt('src/muspelheimRavineCrossings.ts');
 const loader=new GLTFLoader();loader.register(()=>({name:'texture-stub',loadTexture:()=>Promise.resolve(new THREE.Texture())}));
 const b=readFileSync('public/img/models/Muspelheim_Terrain_300m.glb');
 const root=(await loader.parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'')).scene;root.scale.set(1.75,1,1.75);
@@ -35,7 +35,7 @@ const rocks=ravineRockLayout();assert.ok(rocks.length>50);
 assert.ok(sample(-420,-100)<-81,'Ravine is deeper');
 for(const p of RAVINE_CROSSINGS){
  assert.ok(sample(p.x,p.z)<-170,'A genuine deep terrain cut under each bridge');
- for(let along=-21;along<=21;along+=.15){
+ for(let along=-42;along<=42;along+=.15){
   const point={x:p.x+p.tx*along,z:p.z+p.tz*along};
   assert.ok(!ravineRockBlocks(rocks,point.x,walkSample(point.x,point.z),point.z),'No wall rocks obstruct deck');
   const next={x:point.x+p.tx*.15,z:point.z+p.tz*.15};
@@ -51,9 +51,16 @@ for(const p of RAVINE_CROSSINGS){
 for(let z=RAVINE_RESTART.z;z>-110;z-=.25)assert.ok(!ravineRockBlocks(rocks,RAVINE_RESTART.x,walkSample(RAVINE_RESTART.x,z),z),'Clear descent');
 for(let z=-125;z>-230;z-=.25)assert.ok(!ravineRockBlocks(rocks,-270,walkSample(-270,z),z),'Clear ascent');
 assert.equal(classifyRavineStep(walkSample,RAVINE_RESTART,RAVINE_RESTART),'walk');
-const geometry=createRavineCrossings();assert.equal(geometry.children.filter(g=>g.name.startsWith('Ravine suspension bridge')).length,2);
+const bridgeBytes=readFileSync('public/img/models/Muspelheim_Damaged_Rope_Bridge.glb');
+const bridgeSource=(await loader.parseAsync(bridgeBytes.buffer.slice(bridgeBytes.byteOffset,bridgeBytes.byteOffset+bridgeBytes.byteLength),'')).scene;
+const geometry=createRavineCrossings(bridgeSource);assert.equal(RAVINE_CROSSINGS.length,1);assert.equal(geometry.children.length,2);
+assert.ok(bridgeBytes.length<700000,'Bridge is compressed below 700 KB');
+let holes=0,boards=0;const crossing=RAVINE_CROSSINGS[0];
+for(let along=-38;along<38;along+=.25)for(let across=-6;across<6;across+=.25){const x=crossing.x+crossing.tx*along-crossing.tz*across,z=crossing.z+crossing.tz*along+crossing.tx*across;if(ravineBridgeGapAt(x,z))holes++;else boards++;}
+assert.ok(holes>0&&boards>holes,'Real damaged plank mask contains both boards and holes');
+
 const sceneSource=readFileSync('src/Muspelheim3D.tsx','utf8');
 assert.ok(sceneSource.includes("if(step==='fall')")&&sceneSource.includes('position.current={...RAVINE_RESTART}'));
 assert.ok(!/localStorage|onTrial\(|onInstallCrystal\(/.test(sceneSource.slice(sceneSource.indexOf('if(falling&&!paused.current'),sceneSource.indexOf('if(respawnNotice>0'))),'Death never resets progression');
-console.log('Bridges, deadly falls, terrain gaps, clear ramps, basalt rocks and preserved quest state passed');
+console.log({holes,boards});console.log('Long bridge, deadly falls, terrain gaps, clear ramps, basalt rocks and preserved quest state passed');
 console.log('Surt ravine: actual GLB floor, broad sites, both approaches, connected curve, preserved foundations and cliff collision passed');

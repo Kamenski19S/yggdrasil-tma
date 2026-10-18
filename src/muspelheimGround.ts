@@ -5,6 +5,10 @@ import {loadCobbleTextures} from './muspelheimCobble';
 // Keep the original stone layout. Its mortar mask exposes the same lava ground
 // beneath the road, including the ground's UVs, shading and surface properties.
 export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:number,assetBase:string){
+ let resolveBasalt!:()=>void,rejectBasalt!:(error:unknown)=>void;
+ const basaltReady=new Promise<void>((resolve,reject)=>{resolveBasalt=resolve;rejectBasalt=reject;});
+ const basalt=new THREE.TextureLoader().load(assetBase+'muspelheim-basalt-wall.jpg',()=>resolveBasalt(),undefined,rejectBasalt);
+ basalt.colorSpace=THREE.SRGBColorSpace;basalt.wrapS=basalt.wrapT=THREE.RepeatWrapping;basalt.anisotropy=Math.min(8,maxAnisotropy);
  const roadMask=createRoadMask(),cobble=loadCobbleTextures(assetBase,maxAnisotropy);
  root.traverse(object=>{
   if(!(object instanceof THREE.Mesh))return;
@@ -15,11 +19,11 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
    map.wrapS=map.wrapT=THREE.ClampToEdgeWrapping;
    map.anisotropy=Math.min(8,maxAnisotropy);map.needsUpdate=true;
    ground.onBeforeCompile=shader=>{
-    shader.uniforms.roadMask={value:roadMask};
+    shader.uniforms.roadMask={value:roadMask};shader.uniforms.basaltMap={value:basalt};
     shader.uniforms.cobbleColor={value:cobble.color};shader.uniforms.cobbleSurface={value:cobble.surface};shader.uniforms.cobbleNormal={value:cobble.normal};
-    shader.vertexShader='varying float chasmBank;varying vec3 roadWorldPosition;\n'+shader.vertexShader;
-    shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>\nroadWorldPosition=(modelMatrix*vec4(position,1.)).xyz;\nvec3 bankNormal=normalize(mat3(modelMatrix)*normal);\nfloat bankY=(modelMatrix*vec4(position,1.)).y;\nchasmBank=(1.-smoothstep(.65,.98,abs(bankNormal.y)))*smoothstep(.2,2.,-bankY);`);
-    shader.fragmentShader='varying float chasmBank;varying vec3 roadWorldPosition;uniform sampler2D roadMask;uniform sampler2D cobbleColor;uniform sampler2D cobbleSurface;uniform sampler2D cobbleNormal;\n'+shader.fragmentShader;
+    shader.vertexShader='varying float chasmBank;varying vec3 roadWorldPosition;varying vec3 bankWorldNormal;\n'+shader.vertexShader;
+    shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>\nroadWorldPosition=(modelMatrix*vec4(position,1.)).xyz;\nvec3 bankNormal=normalize(mat3(modelMatrix)*normal);\nbankWorldNormal=bankNormal;\nfloat bankY=(modelMatrix*vec4(position,1.)).y;\nchasmBank=(1.-smoothstep(.65,.98,abs(bankNormal.y)))*smoothstep(.2,2.,-bankY);`);
+    shader.fragmentShader='varying float chasmBank;varying vec3 roadWorldPosition;varying vec3 bankWorldNormal;uniform sampler2D basaltMap;uniform sampler2D roadMask;uniform sampler2D cobbleColor;uniform sampler2D cobbleSurface;uniform sampler2D cobbleNormal;\n'+shader.fragmentShader;
     shader.fragmentShader=shader.fragmentShader.replace('#include <map_pars_fragment>',`#include <map_pars_fragment>
      #ifdef USE_MAP
      vec2 groundHash(vec2 cell){return fract(sin(vec2(dot(cell,vec2(127.1,311.7)),dot(cell,vec2(269.5,183.3))))*43758.5453);}
@@ -47,7 +51,11 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
      diffuseColor.rgb=mix(diffuseColor.rgb,diffuse*roadColor*(.80+.20*roadSurface.r),stoneAmount);
      float bankGray=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
      float ravineBasalt=smoothstep(8.,32.,-roadWorldPosition.y)*(1.-smoothstep(0.,35.,roadWorldPosition.z));
-     diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.075,.079,.09)+bankGray*.13,max(chasmBank,ravineBasalt*.94));
+     vec3 weights=pow(abs(normalize(bankWorldNormal)),vec3(4.));weights/=max(.001,weights.x+weights.y+weights.z);
+     vec3 basaltColor=texture2D(basaltMap,roadWorldPosition.zy/24.).rgb*weights.x+texture2D(basaltMap,roadWorldPosition.xz/24.).rgb*weights.y+texture2D(basaltMap,roadWorldPosition.xy/24.).rgb*weights.z;
+     float moss=smoothstep(.02,.14,basaltColor.g-max(basaltColor.r,basaltColor.b));
+     float rockGray=dot(basaltColor,vec3(.2126,.7152,.0722))*mix(1.,.45,moss);
+     diffuseColor.rgb=mix(diffuseColor.rgb,diffuse*vec3(.40,.42,.45)*rockGray,max(chasmBank,ravineBasalt*.98));
      #endif`);
     shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
      #ifdef USE_MAP
@@ -61,9 +69,9 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
      roughnessFactor=mix(roughnessFactor,max(.75,roadSurface.g),stoneAmount);
      #endif`);
    };
-   ground.customProgramCacheKey=()=> 'muspelheim-cobble-basalt-ravine-v10';
+   ground.customProgramCacheKey=()=> 'muspelheim-cobble-triplanar-basalt-v11';
    ground.needsUpdate=true;
   }
  });
- return {ready:cobble.ready,dispose:()=>{roadMask.dispose();cobble.dispose();}};
+ return {ready:Promise.all([cobble.ready,basaltReady]),dispose:()=>{roadMask.dispose();cobble.dispose();basalt.dispose();}};
 }

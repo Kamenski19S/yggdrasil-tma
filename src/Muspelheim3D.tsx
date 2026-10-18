@@ -1,4 +1,4 @@
-import {ravinePitDepth,ravineBridgeFloorAt,createRavineCrossings,ravineRockLayout,ravineRockBlocks,classifyRavineStep,RAVINE_RESTART,RAVINE_CROSSINGS} from './muspelheimRavineCrossings';
+import {RAVINE_BRIDGE_ASSET,RAVINE_BRIDGE_CREDIT,crossesRavineGap,ravineBridgeGapAt,ravinePitDepth,ravineBridgeFloorAt,createRavineCrossings,ravineRockLayout,ravineRockBlocks,classifyRavineStep,RAVINE_RESTART,RAVINE_CROSSINGS} from './muspelheimRavineCrossings';
 import {carveSurtRavine,SURT_RAVINE_LINE,SURT_RAVINE_SITES} from './muspelheimSurtRavine';
 import {SURT_THRONE_ASSET,SURT_THRONE_CREDIT,createSurtThrone} from './muspelheimSurtThrone';
 import {createSummitFloor} from './muspelheimSummit';
@@ -29,6 +29,7 @@ function dispose(root:THREE.Object3D){
  geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());
 }
 export default function Muspelheim3D(props:Props){
+ const sprint=useRef(false);
  const host=useRef<HTMLDivElement>(null),input=useRef({x:0,z:0}),position=useRef({...BRIDGE_SPAWN});
  const [status,setStatus]=useState('Загрузка площадки Муспельхейма…'),[retry,setRetry]=useState(0),[failed,setFailed]=useState(false),[gate,setGate]=useState(false),[mapOpen,setMapOpen]=useState(false);
  const viewYaw=useRef(0),controlYaw=useRef(0),gateIsOpen=useRef(props.gateOpen);gateIsOpen.current=props.gateOpen;
@@ -42,10 +43,10 @@ export default function Muspelheim3D(props:Props){
   const scene=new THREE.Scene();scene.background=new THREE.Color('#24110e');scene.fog=new THREE.FogExp2('#24110e',.004);
   scene.add(new THREE.HemisphereLight('#ffdfb0','#332127',2.3));const sun=new THREE.DirectionalLight('#ffb776',2);sun.position.set(30,70,20);scene.add(sun);
   const camera=new THREE.PerspectiveCamera(48,1,.1,650),hero=new THREE.Group();scene.add(hero);
-  let sample:((x:number,z:number)=>number|null)|undefined,mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,current:THREE.AnimationAction|undefined;
+  let sample:((x:number,z:number)=>number|null)|undefined,mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,run:THREE.AnimationAction|undefined,current:THREE.AnimationAction|undefined;
   const lava=createChasmLava();scene.add(lava.mesh);let bridge:ReturnType<typeof createEntranceBridge>|undefined;
   const wallRocks=rockWallLayout(GATEWAY_WALL_ANCHOR),ravineRocks=ravineRockLayout();
-  scene.add(createRavineCrossings());
+  let crossingReady=false,stumbleTime=0,recoveringGap=false,enteredGap=false;
   let falling=false,fallVelocity=0,fallTime=0,respawnNotice=0,ravineVisited=false,snapCamera=false;
   const follow:FollowCameraState={yaw:viewYaw.current,targetYaw:viewYaw.current,turnTime:0};
   let throne:ReturnType<typeof createSurtThrone>|undefined;
@@ -59,11 +60,12 @@ export default function Muspelheim3D(props:Props){
   const blocked=(x:number,z:number)=>chasmBlocks(x,z)||(throne?.blocks(x,z)??false)||(tower?.blocks(x,z)??false)||rockWallBlocks(wallRocks,x,z)||ravineRockBlocks(ravineRocks,x,hero.position.y,z)||(entrance?.blocks(x,z)??false);
   const heightAt=(x:number,z:number)=>{const paved=summit?.floorAt(x,z);if(paved!=null)return paved;const base=sample?.(x,z);if(base==null)return null;const crossing=ravineBridgeFloorAt(x,z);if(crossing!=null)return Math.max(base,crossing);const deck=bridge?.floorAt(x,z);if(deck!=null)return Math.max(base,deck);const surface=Math.max(base,volcano?.floorAt(x,z)??base,summit?.floorAt(x,z)??base);return entrance?.floorAt(x,z,surface)??surface;};
   const loadingTimeout=window.setTimeout(()=>{if(alive&&!loadError){loadError=true;setStatus(heroReady?'Загрузка мира затянулась. Повтори загрузку.':'Загрузка Vicki затянулась. Повтори загрузку.');setFailed(true);}},60000);
-  const ready=()=>{if(terrainReady&&heroReady&&volcano&&tower&&throne&&summitReady&&wallsReady===ROCK_ASSETS.length&&entrance&&bridge&&bridgeTextureReady&&torchesReady&&!loadError){window.clearTimeout(loadingTimeout);setStatus('Гиннунгагап · Мост к первым вратам.');}else if(!loadError)setStatus(heroReady?'Загрузка окружения Муспельхейма…':'Загрузка Vicki…');};
+  const ready=()=>{if(crossingReady&&terrainReady&&heroReady&&volcano&&tower&&throne&&summitReady&&wallsReady===ROCK_ASSETS.length&&entrance&&bridge&&bridgeTextureReady&&torchesReady&&!loadError){window.clearTimeout(loadingTimeout);setStatus('Гиннунгагап · Мост к первым вратам.');}else if(!loadError)setStatus(heroReady?'Загрузка окружения Муспельхейма…':'Загрузка Vicki…');};
   const bridgeTexture=new THREE.TextureLoader().load(`${BASE}img/${BRIDGE_TEXTURE}`,()=>{if(!alive){bridgeTexture.dispose();return;}bridgeTextureReady=true;ready();},undefined,()=>{if(alive){loadError=true;setStatus('Текстура моста не загрузилась. Повтори загрузку.');setFailed(true);}});
   bridgeTexture.colorSpace=THREE.SRGBColorSpace;bridgeTexture.wrapS=bridgeTexture.wrapT=THREE.RepeatWrapping;bridgeTexture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
   const attachTorches=()=>{if(!entrance||!torchSource||torchesReady)return;entrance.mountTorches(torchSource);torchSource.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});torchSource=undefined;torchesReady=true;ready();};
   const loader=new GLTFLoader();
+  loader.load(`${BASE}img/models/${RAVINE_BRIDGE_ASSET}`,g=>{if(!alive){dispose(g.scene);return;}scene.add(createRavineCrossings(g.scene));g.scene.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});crossingReady=true;ready();},undefined,()=>{if(alive){loadError=true;setStatus('Подвесной мост не загрузился. Повтори загрузку.');setFailed(true);}});
   cachedGlbBuffer(`${BASE}img/models/Vika-3d-animated-optimized.glb`)
    .then(buffer=>alive?loader.parseAsync(buffer,`${BASE}img/models/`):undefined).then(g=>{
    if(!g)return;
@@ -72,7 +74,7 @@ export default function Muspelheim3D(props:Props){
    mixer=new THREE.AnimationMixer(g.scene);
    const find=(...names:string[])=>names.map(n=>THREE.AnimationClip.findByName(g.animations,n)).find(Boolean);
    const i=find('idle','sword_idle')||g.animations[0],w=find('walk_loop','walk')||i;
-   if(i)idle=mixer.clipAction(i);if(w)walk=mixer.clipAction(w);idle?.play();current=idle;heroReady=true;ready();
+   if(i)idle=mixer.clipAction(i);if(w)walk=mixer.clipAction(w);const r=find('run_loop','run','sprint');if(r)run=mixer.clipAction(r);idle?.play();current=idle;heroReady=true;ready();
   }).catch(()=>{if(alive){loadError=true;setStatus('Vicki не загрузилась. Проверь соединение и повтори.');setFailed(true);}});
   const attachTower=()=>{if(!volcano||!towerSource||tower)return;tower=createSurtTower(towerSource);scene.add(tower.root);towerSource=undefined;summit=createSummitFloor(`${BASE}img/`,renderer.capabilities.getMaxAnisotropy(),volcano.root,tower.buildingBounds);scene.add(summit.root);summit.ready.then(()=>{if(alive){summitReady=true;ready();}},()=>{if(alive){loadError=true;setStatus('Кладка у замка не загрузилась. Повтори загрузку.');setFailed(true);}});ready();};
   loader.load(`${BASE}img/models/${SURT_THRONE_ASSET}`,g=>{if(!alive){dispose(g.scene);return;}throne=createSurtThrone(g.scene);scene.add(throne.root);ready();},undefined,()=>{if(alive){loadError=true;setStatus('Трон Сурта не загрузился. Повтори загрузку.');setFailed(true);}});
@@ -106,9 +108,9 @@ export default function Muspelheim3D(props:Props){
    roadMask.ready.then(()=>{if(alive){terrainReady=true;ready();}},()=>{if(alive){loadError=true;setStatus('Покрытие дороги не загрузилось. Повтори загрузку.');setFailed(true);}});
   },undefined,()=>{if(alive){loadError=true;setStatus('Площадка не загрузилась. Проверь соединение и повтори.');setFailed(true);}});
   const keys=new Set<string>();
-  const keydown=(e:KeyboardEvent)=>{if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)){if(!keys.size)controlYaw.current=viewYaw.current;keys.add(e.code);e.preventDefault();}};
+  const keydown=(e:KeyboardEvent)=>{if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight'].includes(e.code)){if(!keys.size)controlYaw.current=viewYaw.current;keys.add(e.code);e.preventDefault();}};
   const keyup=(e:KeyboardEvent)=>keys.delete(e.code);
-  const clear=()=>{keys.clear();input.current={x:0,z:0};};
+  const clear=()=>{keys.clear();sprint.current=false;input.current={x:0,z:0};};
   window.addEventListener('keydown',keydown);window.addEventListener('keyup',keyup);window.addEventListener('blur',clear);document.addEventListener('visibilitychange',clear);
   const resize=()=>{const w=mount.clientWidth,h=mount.clientHeight;if(!w||!h)return;renderer.setSize(w,h);roadGlow?.setPixelHeight(renderer.getDrawingBufferSize(new THREE.Vector2()).y);camera.aspect=w/h;camera.updateProjectionMatrix();};
   const observer=new ResizeObserver(resize);observer.observe(mount);resize();
@@ -119,20 +121,28 @@ export default function Muspelheim3D(props:Props){
    let x=input.current.x+(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0);
    let z=input.current.z+(keys.has('KeyS')||keys.has('ArrowDown')?1:0)-(keys.has('KeyW')||keys.has('ArrowUp')?1:0);
    const length=Math.hypot(x,z);let moving=false,dx=0,dz=0;
-   if(!falling&&length&&terrainReady&&heroReady&&volcano&&tower&&throne&&summitReady&&entrance&&bridge&&bridgeTextureReady&&torchesReady&&!loadError&&wallsReady===ROCK_ASSETS.length&&!document.hidden&&!paused.current){x/=Math.max(1,length);z/=Math.max(1,length);const world=screenMoveToWorld(x,z,controlYaw.current);x=world.x;z=world.z;const p=moveAlongRockWalls(wallRocks,position.current,clampMuspelheimPosition(position.current.x+x*18*dt,position.current.z+z*18*dt));let next=p;if(blocked(p.x,p.z)){const from=position.current;next=!blocked(p.x,from.z)?{x:p.x,z:from.z}:!blocked(from.x,p.z)?{x:from.x,z:p.z}:from;}const y=heightAt(next.x,next.z);
+   const running=sprint.current||keys.has('ShiftLeft')||keys.has('ShiftRight');
+   stumbleTime=Math.max(0,stumbleTime-(!paused.current&&!document.hidden?dt:0));
+   const speed=(running?29:18)*(recoveringGap ? .5 : 1); 
+   if(!falling&&stumbleTime===0&&crossingReady&&length&&terrainReady&&heroReady&&volcano&&tower&&throne&&summitReady&&entrance&&bridge&&bridgeTextureReady&&torchesReady&&!loadError&&wallsReady===ROCK_ASSETS.length&&!document.hidden&&!paused.current){x/=Math.max(1,length);z/=Math.max(1,length);const world=screenMoveToWorld(x,z,controlYaw.current);x=world.x;z=world.z;const p=moveAlongRockWalls(wallRocks,position.current,clampMuspelheimPosition(position.current.x+x*speed*dt,position.current.z+z*speed*dt));let next=p;if(blocked(p.x,p.z)){const from=position.current;next=!blocked(p.x,from.z)?{x:p.x,z:from.z}:!blocked(from.x,p.z)?{x:from.x,z:p.z}:from;}const y=heightAt(next.x,next.z);
     const inRavine=Math.min(sample?.(position.current.x,position.current.z)??0,sample?.(next.x,next.z)??0)<-1&&next.z<30;
     const step=inRavine?classifyRavineStep(heightAt,position.current,next):'walk';
-    if(step==='fall'){position.current=next;falling=true;fallVelocity=0;fallTime=0;clear();setStatus('Vicki сорвалась в пучину…');}
+    if(step==='walk'&&!recoveringGap&&crossesRavineGap(position.current,next)){stumbleTime=.65;recoveringGap=true;enteredGap=false;setStatus('Vicki споткнулась в проломе! Осторожнее на повреждённых досках.');}
+    else if(step==='fall'){position.current=next;falling=true;fallVelocity=0;fallTime=0;clear();setStatus('Vicki сорвалась в пучину…');}
     else if(step==='walk'&&y!=null&&Math.abs(y-hero.position.y)<(Math.abs(next.x-GATEWAY_POSITION.x)<13*GATEWAY_SCALE&&Math.abs(next.z-GATEWAY_POSITION.z)<42*GATEWAY_SCALE?8*GATEWAY_SCALE:3)){dx=next.x-position.current.x;dz=next.z-position.current.z;moving=Math.hypot(dx,dz)>.00001;position.current=next;if(moving)hero.rotation.y=Math.atan2(dx,dz);}}
    if(falling&&!paused.current&&!document.hidden){
     fallTime+=dt;fallVelocity+=75*dt;hero.position.y-=fallVelocity*dt;
-    if(fallTime>1.6){falling=false;fallVelocity=0;snapCamera=true;position.current={...RAVINE_RESTART};clear();respawnNotice=5;setStatus('Vicki погибла в пучине. Путь через ущелье начинается заново. Задания и предметы сохранены.');}
+    if(fallTime>1.6){falling=false;fallVelocity=0;snapCamera=true;position.current={...RAVINE_RESTART};stumbleTime=0;recoveringGap=false;enteredGap=false;clear();respawnNotice=5;setStatus('Vicki погибла в пучине. Путь через ущелье начинается заново. Задания и предметы сохранены.');}
    }
    if(respawnNotice>0&&!paused.current){respawnNotice-=dt;if(respawnNotice<=0)setStatus('Ущелье Сурта · Осторожно: падение в пучину смертельно.');}
+   if(recoveringGap&&ravineBridgeGapAt(position.current.x,position.current.z))enteredGap=true;
+   if(recoveringGap&&stumbleTime===0&&(enteredGap||!length)&&!ravineBridgeGapAt(position.current.x,position.current.z)){recoveringGap=false;setStatus('Ущелье Сурта · Держись целых досок.');}
+   hero.rotation.z=stumbleTime>0?Math.sin(stumbleTime/.65*Math.PI)*.2:0;hero.rotation.x=stumbleTime>0?Math.sin(stumbleTime/.65*Math.PI)*.18:0;
    const p=position.current;
-   if(!ravineVisited&&terrainReady&&!loadError&&p.z<0&&(sample?.(p.x,p.z)??0)<-8){ravineVisited=true;setStatus('Ущелье Сурта · Падение в пучину смертельно. Держись настила подвесных мостов.');}
+   if(!ravineVisited&&terrainReady&&!loadError&&p.z<0&&(sample?.(p.x,p.z)??0)<-8){ravineVisited=true;setStatus('Ущелье Сурта · Падение в пучину смертельно. Держись целых досок длинного подвесного моста.');}
    hero.position.set(p.x,falling?hero.position.y:heightAt(p.x,p.z)??0,p.z);entrance?.updateProximity(paused.current?0:dt,gateIsOpen.current,p.x,p.z);tower?.updateProximity(paused.current?0:dt,p.x,p.z);
-   const action=moving&&!falling?walk:idle;if(action&&action!==current){current?.fadeOut(.18);action.reset().fadeIn(.18).play();current=action;}
+   if(walk)walk.timeScale=running&&!run?1.6:1;
+   const action=moving&&!falling?(running?run??walk:walk):idle;if(action&&action!==current){current?.fadeOut(.18);action.reset().fadeIn(.18).play();current=action;}
    lava.update(paused.current?0:dt);summit?.update(paused.current?0:dt);mixer?.update(dt);viewYaw.current=updateFollowCamera(follow,dx,dz,dt);
    const offset=safeCameraOffset(p.x,p.z,follow.yaw,(x,z)=>(throne?.blocks(x,z,2)??false)||(tower?.blocks(x,z,2)??false)||rockWallBlocks(wallRocks,x,z,2)||ravineRockBlocks(ravineRocks,x,hero.position.y+20,z,2)||(entrance?.blocks(x,z,2)??false));
    if(snapCamera){camera.position.set(p.x+offset.x,hero.position.y+20,p.z+offset.z);lookTarget.set(p.x,hero.position.y+3,p.z-18);snapCamera=false;}
@@ -154,7 +164,7 @@ export default function Muspelheim3D(props:Props){
    <svg viewBox="0 0 300 220" style={{display:'block',width:'100%',maxHeight:240,background:'#241713',borderRadius:8}} aria-label="Расширенный мир, мост и положение Vicki">
     <polygon points={WORLD_OUTLINE.map(([x,z])=>{const p=muspelheimMapPoint(x,z);return `${p.x},${p.y}`;}).join(' ')} fill="#573122" stroke="#77777c" strokeWidth="8"/>
     <polyline points={SURT_RAVINE_LINE.map(p=>{const m=muspelheimMapPoint(p.x,p.z);return `${m.x},${m.y}`;}).join(' ')} fill="none" stroke="#110e17" strokeWidth={112*276/1050} strokeLinejoin="round"/>
-    {RAVINE_CROSSINGS.map((p,i)=><g key={`crossing-${i}`} transform={`translate(${muspelheimMapPoint(p.x,p.z).x},${muspelheimMapPoint(p.x,p.z).y}) rotate(${-Math.atan2(p.tx,p.tz)*180/Math.PI})`}><rect x="-2" y="-5.5" width="4" height="11" fill="#d2b38b" stroke="#251b18" strokeWidth=".7"/></g>)}
+    {RAVINE_CROSSINGS.map((p,i)=><g key={`crossing-${i}`} transform={`translate(${muspelheimMapPoint(p.x,p.z).x},${muspelheimMapPoint(p.x,p.z).y}) rotate(${-Math.atan2(p.tx,p.tz)*180/Math.PI})`}><rect x="-2.3" y="-11" width="4.6" height="22" fill="#d2b38b" stroke="#251b18" strokeWidth=".7"/></g>)}
     {SURT_RAVINE_SITES.map((p,i)=><circle key={`ravine-${i}`} cx={muspelheimMapPoint(p.x,p.z).x} cy={muspelheimMapPoint(p.x,p.z).y} r="3" fill="#554454"/>)}
     {roadLines().map((line,i)=><polyline key={`road-${i}`} points={line.map(p=>{const m=muspelheimMapPoint(p.x,p.z);return `${m.x},${m.y}`;}).join(' ')} fill="none" stroke="#c6a787" strokeWidth={ROAD_WIDTH*276/1050} strokeLinecap="round" strokeLinejoin="round"/>)}
     {[-1,1].map(side=><polyline key={side} points={rockWallLayout(GATEWAY_WALL_ANCHOR).filter(r=>r.section==='entrance'&&Math.sign(r.x-GATEWAY_POSITION.x)===side).map(r=>{const p=muspelheimMapPoint(r.x,r.z);return `${p.x},${p.y}`;}).join(' ')} fill="none" stroke="#77777c" strokeWidth="5" strokeLinecap="round"/>)}
@@ -174,8 +184,10 @@ export default function Muspelheim3D(props:Props){
    <p style={{fontSize:12}}>Проход: <a href={GATEWAY_CREDIT.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{GATEWAY_CREDIT.title} — {GATEWAY_CREDIT.author}</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>CC BY 4.0</a>.</p>
    <p style={{fontSize:12}}>Круглая дверь: <a href="https://www.cgtrader.com/items/1933395/download-page" target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>Entrance Door to Chamber — CGTrader</a>. Предоставлена для проекта; оптимизирована, разделена на створки, добавлены шарниры и открытие, изменены цвет и размещение.</p>
    <p style={{fontSize:12}}>Факелы: <a href={TORCH_CREDIT.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{TORCH_CREDIT.title} — {TORCH_CREDIT.author}</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>CC BY 4.0</a>. Сжаты текстуры с сохранением прозрачности пламени, уменьшен масштаб, добавлены крепления к колоннам, мерцание и сияние.</p>
+   <p style={{fontSize:12}}>Подвесной мост: <a href={RAVINE_BRIDGE_CREDIT.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{RAVINE_BRIDGE_CREDIT.title} — {RAVINE_BRIDGE_CREDIT.author}</a>. CC BY 4.0. Убраны верхние канаты и стойки, сжаты текстуры, изменены пропорции; повреждённый настил сохранён.</p>
    <p style={{fontSize:12}}>Мост: <a href={BRIDGE_CREDIT.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{BRIDGE_CREDIT.title} — {BRIDGE_CREDIT.author}</a>. CC BY 4.0. Упрощён, сжаты текстуры, изменены пропорции, добавлена готическая каменная текстура, созданная для Yggdrasil.</p>
    <p style={{fontSize:11}}>Изменения: упрощена геометрия, сжаты текстуры, материал приведён к тёмному базальту, мох обесцвечен и затемнён; изменены масштаб и размещение.</p><button className="muspelheim-btn" onClick={()=>setMapOpen(false)}>Закрыть карту</button></div></div>}
+  <button className="muspelheim-btn" style={{position:'absolute',bottom:128,right:18,touchAction:'none'}} aria-label="Удерживать для бега" onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);sprint.current=true;}} onPointerUp={()=>{sprint.current=false;}} onPointerCancel={()=>{sprint.current=false;}} onLostPointerCapture={()=>{sprint.current=false;}}>Бег ⚡</button>
   {gate&&<div className="muspelheim-gate-backdrop" onClick={()=>setGate(false)}><div className="muspelheim-gate-panel" role="dialog" aria-modal="true" aria-label="Первые врата Муспельхейма" onClick={e=>e.stopPropagation()}>
    <h3>Первые врата</h3>
    <p>{props.gateOpen?'Кристалл установлен. Врата открываются при приближении с любой стороны.':props.canOpenGate?'Установи Кристалл первозданной воды во врата.':props.assembled&&!props.briefed?'Поговори со Странницей девяти миров в Нифльхейме о Муспельхейме.':'Получи Кристалл первозданной воды в Нифльхейме и поговори со Странницей.'}</p>
