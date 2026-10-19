@@ -1,3 +1,4 @@
+import {MINE_CRYSTAL_FILES} from './ashMineCrystals';
 import {followMineCamera,type MineCameraState} from './ashMineCamera';
 import {readMineCheckpoint,writeMineCheckpoint} from './ashMineSession';
 import React,{useEffect,useRef,useState} from 'react';
@@ -49,8 +50,8 @@ export default function AshMine3D(props:Props){
   actions.current.openExit=()=>{layout.openExit();setExitOpened(true);setStatus('Дверь выхода открывается. Пройди через неё в Муспельхейм.');};
   const loader=new GLTFLoader(),load=async(file:string)=>loader.parseAsync(await cachedGlbBuffer(`${BASE}img/models/${file}`),`${BASE}img/models/`);
   const timeout=window.setTimeout(()=>{if(alive&&!loaded){setFailed(true);setStatus('Загрузка Vicki затянулась. Повтори или вернись к двери.');}},60000);
-  Promise.all([load('Vika-3d-animated-optimized.glb'),load('Magical_Abandoned_Mine.glb'),load('Ash_Mine_Track.glb'),load('Ash_Mine_Gem_Cart.glb')]).then(([g,mine,track,cart])=>{
-   if(!alive){dispose(g.scene);dispose(mine.scene);dispose(track.scene);dispose(cart.scene);return;}layout.install(mine.scene,track.scene,cart.scene);for(const w of workers)w.root.position.y=layout.floorAt(w.root.position.x,w.root.position.z);for(const guard of guards)guard.actor.root.position.y=layout.floorAt(guard.spec.x,guard.spec.z);
+  Promise.all([load('Vika-3d-animated-optimized.glb'),load('Magical_Abandoned_Mine.glb'),load('Ash_Mine_Track.glb'),load('Ash_Mine_Gem_Cart.glb'),...MINE_CRYSTAL_FILES.map(load)]).then(([g,mine,track,cart,...crystals])=>{
+   if(!alive){dispose(g.scene);dispose(mine.scene);dispose(track.scene);dispose(cart.scene);crystals.forEach(c=>dispose(c.scene));return;}layout.install(mine.scene,track.scene,cart.scene);layout.installCrystals(crystals.map(c=>c.scene));crystals.forEach(c=>c.scene.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.dispose());}}));for(const w of workers)w.root.position.y=layout.floorAt(w.root.position.x,w.root.position.z);for(const guard of guards)guard.actor.root.position.y=layout.floorAt(guard.spec.x,guard.spec.z);
    if(!alive){dispose(g.scene);return;}const model=g.scene,b=new THREE.Box3().setFromObject(model),scale=13.94/Math.max(.01,b.max.y-b.min.y);model.scale.setScalar(scale);model.position.y=-b.min.y*scale;hero.add(model);mixer=new THREE.AnimationMixer(model);
    const clip=(...names:string[])=>names.map(n=>THREE.AnimationClip.findByName(g.animations,n)).find(Boolean);const i=clip('idle','sword_idle')||g.animations[0],w=clip('walk_loop','walk'),a=clip('sword_attack','kick');if(i)idle=mixer.clipAction(i);if(w)walk=mixer.clipAction(w);if(a){attack=mixer.clipAction(a);attack.setLoop(THREE.LoopOnce,1);}idle?.play();current=idle;
    let hand:THREE.Object3D|undefined;model.traverse(o=>{if(o.name.replace(/[^a-zA-Z0-9]/g,'').endsWith('RightHand'))hand=o;});
@@ -72,7 +73,7 @@ export default function AshMine3D(props:Props){
     }}
    }
    workers.forEach(w=>{w.root.visible=w.root.position.distanceTo(hero.position)<85;w.update(time);});
-   if(walk)walk.timeScale=run?1.6:1;const action=time<attackUntil?attack:moving?walk:idle;if(action&&current!==action){current?.fadeOut(.15);action.reset().fadeIn(.15).play();current=action;}mixer?.update(dt);ui+=dt;if(ui>.15){ui=0;setNearExit(Math.hypot(pos.x-MINE_EXIT.x,pos.z-MINE_EXIT.z)<13);setMapPosition({x:pos.x,z:pos.z});persist();setNearGold(Math.hypot(pos.x-MINE_TREASURE.x,pos.z-MINE_TREASURE.z)<13);const g=nearest();setEnemy(g&&Math.hypot(pos.x-g.actor.root.position.x,pos.z-g.actor.root.position.z)<23?{name:g.spec.name,hp:g.hp,max:g.spec.hp}:null);layout.chest.visible=!mineProgress(live.current.questDone).goldTaken;}}
+   if(walk)walk.timeScale=run?1.6:1;const action=time<attackUntil?attack:moving?walk:idle;if(action&&current!==action){current?.fadeOut(.15);action.reset().fadeIn(.15).play();current=action;}mixer?.update(dt);ui+=dt;if(ui>.15){ui=0;layout.crystals?.update(hero.position);setNearExit(Math.hypot(pos.x-MINE_EXIT.x,pos.z-MINE_EXIT.z)<13);setMapPosition({x:pos.x,z:pos.z});persist();setNearGold(Math.hypot(pos.x-MINE_TREASURE.x,pos.z-MINE_TREASURE.z)<13);const g=nearest();setEnemy(g&&Math.hypot(pos.x-g.actor.root.position.x,pos.z-g.actor.root.position.z)<23?{name:g.spec.name,hp:g.hp,max:g.spec.hp}:null);layout.chest.visible=!mineProgress(live.current.questDone).goldTaken;}}
    layout.updateExit(active?dt:0);
    if(active&&!exiting&&layout.canExit(pos.x,pos.z)){exiting=true;clear();live.current.onBack();}
    layout.root.updateWorldMatrix(true,true);

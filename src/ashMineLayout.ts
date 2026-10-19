@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {createMineCrystals} from './ashMineCrystals';
 import {createMineGemCart} from './ashMineCart';
 import {buildMineModel} from './ashMineModel';
 import {createMineTunnel,bendMineRails} from './ashMineTunnel';
@@ -20,9 +21,10 @@ export function createAshMineLayout(assetBase:string){
  for(const side of [-1,1]){const jamb=new THREE.Mesh(new THREE.BoxGeometry(2,21,2),stone);jamb.position.set(side*7,10.5,0);exit.add(jamb);}const lintel=new THREE.Mesh(new THREE.BoxGeometry(16,2,2),stone);lintel.position.y=21;exit.add(lintel);
  const hinge=new THREE.Group();hinge.position.set(-6,0,0);exit.add(hinge);const door=new THREE.Mesh(new THREE.BoxGeometry(12,20,.7),wood);door.position.set(6,10,0);hinge.add(door);
  for(const side of [-1,1]){const glow=new THREE.Mesh(new THREE.OctahedronGeometry(.7),new THREE.MeshBasicMaterial({color:'#80f0ce'}));glow.position.set(side*7,15,-1.5);exit.add(glow);}
- let opening=0,openingDoor=false;
+ let opening=0,openingDoor=false;let crystals:ReturnType<typeof createMineCrystals>|undefined;
  return {root,chest,tunnel,
   install:(source:THREE.Object3D,track:THREE.Object3D,cartSource?:THREE.Object3D)=>{model=buildMineModel(source);root.add(model.root);tunnel.setRockTexture(model.rockMap);rails=bendMineRails(track,floorAt);root.add(rails.root);if(cartSource){cart=createMineGemCart(cartSource,floorAt);root.add(cart.root);}chest.position.y=floorAt(MINE_TREASURE.x,MINE_TREASURE.z);root.updateMatrixWorld(true);},
+  installCrystals:(sources:THREE.Object3D[])=>{if(model){crystals=createMineCrystals(sources,tunnel.root,model.root,(x,z)=>z> -241?mineTunnelFloor(x,z):model!.floorAt(x,z)??NaN);root.add(crystals.root);}},get crystals(){return crystals;},
   get rails(){return rails;},get cart(){return cart;},floorAt,
   walkable:(x:number,z:number)=>{if(cart?.blocks(x,z))return false;if(z> -241)return tunnelWalkable(x,z);if(!model||!mineWalkable(x,z))return false;const y=model.floorAt(x,z);return y!==null&&!model.blocked(x,z,y);},
   lineOfSight:(ax:number,az:number,bx:number,bz:number)=>{const n=Math.ceil(Math.hypot(bx-ax,bz-az)/3);for(let i=1;i<n;i++)if(!mineWalkable(ax+(bx-ax)*i/n,az+(bz-az)*i/n,0))return false;return true;},
