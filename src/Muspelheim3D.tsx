@@ -1,4 +1,4 @@
-import {carveMineApproach,mineApproachFloorAt,mineApproachSideBlocks,mineApproachRocks,createMineEntrance,MINE_DOOR,MINE_PATH} from './muspelheimMineEntrance';
+import {carveMineApproach,mineApproachFloorAt,mineApproachSideBlocks,mineApproachCameraAt,mineApproachRocks,createMineEntrance,MINE_DOOR,MINE_PATH} from './muspelheimMineEntrance';
 import {createAshDwarf} from './ashDwarf';
 import {FIRE_GOLD_COST} from './muspelheimMineQuest';
 import {RAVINE_BRIDGE_ASSET,RAVINE_BRIDGE_CREDIT,isRavineAbyss,ravinePitDepth,ravineBridgeFloorAt,createRavineCrossings,ravineRockLayout,ravineRockBlocks,classifyRavineStep,RAVINE_RESTART,RAVINE_CROSSINGS} from './muspelheimRavineCrossings';
@@ -53,7 +53,7 @@ export default function Muspelheim3D(props:Props){
   const wallRocks=rockWallLayout(GATEWAY_WALL_ANCHOR),ravineRocks=[...ravineRockLayout(),...mineApproachRocks()];
   const mineEntrance=createMineEntrance(`${BASE}img/`);scene.add(mineEntrance.root);openMine.current=()=>{mineEntrance.open();setMineOpen(true);};
   const keeper=createAshDwarf('keeper');keeper.root.scale.setScalar(1.5);keeper.root.position.set(-301,40,-366);scene.add(keeper.root);let proximityTimer=0;
-  let crossingReady=false,transitioningMine=false;
+  let crossingReady=false,transitioningMine=false,mineCameraActive=false;
   let falling=false,fallVelocity=0,fallTime=0,respawnNotice=0,ravineVisited=false,snapCamera=false;
   const follow:FollowCameraState={yaw:viewYaw.current,targetYaw:viewYaw.current,turnTime:0};
   let throne:ReturnType<typeof createSurtThrone>|undefined;
@@ -150,6 +150,13 @@ keeper.update(clock.elapsedTime);proximityTimer+=dt;if(proximityTimer>.15){proxi
    if(walk)walk.timeScale=running&&!run?1.6:1;
    const action=moving&&!falling?(running?run??walk:walk):idle;if(action&&action!==current){current?.fadeOut(.18);action.reset().fadeIn(.18).play();current=action;}
    lava.update(paused.current?0:dt);summit?.update(paused.current?0:dt);mixer?.update(dt);viewYaw.current=updateFollowCamera(follow,dx,dz,dt);
+   const mineView=mineApproachCameraAt(p.x,hero.position.y,p.z);
+   if(mineView){
+    const targetPosition=new THREE.Vector3(mineView.position.x,mineView.position.y,mineView.position.z),targetLook=new THREE.Vector3(mineView.target.x,mineView.target.y,mineView.target.z);
+    if(!mineCameraActive||snapCamera){camera.position.copy(targetPosition);lookTarget.copy(targetLook);snapCamera=false;}else{camera.position.lerp(targetPosition,1-Math.exp(-6*dt));lookTarget.lerp(targetLook,1-Math.exp(-7*dt));}
+    mineCameraActive=true;viewYaw.current=mineView.yaw;follow.yaw=mineView.yaw;follow.targetYaw=mineView.yaw;camera.lookAt(lookTarget);
+   }else{
+    mineCameraActive=false;
    const offset=safeCameraOffset(p.x,p.z,follow.yaw,(x,z)=>(throne?.blocks(x,z,2)??false)||(tower?.blocks(x,z,2)??false)||rockWallBlocks(wallRocks,x,z,2,hero.position.y+20,0)||ravineRockBlocks(ravineRocks,x,hero.position.y+20,z,2)||(entrance?.blocks(x,z,2)??false));
    const cameraFocus={x:p.x,y:hero.position.y+12,z:p.z};
    const cameraSurface=(x:number,z:number)=>sample?.(x,z)??null;
@@ -160,7 +167,8 @@ keeper.update(clock.elapsedTime);proximityTimer+=dt;if(proximityTimer>.15){proxi
    // Smoothing and obstacle fallback can cut through a bank even when the target is safe.
    const clearCamera=terrainSafeCameraPosition(cameraFocus,camera.position,cameraSurface);
    camera.position.set(clearCamera.x,clearCamera.y,clearCamera.z);
-   const lookAhead=18*offset.distance/32;lookTarget.lerp(new THREE.Vector3(p.x-Math.sin(follow.yaw)*lookAhead,hero.position.y+3,p.z-Math.cos(follow.yaw)*lookAhead),1-Math.exp(-5*dt));camera.lookAt(lookTarget);renderer.render(scene,camera);
+   const lookAhead=18*offset.distance/32;lookTarget.lerp(new THREE.Vector3(p.x-Math.sin(follow.yaw)*lookAhead,hero.position.y+3,p.z-Math.cos(follow.yaw)*lookAhead),1-Math.exp(-5*dt));camera.lookAt(lookTarget);   }
+   renderer.render(scene,camera);
   }
   tick();return()=>{alive=false;window.clearTimeout(loadingTimeout);cancelAnimationFrame(frame);clear();observer.disconnect();window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();for(const asset of entranceAssets)if(asset&&!asset.parent)dispose(asset);if(torchSource)dispose(torchSource);if(towerSource)dispose(towerSource);dispose(scene);summit?.dispose();roadMask?.dispose();bridgeTexture.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();};
  },[retry]);
