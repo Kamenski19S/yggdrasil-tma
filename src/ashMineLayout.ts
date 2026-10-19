@@ -1,3 +1,4 @@
+import {createMineGoldBars,MINE_GOLD_POSITION} from './ashMineGold';
 import * as THREE from 'three';
 import {createMineCrystals} from './ashMineCrystals';
 import {createMineGemCart} from './ashMineCart';
@@ -5,7 +6,7 @@ import {buildMineModel} from './ashMineModel';
 import {createMineTunnel,bendMineRails} from './ashMineTunnel';
 import {MINE_ROUTE,mineRouteFrame,mineTunnelFloor,tunnelWalkable} from './ashMinePath';
 export {MINE_ROUTE} from './ashMinePath';
-export const MINE_EXIT={x:0,z:28},MINE_TREASURE={x:24,z:-264};
+export const MINE_EXIT={x:0,z:28},MINE_TREASURE=MINE_GOLD_POSITION;
 export const MINE_TILE=12;
 export const MINE_CELLS=(()=>{const cells:Array<{x:number;z:number}>=[];for(let x=-48;x<=108;x+=6)for(let z=-384;z<=36;z+=6)if(mineWalkable(x,z,0))cells.push({x,z});return cells;})();
 export function mineExitCrossed(x:number,z:number,opening:number){return opening>=.95&&Math.abs(x-MINE_EXIT.x)<4.5&&z>=MINE_EXIT.z-.5&&z<=MINE_EXIT.z+1;}
@@ -23,7 +24,7 @@ export function createAshMineLayout(assetBase:string){
  for(const side of [-1,1]){const glow=new THREE.Mesh(new THREE.OctahedronGeometry(.7),new THREE.MeshBasicMaterial({color:'#80f0ce'}));glow.position.set(side*7,15,-1.5);exit.add(glow);}
  let opening=0,openingDoor=false;let crystals:ReturnType<typeof createMineCrystals>|undefined;
  return {root,chest,tunnel,
-  install:(source:THREE.Object3D,track:THREE.Object3D,cartSource?:THREE.Object3D)=>{model=buildMineModel(source);root.add(model.root);tunnel.setRockTexture(model.rockMap);rails=bendMineRails(track,floorAt);root.add(rails.root);if(cartSource){cart=createMineGemCart(cartSource,floorAt);root.add(cart.root);}chest.position.y=floorAt(MINE_TREASURE.x,MINE_TREASURE.z);root.updateMatrixWorld(true);},
+  install:(source:THREE.Object3D,track:THREE.Object3D,cartSource?:THREE.Object3D,goldSources?:THREE.Object3D[])=>{model=buildMineModel(source);root.add(model.root);tunnel.setRockTexture(model.rockMap);rails=bendMineRails(track,floorAt);root.add(rails.root);if(cartSource){cart=createMineGemCart(cartSource,floorAt,goldSources?.[1]);root.add(cart.root);}if(goldSources)chest.add(createMineGoldBars(goldSources[0],floorAt));chest.position.y=floorAt(MINE_TREASURE.x,MINE_TREASURE.z);root.updateMatrixWorld(true);},
   installCrystals:(sources:THREE.Object3D[])=>{if(model){crystals=createMineCrystals(sources,tunnel.root,model.root,(x,z)=>z> -241?mineTunnelFloor(x,z):model!.floorAt(x,z)??NaN);root.add(crystals.root);}},get crystals(){return crystals;},
   get rails(){return rails;},get cart(){return cart;},floorAt,
   walkable:(x:number,z:number)=>{if(cart?.blocks(x,z))return false;if(z> -241)return tunnelWalkable(x,z);if(!model||!mineWalkable(x,z))return false;const y=model.floorAt(x,z);return y!==null&&!model.blocked(x,z,y);},

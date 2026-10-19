@@ -28,6 +28,7 @@ export function createMineCrystals(sources:THREE.Object3D[],vault:THREE.Object3D
   if(i%2===0)attach(center,new THREE.Vector3(side*.22,1,0),(Math.floor(i/2)+1)%4,4.5,'ceiling',true);
   const x=24+side*(25+i%3*3),y=floorAt(x,z);if(Number.isFinite(y))deposits.push({position:new THREE.Vector3(x,y,z),normal:new THREE.Vector3(0,1,0),kind:(i+1)%4,size:3.1,surface:'floor'});
  }
+ for(const deposit of deposits)deposit.size*=.5;
  const up=new THREE.Vector3(0,1,0),matrix=new THREE.Matrix4(),rotation=new THREE.Quaternion();
  for(let kind=0;kind<sources.length;kind++){
   const source=sources[kind];source.updateWorldMatrix(true,true);const box=new THREE.Box3().setFromObject(source),center=box.getCenter(new THREE.Vector3()),height=Math.max(.001,box.max.y-box.min.y),list=deposits.filter(d=>d.kind===kind);
@@ -45,8 +46,8 @@ export function createMineCrystals(sources:THREE.Object3D[],vault:THREE.Object3D
  // Radial alpha instead of a solid disc; depth test keeps the halo behind opaque cave walls.
  const pixels=new Uint8Array(32*32*4);for(let y=0;y<32;y++)for(let x=0;x<32;x++){const i=(y*32+x)*4,r=Math.hypot((x-15.5)/15.5,(y-15.5)/15.5);pixels[i]=pixels[i+1]=pixels[i+2]=255;pixels[i+3]=Math.round(Math.max(0,1-r)**2*100);}
  const halo=new THREE.DataTexture(pixels,32,32);halo.needsUpdate=true;
- for(let kind=0;kind<4;kind++){const points=deposits.filter(d=>d.kind===kind).flatMap(d=>d.position.clone().addScaledVector(d.normal,d.size*.3).toArray()),geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(points,3));const glow=new THREE.Points(geometry,new THREE.PointsMaterial({color:colors[kind],map:halo,size:9,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true}));glow.raycast=()=>{};glow.name='Мягкое сияние кристаллов';root.add(glow);}
- const lights=Array.from({length:3},()=>{const light=new THREE.PointLight('#ffffff',0,25,1.6);root.add(light);return light;});
- const update=(hero:THREE.Vector3)=>{const nearest=deposits.map(d=>({d,distance:d.position.distanceToSquared(hero)})).sort((a,b)=>a.distance-b.distance);lights.forEach((light,i)=>{const next=nearest[i];if(!next||next.distance>55*55){light.intensity=0;return;}const d=next.d;light.position.copy(d.position).addScaledVector(d.normal,2);light.color.set(colors[d.kind]);light.intensity=38;});};
+ for(let kind=0;kind<4;kind++){const points=deposits.filter(d=>d.kind===kind).flatMap(d=>d.position.clone().addScaledVector(d.normal,d.size*.3).toArray()),geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(points,3));const glow=new THREE.Points(geometry,new THREE.PointsMaterial({color:colors[kind],map:halo,size:4.5,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true}));glow.raycast=()=>{};glow.name='Мягкое сияние кристаллов';root.add(glow);}
+ const lights=Array.from({length:3},()=>{const light=new THREE.PointLight('#ffffff',0,18,1.6);root.add(light);return light;});
+ const update=(hero:THREE.Vector3)=>{const nearest=deposits.map(d=>({d,distance:d.position.distanceToSquared(hero)})).sort((a,b)=>a.distance-b.distance);lights.forEach((light,i)=>{const next=nearest[i];if(!next||next.distance>55*55){light.intensity=0;return;}const d=next.d;light.position.copy(d.position).addScaledVector(d.normal,2);light.color.set(colors[d.kind]);light.intensity=24;});};
  return {root,deposits,lights,update};
 }
