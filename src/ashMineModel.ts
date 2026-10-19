@@ -17,15 +17,5 @@ export function buildMineModel(source:THREE.Object3D){
  const solids:THREE.Mesh[]=[];hall.traverse(o=>{if(o instanceof THREE.Mesh&&!/Ground|Water|Firefly|MineTrack/.test(o.name))solids.push(o);});
  const wallRay=new THREE.Raycaster(),direction=new THREE.Vector3(),point=new THREE.Vector3();
  const blocked=(x:number,z:number,y:number)=>{if(z> -241)return false;point.set(x,y+5,z);for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){direction.set(dx,0,dz);wallRay.set(point,direction);wallRay.far=1.8;if(wallRay.intersectObjects(solids,false).length)return true;}return false;};
- const occluders:THREE.Mesh[]=[];root.traverse(o=>{if(o instanceof THREE.Mesh&&!o.name.includes('Рельсы')&&!/Ground|Water|Firefly/.test(o.name)){occluders.push(o);for(const m of Array.isArray(o.material)?o.material:[o.material]){m.transparent=true;m.depthWrite=true;}}});
- const faded=new Set<THREE.Material>(),sight=new THREE.Raycaster(),target=new THREE.Vector3();
- const updateView=(camera:THREE.Camera,x:number,y:number,z:number)=>{
-  for(const m of faded){m.opacity=1;m.depthWrite=true;}faded.clear();
-  target.set(x,y+7,z);const delta=target.clone().sub(camera.position);sight.set(camera.position,delta.clone().normalize());sight.far=delta.length()-1;
-  for(const hit of sight.intersectObjects(occluders,false)){
-   const mesh=hit.object as THREE.Mesh;
-   for(const material of Array.isArray(mesh.material)?mesh.material:[mesh.material]){material.opacity=.08;material.depthWrite=false;faded.add(material);}
-  }
- };
- return {root,hall,floorAt,blocked,updateView,rockMap:rockMaterial.map};
+ return {root,hall,floorAt,blocked,rockMap:rockMaterial.map};
 }

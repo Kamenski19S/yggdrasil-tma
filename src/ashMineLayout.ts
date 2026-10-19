@@ -25,6 +25,5 @@ export function createAshMineLayout(assetBase:string){
   get rails(){return rails;},floorAt,
   walkable:(x:number,z:number)=>{if(z> -241)return tunnelWalkable(x,z);if(!model||!mineWalkable(x,z))return false;const y=model.floorAt(x,z);return y!==null&&!model.blocked(x,z,y);},
   lineOfSight:(ax:number,az:number,bx:number,bz:number)=>{const n=Math.ceil(Math.hypot(bx-ax,bz-az)/3);for(let i=1;i<n;i++)if(!mineWalkable(ax+(bx-ax)*i/n,az+(bz-az)*i/n,0))return false;return true;},
-  updateView:(camera:THREE.Camera,x:number,y:number,z:number)=>{tunnel.updateView(camera,x,y,z);model?.updateView(camera,x,y,z);},
   openExit:()=>{openingDoor=true;},updateExit:(dt:number)=>{opening=Math.min(1,opening+(openingDoor?dt:0));hinge.rotation.y=-opening*Math.PI*.55;},get exitOpened(){return openingDoor;},get exitOpening(){return opening;},exitBlocks:(x:number,z:number)=>opening<.95&&Math.abs(x)<7.5&&z>24.5,canExit:(x:number,z:number)=>mineExitCrossed(x,z,opening)};
 }

@@ -9,7 +9,7 @@ export function createMineTunnel(stone:THREE.MeshStandardMaterial){
   const s0=i*MINE_ROUTE_LENGTH/count,s1=(i+1)*MINE_ROUTE_LENGTH/count,positions:number[]=[],uv:number[]=[],indices:number[]=[];
   for(const s of [s0,s1])for(let j=0;j<=sides;j++){const p=surface(s,j/sides*Math.PI);positions.push(p.x,p.y,p.z);uv.push(s/13,j/sides*4);}
   for(let j=0;j<sides;j++){const n=j,m=j+sides+1;indices.push(n,m,n+1,m,m+1,n+1);}
-  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(indices);g.computeVertexNormals();const mat=stone.clone();mat.side=THREE.DoubleSide;mat.transparent=true;const vault=new THREE.Mesh(g,mat);vault.name='Каменный свод и стены';root.add(vault);vaults.push(vault);
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(indices);g.computeVertexNormals();const mat=stone.clone();mat.side=THREE.DoubleSide;const vault=new THREE.Mesh(g,mat);vault.name='Каменный свод и стены';root.add(vault);vaults.push(vault);
   const fp:number[]=[],fu:number[]=[],fi:number[]=[];
   for(const s of [s0,s1])for(let j=0;j<=12;j++){const f=mineFrameAt(s),d=(j/12*2-1)*18.5,x=f.x+f.nx*d,z=f.z+f.nz*d;fp.push(x,mineTunnelFloor(x,z),z);fu.push(x/12,z/12);}
   for(let j=0;j<12;j++){const m=j+13;fi.push(j,j+1,m,m,j+1,m+1);}
@@ -20,15 +20,10 @@ export function createMineTunnel(stone:THREE.MeshStandardMaterial){
   const p:number[]=[],uv:number[]=[],index:number[]=[];
   for(const z of [-240-i*4.75,-240-(i+1)*4.75]){const t=THREE.MathUtils.smoothstep(-z-240,0,34),width=THREE.MathUtils.lerp(TUNNEL_HALF_WIDTH,49,t),height=THREE.MathUtils.lerp(TUNNEL_HEIGHT,49,t);for(let j=0;j<=24;j++){const a=j/24*Math.PI,phase=MINE_ROUTE_LENGTH-z-240,rough=.55*Math.sin(phase*.37+a*7)+.35*Math.cos(phase*.21-a*11);p.push(24+(width+rough)*Math.cos(a),(height+rough)*Math.sin(a),z);uv.push(-z/13,j/24*4);}}
   for(let j=0;j<24;j++)index.push(j,j+25,j+1,j+25,j+26,j+1);
-  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(index);g.computeVertexNormals();const m=stone.clone();m.transparent=true;m.side=THREE.DoubleSide;const vault=new THREE.Mesh(g,m);vault.name='Каменный свод главного зала';vaults.push(vault);root.add(vault);
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(index);g.computeVertexNormals();const m=stone.clone();m.side=THREE.DoubleSide;const vault=new THREE.Mesh(g,m);vault.name='Каменный свод главного зала';vaults.push(vault);root.add(vault);
  }
- const ray=new THREE.Raycaster(),direction=new THREE.Vector3(),target=new THREE.Vector3(),faded=new Set<THREE.Mesh>();
- const updateView=(camera:THREE.Camera,x:number,y:number,z:number)=>{
-  for(const mesh of faded){const m=mesh.material as THREE.MeshStandardMaterial;m.opacity=1;m.depthWrite=true;}faded.clear();
-  for(const height of [1,7,14]){target.set(x,y+height,z);direction.copy(target).sub(camera.position);ray.set(camera.position,direction.clone().normalize());ray.far=direction.length()-.5;for(const hit of ray.intersectObjects(vaults,false)){const mesh=hit.object as THREE.Mesh,m=mesh.material as THREE.MeshStandardMaterial;m.opacity=.045;m.depthWrite=false;faded.add(mesh);}}
- };
  const setRockTexture=(map:THREE.Texture|null)=>{if(!map)return;const texture=map.clone();texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(1,1);texture.needsUpdate=true;stone.map=texture;stone.color.set('#c9c1b6');stone.needsUpdate=true;for(const mesh of vaults){const m=mesh.material as THREE.MeshStandardMaterial;m.map=texture;m.color.copy(stone.color);m.needsUpdate=true;}};
- return {root,vaults,floors,updateView,setRockTexture};
+ return {root,vaults,floors,setRockTexture};
 }
 export function bendMineRails(source:THREE.Object3D,floorAt:(x:number,z:number)=>number){
  const root=new THREE.Group();root.name='Новые рельсы Digital Goblin';source.updateMatrixWorld(true);const meshes:THREE.Mesh[]=[];source.traverse(o=>{if(o instanceof THREE.Mesh)meshes.push(o);});const n=Math.ceil((MINE_ROUTE_LENGTH+24)/24),length=(MINE_ROUTE_LENGTH+24)/n;
