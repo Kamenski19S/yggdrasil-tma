@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import {sliceRailsLongitudinal} from './ashMineRailGeometry';
+export const MINE_RAIL_EXTENSION=52;
 import {mineFrameAt,MINE_ROUTE_LENGTH,mineTunnelFloor,TUNNEL_HALF_WIDTH,TUNNEL_HEIGHT} from './ashMinePath';
 export function createMineTunnel(stone:THREE.MeshStandardMaterial){
  const root=new THREE.Group();root.name='Неровный полукруглый каменный тоннель';
@@ -26,12 +28,15 @@ export function createMineTunnel(stone:THREE.MeshStandardMaterial){
  return {root,vaults,floors,setRockTexture};
 }
 export function bendMineRails(source:THREE.Object3D,floorAt:(x:number,z:number)=>number){
- const root=new THREE.Group();root.name='Новые рельсы Digital Goblin';source.updateMatrixWorld(true);const meshes:THREE.Mesh[]=[];source.traverse(o=>{if(o instanceof THREE.Mesh)meshes.push(o);});const n=Math.ceil((MINE_ROUTE_LENGTH+24)/24),length=(MINE_ROUTE_LENGTH+24)/n;
- // The last 24 units continue into the original chamber; every joint uses the same path sample.
+ const root=new THREE.Group();root.name='Новые рельсы Digital Goblin';source.updateMatrixWorld(true);const meshes:THREE.Mesh[]=[];source.traverse(o=>{if(o instanceof THREE.Mesh)meshes.push(o);});const n=Math.ceil((MINE_ROUTE_LENGTH+MINE_RAIL_EXTENSION)/24),length=(MINE_ROUTE_LENGTH+MINE_RAIL_EXTENSION)/n;
+ // The tracks continue to the replacement cart in the original chamber; every joint uses the same path sample.
  const frame=(s:number)=>{if(s<=MINE_ROUTE_LENGTH)return mineFrameAt(s);const f=mineFrameAt(MINE_ROUTE_LENGTH);return {...f,x:f.x+f.tx*(s-MINE_ROUTE_LENGTH),z:f.z+f.tz*(s-MINE_ROUTE_LENGTH)};};
- for(let i=0;i<n;i++)for(const original of meshes){const geometry=original.geometry.clone().applyMatrix4(original.matrixWorld),p=geometry.getAttribute('position');geometry.computeBoundingBox();const box=geometry.boundingBox!,center=(box.min.x+box.max.x)/2,depth=box.max.z-box.min.z;
+ const templates=meshes.map(original=>{const baked=original.geometry.clone().applyMatrix4(original.matrixWorld);baked.computeBoundingBox();const box=baked.boundingBox!.clone(),geometry=sliceRailsLongitudinal(baked,(box.max.z-box.min.z)/40);baked.dispose();return {original,geometry,box};});
+ for(let i=0;i<n;i++)for(const template of templates){const {original,box}=template,geometry=template.geometry.clone(),p=geometry.getAttribute('position'),center=(box.min.x+box.max.x)/2,depth=box.max.z-box.min.z;
   for(let j=0;j<p.count;j++){const s=(i+(p.getZ(j)-box.min.z)/depth)*length,f=frame(s),offset=(p.getX(j)-center)*.16,x=f.x+f.nx*offset,z=f.z+f.nz*offset,y=(p.getY(j)-box.min.y)*.16; p.setXYZ(j,x,floorAt(x,z)+.08+y,z);}
   geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();const mesh=new THREE.Mesh(geometry,original.material);mesh.name='Состыкованный участок новых рельсов';root.add(mesh);
  }
+ templates.forEach(t=>t.geometry.dispose());
  return {root,joints:Array.from({length:n+1},(_,i)=>frame(i*length)),length};
 }
+
