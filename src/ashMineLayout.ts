@@ -13,8 +13,8 @@ export function createAshMineLayout(assetBase:string){
  const stone=new THREE.MeshStandardMaterial({color:'#c9c1b6',map:texture,roughness:1,side:THREE.DoubleSide}),wood=new THREE.MeshStandardMaterial({color:'#4b3424',roughness:1});
  const tunnel=createMineTunnel(stone);root.add(tunnel.root);let model:ReturnType<typeof buildMineModel>|undefined,rails:ReturnType<typeof bendMineRails>|undefined;
  const floorAt=(x:number,z:number)=>z> -241?mineTunnelFloor(x,z):model?.floorAt(x,z)??0;
- const chest=new THREE.Group();chest.name='Огненное золото';chest.position.set(MINE_TREASURE.x,0,MINE_TREASURE.z);const body=new THREE.Mesh(new THREE.BoxGeometry(9,5,6),wood);body.position.y=2.5;chest.add(body);
- const goldMat=new THREE.MeshStandardMaterial({color:'#d8a638',metalness:.65,roughness:.4,emissive:'#b0540c',emissiveIntensity:.45});for(let i=0;i<18;i++){const gold=new THREE.Mesh(new THREE.BoxGeometry(1.7,.7,.9),goldMat);gold.position.set(-3+(i%4)*2,5+Math.floor(i/8)*.65,-1.8+Math.floor(i%8/4)*2);chest.add(gold);}root.add(chest);
+ // Keep the quest interaction point while the old gold container is removed.
+ const chest=new THREE.Group();chest.name='Огненное золото';chest.position.set(MINE_TREASURE.x,0,MINE_TREASURE.z);root.add(chest);
  const exit=new THREE.Group();exit.name='Дверь выхода в Муспельхейм';exit.position.set(MINE_EXIT.x,0,MINE_EXIT.z);root.add(exit);
  for(const side of [-1,1]){const jamb=new THREE.Mesh(new THREE.BoxGeometry(2,21,2),stone);jamb.position.set(side*7,10.5,0);exit.add(jamb);}const lintel=new THREE.Mesh(new THREE.BoxGeometry(16,2,2),stone);lintel.position.y=21;exit.add(lintel);
  const hinge=new THREE.Group();hinge.position.set(-6,0,0);exit.add(hinge);const door=new THREE.Mesh(new THREE.BoxGeometry(12,20,.7),wood);door.position.set(6,10,0);hinge.add(door);

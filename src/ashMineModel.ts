@@ -5,7 +5,7 @@ const SCALE=.12;
 export function buildMineModel(source:THREE.Object3D){
  source.updateMatrixWorld(true);const root=new THREE.Group(),hall=new THREE.Group(),ground:THREE.Mesh[]=[],rocks:THREE.Mesh[]=[];
  hall.name='Оригинальный зал Magical Abandoned Mine';root.add(hall);
- source.traverse(o=>{if(!(o instanceof THREE.Mesh)||/BLOCK_|MineTrack/.test(o.name))return;const mesh=o.clone();mesh.geometry=o.geometry.clone().applyMatrix4(o.matrixWorld);mesh.position.set(0,0,0);mesh.rotation.set(0,0,0);mesh.scale.set(1,1,1);mesh.updateMatrix();mesh.matrixAutoUpdate=true;
+ source.traverse(o=>{if(!(o instanceof THREE.Mesh)||/BLOCK_|MineTrack|MineCart/.test(o.name)||(/^Crystal(13|4[1-9]|5[0-9]|6[0-7])_/.test(o.name)))return;const mesh=o.clone();mesh.geometry=o.geometry.clone().applyMatrix4(o.matrixWorld);mesh.position.set(0,0,0);mesh.rotation.set(0,0,0);mesh.scale.set(1,1,1);mesh.updateMatrix();mesh.matrixAutoUpdate=true;
   mesh.material=(Array.isArray(o.material)?o.material:[o.material]).map(m=>m.clone());if(mesh.material.length===1)mesh.material=mesh.material[0];
   hall.add(mesh);if(/Ground1/.test(mesh.name))ground.push(mesh);if(/RocksMat/.test(mesh.name))rocks.push(mesh);
  });
