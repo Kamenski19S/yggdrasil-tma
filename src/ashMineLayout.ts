@@ -29,6 +29,5 @@ export function createAshMineLayout(assetBase:string){
   get rails(){return rails;},get cart(){return cart;},floorAt,
   walkable:(x:number,z:number)=>{if(cart?.blocks(x,z))return false;if(z> -241)return tunnelWalkable(x,z);if(!model||!mineWalkable(x,z))return false;const y=model.floorAt(x,z);return y!==null&&!model.blocked(x,z,y);},
   lineOfSight:(ax:number,az:number,bx:number,bz:number)=>{const n=Math.ceil(Math.hypot(bx-ax,bz-az)/3);for(let i=1;i<n;i++)if(!mineWalkable(ax+(bx-ax)*i/n,az+(bz-az)*i/n,0))return false;return true;},
-  openExit:()=>{openingDoor=true;},updateExit:(dt:number)=>{opening=Math.min(1,opening+(openingDoor?dt:0));slidingDoor.update(opening);},get exitOpened(){return openingDoor;},get exitOpening(){return opening;},exitBlocks:(x:number,z:number)=>Math.abs(z-MINE_EXIT.z)<2.8&&(Math.abs(x)>MINE_DOOR_CLEAR_HALF||opening<.95),canExit:(x:number,z:number)=>mineExitCrossed(x,z,opening)};
+  openExit:()=>{openingDoor=true;},updateExit:(dt:number)=>{opening=Math.min(1,opening+(openingDoor?dt:0));slidingDoor.update(opening);},get exitOpened(){return openingDoor;},get exitOpening(){return opening;},exitBlocks:(x:number,z:number)=>Math.abs(z-MINE_EXIT.z)<4.2&&(Math.abs(x)>MINE_DOOR_CLEAR_HALF||opening<.95),canExit:(x:number,z:number)=>mineExitCrossed(x,z,opening)};
 }
-

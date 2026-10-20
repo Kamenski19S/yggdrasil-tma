@@ -1,37 +1,40 @@
 import * as THREE from 'three';
-export const MINE_DOOR_SCALE=.84;
-export const MINE_DOOR_CLEAR_HALF=7*MINE_DOOR_SCALE-1.8;
-export const MINE_DOOR_ASSET='Ash_Mine_Gatehouse_Door.glb';
-export const MINE_DOOR_CREDIT={author:'ebblender',url:'https://sketchfab.com/3d-models/medieval-gatehouse-door-9548c412ffac45d8893fe3daccca4755'};
-/** Clip every vertex attribute with the triangle, retaining the supplied UVs and normal maps. */
-function crop(source:THREE.BufferGeometry,left:number,right:number,bottom:number,top:number){
- const attributes=Object.entries(source.attributes),sizes=attributes.map(([,a])=>a.itemSize),starts=sizes.map((_,i)=>sizes.slice(0,i).reduce((a,b)=>a+b,0)),position=starts[attributes.findIndex(([name])=>name==='position')],output=attributes.map(()=>[] as number[]),index=source.index;
- const read=(i:number)=>attributes.flatMap(([,a])=>Array.from({length:a.itemSize},(_,k)=>a.getComponent(i,k)));
- const clip=(poly:number[][],axis:number,plane:number,above:boolean)=>{const out:number[][]=[];for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length],aa=above?a[axis]>=plane:a[axis]<=plane,bb=above?b[axis]>=plane:b[axis]<=plane;if(aa)out.push(a);if(aa!==bb){const t=(plane-a[axis])/(b[axis]-a[axis]);out.push(a.map((v,k)=>v+(b[k]-v)*t));}}return out;};
- for(let i=0;i<(index?.count??source.attributes.position.count);i+=3){let poly=[0,1,2].map(k=>read(index?index.getX(i+k):i+k));for(const [axis,plane,above] of [[position,left,1],[position,right,0],[position+1,bottom,1],[position+1,top,0]])poly=clip(poly,axis,plane,!!above);for(let j=1;j<poly.length-1;j++)for(const v of [poly[0],poly[j],poly[j+1]])attributes.forEach((_,a)=>output[a].push(...v.slice(starts[a],starts[a]+sizes[a])));}
- const geometry=new THREE.BufferGeometry();attributes.forEach(([name],i)=>geometry.setAttribute(name,new THREE.Float32BufferAttribute(output[i],sizes[i])));geometry.applyMatrix4(new THREE.Matrix4().makeScale(17.5,17.5,.6));geometry.translate(0,17.5,0);
- geometry.computeBoundingBox();geometry.computeBoundingSphere();return geometry;
-}
-function stoneUV(geometry:THREE.BufferGeometry,offset=new THREE.Vector3()){
- const p=geometry.attributes.position,n=geometry.attributes.normal,uv=geometry.attributes.uv;for(let i=0;i<p.count;i++){const sideways=Math.abs(n.getX(i))>Math.abs(n.getZ(i));uv.setXY(i,(sideways?p.getZ(i)+offset.z:p.getX(i)+offset.x)/5,(p.getY(i)+offset.y)/5);}geometry.deleteAttribute('tangent');
-}
-export function createSlidingMineDoor(stone:THREE.Material){
- // Keep the rock pattern, but remove the brown albedo and prevent it falling almost black.
- const frameMaterial=stone instanceof THREE.MeshStandardMaterial?stone.clone():new THREE.MeshStandardMaterial();frameMaterial.name='Единое серое каменное обрамление';frameMaterial.color.set('#adb1b3');frameMaterial.roughness=1;frameMaterial.metalness=0;frameMaterial.emissive.set('#56616b');frameMaterial.emissiveIntensity=.08;
- frameMaterial.onBeforeCompile=shader=>{shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
- float rockShade = clamp(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)) * 1.6 + 0.18, 0.23, 0.62);
- diffuseColor.rgb = vec3(rockShade);`);};frameMaterial.customProgramCacheKey=()=> 'mine-neutral-stone-v1';
- const root=new THREE.Group();root.name='Раздвижная дверь пепельной шахты';root.scale.setScalar(MINE_DOOR_SCALE);const frame=new THREE.Group(),left=new THREE.Group(),right=new THREE.Group();root.add(frame,left,right);
- // Opaque stone pockets conceal both leaves from either side of the doorway.
- for(const side of [-1,1])for(const z of [-1.5,1.5]){const wall=new THREE.Mesh(new THREE.BoxGeometry(8.3,24,1.2),frameMaterial);wall.position.set(side*11.25,12,z);wall.name='Каменная ниша для створки';stoneUV(wall.geometry,wall.position);frame.add(wall);}
- const lintel=new THREE.Mesh(new THREE.BoxGeometry(14.2,3,4.2),frameMaterial);lintel.position.set(0,22.5,0);lintel.name='Единая каменная перемычка над дверью';stoneUV(lintel.geometry,lintel.position);frame.add(lintel);
- let opening=0;const smooth=(t:number)=>t*t*(3-2*t),update=(value:number)=>{opening=THREE.MathUtils.clamp(value,0,1);const travel=7.4*smooth(opening);left.position.x=-travel;right.position.x=travel;};
- // The loading placeholder uses the same lateral movement and is removed on installation.
- const placeholders=[left,right].map((group,i)=>{const leaf=new THREE.Mesh(new THREE.BoxGeometry(7,21,.8),new THREE.MeshStandardMaterial({color:'#493c2a',roughness:.9}));leaf.position.set(i?3.5:-3.5,10.5,0);group.add(leaf);return leaf;});
- const install=(source:THREE.Object3D)=>{for(const leaf of placeholders){leaf.removeFromParent();leaf.geometry.dispose();leaf.material.dispose();}source.updateWorldMatrix(true,true);
-  source.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const baked=o.geometry.clone().applyMatrix4(o.matrixWorld),materials=(Array.isArray(o.material)?o.material:[o.material]).map(m=>m.clone()),material=Array.isArray(o.material)?materials:materials[0];
-   for(const [group,l,r,b,t] of [[left,-.4,0,-1,.2],[right,0,.4,-1,.2],[frame,-.72,-.4,-1,.36],[frame,.4,.72,-1,.36],[frame,-.4,.4,.2,.36]] as const){const geometry=crop(baked,l,r,b,t);if(!geometry.attributes.position.count){geometry.dispose();continue;}if(group===frame)stoneUV(geometry);const mesh=new THREE.Mesh(geometry,group===frame?frameMaterial:material);mesh.name=group===frame?'Обрамление Medieval Gatehouse Door':'Створка Medieval Gatehouse Door';group.add(mesh);}baked.dispose();
-  });update(opening);root.updateMatrixWorld(true);
+export const MINE_DOOR_SCALE=1;
+export const MINE_DOOR_CLEAR_HALF=4.1;
+export const MINE_DOOR_BLOCK_HALF=10.4;
+export const MINE_DOOR_ASSET='Ash_Mine_Dungeon_Door.glb';
+export const MINE_DOOR_CREDIT={title:'Dungeon Door',author:'DJMaesen',url:'https://sketchfab.com/3d-models/dungeon-door-0507ef6c98664c4a8bc4eeb0f3c68fd9'};
+/** The authored arch and its stone textures stay intact; only the wooden leaf slides. */
+export function createSlidingMineDoor(_stone:THREE.Material){
+ const root=new THREE.Group();root.name='Dungeon Door — вход в пепельную шахту';
+ const frame=new THREE.Group(),leaf=new THREE.Group();frame.name='Каменная арка DJMaesen';leaf.name='Раздвижная створка Dungeon Door';root.add(frame,leaf);
+ const slide={value:0};let opening=0,travel=13;
+ const update=(value:number)=>{opening=THREE.MathUtils.clamp(value,0,1);leaf.position.x=-travel*opening*opening*(3-2*opening);slide.value=leaf.position.x;};
+ const placeholder=new THREE.Mesh(new THREE.BoxGeometry(11.6,15.6,1),new THREE.MeshStandardMaterial({color:'#45382a',roughness:1}));placeholder.position.y=7.8;leaf.add(placeholder);
+ const install=(source:THREE.Object3D)=>{
+  placeholder.removeFromParent();placeholder.geometry.dispose();placeholder.material.dispose();
+  source.updateWorldMatrix(true,true);
+  // This model is authored facing X. Uniform scaling gives a 15.6-unit leaf for 14-unit Vicki.
+  const orient=new THREE.Matrix4().makeRotationY(-Math.PI/2),scale=5.2;
+  const door=source.getObjectByName('door');if(!door)throw new Error('Dungeon Door is missing its authored leaf');
+  const bounds=new THREE.Box3().setFromObject(door,true).applyMatrix4(orient),center=bounds.getCenter(new THREE.Vector3());
+  const normalize=new THREE.Matrix4().makeTranslation(-center.x*scale,-bounds.min.y*scale+.08,0).multiply(new THREE.Matrix4().makeScale(scale,scale,scale)).multiply(orient);
+  let leafRight=-Infinity;
+  source.traverse(o=>{if(!(o instanceof THREE.Mesh))return;
+   let moving=false;for(let parent:THREE.Object3D|null=o;parent;parent=parent.parent)if(parent===door){moving=true;break;}
+   const geometry=o.geometry.clone().applyMatrix4(o.matrixWorld).applyMatrix4(normalize);
+   if(moving){geometry.computeBoundingBox();leafRight=Math.max(leafRight,geometry.boundingBox!.max.x);}
+   const materials=(Array.isArray(o.material)?o.material:[o.material]).map(original=>{
+    const material=original.clone();material.side=THREE.DoubleSide;
+    if(moving){
+     // Clip the leaf as it disappears into the existing rock. No extra rectangular wall or frame.
+     material.onBeforeCompile=(shader:Parameters<THREE.Material['onBeforeCompile']>[0])=>{shader.uniforms.mineDoorSlide=slide;shader.vertexShader='uniform float mineDoorSlide; varying float mineDoorX;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nmineDoorX=transformed.x+mineDoorSlide;');shader.fragmentShader='varying float mineDoorX;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>','#include <clipping_planes_fragment>\nif(mineDoorX < -6.35 || mineDoorX > 6.35) discard;');};material.customProgramCacheKey=()=> 'dungeon-door-slide-v1';
+    }
+    return material;
+   });
+   const mesh=new THREE.Mesh(geometry,Array.isArray(o.material)?materials:materials[0]);mesh.name=o.name;mesh.castShadow=mesh.receiveShadow=true;(moving?leaf:frame).add(mesh);
+  });
+  travel=leafRight+7;update(opening);root.updateMatrixWorld(true);
  };
- return {root,left,right,frame,frameMaterial,install,update,get opening(){return opening;}};
+ return {root,frame,leaf,install,update,get opening(){return opening;}};
 }
