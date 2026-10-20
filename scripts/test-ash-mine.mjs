@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {buildSync} from 'esbuild';import * as THREE from 'three';import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 async function mod(path){const c=buildSync({entryPoints:[path],bundle:true,write:false,format:'esm',platform:'node',external:['three']}).outputFiles[0].text.replaceAll('from "three"',`from ${JSON.stringify(import.meta.resolve('three'))}`);return import('data:text/javascript;base64,'+Buffer.from(c).toString('base64'));}
+const {OCEAN_GUARDIAN}=await mod('src/ashMineGuardianCombat.ts');
 const {MINE_GUARDS,applyMineEvent,mineProgress,FIRE_GOLD,FIRE_GOLD_COST}=await mod('src/muspelheimMineQuest.ts');
 let save={done:[],lootCounts:{},immortalityDrops:42,fieldHp:17,other:'retained'};
 assert.equal(applyMineEvent(save,'gold'),save);assert.equal(applyMineEvent(save,'pay'),save);assert.equal(applyMineEvent(save,'guard:entrance'),save);
 save=applyMineEvent(save,'enter');assert.equal(applyMineEvent(save,'enter'),save);
 for(const guard of MINE_GUARDS){assert.equal(applyMineEvent(save,'gold'),save);save=applyMineEvent(save,'guard:'+guard.id);assert.equal(applyMineEvent(save,'guard:'+guard.id),save);}
-assert.equal(mineProgress(save.done).cleared,true);save=applyMineEvent(save,'gold');assert.equal(save.lootCounts[FIRE_GOLD],FIRE_GOLD_COST);assert.equal(applyMineEvent(save,'gold'),save);
-save=JSON.parse(JSON.stringify(save));save=applyMineEvent(save,'pay');assert.equal(save.lootCounts[FIRE_GOLD],0);assert.ok(mineProgress(save.done).paid);assert.equal(applyMineEvent(save,'pay'),save);assert.equal(applyMineEvent(save,'gold'),save);assert.equal(save.fieldHp,17);assert.equal(save.other,'retained');assert.equal(save.immortalityDrops,42+MINE_GUARDS.reduce((n,g)=>n+g.reward,0));
+assert.equal(mineProgress(save.done).cleared,true);assert.equal(applyMineEvent(save,'gold'),save,'Lake guardian also guards the gold');save=applyMineEvent(save,'guardian');assert.equal(applyMineEvent(save,'guardian'),save,'Guardian reward is paid once');save=JSON.parse(JSON.stringify(save));assert.ok(mineProgress(save.done).guardianDefeated);save=applyMineEvent(save,'gold');assert.equal(save.lootCounts[FIRE_GOLD],FIRE_GOLD_COST);assert.equal(applyMineEvent(save,'gold'),save);
+save=JSON.parse(JSON.stringify(save));save=applyMineEvent(save,'pay');assert.equal(save.lootCounts[FIRE_GOLD],0);assert.ok(mineProgress(save.done).paid);assert.equal(applyMineEvent(save,'pay'),save);assert.equal(applyMineEvent(save,'gold'),save);assert.equal(save.fieldHp,17);assert.equal(save.other,'retained');assert.equal(save.immortalityDrops,42+OCEAN_GUARDIAN.reward+MINE_GUARDS.reduce((n,g)=>n+g.reward,0));
 const {MINE_ROUTE,MINE_TREASURE,mineWalkable}=await mod('src/ashMineLayout.ts');
 for(let i=1;i<MINE_ROUTE.length;i++){const a=MINE_ROUTE[i-1],b=MINE_ROUTE[i],n=Math.ceil(Math.hypot(a.x-b.x,a.z-b.z)/.2);for(let j=0;j<=n;j++)assert.ok(mineWalkable(a.x+(b.x-a.x)*j/n,a.z+(b.z-a.z)*j/n),'Continuous route through every turn');}
 for(const p of [...MINE_GUARDS,MINE_TREASURE])assert.ok(mineWalkable(p.x,p.z,3));assert.ok(!mineWalkable(45,-40));
