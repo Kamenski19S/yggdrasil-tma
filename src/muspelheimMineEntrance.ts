@@ -1,4 +1,4 @@
-import {createSlidingMineDoor} from './ashMineDoor';
+import {createSlidingMineDoor,MINE_DOOR_CLEAR_HALF,MINE_DOOR_SCALE} from './ashMineDoor';
 import * as THREE from 'three';
 import type {WallRock} from './muspelheimRockWalls';
 export const MINE_PATH=Array.from({length:49},(_,i)=>{const t=i/48,a=t*Math.PI;return {x:-435+24*Math.cos(a),z:-100-24*Math.sin(a),y:-82-30*THREE.MathUtils.smoothstep(t,0,.88)};});
@@ -36,8 +36,8 @@ export function createMineEntrance(assetBase:string){
  const slidingDoor=createSlidingMineDoor(stone);arch.add(slidingDoor.root);
  for(const side of [-1,1]){const glow=new THREE.Mesh(new THREE.OctahedronGeometry(.8),new THREE.MeshBasicMaterial({color:'#ffad52'}));glow.position.set(side*9,13,-3);arch.add(glow);}let opened=false,opening=0;
  return {root,slidingDoor,installDoor:slidingDoor.install,open:()=>{opened=true;},get opened(){return opened;},get opening(){return opening;},update:(dt:number)=>{opening=Math.min(1,opening+(opened?dt:0));slidingDoor.update(opening);},
-  canEnter:(x:number,y:number,z:number)=>opening>=.95&&Math.abs(x-MINE_DOOR.x)<5&&z>=MINE_DOOR.z+3.6&&z<MINE_DOOR.z+6&&Math.abs(y-MINE_DOOR.y)<3,
+  canEnter:(x:number,y:number,z:number)=>opening>=.95&&Math.abs(x-MINE_DOOR.x)<MINE_DOOR_CLEAR_HALF&&z>=MINE_DOOR.z+3.6&&z<MINE_DOOR.z+6&&Math.abs(y-MINE_DOOR.y)<3,
   blocks:(x:number,z:number,y=MINE_DOOR.y)=>{const px=x-MINE_DOOR.x,pz=z-MINE_DOOR.z-2,py=y-MINE_DOOR.y;if(py>34||py+14< -8)return false;
-   return Math.abs(px)<17&&Math.abs(pz)<2.8&&(Math.abs(px)>5.2||opening<.95);
+   return Math.abs(px)<17*MINE_DOOR_SCALE&&Math.abs(pz)<2.8&&(Math.abs(px)>MINE_DOOR_CLEAR_HALF||opening<.95);
   },near:(x:number,z:number)=>Math.hypot(x-MINE_DOOR.x,z-(MINE_DOOR.z-5))<12};
 }
