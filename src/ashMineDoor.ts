@@ -12,17 +12,26 @@ function crop(source:THREE.BufferGeometry,left:number,right:number,bottom:number
  const geometry=new THREE.BufferGeometry();attributes.forEach(([name],i)=>geometry.setAttribute(name,new THREE.Float32BufferAttribute(output[i],sizes[i])));geometry.applyMatrix4(new THREE.Matrix4().makeScale(17.5,17.5,.6));geometry.translate(0,17.5,0);
  geometry.computeBoundingBox();geometry.computeBoundingSphere();return geometry;
 }
+function stoneUV(geometry:THREE.BufferGeometry,offset=new THREE.Vector3()){
+ const p=geometry.attributes.position,n=geometry.attributes.normal,uv=geometry.attributes.uv;for(let i=0;i<p.count;i++){const sideways=Math.abs(n.getX(i))>Math.abs(n.getZ(i));uv.setXY(i,(sideways?p.getZ(i)+offset.z:p.getX(i)+offset.x)/5,(p.getY(i)+offset.y)/5);}geometry.deleteAttribute('tangent');
+}
 export function createSlidingMineDoor(stone:THREE.Material){
+ // Keep the rock pattern, but remove the brown albedo and prevent it falling almost black.
+ const frameMaterial=stone instanceof THREE.MeshStandardMaterial?stone.clone():new THREE.MeshStandardMaterial();frameMaterial.name='Единое серое каменное обрамление';frameMaterial.color.set('#adb1b3');frameMaterial.roughness=1;frameMaterial.metalness=0;frameMaterial.emissive.set('#56616b');frameMaterial.emissiveIntensity=.08;
+ frameMaterial.onBeforeCompile=shader=>{shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
+ float rockShade = clamp(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)) * 1.6 + 0.18, 0.23, 0.62);
+ diffuseColor.rgb = vec3(rockShade);`);};frameMaterial.customProgramCacheKey=()=> 'mine-neutral-stone-v1';
  const root=new THREE.Group();root.name='Раздвижная дверь пепельной шахты';root.scale.setScalar(MINE_DOOR_SCALE);const frame=new THREE.Group(),left=new THREE.Group(),right=new THREE.Group();root.add(frame,left,right);
  // Opaque stone pockets conceal both leaves from either side of the doorway.
- for(const side of [-1,1])for(const z of [-1.5,1.5]){const wall=new THREE.Mesh(new THREE.BoxGeometry(8.3,24,1.2),stone);wall.position.set(side*11.25,12,z);wall.name='Каменная ниша для створки';frame.add(wall);}
+ for(const side of [-1,1])for(const z of [-1.5,1.5]){const wall=new THREE.Mesh(new THREE.BoxGeometry(8.3,24,1.2),frameMaterial);wall.position.set(side*11.25,12,z);wall.name='Каменная ниша для створки';stoneUV(wall.geometry,wall.position);frame.add(wall);}
+ const lintel=new THREE.Mesh(new THREE.BoxGeometry(14.2,3,4.2),frameMaterial);lintel.position.set(0,22.5,0);lintel.name='Единая каменная перемычка над дверью';stoneUV(lintel.geometry,lintel.position);frame.add(lintel);
  let opening=0;const smooth=(t:number)=>t*t*(3-2*t),update=(value:number)=>{opening=THREE.MathUtils.clamp(value,0,1);const travel=7.4*smooth(opening);left.position.x=-travel;right.position.x=travel;};
  // The loading placeholder uses the same lateral movement and is removed on installation.
  const placeholders=[left,right].map((group,i)=>{const leaf=new THREE.Mesh(new THREE.BoxGeometry(7,21,.8),new THREE.MeshStandardMaterial({color:'#493c2a',roughness:.9}));leaf.position.set(i?3.5:-3.5,10.5,0);group.add(leaf);return leaf;});
  const install=(source:THREE.Object3D)=>{for(const leaf of placeholders){leaf.removeFromParent();leaf.geometry.dispose();leaf.material.dispose();}source.updateWorldMatrix(true,true);
   source.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const baked=o.geometry.clone().applyMatrix4(o.matrixWorld),materials=(Array.isArray(o.material)?o.material:[o.material]).map(m=>m.clone()),material=Array.isArray(o.material)?materials:materials[0];
-   for(const [group,l,r,b,t] of [[left,-.4,0,-1,.2],[right,0,.4,-1,.2],[frame,-.72,-.4,-1,.36],[frame,.4,.72,-1,.36],[frame,-.4,.4,.2,.36]] as const){const geometry=crop(baked,l,r,b,t);if(!geometry.attributes.position.count){geometry.dispose();continue;}if(group===frame){const p=geometry.attributes.position,n=geometry.attributes.normal,uv=geometry.attributes.uv;for(let i=0;i<p.count;i++){const sideways=Math.abs(n.getX(i))>Math.abs(n.getZ(i));uv.setXY(i,(sideways?p.getZ(i):p.getX(i))/5,p.getY(i)/5);}geometry.deleteAttribute('tangent');}const mesh=new THREE.Mesh(geometry,group===frame?stone:material);mesh.name=group===frame?'Обрамление Medieval Gatehouse Door':'Створка Medieval Gatehouse Door';group.add(mesh);}baked.dispose();
+   for(const [group,l,r,b,t] of [[left,-.4,0,-1,.2],[right,0,.4,-1,.2],[frame,-.72,-.4,-1,.36],[frame,.4,.72,-1,.36],[frame,-.4,.4,.2,.36]] as const){const geometry=crop(baked,l,r,b,t);if(!geometry.attributes.position.count){geometry.dispose();continue;}if(group===frame)stoneUV(geometry);const mesh=new THREE.Mesh(geometry,group===frame?frameMaterial:material);mesh.name=group===frame?'Обрамление Medieval Gatehouse Door':'Створка Medieval Gatehouse Door';group.add(mesh);}baked.dispose();
   });update(opening);root.updateMatrixWorld(true);
  };
- return {root,left,right,frame,install,update,get opening(){return opening;}};
+ return {root,left,right,frame,frameMaterial,install,update,get opening(){return opening;}};
 }
