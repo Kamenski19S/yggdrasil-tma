@@ -1,35 +1,28 @@
 import * as THREE from 'three';
-export const MINE_GOLD_FILES=['Ash_Mine_Gold_Bar.glb','Ash_Mine_Coins.glb'];
+export const MINE_GOLD_FILES=['Ash_Mine_Ingot.glb','Ash_Mine_Coins_New.glb'];
 export const MINE_GOLD_POSITION={x:29,z:-343.5};
-/** Bright gold remains legible in the cave without a reflection environment. */
-export function mineGoldMaterial(source:THREE.Material){
- const material=source instanceof THREE.MeshStandardMaterial?source.clone():new THREE.MeshStandardMaterial();
- material.color.set('#ffd44f');material.map=null;material.vertexColors=false;
- material.metalness=.32;material.roughness=.3;material.metalnessMap=null;material.roughnessMap=null;material.aoMap=null;
- material.emissive.set('#e8ac22');material.emissiveIntensity=.28;material.emissiveMap=null;return material;
-}
-function pieces(source:THREE.Object3D){const meshes:THREE.Mesh[]=[];source.updateWorldMatrix(true,true);source.traverse(o=>{if(o instanceof THREE.Mesh){const materials=(Array.isArray(o.material)?o.material:[o.material]).map(mineGoldMaterial);const mesh=new THREE.Mesh(o.geometry.clone().applyMatrix4(o.matrixWorld),Array.isArray(o.material)?materials:materials[0]);meshes.push(mesh);}});return meshes;}
+/** Preserve the supplied materials, textures and shape. Only bake their authored transforms. */
+function pieces(source:THREE.Object3D,turn=0){const meshes:THREE.Mesh[]=[];source.updateWorldMatrix(true,true);const rotation=new THREE.Matrix4().makeRotationY(turn);source.traverse(o=>{if(o instanceof THREE.Mesh){const materials=(Array.isArray(o.material)?o.material:[o.material]).map(m=>m.clone());const mesh=new THREE.Mesh(o.geometry.clone().applyMatrix4(o.matrixWorld).applyMatrix4(rotation),Array.isArray(o.material)?materials:materials[0]);meshes.push(mesh);}});return meshes;}
 export function createMineGoldBars(source:THREE.Object3D,floorAt:(x:number,z:number)=>number){
- const root=new THREE.Group();root.name='Золотые слитки у синего кристалла';const baseY=floorAt(MINE_GOLD_POSITION.x,MINE_GOLD_POSITION.z);let tierHeight=0;
- // Two original copies form a broad foundation; the three added copies rise above it.
- for(const [dx,level,factor] of [[-1.8,0,1],[1.8,0,1],[0,1,1],[0,2,.95],[0,3,.9]]){
-  const model=new THREE.Group();model.add(...pieces(source));const box=new THREE.Box3().setFromObject(model),center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3()),scale=3.6/size.x*factor;
-  if(level===0)tierHeight=size.y*scale;model.position.set(-center.x,-box.min.y,-center.z);
-  const stack=new THREE.Group();stack.add(model);stack.scale.setScalar(scale);stack.userData.level=level;
-  const x=MINE_GOLD_POSITION.x+dx,z=MINE_GOLD_POSITION.z;
-  const foundation=Math.max(floorAt(MINE_GOLD_POSITION.x-1.8,z),floorAt(MINE_GOLD_POSITION.x+1.8,z));
-  stack.position.set(dx,(level===0?floorAt(x,z):foundation)+(level===3?2.95:level)*tierHeight-baseY+.05,0);root.add(stack);
+ const root=new THREE.Group();root.name='Пирамида слитков — пять, четыре, три';const template=new THREE.Group();template.add(...pieces(source,Math.PI/2));const box=new THREE.Box3().setFromObject(template),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3()),scale=1.4/size.x,height=size.y*scale,spacing=1.46,baseY=floorAt(MINE_GOLD_POSITION.x,MINE_GOLD_POSITION.z);
+ const levels:number[][]=[];
+ for(let row=0;row<3;row++){
+  const count=5-row;levels[row]=[];
+  for(let column=0;column<count;column++){
+   const x=(column-(count-1)/2)*spacing;
+   // Each upper bar spans two lower bars; its bottom touches the higher support.
+   const bottom=row===0?floorAt(MINE_GOLD_POSITION.x+x,MINE_GOLD_POSITION.z)-baseY+.05:Math.max(levels[row-1][column],levels[row-1][column+1])+height;
+   levels[row].push(bottom);const model=template.clone(true);model.position.set(-center.x,-box.min.y,-center.z);const bar=new THREE.Group();bar.name='Слиток '+(row+1)+'-'+(column+1);bar.userData.level=row;bar.add(model);bar.scale.setScalar(scale);bar.position.set(x,bottom,0);root.add(bar);
+  }
  }
  return root;
 }
-/** Keep every vertex inside the wagon rim, with the high point in the middle. Coordinates are in the cart source space. */
+/** Uniformly scaled copies retain the actual coin relief; no deformed geometry or solid filler. */
 export function createMineCoinHeap(source:THREE.Object3D){
- const root=new THREE.Group();root.name='Горка золотых монет внутри вагонетки';const meshes=pieces(source),box=new THREE.Box3();for(const m of meshes)box.union(new THREE.Box3().setFromObject(m));const size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
- for(const mesh of meshes){const p=mesh.geometry.getAttribute('position');for(let i=0;i<p.count;i++){
-  const u=(p.getX(i)-center.x)/size.x*2,v=(p.getZ(i)-center.z)/size.z*2,relief=(p.getY(i)-box.min.y)/Math.max(.0001,size.y),hill=Math.max(0,1-u*u-v*v);
-  p.setXYZ(i,u*.38,.96+relief*.065+hill*.28,v*.69);
- }mesh.geometry.computeVertexNormals();mesh.geometry.computeBoundingBox();mesh.geometry.computeBoundingSphere();root.add(mesh);}
- const bed=new THREE.SphereGeometry(1,32,12,0,Math.PI*2,0,Math.PI/2);bed.scale(.375,.255,.685);bed.translate(0,.955,0);const underlay=new THREE.Mesh(bed,mineGoldMaterial(new THREE.MeshStandardMaterial()));underlay.name='Сплошная золотая основа под монетами';root.add(underlay);
+ const root=new THREE.Group();root.name='Объёмные монеты Coins!!! в вагонетке';const template=new THREE.Group();template.add(...pieces(source));const box=new THREE.Box3().setFromObject(template),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
+ for(const [z,width,y,turn] of [[-.31,.74,.92,0],[.31,.74,.92,Math.PI],[0,.61,1.02,Math.PI/2]]){
+  const model=template.clone(true);model.position.set(-center.x,-box.min.y,-center.z);const pile=new THREE.Group();pile.name='Исходная объёмная россыпь монет';pile.add(model);pile.scale.setScalar(width/size.x);pile.rotation.y=turn;pile.position.set(0,y,z);root.add(pile);
+ }
  return root;
 }
 export function removeCartGemFaces(geometry:THREE.BufferGeometry){

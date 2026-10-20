@@ -1,3 +1,4 @@
+import {RoomEnvironment} from 'three/examples/jsm/environments/RoomEnvironment.js';
 import {MINE_GOLD_FILES} from './ashMineGold';
 import {MINE_CRYSTAL_FILES} from './ashMineCrystals';
 import {followMineCamera,type MineCameraState} from './ashMineCamera';
@@ -31,7 +32,7 @@ export default function AshMine3D(props:Props){
   setHp(heroLife);setReady(false);setExitOpened(false);setFailed(false);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.outputColorSpace=THREE.SRGBColorSpace;mount.appendChild(renderer.domElement);
   const scene=new THREE.Scene();scene.background=new THREE.Color('#171213');scene.fog=new THREE.Fog('#171213',55,125);scene.add(new THREE.HemisphereLight('#c8b7a1','#201919',2.3));
   const lamp=new THREE.PointLight('#ffc183',220,52,1.5);scene.add(lamp);const camera=new THREE.PerspectiveCamera(53,1,.1,155);
-  const layout=createAshMineLayout(`${BASE}img/`);scene.add(layout.root);
+  const layout=createAshMineLayout(`${BASE}img/`);scene.add(layout.root);let goldReflection:THREE.WebGLRenderTarget|undefined;
   const hero=new THREE.Group();scene.add(hero);const pos={x:checkpoint?.x??0,z:checkpoint?.z??12};hero.rotation.y=Math.PI;
   let mixer:THREE.AnimationMixer|undefined,idle:THREE.AnimationAction|undefined,walk:THREE.AnimationAction|undefined,attack:THREE.AnimationAction|undefined,current:THREE.AnimationAction|undefined,attackUntil=0;
   const dead=new Set<string>(mineProgress(live.current.questDone).defeated);
@@ -52,7 +53,11 @@ export default function AshMine3D(props:Props){
   const loader=new GLTFLoader(),load=async(file:string)=>loader.parseAsync(await cachedGlbBuffer(`${BASE}img/models/${file}`),`${BASE}img/models/`);
   const timeout=window.setTimeout(()=>{if(alive&&!loaded){setFailed(true);setStatus('Загрузка Vicki затянулась. Повтори или вернись к двери.');}},60000);
   Promise.all([load('Vika-3d-animated-optimized.glb'),load('Magical_Abandoned_Mine.glb'),load('Ash_Mine_Track.glb'),load('Ash_Mine_Gem_Cart.glb'),...MINE_GOLD_FILES.map(load),...MINE_CRYSTAL_FILES.map(load)]).then(([g,mine,track,cart,bars,coins,...crystals])=>{
-   if(!alive){dispose(g.scene);dispose(mine.scene);dispose(track.scene);dispose(cart.scene);dispose(bars.scene);dispose(coins.scene);crystals.forEach(c=>dispose(c.scene));return;}layout.install(mine.scene,track.scene,cart.scene,[bars.scene,coins.scene]);layout.installCrystals(crystals.map(c=>c.scene));crystals.forEach(c=>c.scene.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.dispose());}}));for(const w of workers)w.root.position.y=layout.floorAt(w.root.position.x,w.root.position.z);for(const guard of guards)guard.actor.root.position.y=layout.floorAt(guard.spec.x,guard.spec.z);
+   if(!alive){dispose(g.scene);dispose(mine.scene);dispose(track.scene);dispose(cart.scene);dispose(bars.scene);dispose(coins.scene);crystals.forEach(c=>dispose(c.scene));return;}layout.install(mine.scene,track.scene,cart.scene,[bars.scene,coins.scene]);
+   // Authored metal needs reflections to remain readable in a dark cave; no colour/shape replacement.
+   const environment=new RoomEnvironment(),generator=new THREE.PMREMGenerator(renderer);goldReflection=generator.fromScene(environment,.04);environment.dispose();generator.dispose();
+   for(const item of [layout.chest,layout.cart?.root.getObjectByName('Объёмные монеты Coins!!! в вагонетке')])item?.traverse(o=>{if(o instanceof THREE.Mesh)for(const m of Array.isArray(o.material)?o.material:[o.material])if(m instanceof THREE.MeshStandardMaterial){m.envMap=goldReflection!.texture;m.envMapIntensity=1.1;m.needsUpdate=true;}});
+   layout.installCrystals(crystals.map(c=>c.scene));crystals.forEach(c=>c.scene.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.dispose());}}));for(const w of workers)w.root.position.y=layout.floorAt(w.root.position.x,w.root.position.z);for(const guard of guards)guard.actor.root.position.y=layout.floorAt(guard.spec.x,guard.spec.z);
    if(!alive){dispose(g.scene);return;}const model=g.scene,b=new THREE.Box3().setFromObject(model),scale=13.94/Math.max(.01,b.max.y-b.min.y);model.scale.setScalar(scale);model.position.y=-b.min.y*scale;hero.add(model);mixer=new THREE.AnimationMixer(model);
    const clip=(...names:string[])=>names.map(n=>THREE.AnimationClip.findByName(g.animations,n)).find(Boolean);const i=clip('idle','sword_idle')||g.animations[0],w=clip('walk_loop','walk'),a=clip('sword_attack','kick');if(i)idle=mixer.clipAction(i);if(w)walk=mixer.clipAction(w);if(a){attack=mixer.clipAction(a);attack.setLoop(THREE.LoopOnce,1);}idle?.play();current=idle;
    let hand:THREE.Object3D|undefined;model.traverse(o=>{if(o.name.replace(/[^a-zA-Z0-9]/g,'').endsWith('RightHand'))hand=o;});
@@ -81,7 +86,7 @@ export default function AshMine3D(props:Props){
    const pose=followMineCamera(cameraState,{x:pos.x,y:hero.position.y,z:pos.z},dt,layout.floorAt,layout.root);
    camera.position.copy(pose.position);camera.lookAt(pose.target);view.current=pose.yaw;if(camera.fov!==pose.fov){camera.fov=pose.fov;camera.updateProjectionMatrix();}
    lamp.position.set(pos.x,hero.position.y+18,pos.z+6);renderer.render(scene,camera);
-  }tick();return()=>{if(loaded&&!exiting)persist();alive=false;window.clearTimeout(timeout);cancelAnimationFrame(frame);clear();observer.disconnect();window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();dispose(scene);renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();};
+  }tick();return()=>{if(loaded&&!exiting)persist();alive=false;window.clearTimeout(timeout);cancelAnimationFrame(frame);clear();observer.disconnect();window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();dispose(scene);goldReflection?.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();};
  },[retry]);
  const progress=mineProgress(props.questDone);const move=(e:React.PointerEvent<HTMLDivElement>)=>{if(pointer.current!==e.pointerId)return;const b=e.currentTarget.getBoundingClientRect();input.current={x:THREE.MathUtils.clamp((e.clientX-b.left-b.width/2)/42,-1,1),z:THREE.MathUtils.clamp((e.clientY-b.top-b.height/2)/42,-1,1)};};const stop=()=>{pointer.current=null;input.current={x:0,z:0};};
  return <section className="muspelheim-world ash-mine" style={{position:'relative',flex:1,minHeight:0,overflow:'hidden',background:'#171213',touchAction:'none'}} aria-label="Пепельная шахта"><div ref={host} style={{position:'absolute',inset:0}}/>
