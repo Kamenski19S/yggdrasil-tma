@@ -8,6 +8,12 @@ export function buildMineModel(source:THREE.Object3D){
  source.traverse(o=>{if(!(o instanceof THREE.Mesh)||/BLOCK_|MineTrack|MineCart/.test(o.name)||(/^Crystal(13|4[1-9]|5[0-9]|6[0-7])_/.test(o.name)))return;const mesh=o.clone();mesh.geometry=o.geometry.clone().applyMatrix4(o.matrixWorld);mesh.position.set(0,0,0);mesh.rotation.set(0,0,0);mesh.scale.set(1,1,1);mesh.updateMatrix();mesh.matrixAutoUpdate=true;
   if(/^Crystal/.test(mesh.name)){const g=mesh.geometry;g.computeBoundingBox();const box=g.boundingBox!,base=box.getCenter(new THREE.Vector3());base.y=box.min.y;g.translate(-base.x,-base.y,-base.z);g.scale(.5,.5,.5);g.translate(base.x,base.y,base.z);g.computeBoundingBox();g.computeBoundingSphere();}
   mesh.material=(Array.isArray(o.material)?o.material:[o.material]).map(m=>m.clone());if(mesh.material.length===1)mesh.material=mesh.material[0];
+  // This single large crystal used full screen-space transmission, producing black mobile artefacts.
+  if(o.name==='Hero1_HeroMat_0'){
+   const original=(Array.isArray(o.material)?o.material[0]:o.material) as THREE.MeshStandardMaterial;
+   const material=new THREE.MeshStandardMaterial({name:'Устойчивый сине-голубой большой кристалл',color:'#329dd2',emissive:'#1688cf',emissiveIntensity:.7,roughness:.38,metalness:.05,normalMap:original.normalMap,side:THREE.DoubleSide,transparent:false,opacity:1,depthWrite:true});
+   if(original.normalScale)material.normalScale.copy(original.normalScale);mesh.material=material;
+  }
   hall.add(mesh);if(/Ground1/.test(mesh.name))ground.push(mesh);if(/RocksMat/.test(mesh.name))rocks.push(mesh);
  });
  hall.rotation.y=-Math.PI/2;hall.scale.setScalar(SCALE);hall.position.set(24+330*SCALE,-115.38*SCALE,-240-554*SCALE);hall.updateMatrixWorld(true);
