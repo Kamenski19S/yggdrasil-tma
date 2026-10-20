@@ -1,3 +1,4 @@
+import {MINE_DOOR_ASSET} from './ashMineDoor';
 import {RoomEnvironment} from 'three/examples/jsm/environments/RoomEnvironment.js';
 import {MINE_GOLD_FILES} from './ashMineGold';
 import {MINE_CRYSTAL_FILES} from './ashMineCrystals';
@@ -52,8 +53,8 @@ export default function AshMine3D(props:Props){
   actions.current.openExit=()=>{layout.openExit();setExitOpened(true);setStatus('Дверь выхода открывается. Пройди через неё в Муспельхейм.');};
   const loader=new GLTFLoader(),load=async(file:string)=>loader.parseAsync(await cachedGlbBuffer(`${BASE}img/models/${file}`),`${BASE}img/models/`);
   const timeout=window.setTimeout(()=>{if(alive&&!loaded){setFailed(true);setStatus('Загрузка Vicki затянулась. Повтори или вернись к двери.');}},60000);
-  Promise.all([load('Vika-3d-animated-optimized.glb'),load('Magical_Abandoned_Mine.glb'),load('Ash_Mine_Track.glb'),load('Ash_Mine_Gem_Cart.glb'),...MINE_GOLD_FILES.map(load),...MINE_CRYSTAL_FILES.map(load)]).then(([g,mine,track,cart,bars,coins,...crystals])=>{
-   if(!alive){dispose(g.scene);dispose(mine.scene);dispose(track.scene);dispose(cart.scene);dispose(bars.scene);dispose(coins.scene);crystals.forEach(c=>dispose(c.scene));return;}layout.install(mine.scene,track.scene,cart.scene,[bars.scene,coins.scene]);
+  Promise.all([load('Vika-3d-animated-optimized.glb'),load('Magical_Abandoned_Mine.glb'),load('Ash_Mine_Track.glb'),load('Ash_Mine_Gem_Cart.glb'),...MINE_GOLD_FILES.map(load),load(MINE_DOOR_ASSET),...MINE_CRYSTAL_FILES.map(load)]).then(([g,mine,track,cart,bars,coins,door,...crystals])=>{
+   if(!alive){dispose(g.scene);dispose(mine.scene);dispose(track.scene);dispose(cart.scene);dispose(bars.scene);dispose(coins.scene);dispose(door.scene);crystals.forEach(c=>dispose(c.scene));return;}layout.install(mine.scene,track.scene,cart.scene,[bars.scene,coins.scene]);layout.installDoor(door.scene);
    // Authored metal needs reflections to remain readable in a dark cave; no colour/shape replacement.
    const environment=new RoomEnvironment(),generator=new THREE.PMREMGenerator(renderer);goldReflection=generator.fromScene(environment,.04);environment.dispose();generator.dispose();
    for(const item of [layout.chest,layout.cart?.root.getObjectByName('Объёмные монеты Coins!!! в вагонетке')])item?.traverse(o=>{if(o instanceof THREE.Mesh)for(const m of Array.isArray(o.material)?o.material:[o.material])if(m instanceof THREE.MeshStandardMaterial){m.envMap=goldReflection!.texture;m.envMapIntensity=1.1;m.needsUpdate=true;}});
