@@ -19,11 +19,13 @@ export function buildMineModel(source:THREE.Object3D){
  hall.rotation.y=-Math.PI/2;hall.scale.setScalar(SCALE);hall.position.set(24+330*SCALE,-115.38*SCALE,-240-554*SCALE);hall.updateMatrixWorld(true);
  const rockMaterial=rocks[0].material as THREE.MeshStandardMaterial;
  for(const mesh of ground){const material=(mesh.material as THREE.MeshStandardMaterial).clone();material.map=rockMaterial.map;material.color.set('#c9c1b6');mesh.material=material;}
+ const water:THREE.Mesh[]=[];hall.traverse(o=>{if(o instanceof THREE.Mesh&&/Water/.test(o.name))water.push(o);});
  const ray=new THREE.Raycaster(),origin=new THREE.Vector3(),down=new THREE.Vector3(0,-1,0);
+ const waterAt=(x:number,z:number):number|null=>{origin.set(x,150,z);ray.set(origin,down);return ray.intersectObjects(water,false)[0]?.point.y??null;};
  const floorAt=(x:number,z:number):number|null=>{if(z> -241)return mineTunnelFloor(x,z);origin.set(x,150,z);ray.set(origin,down);const hit=ray.intersectObjects(ground,false)[0];return hit?hit.point.y:null;};
  const solids:THREE.Mesh[]=[];hall.traverse(o=>{if(o instanceof THREE.Mesh&&!/Ground|Water|Firefly|MineTrack/.test(o.name))solids.push(o);});
  const wallRay=new THREE.Raycaster(),direction=new THREE.Vector3(),point=new THREE.Vector3();
  const blocked=(x:number,z:number,y:number)=>{if(z> -241)return false;point.set(x,y+5,z);for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){direction.set(dx,0,dz);wallRay.set(point,direction);wallRay.far=1.8;if(wallRay.intersectObjects(solids,false).length)return true;}return false;};
- return {root,hall,floorAt,blocked,rockMap:rockMaterial.map};
+ return {root,hall,floorAt,waterAt,blocked,rockMap:rockMaterial.map};
 }
 

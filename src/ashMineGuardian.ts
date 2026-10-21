@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {OCEAN_GUARDIAN,type GuardianState} from './ashMineGuardianCombat';
+import {OCEAN_GUARDIAN,GUARDIAN_TIMING,type GuardianState} from './ashMineGuardianCombat';
 import {capsuleContact,guardianAllowsMove,type GuardianCollider} from './ashMineGuardianCollision';
 export const OCEAN_GUARDIAN_ASSET='Ash_Mine_Ocean_Guardian.glb';
 export const OCEAN_GUARDIAN_CREDIT={title:'Ocean Creature',author:'bast_yy',url:'https://sketchfab.com/3d-models/ocean-creature-5c17cca6086e4910aa12e7d701ccd6a1'};
@@ -96,8 +96,8 @@ export function createOceanGuardian(source:THREE.Object3D,animations:THREE.Anima
   const handOffset=hand.clone().sub(hero);target.set(state.target.x,state.target.y,state.target.z);
   if(state.kind==='grab')target.add(handOffset);else target.y+=state.kind==='slam'?2.5:6;
   if(state.phase==='hold'){target.copy(state.kind==='grab'?hand:hero.clone().add(new THREE.Vector3(Math.cos(elapsed*2)*4.8,6,Math.sin(elapsed*2)*4.8)));}
-  if(state.phase==='windup')target.y+=9;else if(state.phase==='strike')target.y+=9*(1-THREE.MathUtils.smoothstep(state.elapsed,0,.2));
-  if(state.kind==='sweep'){target.x+=state.phase==='windup'?-6:6*Math.sin(Math.min(1,state.elapsed/.55)*Math.PI-Math.PI/2);}
+  if(state.phase==='windup')target.y+=9;else if(state.phase==='strike')target.y+=9*(1-THREE.MathUtils.smoothstep(state.elapsed,0,.14));
+  if(state.kind==='sweep'){target.x+=state.phase==='windup'?-6:6*Math.sin(Math.min(1,state.elapsed/GUARDIAN_TIMING.strike)*Math.PI-Math.PI/2);}
   surface(target,hero,hand);const end=solve(left,target);other.copy(target);
   if(state.kind==='wrap'){other.set(hero.x-(target.x-hero.x),target.y,hero.z-(target.z-hero.z));surface(other,hero,hand);solve(right,other);}else if(state.kind==='slam'){other.x+=2;surface(other,hero,hand);solve(right,other);}
   const actual=state.kind==='grab'?hand:hero.clone().add(new THREE.Vector3(0,state.kind==='slam'?2.5:6,0));
