@@ -36,8 +36,12 @@ export function createMineCharacter(role:MineCharacterRole){
  const root=new THREE.Group();root.name=role==='guard'?'Пепельный страж — гном-воин':role==='worker'?'Маленький пепельный гном — рабочий':'Гоблин — помощник шахты';
  let mixer:THREE.AnimationMixer|undefined,walk:THREE.AnimationAction|undefined,idle:THREE.AnimationAction|undefined,current:THREE.AnimationAction|undefined,visual:THREE.Group|undefined,last=0,windupStart=0,release=-10,wasStriking=false;
  let rest:Array<{bone:THREE.Bone;p:THREE.Vector3;q:THREE.Quaternion;s:THREE.Vector3}>=[],arms:THREE.Bone[]=[],forearms:THREE.Bone[]=[],skeletons:THREE.Skeleton[]=[],weaponLinks:Array<{hand:THREE.Bone;control:THREE.Bone}>=[];
+ let attackSide='L';
  const install=(source:THREE.Object3D,animations:THREE.AnimationClip[])=>{
-  const model=clone(source);model.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(model),height=MINE_CHARACTER_HEIGHT[role],scale=height/Math.max(.001,box.max.y-box.min.y);
+  const model=clone(source);
+  // This static mesh is the goblin's presentation plinth, not its body.
+  if(role==='helper')model.getObjectByName('Object_76')?.removeFromParent();
+  model.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(model),height=MINE_CHARACTER_HEIGHT[role],scale=height/Math.max(.001,box.max.y-box.min.y);
   // The warrior's exported body shape key contains offsets hundreds of units
   // wide. Its walk clip pulses that key, turning the body into giant panels.
   // Keep the base body and all skeletal motion; never play that broken key.
@@ -61,15 +65,15 @@ export function createMineCharacter(role:MineCharacterRole){
   const action=moving&&!striking?walk:idle;if(action&&action!==current){current?.fadeOut(.12);action.reset().fadeIn(.12).play();current=action;}mixer.update(dt);
   for(const r of rest){r.p.copy(r.bone.position);r.q.copy(r.bone.quaternion);r.s.copy(r.bone.scale);}
   if(role==='guard'){
-   if(striking&&!wasStriking)windupStart=time;if(!striking&&wasStriking)release=time;
+   if(striking&&!wasStriking){windupStart=time;attackSide=attackSide==='L'?'R':'L';}if(!striking&&wasStriking)release=time;
    const wind=THREE.MathUtils.smoothstep(time-windupStart,0,.65),age=time-release;
    const angle=striking?2.2*wind:age<.18?THREE.MathUtils.lerp(2.2,5.3,THREE.MathUtils.smoothstep(age,0,.14)):age<.4?THREE.MathUtils.lerp(5.3,Math.PI*2,THREE.MathUtils.smoothstep(age,.18,.4)):0;
    const bend=striking?-.35*wind:age<.4?-.35*(1-THREE.MathUtils.smoothstep(age,0,.4)):0;
    visual.updateWorldMatrix(true,true);
-   const links=angle===0?[]:weaponLinks.map(link=>({...link,handBefore:link.hand.matrixWorld.clone(),toolBefore:link.control.matrixWorld.clone()}));
+   const links=angle===0?[]:weaponLinks.filter(link=>link.hand.name.startsWith('Hand'+attackSide+'_')).map(link=>({...link,handBefore:link.hand.matrixWorld.clone(),toolBefore:link.control.matrixWorld.clone()}));
    const axis=new THREE.Vector3(1,0,0).applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion()));
    const turn=(bone:THREE.Bone,amount:number)=>{bone.parent!.updateWorldMatrix(true,false);const parent=bone.parent!.getWorldQuaternion(new THREE.Quaternion()),delta=new THREE.Quaternion().setFromAxisAngle(axis,amount);delta.premultiply(parent.clone().invert()).multiply(parent);bone.quaternion.premultiply(delta).normalize();bone.updateWorldMatrix(false,true);};
-   for(const arm of arms)turn(arm,angle);for(const arm of forearms)turn(arm,bend);
+   for(const arm of arms)if(arm.name.startsWith('Arm'+attackSide+'_'))turn(arm,angle);for(const arm of forearms)if(arm.name.startsWith('ForeArm'+attackSide+'_'))turn(arm,bend);
    visual.updateWorldMatrix(true,true);
    for(const link of links){const world=link.hand.matrixWorld.clone().multiply(link.handBefore.invert()).multiply(link.toolBefore),local=link.control.parent!.matrixWorld.clone().invert().multiply(world);local.decompose(link.control.position,link.control.quaternion,link.control.scale);link.control.updateWorldMatrix(false,true);}
 
