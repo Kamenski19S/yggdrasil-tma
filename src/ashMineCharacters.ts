@@ -8,20 +8,36 @@ export const MINE_CHARACTER_CREDITS=[
  {title:'Goblin Simple',author:'marianofer1996',url:'https://sketchfab.com/3d-models/goblin-simple-b4916554ec4441d6bd363c2176a6bb6c'},
 ];
 export type MineCharacterRole='worker'|'guard'|'helper';
-export const MINE_CHARACTER_HEIGHT={worker:5.8,helper:7.6,guard:10.6};
-export const MINE_WORKER_ROUTES=[
- {role:'worker',start:60,end:92,offset:-8,speed:7,pause:2,phase:0},
- {role:'worker',start:145,end:180,offset:8,speed:7.5,pause:2.4,phase:3},
- {role:'worker',start:215,end:245,offset:-8,speed:8,pause:2.2,phase:5},
- {role:'worker',start:300,end:327,offset:8,speed:6.5,pause:2.5,phase:1},
- {role:'helper',start:35,end:115,offset:7,speed:9,pause:1.7,phase:2},
- {role:'helper',start:195,end:285,offset:-7,speed:9.5,pause:1.8,phase:4},
-] satisfies Array<{role:MineCharacterRole;start:number;end:number;offset:number;speed:number;pause:number;phase:number}>;
-export function mineWorkerPose(route:typeof MINE_WORKER_ROUTES[number],time:number){
+export const MINE_CHARACTER_HEIGHT={worker:6.8,helper:3.8,guard:10.6};
+export type MineActivity='run'|'walk'|'work';
+type WorkerRoute={role:'worker'|'helper';start:number;end:number;offset:number;speed:number;pause:number;phase:number;activity:MineActivity};
+export const MINE_WORKER_ROUTES:WorkerRoute[]=[
+ ...[60,112,164,218,272,320,365].map((start,i)=>({role:'worker' as const,start,end:start+22,offset:i%2?8:-8,speed:6.5+i%3,pause:2+i*.2,phase:i*1.7,activity:'run' as const})),
+ ...Array.from({length:20},(_,i)=>{const start=37+i*17,activity:MineActivity=i%3===0?'work':i%3===1?'run':'walk';return {role:'helper' as const,start,end:start+20,offset:(i%2?1:-1)*(activity==='work'?12:5+i%4),speed:activity==='run'?9:3.4,pause:1.4+i%3,phase:i*2.13,activity};}),
+];
+export function mineWorkerPose(route:WorkerRoute,time:number){
+ if(route.activity==='work'){const f=mineFrameAt(route.start),side=Math.sign(route.offset);return {x:f.x+f.nx*route.offset,z:f.z+f.nz*route.offset,yaw:Math.atan2(f.nx*side,f.nz*side),moving:false};}
  const travel=(route.end-route.start)/route.speed,period=2*(travel+route.pause),t=(time+route.phase)%period,forward=t<travel+route.pause;
  const moving=t<travel||(t>=travel+route.pause&&t<2*travel+route.pause),s=forward?route.start+Math.min(t,travel)*route.speed:route.end-Math.min(t-travel-route.pause,travel)*route.speed;
  const f=mineFrameAt(s),direction=forward?1:-1;
  return {x:f.x+f.nx*route.offset,z:f.z+f.nz*route.offset,yaw:Math.atan2(f.tx*direction,f.tz*direction),moving};
+}
+/** Clone once per source/visit so the seven workers share their tinted mesh. */
+const bootGeometry=new WeakMap<THREE.BufferGeometry,THREE.BufferGeometry>();
+const bootMaterial=new WeakMap<THREE.Material,THREE.Material>();
+function greenBoots(model:THREE.Object3D){
+ model.traverse(o=>{if(!(o instanceof THREE.SkinnedMesh))return;
+  let geometry=bootGeometry.get(o.geometry);
+  if(!geometry){geometry=(o.geometry as THREE.BufferGeometry).clone();const position=geometry.getAttribute('position'),colors=new Float32Array(position.count*3);let lo=Infinity,hi=-Infinity;
+   for(let i=0;i<position.count;i++){lo=Math.min(lo,position.getY(i));hi=Math.max(hi,position.getY(i));}
+   const cutoff=lo+(hi-lo)*.2,green=new THREE.Color('#32a45c');
+   for(let i=0;i<position.count;i++){const boot=position.getY(i)<cutoff;colors.set(boot?green.toArray():[1,1,1],i*3);}
+   geometry.setAttribute('color',new THREE.BufferAttribute(colors,3));bootGeometry.set(o.geometry,geometry);
+  }
+  o.geometry=geometry;
+  const tint=(material:THREE.Material)=>{let result=bootMaterial.get(material);if(!result){result=material.clone();if(result instanceof THREE.MeshStandardMaterial){result.vertexColors=true;}bootMaterial.set(material,result);}return result;};
+  o.material=Array.isArray(o.material)?o.material.map(tint):tint(o.material);
+ });
 }
 /** Average opposite walking phases to make a planted neutral stance for the warrior. */
 function neutralFromWalk(walk:THREE.AnimationClip){
@@ -34,13 +50,14 @@ function neutralFromWalk(walk:THREE.AnimationClip){
 }
 export function createMineCharacter(role:MineCharacterRole){
  const root=new THREE.Group();root.name=role==='guard'?'Пепельный страж — гном-воин':role==='worker'?'Маленький пепельный гном — рабочий':'Гоблин — помощник шахты';
- let mixer:THREE.AnimationMixer|undefined,walk:THREE.AnimationAction|undefined,idle:THREE.AnimationAction|undefined,current:THREE.AnimationAction|undefined,visual:THREE.Group|undefined,last=0,windupStart=0,release=-10,wasStriking=false;
+ let mixer:THREE.AnimationMixer|undefined,walk:THREE.AnimationAction|undefined,idle:THREE.AnimationAction|undefined,work:THREE.AnimationAction|undefined,current:THREE.AnimationAction|undefined,visual:THREE.Group|undefined,last=0,windupStart=0,release=-10,wasStriking=false;
  let rest:Array<{bone:THREE.Bone;p:THREE.Vector3;q:THREE.Quaternion;s:THREE.Vector3}>=[],arms:THREE.Bone[]=[],forearms:THREE.Bone[]=[],skeletons:THREE.Skeleton[]=[],weaponLinks:Array<{hand:THREE.Bone;control:THREE.Bone}>=[];
  let attackSide='L';
  const install=(source:THREE.Object3D,animations:THREE.AnimationClip[])=>{
   const model=clone(source);
   // This static mesh is the goblin's presentation plinth, not its body.
   if(role==='helper')model.getObjectByName('Object_76')?.removeFromParent();
+  if(role==='worker')greenBoots(model);
   model.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(model),height=MINE_CHARACTER_HEIGHT[role],scale=height/Math.max(.001,box.max.y-box.min.y);
   // The warrior's exported body shape key contains offsets hundreds of units
   // wide. Its walk clip pulses that key, turning the body into giant panels.
@@ -55,14 +72,16 @@ export function createMineCharacter(role:MineCharacterRole){
   mixer=new THREE.AnimationMixer(model);const find=(...names:string[])=>names.map(n=>animations.find(a=>a.name===n)).find(Boolean);
   const motion=role==='worker'?find('Run','Walk'):role==='helper'?find('G_Walk'):find('walk');
   const standing=find('Idle','G_Idle1')??(motion?neutralFromWalk(motion):animations[0]);
+  const workClip=role==='helper'?find('G_Attack'):undefined;if(workClip){work=mixer.clipAction(workClip);work.timeScale=.65;}
   if(motion)walk=mixer.clipAction(motion);if(standing)idle=mixer.clipAction(standing);
   if(walk)walk.timeScale=role==='helper'?1.35:role==='worker'?.9:1;
   idle?.play();current=idle;mixer.update(0);for(const r of rest){r.p.copy(r.bone.position);r.q.copy(r.bone.quaternion);r.s.copy(r.bone.scale);}
  };
- const update=(time:number,moving=false,striking=false)=>{
+ const update=(time:number,moving=false,striking=false,activity:MineActivity='walk')=>{
   if(!mixer||!visual)return;const dt=Math.max(0,Math.min(.1,time-last));last=time;
   for(const r of rest){r.bone.position.copy(r.p);r.bone.quaternion.copy(r.q);r.bone.scale.copy(r.s);}
-  const action=moving&&!striking?walk:idle;if(action&&action!==current){current?.fadeOut(.12);action.reset().fadeIn(.12).play();current=action;}mixer.update(dt);
+  if(role==='helper'&&walk)walk.timeScale=activity==='run'?1.7:.7;
+  const action=activity==='work'&&work?work:moving&&!striking?walk:idle;if(action&&action!==current){current?.fadeOut(.12);action.reset().fadeIn(.12).play();current=action;}mixer.update(dt);
   for(const r of rest){r.p.copy(r.bone.position);r.q.copy(r.bone.quaternion);r.s.copy(r.bone.scale);}
   if(role==='guard'){
    if(striking&&!wasStriking){windupStart=time;attackSide=attackSide==='L'?'R':'L';}if(!striking&&wasStriking)release=time;
