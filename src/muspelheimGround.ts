@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import {createRoadMask,ROAD_BOUNDS} from './muspelheimRoads';
 import {loadCobbleTextures} from './muspelheimCobble';
+import {applyRavineLava,type RavineLava} from './muspelheimRavineLava';
 
 // Keep the original stone layout. Its mortar mask exposes the same lava ground
 // beneath the road, including the ground's UVs, shading and surface properties.
-export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:number,assetBase:string){
+export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:number,assetBase:string,ravineLava?:RavineLava){
  let resolveBasalt!:()=>void,rejectBasalt!:(error:unknown)=>void;
  const basaltReady=new Promise<void>((resolve,reject)=>{resolveBasalt=resolve;rejectBasalt=reject;});
  const basalt=new THREE.TextureLoader().load(assetBase+'muspelheim-basalt-wall.jpg',()=>resolveBasalt(),undefined,rejectBasalt);
@@ -68,8 +69,9 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
      #ifdef USE_MAP
      roughnessFactor=mix(roughnessFactor,max(.75,roadSurface.g),stoneAmount);
      #endif`);
+    if(ravineLava)applyRavineLava(shader,ravineLava);
    };
-   ground.customProgramCacheKey=()=> 'muspelheim-cobble-triplanar-basalt-v11';
+   ground.customProgramCacheKey=()=> 'muspelheim-cobble-triplanar-basalt-v12-'+Boolean(ravineLava);
    ground.needsUpdate=true;
   }
  });

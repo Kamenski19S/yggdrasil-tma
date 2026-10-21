@@ -32,6 +32,15 @@ export function surtRavineDepth(x:number,z:number){
  if(z<-125&&z>-230){const ramp=-SURT_RAVINE_DEPTH*THREE.MathUtils.smoothstep(z,-225,-125);depth=THREE.MathUtils.lerp(depth,ramp,ascent);}
  return depth;
 }
+/** Low frozen folds, not a flat lava lake. Their bounded slope stays walkable;
+ * the bridge approaches and the upper world retain their exact old heights. */
+export function ravineCrustRelief(x:number,z:number,extraDepth:(x:number,z:number)=>number=()=>0){
+ const bottom=THREE.MathUtils.smoothstep(-surtRavineDepth(x,z),73,81.5);
+ if(!bottom)return 0;
+ const bridgeClear=Math.min(...[[0,0],[-12,0],[12,0],[0,-12],[0,12]].map(([dx,dz])=>1-THREE.MathUtils.smoothstep(-extraDepth(x+dx,z+dz),0,.5)));
+ const deepPit=THREE.MathUtils.smoothstep(-extraDepth(x,z),137,139);
+ return bottom*Math.max(bridgeClear,deepPit)*(.72*Math.sin(x*.17+Math.sin(z*.12))+.38*Math.sin(z*.31+x*.09)+.18*Math.sin(x*.5-z*.4));
+}
 /** Sculpt the loaded GLB and its expanded grid in world space; the live sampler
  * then uses these exact triangles for walking, including both approaches. */
 export function carveSurtRavine(root:THREE.Object3D,extraDepth:(x:number,z:number)=>number=()=>0){
@@ -41,7 +50,7 @@ export function carveSurtRavine(root:THREE.Object3D,extraDepth:(x:number,z:numbe
   const p=o.geometry.getAttribute('position'),v=new THREE.Vector3(),inverse=o.matrixWorld.clone().invert();
   for(let i=0;i<p.count;i++){
    v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);
-   v.y+=surtRavineDepth(v.x,v.z)+extraDepth(v.x,v.z);v.applyMatrix4(inverse);p.setXYZ(i,v.x,v.y,v.z);
+   v.y+=surtRavineDepth(v.x,v.z)+extraDepth(v.x,v.z)+ravineCrustRelief(v.x,v.z,extraDepth);v.applyMatrix4(inverse);p.setXYZ(i,v.x,v.y,v.z);
   }
   p.needsUpdate=true;o.geometry.computeVertexNormals();o.geometry.computeBoundingBox();o.geometry.computeBoundingSphere();
  });

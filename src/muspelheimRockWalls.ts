@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {MUSPELHEIM_SIZE,WORLD_OUTLINE} from './muspelheimTerrain';
+import {applyRavineLava,type RavineLava} from './muspelheimRavineLava';
 export const ROCK_ASSETS=['Muspelheim_Basalt_Cliff.glb','Muspelheim_Basalt_Ridge.glb','Muspelheim_Basalt_Boulder.glb'] as const;
 export const ROCK_CREDITS=[
  {title:'Cliff | Low-Poly | Game-ready',author:'kEam',url:'https://sketchfab.com/3d-models/cliff-low-poly-game-ready-918dc8e1b1f0443993a251c1302510bf'},
@@ -42,7 +43,7 @@ export function moveAlongRockWalls(rocks:WallRock[],from:{x:number;z:number},to:
  if(!rockWallBlocks(rocks,from.x,to.z,radius,footY))return {x:from.x,z:to.z};
  return from;
 }
-export function makeBasaltWall(source:THREE.Object3D,kind:number,rocks:WallRock[],anisotropy:number){
+export function makeBasaltWall(source:THREE.Object3D,kind:number,rocks:WallRock[],anisotropy:number,ravineLava?:RavineLava){
  const group=new THREE.Group();group.name='Muspelheim basalt wall '+kind;
  source.updateWorldMatrix(true,true);
  source.traverse(object=>{
@@ -60,8 +61,9 @@ export function makeBasaltWall(source:THREE.Object3D,kind:number,rocks:WallRock[
      float basalt=dot(sampledDiffuseColor.rgb,vec3(0.2126,0.7152,0.0722));
      diffuseColor.rgb=diffuse*vec3(0.40,0.42,0.45)*basalt*mix(1.0,0.45,moss);
     #endif`);
+   if(ravineLava)applyRavineLava(shader,ravineLava);
   };
-  material.customProgramCacheKey=()=> 'muspelheim-charcoal-basalt-v1';
+  material.customProgramCacheKey=()=> 'muspelheim-charcoal-basalt-v2-'+Boolean(ravineLava);
   const placements=rocks.filter(r=>r.kind===kind),instances=new THREE.InstancedMesh(geometry,material,placements.length),dummy=new THREE.Object3D();
   placements.forEach((r,i)=>{dummy.position.set(r.x,r.y,r.z);dummy.rotation.set(0,r.yaw,0);dummy.scale.set(r.width,r.height,r.depth);dummy.updateMatrix();instances.setMatrixAt(i,dummy.matrix);});
   instances.instanceMatrix.needsUpdate=true;instances.computeBoundingSphere();group.add(instances);

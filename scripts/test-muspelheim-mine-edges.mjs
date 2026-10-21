@@ -8,10 +8,9 @@ const blocked=(x,z,y)=>mine.mineApproachSideBlocks(x,y,z)||door.blocks(x,z,y)||r
 for(const fps of [20,60,120]){
  let pos={x:mine.MINE_PATH[0].x,z:mine.MINE_PATH[0].z};
  function walkTo(target){for(let count=0;count<20000;count++){const d=Math.hypot(target.x-pos.x,target.z-pos.z);if(d<1e-5)return;const step=Math.min(29/fps,d),next={x:pos.x+(target.x-pos.x)/d*step,z:pos.z+(target.z-pos.z)/d*step},y=height(pos.x,pos.z);assert.ok(!blocked(next.x,next.z,y),'Body blocked on path '+JSON.stringify(next));assert.equal(ravine.classifyRavineStep(height,pos,next,ravine.isRavineAbyss),'walk','Fall or discontinuity at '+JSON.stringify(next));pos=next;}throw Error('Route did not finish');}
- for(const point of mine.MINE_PATH.slice(1))walkTo(point);
- walkTo({x:mine.MINE_DOOR.x,z:mine.MINE_DOOR.z-.3});
+ for(const point of mine.MINE_PATH.slice(1,44))walkTo(point);
  assert.ok(door.blocks(mine.MINE_DOOR.x,mine.MINE_DOOR.z+.5,mine.MINE_DOOR.y)||door.opened,'Closed leaf is solid');
- door.open();door.update(1);walkTo({x:mine.MINE_DOOR.x,z:mine.MINE_DOOR.z+1});assert.ok(door.canEnter(pos.x,height(pos.x,pos.z),pos.z),'Walking across open threshold enters mine');
+ door.open();door.update(1);for(const point of mine.MINE_PATH.slice(44))walkTo(point);walkTo({x:mine.MINE_DOOR.x,z:mine.MINE_DOOR.z+4.5});assert.ok(door.canEnter(pos.x,height(pos.x,pos.z),pos.z),'Walking across open threshold enters mine');
  assert.equal(height(pos.x,pos.z),height(mine.MINE_DOOR.x,mine.MINE_DOOR.z-1),'Threshold and landing are level');
 }
 for(let i=4;i<44;i++){const p=mine.MINE_PATH[i],angle=i/48*Math.PI;for(const side of [-1,1])assert.ok(mine.mineApproachSideBlocks(p.x+Math.cos(angle)*5.3*side,p.y,p.z-Math.sin(angle)*5.3*side),'Both spiral edges have continuous body collision');}

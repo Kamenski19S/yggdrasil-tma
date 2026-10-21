@@ -22,8 +22,8 @@ export function mineApproachCameraAt(x:number,y:number,z:number){
 }
 export function createMineEntrance(assetBase:string){
  const root=new THREE.Group();root.name='Полуспиральный спуск в пепельную шахту';
- const texture=new THREE.TextureLoader().load(assetBase+'muspelheim-basalt-wall.jpg');texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(2,6);texture.colorSpace=THREE.SRGBColorSpace;
- const stone=new THREE.MeshStandardMaterial({color:'#77767b',map:texture,roughness:1});
+ const texture=new THREE.TextureLoader().load(assetBase+'models/T_Forge_WhiteStone.webp');texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(2,6);texture.colorSpace=THREE.SRGBColorSpace;
+ const stone=new THREE.MeshStandardMaterial({color:'#c7cdd5',map:texture,bumpMap:texture,bumpScale:.12,roughness:1});
  const vertices:number[]=[],uvs:number[]=[],indices:number[]=[];
  MINE_PATH.forEach((p,i)=>{const a=i/48*Math.PI;for(const side of [-1,1]){vertices.push(p.x+Math.cos(a)*side*6,p.y+.1,p.z-Math.sin(a)*side*6);uvs.push(side<0?0:1,i/8);}if(i<48){const n=i*2;indices.push(n,n+1,n+2,n+1,n+3,n+2);}});
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));g.setIndex(indices);g.computeVertexNormals();stone.side=THREE.DoubleSide;root.add(new THREE.Mesh(g,stone));
