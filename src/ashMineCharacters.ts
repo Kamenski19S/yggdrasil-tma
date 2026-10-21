@@ -38,6 +38,13 @@ export function createMineCharacter(role:MineCharacterRole){
  let rest:Array<{bone:THREE.Bone;p:THREE.Vector3;q:THREE.Quaternion;s:THREE.Vector3}>=[],arms:THREE.Bone[]=[],forearms:THREE.Bone[]=[],skeletons:THREE.Skeleton[]=[],weaponLinks:Array<{hand:THREE.Bone;control:THREE.Bone}>=[];
  const install=(source:THREE.Object3D,animations:THREE.AnimationClip[])=>{
   const model=clone(source);model.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(model),height=MINE_CHARACTER_HEIGHT[role],scale=height/Math.max(.001,box.max.y-box.min.y);
+  // The warrior's exported body shape key contains offsets hundreds of units
+  // wide. Its walk clip pulses that key, turning the body into giant panels.
+  // Keep the base body and all skeletal motion; never play that broken key.
+  if(role==='guard'){
+   model.traverse(o=>{if(o instanceof THREE.Mesh)o.morphTargetInfluences?.fill(0);});
+   animations=animations.map(clip=>new THREE.AnimationClip(clip.name,clip.duration,clip.tracks.filter(track=>!track.name.includes('.morphTargetInfluences')),clip.blendMode));
+  }
   visual=new THREE.Group();visual.name='Модель персонажа';visual.scale.setScalar(scale);visual.position.y=-box.min.y*scale;visual.add(model);root.add(visual);
   model.traverse(o=>{if(o instanceof THREE.Bone){rest.push({bone:o,p:o.position.clone(),q:o.quaternion.clone(),s:o.scale.clone()});if(/^Arm[LR]_/.test(o.name))arms.push(o);if(/^ForeArm[LR]_/.test(o.name))forearms.push(o);}if(o instanceof THREE.SkinnedMesh){o.frustumCulled=false;skeletons.push(o.skeleton);}});
   for(const side of ['L','R']){const hand=rest.find(r=>r.bone.name.startsWith('Hand'+side+'_'))?.bone,control=rest.find(r=>r.bone.name.startsWith('MCH_Handel'+side+'_'))?.bone;if(hand&&control)weaponLinks.push({hand,control});}
