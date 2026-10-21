@@ -2,10 +2,34 @@ import * as THREE from 'three';
 import {OCEAN_GUARDIAN,type GuardianState} from './ashMineGuardianCombat';
 export const OCEAN_GUARDIAN_ASSET='Ash_Mine_Ocean_Guardian.glb';
 export const OCEAN_GUARDIAN_CREDIT={title:'Ocean Creature',author:'bast_yy',url:'https://sketchfab.com/3d-models/ocean-creature-5c17cca6086e4910aa12e7d701ccd6a1'};
+/** Skin weights keep the pink tint attached to the animated tentacles. */
+function colorGuardian(source:THREE.Object3D){
+ const slate=new THREE.Color('#a9bfd0'),pink=new THREE.Color('#efa2b4'),tint=new THREE.Color();
+ source.traverse(o=>{
+  if(!(o instanceof THREE.SkinnedMesh))return;
+  const indices=o.geometry.getAttribute('skinIndex'),weights=o.geometry.getAttribute('skinWeight');
+  if(!indices||!weights)return;
+  o.geometry=o.geometry.clone();
+  const colors=new Float32Array(indices.count*3);
+  for(let i=0;i<indices.count;i++){
+   let tentacle=0;
+   for(let j=0;j<4;j++)if(o.skeleton.bones[indices.getComponent(i,j)]?.name.startsWith('Tentacle_'))tentacle+=weights.getComponent(i,j);
+   tint.copy(slate).lerp(pink,THREE.MathUtils.clamp(tentacle,0,1));tint.toArray(colors,i*3);
+  }
+  o.geometry.setAttribute('color',new THREE.BufferAttribute(colors,3));
+  const recolor=(original:THREE.Material)=>{
+   const m=original.clone();
+   if(m instanceof THREE.MeshStandardMaterial){m.vertexColors=true;m.color.set('#ffffff');m.emissiveMap=null;m.emissive.set('#8295ae');m.emissiveIntensity=.12;m.roughness=.7;m.metalness=0;}
+   return m;
+  };
+  o.material=Array.isArray(o.material)?o.material.map(recolor):recolor(o.material);
+ });
+}
 /** Animate the real skin. CCD reaches are applied after the authored swimming cycle. */
 export function createOceanGuardian(source:THREE.Object3D,animations:THREE.AnimationClip[]){
  const root=new THREE.Group();root.name='Страж глубин — Ocean Creature';root.position.set(OCEAN_GUARDIAN.x,OCEAN_GUARDIAN.y,OCEAN_GUARDIAN.z);
- const body=new THREE.Group();body.scale.setScalar(.65);body.rotation.x=1;body.add(source);root.add(body);
+ colorGuardian(source);
+ const body=new THREE.Group();body.scale.setScalar(1.3);body.rotation.x=1;body.add(source);root.add(body);
  const mixer=new THREE.AnimationMixer(source);if(animations[0])mixer.clipAction(animations[0]).play();
  const rest:Array<{bone:THREE.Bone;p:THREE.Vector3;q:THREE.Quaternion}>=[],materials:Array<{material:THREE.MeshStandardMaterial;emissive:THREE.Color;intensity:number}>=[];
  source.traverse(o=>{if(o instanceof THREE.Bone)rest.push({bone:o,p:o.position.clone(),q:o.quaternion.clone()});if(o instanceof THREE.Mesh){o.frustumCulled=false;for(const material of Array.isArray(o.material)?o.material:[o.material])if(material instanceof THREE.MeshStandardMaterial)materials.push({material,emissive:material.emissive.clone(),intensity:material.emissiveIntensity});}});
