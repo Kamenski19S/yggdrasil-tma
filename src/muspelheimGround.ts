@@ -71,7 +71,7 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
      #endif`);
     if(ravineLava)applyRavineLava(shader,ravineLava);
    };
-   ground.customProgramCacheKey=()=> 'muspelheim-cobble-triplanar-basalt-v12-'+Boolean(ravineLava);
+   ground.customProgramCacheKey=()=> 'muspelheim-cobble-triplanar-basalt-v13-'+Boolean(ravineLava);
    ground.needsUpdate=true;
   }
  });

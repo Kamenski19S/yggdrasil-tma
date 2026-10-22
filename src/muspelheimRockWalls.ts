@@ -63,7 +63,7 @@ export function makeBasaltWall(source:THREE.Object3D,kind:number,rocks:WallRock[
     #endif`);
    if(ravineLava)applyRavineLava(shader,ravineLava);
   };
-  material.customProgramCacheKey=()=> 'muspelheim-charcoal-basalt-v2-'+Boolean(ravineLava);
+  material.customProgramCacheKey=()=> 'muspelheim-charcoal-basalt-v3-'+Boolean(ravineLava);
   const placements=rocks.filter(r=>r.kind===kind),instances=new THREE.InstancedMesh(geometry,material,placements.length),dummy=new THREE.Object3D();
   placements.forEach((r,i)=>{dummy.position.set(r.x,r.y,r.z);dummy.rotation.set(0,r.yaw,0);dummy.scale.set(r.width,r.height,r.depth);dummy.updateMatrix();instances.setMatrixAt(i,dummy.matrix);});
   instances.instanceMatrix.needsUpdate=true;instances.computeBoundingSphere();group.add(instances);
