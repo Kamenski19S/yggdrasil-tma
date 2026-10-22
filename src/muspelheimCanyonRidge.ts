@@ -14,16 +14,17 @@ function frameAt(station:number){
  return {x:THREE.MathUtils.lerp(a.x,b.x,t),z:THREE.MathUtils.lerp(a.z,b.z,t),nx:-(b.z-a.z)/d,nz:(b.x-a.x)/d};
 }
 export const CANYON_RIDGE_LAYOUT=[
- {station:90,length:90,width:58,height:15,side:0,flip:false,mirror:false},
- {station:165,length:100,width:60,height:21,side:0,flip:true,mirror:false},
- {station:340,length:110,width:58,height:18,side:2,flip:false,mirror:true},
- {station:415,length:112,width:60,height:24,side:-2,flip:true,mirror:true},
- {station:490,length:110,width:58,height:17,side:2,flip:false,mirror:false},
- {station:565,length:112,width:60,height:23,side:-2,flip:true,mirror:false},
- {station:640,length:110,width:58,height:19,side:2,flip:false,mirror:true},
- {station:694,length:72,width:56,height:21,side:0,flip:true,mirror:true},
+ {gate:-.12,station:90,length:90,width:130,height:23,pass:12,kind:'sharp',side:0,flip:false,mirror:false},
+ {gate:0,station:165,length:100,width:132,height:18,pass:10,kind:'low',side:0,flip:true,mirror:false},
+ {gate:0,station:340,length:110,width:130,height:27,pass:14,kind:'broad',side:0,flip:false,mirror:true},
+ {gate:0,station:415,length:112,width:132,height:32,pass:16,kind:'sharp',side:0,flip:true,mirror:true},
+ {gate:0,station:490,length:110,width:130,height:17,pass:10,kind:'low',side:0,flip:false,mirror:false},
+ {gate:0,station:565,length:112,width:132,height:29,pass:15,kind:'broad',side:0,flip:true,mirror:false},
+ {gate:0,station:640,length:110,width:130,height:31,pass:15,kind:'sharp',side:0,flip:false,mirror:true},
+ {gate:0,station:690,length:68,width:128,height:16,pass:9,kind:'low',side:0,flip:true,mirror:true},
 ].map(p=>{const f=frameAt(p.station),craterFrame=frameAt(p.station+(p.flip?.09375:-.09375)*p.length),cross=p.side+(p.mirror?-.109375:.109375)*p.width;
- return {...p,x:f.x+f.nx*p.side,z:f.z+f.nz*p.side,crater:{x:craterFrame.x+craterFrame.nx*cross,z:craterFrame.z+craterFrame.nz*cross}};
+ const gateFrame=frameAt(p.station+p.gate*p.length);
+ return {...p,gatePoint:{x:gateFrame.x,z:gateFrame.z,nx:gateFrame.nx,nz:gateFrame.nz},x:f.x+f.nx*p.side,z:f.z+f.nz*p.side,crater:{x:craterFrame.x+craterFrame.nx*cross,z:craterFrame.z+craterFrame.nz*cross}};
 });
 export const CANYON_RIDGE_POSITION=CANYON_RIDGE_LAYOUT[2];
 /** Broaden steep shoulders into walkable slopes. Two graph envelopes retain
@@ -51,12 +52,12 @@ function softenSlopes(geometry:THREE.BufferGeometry,base:Float32Array,edges:Floa
 export function createCanyonRidge(source:THREE.Object3D,sample:(x:number,z:number)=>number|null,lava:RavineLava){
  source.updateWorldMatrix(true,true);const bounds=new THREE.Box3().setFromObject(source),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
  if(Math.min(size.x,size.y,size.z)<=0)throw new Error('Canyon ridge has invalid bounds');
- const root=new THREE.Group();root.name='Цепь кратеров и вершин по каньону';
+ const root=new THREE.Group();root.name='Поперечные гребни и плато от стены до стены';
  const materialCopies=new Map<THREE.Material,THREE.MeshStandardMaterial>();
  for(const patch of CANYON_RIDGE_LAYOUT){const section=new THREE.Group();section.name=`Хребет ${patch.station}`;section.userData.ridgeStation=patch.station;root.add(section);
  const v=new THREE.Vector3();
  source.traverse(o=>{if(!(o instanceof THREE.Mesh))return;
-  const geometry=o.geometry.clone().applyMatrix4(o.matrixWorld),p=geometry.getAttribute('position'),edges=new Float32Array(p.count),baseHeights=new Float32Array(p.count);
+  const geometry=o.geometry.clone().applyMatrix4(o.matrixWorld),p=geometry.getAttribute('position'),edges=new Float32Array(p.count),baseHeights=new Float32Array(p.count),crossings=new Float32Array(p.count);
   for(let i=0;i<p.count;i++){
    v.fromBufferAttribute(p,i);let u=(v.x-center.x)/size.x,w=(v.z-center.z)/size.z;
    if(patch.flip)u=-u;if(patch.mirror)w=-w;
@@ -68,10 +69,25 @@ export function createCanyonRidge(source:THREE.Object3D,sample:(x:number,z:numbe
    const ascent=z< -112&&z> -235?THREE.MathUtils.smoothstep(Math.abs(x+270),15,28):1;
    const descent=z> -115&&z<35?THREE.MathUtils.smoothstep(Math.abs(x+365),16,28):1;
    const protectedArea=bridge*mine*ascent*descent,fade=border*protectedArea;
+   const centerFloor=sample(f.x,f.z);if(centerFloor==null)throw new Error('Ridge center is outside terrain');
+   // A real transverse rise joins BOTH banks. The old rim faded to the flat
+   // canyon floor, leaving two optional bypasses around a central island.
+   const exponent=patch.kind==='sharp'?3.2:patch.kind==='broad'?.8:1.25;
+   const t=u<patch.gate?(u+.5)/(.5+patch.gate)*.5:.5+(u-patch.gate)/(.5-patch.gate)*.5;
+   const crest=Math.pow(Math.max(0,Math.sin(Math.PI*t)),exponent);
+   const bankJoin=1-THREE.MathUtils.smoothstep(Math.abs(across),48,62);
+   const transverse=patch.pass+1.6*(.5+.5*Math.sin(across*.075+patch.station*.017));
+
    const y=sample(x,z);if(y==null)throw new Error('Canyon ridge is outside the terrain');baseHeights[i]=y;
-   p.setXYZ(i,x,y+(v.y-bounds.min.y)/size.y*patch.height*fade-.9,z);edges[i]=1-THREE.MathUtils.smoothstep(edge,.02,.24)*protectedArea;
+   crossings[i]=THREE.MathUtils.lerp(y-.9,Math.max(y-.9,centerFloor+transverse*crest-.45),THREE.MathUtils.smoothstep(crest,0,.25)*bankJoin*protectedArea);
+   const authored=Math.pow(Math.max(0,(v.y-bounds.min.y)/size.y),patch.kind==='sharp'?1.45:patch.kind==='broad'?.72:1.);
+   p.setXYZ(i,x,Math.max(THREE.MathUtils.lerp(y-.9,Math.max(y-.9,centerFloor+authored*patch.height-.9),fade),crossings[i]),z);edges[i]=1-THREE.MathUtils.smoothstep(edge,.02,.24)*protectedArea;
+   if(edges[i]>.999){p.setY(i,y-.9);crossings[i]=y-.9;}
   }
   softenSlopes(geometry,baseHeights,edges);
+  // Keep the bank-to-bank profile after shoulder smoothing; its longitudinal
+  // grades are gentle enough to walk, so smoothing cannot reopen a flat lane.
+  for(let i=0;i<p.count;i++)p.setY(i,Math.max(p.getY(i),crossings[i]));
   geometry.setAttribute('ridgeEdge',new THREE.BufferAttribute(edges,1));geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();
   const materials=(Array.isArray(o.material)?o.material:[o.material]).map(original=>{
    const cached=materialCopies.get(original);if(cached)return cached;
