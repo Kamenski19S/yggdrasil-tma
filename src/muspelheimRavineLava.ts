@@ -49,9 +49,17 @@ export const RAVINE_LAVA_GLSL=`
   vec4 canyon=texture2D(ravineLavaMask,uv);
   return vec3(canyon.r*inside,(canyon.g-1.)*256.,(canyon.b*65280.+canyon.a*255.)/65535.*1024.);
  }
+ // Follow the broad southern descent carved in muspelheimSurtRavine.ts.
+ // Fade only at its shoulders and upper lip; keep the same world-space texture.
+ float rvDescentAmount(vec3 p){
+  float width=1.-smoothstep(13.,30.,abs(p.x+365.));
+  float length=smoothstep(-118.,-106.,p.z)*(1.-smoothstep(25.,35.,p.z));
+  return width*length*smoothstep(.2,5.,-p.y);
+ }
  float rvCrustAmount(vec3 p,vec3 n){
   vec3 canyon=rvCanyon(p);
-  return canyon.x*smoothstep(55.,78.,-p.y)*smoothstep(.30,.85,n.y);
+  float floorCrust=canyon.x*smoothstep(55.,78.,-p.y)*smoothstep(.30,.85,n.y);
+  return max(floorCrust,rvDescentAmount(p)*smoothstep(.25,.60,n.y));
  }
  vec4 rvFlow(vec3 p,vec3 n){
   vec3 canyon=rvCanyon(p);
@@ -74,7 +82,7 @@ export const RAVINE_LAVA_GLSL=`
   vec3 color=mix(vec3(.18,.003,.0003),vec3(1.1,.16,.003),smoothstep(.48,.91,heat));
   color=mix(color,vec3(1.5,.52,.025),thread*streak*streak*.7)*motion;
   color*=mix(.22,1.,cooling);
-  return vec4(color,canyon.x*slope*height*stream);
+  return vec4(color,canyon.x*slope*height*stream*(1.-rvDescentAmount(p)*smoothstep(.25,.60,n.y)));
  }
 `;
 
