@@ -44,7 +44,7 @@ export function createFireRainState(floorAt:(x:number,z:number)=>number|null,blo
  }};
 }
 /** Reusable sprites and red ground patches: bounded allocations and no per-projectile lights. */
-export function createFireRain(texture:THREE.Texture,floorAt:(x:number,z:number)=>number|null,blocked:(x:number,z:number)=>boolean){
+export function createFireRain(texture:THREE.Texture,floorAt:(x:number,z:number)=>number|null,blocked:(x:number,z:number)=>boolean,pixelRatio=1){
  texture.colorSpace=THREE.SRGBColorSpace;texture.minFilter=texture.magFilter=THREE.LinearFilter;texture.generateMipmaps=false;
  const root=new THREE.Group();root.name='Огненный дождь вулканической башни';const state=createFireRainState(floorAt,blocked);
  const fillGeo=new THREE.CircleGeometry(FIRE_RAIN.radius,48);fillGeo.rotateX(-Math.PI/2);
@@ -52,7 +52,24 @@ export function createFireRain(texture:THREE.Texture,floorAt:(x:number,z:number)
   const group=new THREE.Group(),map=texture.clone();map.repeat.set(1/7,1/4);
   const fire=new THREE.Sprite(new THREE.SpriteMaterial({map,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,color:'#ffd5a0',toneMapped:false}));fire.scale.set(17,10,1);group.add(fire);
   const fill=new THREE.Mesh(fillGeo.clone(),new THREE.MeshBasicMaterial({color:'#ff3b0b',transparent:true,opacity:.12,depthWrite:false,side:THREE.DoubleSide,toneMapped:false}));group.add(fill);
-  group.visible=false;root.add(group);return {group,map,fire,fill,shot:undefined as FireShot|undefined};
+  const edgeOpacity={value:.95};
+  // CSS millimetres are approximate on phones. Derivatives keep the outline
+  // near 2mm (7.56 CSS pixels) as camera distance and perspective change.
+  fill.material.onBeforeCompile=shader=>{
+   shader.uniforms.warningPixels={value:7.56*pixelRatio};shader.uniforms.warningEdgeOpacity=edgeOpacity;
+   shader.vertexShader='varying vec2 warningUv;\n'+shader.vertexShader;
+   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nwarningUv=uv;');
+   shader.fragmentShader='varying vec2 warningUv;uniform float warningPixels;uniform float warningEdgeOpacity;\n'+shader.fragmentShader;
+   shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+    float warningRadius=length((warningUv-.5)*2.);
+    float warningWidth=min(.45,fwidth(warningRadius)*warningPixels);
+    float warningBorder=smoothstep(1.-warningWidth,1.-warningWidth+fwidth(warningRadius),warningRadius);
+    diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.04,1.,.12),warningBorder);
+    diffuseColor.a=mix(diffuseColor.a,warningEdgeOpacity,warningBorder);
+   `);
+  };
+  fill.material.customProgramCacheKey=()=> 'fire-warning-green-2mm-v1';
+  group.visible=false;root.add(group);return {group,map,fire,fill,edgeOpacity,shot:undefined as FireShot|undefined};
  });
  let disposed=false;
  return {root,reset:()=>{state.reset();pool.forEach(p=>p.group.visible=false);},update:(dt:number,hero:THREE.Vector3,vent:THREE.Vector3,camera:THREE.Camera,onHit:()=>void)=>{
@@ -63,7 +80,7 @@ export function createFireRain(texture:THREE.Texture,floorAt:(x:number,z:number)
    const frame=Math.floor(Math.max(0,shot.age)*24+shot.seed*28)%28;p.map.offset.set((frame%7)/7,1-(Math.floor(frame/7)+1)/4);
    if(p.shot!==shot){p.shot=shot;for(const mesh of [p.fill]){const pos=mesh.geometry.getAttribute('position');for(let v=0;v<pos.count;v++){const y=floorAt(shot.x+pos.getX(v),shot.z+pos.getZ(v))??shot.y;pos.setY(v,y+.35);}pos.needsUpdate=true;mesh.geometry.computeBoundingSphere();}}
    p.fill.position.set(shot.x,0,shot.z);
-   p.fill.material.opacity=t<1?.05+.15*t:.5*(1-burst);
+   p.fill.material.opacity=t<1?.05+.15*t:.5*(1-burst);p.edgeOpacity.value=.95*(t<1?1:1-burst);
 
    if(t<1){p.fire.position.copy(fireTrajectory(vent,shot,t));const velocity=fireTrajectory(vent,shot,t+.005).sub(p.fire.position);p.fire.material.rotation=Math.atan2(velocity.dot(up),velocity.dot(right));p.fire.scale.set(17,10,1);p.fire.material.opacity=1;}
    else{p.fire.position.set(shot.x,shot.y+3,shot.z);p.fire.scale.setScalar(13+burst*22);p.fire.material.rotation=shot.seed*Math.PI*2;p.fire.material.opacity=1-burst;}
