@@ -53,10 +53,9 @@ export function createFireRain(texture:THREE.Texture,floorAt:(x:number,z:number)
   const fire=new THREE.Sprite(new THREE.SpriteMaterial({map,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,color:'#ffd5a0',toneMapped:false}));fire.scale.set(17,10,1);group.add(fire);
   const fill=new THREE.Mesh(fillGeo.clone(),new THREE.MeshBasicMaterial({color:'#ff3b0b',transparent:true,opacity:.12,depthWrite:false,side:THREE.DoubleSide,toneMapped:false}));group.add(fill);
   const edgeOpacity={value:.95};
-  // CSS millimetres are approximate on phones. Derivatives keep the outline
-  // near 2mm (7.56 CSS pixels) as camera distance and perspective change.
+  // Keep a fine 1.25 CSS-pixel outline as camera distance changes.
   fill.material.onBeforeCompile=shader=>{
-   shader.uniforms.warningPixels={value:7.56*pixelRatio};shader.uniforms.warningEdgeOpacity=edgeOpacity;
+   shader.uniforms.warningPixels={value:1.25*pixelRatio};shader.uniforms.warningEdgeOpacity=edgeOpacity;
    shader.vertexShader='varying vec2 warningUv;\n'+shader.vertexShader;
    shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nwarningUv=uv;');
    shader.fragmentShader='varying vec2 warningUv;uniform float warningPixels;uniform float warningEdgeOpacity;\n'+shader.fragmentShader;
