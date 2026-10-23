@@ -1,9 +1,11 @@
+import {iceSanctuaryContains,ICE_SANCTUARY_POSITION} from './muspelheimIceSanctuary';
+import {ASH_VOLCANO_POSITION} from './muspelheimAshVolcano';
 import * as THREE from 'three';
 import {WORLD_OUTLINE,MAIN_WORLD} from './muspelheimTerrain';
 import {VOLCANO_POSITION,VOLCANO_SIZE} from './muspelheimVolcano';
 export const FIRE_SPRITE='muspelheim-fireball.png';
 export const FIRE_CREDIT={title:'Fireball Effect',author:'Cethiel',url:'https://opengameart.org/content/fireball-effect',license:'CC0'};
-export const FIRE_RAIN={radius:7.5,warning:3.8,burst:.7,interval:4.8,grace:8,pool:24,cooldown:.9};
+export const FIRE_RAIN={radius:7.5,warning:3.8,burst:.7,interval:4.8,grace:8,pool:28,cooldown:.9};
 type Point={x:number;z:number};
 export type FireShot=Point&{y:number;age:number;duration:number;impacted:boolean;seed:number};
 /** Protect the entire original volcano, its castle, foothills and a 20-unit apron. */
@@ -16,28 +18,38 @@ export function inFireWorld(x:number,z:number){
 // This attack intentionally bypasses incomingCombatDamage: armor and shield
 // never subtract from the direct health loss, and equipment is not destroyed.
 export function fireStrikeDamage(maxHp:number){return Math.max(12,Math.ceil(maxHp*.18));}
-export function fireHits(shot:FireShot,hero:Point&{y:number}){return !isSurtTerritory(hero.x,hero.z)&&Math.hypot(hero.x-shot.x,hero.z-shot.z)<=FIRE_RAIN.radius&&Math.abs(hero.y-shot.y)<6;}
+export function fireHits(shot:FireShot,hero:Point&{y:number}){return !isSurtTerritory(hero.x,hero.z)&&!iceSanctuaryContains(hero.x,hero.z)&&Math.hypot(hero.x-shot.x,hero.z-shot.z)<=FIRE_RAIN.radius&&Math.abs(hero.y-shot.y)<6;}
 export function fireTrajectory(vent:THREE.Vector3,shot:FireShot,t:number){
  const q=THREE.MathUtils.clamp(t,0,1),arc=85+Math.hypot(shot.x-vent.x,shot.z-vent.z)*.16;
  return new THREE.Vector3(THREE.MathUtils.lerp(vent.x,shot.x,q),THREE.MathUtils.lerp(vent.y,shot.y+2,q)+4*arc*q*(1-q),THREE.MathUtils.lerp(vent.z,shot.z,q));
 }
+/** Keep both landing circles and flight paths outside the sanctuary ward. */
+export function fireCrossesIceSanctuary(x:number,z:number){
+ const margin=FIRE_RAIN.radius;let enter=0,leave=1;
+ for(const [start,end,center,half] of [[ASH_VOLCANO_POSITION.x,x,ICE_SANCTUARY_POSITION.x,50+margin],[ASH_VOLCANO_POSITION.z,z,ICE_SANCTUARY_POSITION.z,28+margin]]){
+  const delta=end-start;if(Math.abs(delta)<1e-8){if(Math.abs(start-center)>half)return false;continue;}
+  const a=(center-half-start)/delta,b=(center+half-start)/delta;enter=Math.max(enter,Math.min(a,b));leave=Math.min(leave,Math.max(a,b));if(enter>leave)return false;
+ }return true;
+}
 export function createFireRainState(floorAt:(x:number,z:number)=>number|null,blocked:(x:number,z:number)=>boolean,random=Math.random){
  const shots:FireShot[]=[];let untilWave=FIRE_RAIN.grace,immunity=0;
- const target=(x:number,z:number)=>{if(!inFireWorld(x,z)||isSurtTerritory(x,z,FIRE_RAIN.radius)||blocked(x,z))return null;const y=floorAt(x,z);return y!=null&&Number.isFinite(y)?{x,z,y}:null;};
- const wave=(hero:Point)=>{
-  for(let i=0;i<12&&shots.length<FIRE_RAIN.pool;i++){
+ const target=(x:number,z:number)=>{if(!inFireWorld(x,z)||isSurtTerritory(x,z,FIRE_RAIN.radius)||fireCrossesIceSanctuary(x,z)||blocked(x,z))return null;const y=floorAt(x,z);return y!=null&&Number.isFinite(y)?{x,z,y}:null;};
+ // Four columns by three rows cover the plain; two more cells cover the
+ // entrance. Targets use only time, terrain and RNG, never hero coordinates.
+ const wave=()=>{
+  for(let i=0;i<14&&shots.length<FIRE_RAIN.pool;i++){
    let hit:ReturnType<typeof target>=null;
    for(let tries=0;tries<36&&!hit;tries++){
-    if(i<3){const angle=random()*Math.PI*2,r=i===0&&tries===0?0:10+random()*30;hit=target(hero.x+Math.cos(angle)*r,hero.z+Math.sin(angle)*r);}
-    else if(random()<.85)hit=target(MAIN_WORLD.minX+15+random()*(MAIN_WORLD.maxX-MAIN_WORLD.minX-30),MAIN_WORLD.minZ+15+random()*(MAIN_WORLD.maxZ-MAIN_WORLD.minZ-30));
-    else hit=target(-245+random()*490,112+random()*140);
+    if(i<12){const column=i%4,row=Math.floor(i/4),width=(MAIN_WORLD.maxX-MAIN_WORLD.minX-30)/4,depth=(MAIN_WORLD.maxZ-MAIN_WORLD.minZ-30)/3;
+     hit=target(MAIN_WORLD.minX+15+(column+random())*width,MAIN_WORLD.minZ+15+(row+random())*depth);
+    }else hit=target(-245+(i-12+random())*245,112+random()*140);
    }
    if(hit)shots.push({...hit,age:-i*.07,duration:FIRE_RAIN.warning+random()*.4,impacted:false,seed:random()});
   }
  };
  return {shots,reset:()=>{shots.length=0;untilWave=FIRE_RAIN.grace;immunity=0;},update:(dt:number,hero:Point&{y:number},hit:()=>void)=>{
   if(dt<=0)return;immunity=Math.max(0,immunity-dt);untilWave-=dt;
-  if(untilWave<=0){wave(hero);untilWave=FIRE_RAIN.interval;}
+  if(untilWave<=0){wave();untilWave=FIRE_RAIN.interval;}
   for(let i=shots.length-1;i>=0;i--){const s=shots[i];s.age+=dt;if(!s.impacted&&s.age>=s.duration){s.impacted=true;if(immunity===0&&fireHits(s,hero)){immunity=FIRE_RAIN.cooldown;hit();}}
    if(s.age>s.duration+FIRE_RAIN.burst)shots.splice(i,1);
   }

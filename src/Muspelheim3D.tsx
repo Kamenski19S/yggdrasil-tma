@@ -1,4 +1,4 @@
-import {ICE_SANCTUARY_ASSET,ICE_SANCTUARY_POSITION,ICE_SANCTUARY_CREDIT,createIceSanctuary,iceSanctuaryContains} from './muspelheimIceSanctuary';
+import {ICE_SANCTUARY_ASSET,ICE_SANCTUARY_POSITION,ICE_SANCTUARY_CREDIT,createIceSanctuary,iceSanctuaryContains,recoverInIceSanctuary} from './muspelheimIceSanctuary';
 import {NORNS_WELL_ASSET,NORNS_WELL_POSITION,NORNS_WELL_CREDIT,STRANGER_ASSET,STRANGER_CREDIT,createMuspelheimNornsWell} from './muspelheimNornsWell';
 import {FIRE_SPRITE,FIRE_CREDIT,createFireRain,fireStrikeDamage,isSurtTerritory} from './muspelheimFireRain';
 import type {CombatStats} from './combatStats';
@@ -46,7 +46,7 @@ export default function Muspelheim3D(props:Props){
  const life=useRef(Math.max(0,Math.min(props.fieldHp??props.combatStats.maxHp,props.combatStats.maxHp)));
  const [hp,setHp]=useState(life.current),[defeated,setDefeated]=useState(life.current===0),[fireHit,setFireHit]=useState(false),[surtSafe,setSurtSafe]=useState(false);
  const respawn=useRef<()=>void>(()=>{}),openWell=useRef<()=>void>(()=>{});
- const [wellSafe,setWellSafe]=useState(false),[nearStranger,setNearStranger]=useState(false),[wellDialog,setWellDialog]=useState(false);
+ const [iceSafe,setIceSafe]=useState(false),[wellSafe,setWellSafe]=useState(false),[nearStranger,setNearStranger]=useState(false),[wellDialog,setWellDialog]=useState(false);
  useEffect(()=>{const value=Math.max(0,Math.min(props.fieldHp??props.combatStats.maxHp,props.combatStats.maxHp));life.current=value;setHp(value);setDefeated(value===0);},[props.fieldHp,props.combatStats.maxHp]);
  const host=useRef<HTMLDivElement>(null),input=useRef({x:0,z:0}),position=useRef({...props.startPosition??BRIDGE_SPAWN});
  const [nearMine,setNearMine]=useState(false),[mineOpen,setMineOpen]=useState(false),[keeperDialog,setKeeperDialog]=useState(false),[nearKeeper,setNearKeeper]=useState(false),[status,setStatus]=useState('Загрузка площадки Муспельхейма…'),[retry,setRetry]=useState(0),[failed,setFailed]=useState(false),[gate,setGate]=useState(false),[mapOpen,setMapOpen]=useState(false);
@@ -69,7 +69,7 @@ export default function Muspelheim3D(props:Props){
   const mineEntrance=createMineEntrance(`${BASE}img/`);scene.add(mineEntrance.root);openMine.current=()=>{mineEntrance.open();setMineOpen(true);};
   const keeper=createAshDwarf('keeper');keeper.root.scale.setScalar(1.5);keeper.root.position.set(-301,40,-366);scene.add(keeper.root);let proximityTimer=0;
   let mineDoorReady=false;let crossingReady=false,transitioningMine=false,mineCameraActive=false,wellCameraActive=false;
-  let falling=false,fallVelocity=0,fallTime=0,respawnNotice=0,ravineVisited=false,snapCamera=false,hitFlash=0;
+  let falling=false,fallVelocity=0,fallTime=0,respawnNotice=0,ravineVisited=false,snapCamera=false,hitFlash=0,sanctuaryHealTime=0;
   const follow:FollowCameraState={yaw:viewYaw.current,targetYaw:viewYaw.current,turnTime:0};
   let throne:ReturnType<typeof createSurtThrone>|undefined;
   let tower:ReturnType<typeof createSurtTower>|undefined,towerSource:THREE.Object3D|undefined;
@@ -192,7 +192,7 @@ export default function Muspelheim3D(props:Props){
    hero.position.set(p.x,falling?hero.position.y:heightAt(p.x,p.z)??0,p.z);entrance?.updateProximity(paused.current?0:dt,gateIsOpen.current,p.x,p.z);tower?.updateProximity(paused.current?0:dt,p.x,p.z,minePaid.current);
    mineEntrance.update(paused.current?0:dt);
    if(!transitioningMine&&!falling&&!paused.current&&life.current>0&&mineEntrance.canEnter(p.x,hero.position.y,p.z)){transitioningMine=true;clear();enterMine.current();}
-keeper.update(clock.elapsedTime);proximityTimer+=dt;if(proximityTimer>.15){proximityTimer=0;setSurtSafe(isSurtTerritory(p.x,p.z));setWellSafe(nornsWell?.shelters(p.x,p.z,hero.position.y)??false);setNearStranger(nornsWell?.canTalk(p.x,p.z,hero.position.y)??false);setNearMine(mineEntrance.near(p.x,p.z));setNearKeeper(Math.hypot(p.x+308,p.z+368)<24&&hero.position.y>25);}
+keeper.update(clock.elapsedTime);proximityTimer+=dt;if(proximityTimer>.15){proximityTimer=0;setSurtSafe(isSurtTerritory(p.x,p.z));setIceSafe(iceSanctuaryContains(p.x,p.z));setWellSafe(nornsWell?.shelters(p.x,p.z,hero.position.y)??false);setNearStranger(nornsWell?.canTalk(p.x,p.z,hero.position.y)??false);setNearMine(mineEntrance.near(p.x,p.z));setNearKeeper(Math.hypot(p.x+308,p.z+368)<24&&hero.position.y>25);}
    if(walk)walk.timeScale=running&&!run?1.6:1;
    const action=moving&&!falling?(running?run??walk:walk):idle;if(action&&action!==current){current?.fadeOut(.18);action.reset().fadeIn(.18).play();current=action;}
    nornsWell?.update(clock.elapsedTime,paused.current?0:dt,p.x,p.z);
@@ -221,9 +221,12 @@ keeper.update(clock.elapsedTime);proximityTimer+=dt;if(proximityTimer>.15){proxi
    camera.position.set(clearCamera.x,clearCamera.y,clearCamera.z);
    const lookAhead=18*offset.distance/32;lookTarget.lerp(new THREE.Vector3(p.x-Math.sin(follow.yaw)*lookAhead,hero.position.y+3,p.z-Math.cos(follow.yaw)*lookAhead),1-Math.exp(-5*dt));camera.lookAt(lookTarget);   }
    const fireActive=loadedWorld()&&!paused.current&&!document.hidden&&!falling&&!transitioningMine&&life.current>0;
+   if(fireActive&&iceSanctuary?.resting(p.x,p.z,hero.position.y)&&life.current<live.current.combatStats.maxHp){
+    sanctuaryHealTime+=dt;if(sanctuaryHealTime>=1){const seconds=Math.floor(sanctuaryHealTime);sanctuaryHealTime-=seconds;life.current=recoverInIceSanctuary(life.current,live.current.combatStats.maxHp,seconds);setHp(life.current);live.current.onFieldHpChange(life.current);}
+   }else sanctuaryHealTime=0;
    if(hitFlash>0&&fireActive){hitFlash-=dt;if(hitFlash<=0)setFireHit(false);}
    if(fireRain&&ashVolcano)fireRain.update(fireActive?dt:0,hero.position,ashVolcano.vent,camera,()=>{
-    if(life.current<=0||isSurtTerritory(hero.position.x,hero.position.z)||nornsWell?.shelters(hero.position.x,hero.position.z,hero.position.y))return;
+    if(life.current<=0||iceSanctuaryContains(hero.position.x,hero.position.z)||isSurtTerritory(hero.position.x,hero.position.z)||nornsWell?.shelters(hero.position.x,hero.position.z,hero.position.y))return;
     const damage=Math.min(life.current,fireStrikeDamage(live.current.combatStats.maxHp));life.current-=damage;setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);
     setStatus(`Огненный удар пробил броню: −${damage} здоровья. Отходи от отметок!`);
     if(life.current===0){clear();setDefeated(true);setStatus('Огненный дождь лишил Vicki сил.');}
@@ -238,7 +241,7 @@ keeper.update(clock.elapsedTime);proximityTimer+=dt;if(proximityTimer>.15){proxi
  return <section className="muspelheim-world" style={{position:'relative',flex:1,minHeight:0,overflow:'hidden',background:'#24110e',touchAction:'none'}} aria-label="Муспельхейм">
   <div ref={host} style={{position:'absolute',inset:0}}/>
   <div className="muspelheim-fire-flash" style={{opacity:fireHit?.65:0}} aria-hidden="true"/>
-  <div className="muspelheim-fire-health"><span>Vicki · {hp}/{props.combatStats.maxHp}</span><progress value={hp} max={props.combatStats.maxHp}/><small>{wellSafe?'Колодец норн · укрытие от огня':surtSafe?'Территория Сурта · огненного дождя нет':'Огненный дождь · избегай отметок'}</small></div>
+  <div className="muspelheim-fire-health"><span>Vicki · {hp}/{props.combatStats.maxHp}</span><progress value={hp} max={props.combatStats.maxHp}/><small>{iceSafe?'Ледяное святилище · защита и восстановление':wellSafe?'Колодец норн · укрытие от огня':surtSafe?'Территория Сурта · огненного дождя нет':'Огненный дождь · избегай отметок'}</small></div>
   <div className="muspelheim-toolbar"><b>Муспельхейм</b><div style={{display:'flex',gap:6}}><button className="muspelheim-btn" onClick={()=>{stop();setMapOpen(true);}}>Карта</button><button className="muspelheim-btn" onClick={()=>{stop();setGate(true);}}>Первые врата</button></div></div>
   <div role="status" style={{position:'absolute',bottom:14,left:150,right:12,color:'#ffe2ac',fontSize:12,textShadow:'0 2px 3px #000'}}>{status}{failed&&<button className="muspelheim-btn" onClick={()=>setRetry(v=>v+1)}>Повторить загрузку</button>}</div>
   <div role="group" aria-label="Управление Vicki" onPointerDown={e=>{if(pointer.current!==null)return;controlYaw.current=viewYaw.current;pointer.current=e.pointerId;e.currentTarget.setPointerCapture(e.pointerId);move(e);}} onPointerMove={move} onPointerUp={stop} onPointerCancel={stop} onLostPointerCapture={stop} style={{position:'absolute',bottom:'calc(20px + 8mm)',left:20,width:108,height:108,borderRadius:'50%',border:'3px solid #b88839',background:'#27170dbb',display:'grid',placeItems:'center',color:'#edce89',touchAction:'none',userSelect:'none'}}>✥</div>

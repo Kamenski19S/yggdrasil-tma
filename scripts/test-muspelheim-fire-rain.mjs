@@ -1,12 +1,21 @@
 import assert from 'node:assert/strict';
 import {buildSync} from 'esbuild';import * as T from 'three';
 const code=buildSync({entryPoints:['src/muspelheimFireRain.ts'],bundle:true,write:false,format:'esm',platform:'node',external:['three']}).outputFiles[0].text.replaceAll('from "three"',`from ${JSON.stringify(import.meta.resolve('three'))}`);
-const {createFireRainState,createFireRain,fireStrikeDamage,fireHits,fireTrajectory,isSurtTerritory,inFireWorld,FIRE_RAIN}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const {createFireRainState,createFireRain,fireStrikeDamage,fireHits,fireTrajectory,isSurtTerritory,inFireWorld,FIRE_RAIN,fireCrossesIceSanctuary}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
 let seed=234567;const random=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
 const floor=(x,z)=>x*.02+z*.005;
 const state=createFireRainState(floor,()=>false,random),hero={x:150,z:-70,y:floor(150,-70)};let impacts=0,maxShots=0;const regions=new Set();
-for(let i=0;i<4000;i++){state.update(.05,hero,()=>impacts++);maxShots=Math.max(maxShots,state.shots.length);for(const s of state.shots){assert(inFireWorld(s.x,s.z));assert(!isSurtTerritory(s.x,s.z,FIRE_RAIN.radius));assert.equal(s.y,floor(s.x,s.z));regions.add(`${s.x<0?'W':'E'}${s.z< -150?'N':s.z>110?'entrance':'S'}`);}}
-assert(maxShots<=FIRE_RAIN.pool);assert(impacts>15);assert(regions.size>=5,'Global shots cover all map quarters and entrance');
+for(let i=0;i<4000;i++){state.update(.05,hero,()=>impacts++);maxShots=Math.max(maxShots,state.shots.length);for(const s of state.shots){assert(inFireWorld(s.x,s.z));assert(!isSurtTerritory(s.x,s.z,FIRE_RAIN.radius));assert.equal(s.y,floor(s.x,s.z));assert(!fireCrossesIceSanctuary(s.x,s.z));regions.add(`${s.x<0?'W':'E'}${s.z< -150?'N':s.z>110?'entrance':'S'}`);}}
+assert(maxShots<=FIRE_RAIN.pool);assert(regions.size>=5,'Global shots cover all map quarters and entrance');
+// With identical seeds, movement or another hero location cannot change
+// any projectile destination, age or launch time.
+const seeded=()=>{let n=9898;return ()=>((n=(Math.imul(n,1664525)+1013904223)>>>0)/4294967296);};
+const moving=createFireRainState(floor,()=>false,seeded()),standing=createFireRainState(floor,()=>false,seeded());
+for(let i=0;i<1000;i++){moving.update(.05,{x:Math.sin(i*.1)*400,z:-100+i%160,y:0},()=>{});standing.update(.05,{x:200,z:20,y:0},()=>{});assert.deepEqual(moving.shots,standing.shots);}
+// The whole ice sanctuary is immune even to a forced direct strike.
+for(let x=-490;x<=-398;x+=4)for(let z=-10;z<=40;z+=4){assert(!fireHits({x,z,y:0},{x,z,y:0}));assert(fireCrossesIceSanctuary(x,z));}
+const direct=createFireRainState(floor,()=>false,seeded());let directHits=0;
+direct.shots.push({...hero,age:0,duration:.01,impacted:false,seed:0});direct.update(.02,hero,()=>directHits++);direct.update(.02,hero,()=>directHits++);assert.equal(directHits,1,'Exactly one impact damage event');
 const before=JSON.stringify(state.shots);for(let i=0;i<200;i++)state.update(0,hero,()=>assert.fail('Paused hit'));assert.equal(JSON.stringify(state.shots),before);
 state.reset();assert.equal(state.shots.length,0);for(let i=0;i<150;i++)state.update(.05,hero,()=>assert.fail('Respawn grace'));assert.equal(state.shots.length,0);
 // The entire Surt footprint and outer apron are protected, even on a direct hit.

@@ -4,7 +4,8 @@ export const ICE_SANCTUARY_ASSET='Muspelheim_Ice_Sanctuary.glb';
 export const ICE_SANCTUARY_POSITION={x:-444,z:15};
 export const ICE_SANCTUARY_SIZE={width:96,height:70,depth:52};
 export const ICE_SANCTUARY_CREDIT={title:'Masonic Temple from a George Washington painting',author:'timantworms',url:'https://sketchfab.com/3d-models/masonic-temple-from-a-george-washington-painting-08c8b2852ead4e0c871136235f793f6a'};
-export function iceSanctuaryContains(x:number,z:number){return Math.abs(x-ICE_SANCTUARY_POSITION.x)<50&&Math.abs(z-ICE_SANCTUARY_POSITION.z)<28;}
+export function iceSanctuaryContains(x:number,z:number,margin=0){return Math.abs(x-ICE_SANCTUARY_POSITION.x)<50+margin&&Math.abs(z-ICE_SANCTUARY_POSITION.z)<28+margin;}
+export function recoverInIceSanctuary(hp:number,maxHp:number,seconds=1){return hp<=0?0:Math.min(maxHp,hp+Math.max(1,Math.ceil(maxHp*.05))*Math.max(0,seconds));}
 export function createIceSanctuary(model:THREE.Object3D,groundY=0){
  model.updateWorldMatrix(true,true);const bounds=new THREE.Box3().setFromObject(model),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
  const offset=new THREE.Group();offset.position.set(-center.x,-bounds.min.y,-center.z);offset.add(model);
@@ -42,5 +43,6 @@ export function createIceSanctuary(model:THREE.Object3D,groundY=0){
  });
  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(floor,3));const mesh=new THREE.Mesh(geo),floorAt=createMeshHeightSampler(mesh);geo.dispose();(mesh.material as THREE.Material).dispose();
  const blocks=(x:number,z:number,footY:number,radius=2)=>{if(!iceSanctuaryContains(x,z))return false;for(const t of walls.get(`${Math.floor(x/4)},${Math.floor(z/4)}`)??[]){if(t.hi<footY+4.5||t.lo>footY+14)continue;for(const y of [footY+4.5,footY+9,footY+13]){const cuts:THREE.Vector3[]=[];for(let k=0;k<3;k++){const a=t.v[k],b=t.v[(k+1)%3];if((a.y<=y&&b.y>y)||(b.y<=y&&a.y>y))cuts.push(a.clone().lerp(b,(y-a.y)/(b.y-a.y)));}if(cuts.length!==2)continue;const [a,b]=cuts,dx=b.x-a.x,dz=b.z-a.z,q=THREE.MathUtils.clamp(((x-a.x)*dx+(z-a.z)*dz)/(dx*dx+dz*dz||1),0,1);if(Math.hypot(x-a.x-dx*q,z-a.z-dz*q)<radius)return true;}}return false;};
- return {root,floorAt,blocks};
+ const resting=(x:number,z:number,y:number)=>{const floor=floorAt(x,z);return iceSanctuaryContains(x,z)&&floor!=null&&Math.abs(y-Math.max(groundY,floor))<1;};
+ return {root,floorAt,blocks,resting};
 }
