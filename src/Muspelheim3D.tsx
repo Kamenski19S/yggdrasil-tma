@@ -1,3 +1,4 @@
+import {createMuspelheimHeroEquipment} from './muspelheimHeroEquipment';
 import {FORGE_ASSET,FORGE_POSITION,FORGE_RETURN,FORGE_CREDIT,createMuspelheimForge} from './muspelheimForge';
 import {ICE_SANCTUARY_ASSET,ICE_SANCTUARY_POSITION,ICE_SANCTUARY_CREDIT,createIceSanctuary,iceSanctuaryContains,recoverInIceSanctuary} from './muspelheimIceSanctuary';
 import {NORNS_WELL_ASSET,NORNS_WELL_POSITION,NORNS_WELL_CREDIT,STRANGER_ASSET,STRANGER_CREDIT,createMuspelheimNornsWell} from './muspelheimNornsWell';
@@ -24,7 +25,7 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {TORCH_ASSET,TORCH_CREDIT} from './muspelheimTorches';
 import {BRIDGE_TEXTURE,BRIDGE_ASSET,BRIDGE_CREDIT,BRIDGE_SPAWN,chasmBlocks,carveEntranceChasm,createEntranceBridge,createChasmLava} from './muspelheimChasm';
-import {BASE,cachedGlbBuffer} from './core';
+import {BASE,cachedGlbBuffer,WEAPON_ASSET,textureSteelOnWeapon,styleNiflheimWeapon,type HeroWeapon} from './core';
 import {createTerrainSampler,clampMuspelheimPosition,expandMuspelheimTerrain,muspelheimMapPoint,WORLD_OUTLINE} from './muspelheimTerrain';
 import {configureMuspelheimGround} from './muspelheimGround';
 import {COBBLE_CREDIT} from './muspelheimCobble';
@@ -36,7 +37,7 @@ import {ROCK_ASSETS,ROCK_CREDITS,rockWallLayout,rockWallBlocks,moveAlongRockWall
 
 const GATEWAY_WALL_ANCHOR={x:GATEWAY_POSITION.x,z:GATEWAY_POSITION.z-20*GATEWAY_SCALE,halfWidth:41*GATEWAY_SCALE};
 
-export type Props={combatStats:CombatStats;fieldHp:number|null;onFieldHpChange:(hp:number)=>void;onEnterMine:()=>void;onForge:(position:{x:number;z:number})=>void;startPosition?:{x:number;z:number};minePaid:boolean;fireGold:number;onPayKeeper:()=>void;gateOpen:boolean;canOpenGate:boolean;assembled:boolean;briefed:boolean;onInstallCrystal:()=>void;onTrial:()=>void};
+export type Props={weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;combatStats:CombatStats;fieldHp:number|null;onFieldHpChange:(hp:number)=>void;onEnterMine:()=>void;onForge:(position:{x:number;z:number})=>void;startPosition?:{x:number;z:number};minePaid:boolean;fireGold:number;onPayKeeper:()=>void;gateOpen:boolean;canOpenGate:boolean;assembled:boolean;briefed:boolean;onInstallCrystal:()=>void;onTrial:()=>void};
 function dispose(root:THREE.Object3D){
  const textures=new Set<THREE.Texture>(),materials=new Set<THREE.Material>(),geometries=new Set<THREE.BufferGeometry>();
  root.traverse(o=>{if(o instanceof THREE.Mesh||o instanceof THREE.Points||o instanceof THREE.Sprite){if(o instanceof THREE.Mesh||o instanceof THREE.Points)geometries.add(o.geometry);if(o instanceof THREE.InstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){materials.add(m);Object.values(m).forEach(v=>{if(v instanceof THREE.Texture)textures.add(v);});}}});
@@ -47,6 +48,8 @@ export default function Muspelheim3D(props:Props){
  const life=useRef(Math.max(0,Math.min(props.fieldHp??props.combatStats.maxHp,props.combatStats.maxHp)));
  const [hp,setHp]=useState(life.current),[defeated,setDefeated]=useState(life.current===0),[fireHit,setFireHit]=useState(false),[surtSafe,setSurtSafe]=useState(false);
  const [nearForge,setNearForge]=useState(false);const openForge=useRef<()=>void>(()=>{});
+ const refreshEquipment=useRef<()=>void>(()=>{});
+ useEffect(()=>{refreshEquipment.current();},[props.weapon,props.shieldAsset,props.shieldEquipped]);
  const respawn=useRef<()=>void>(()=>{}),openWell=useRef<()=>void>(()=>{});
  const [iceSafe,setIceSafe]=useState(false),[wellSafe,setWellSafe]=useState(false),[nearStranger,setNearStranger]=useState(false),[wellDialog,setWellDialog]=useState(false);
  useEffect(()=>{const value=Math.max(0,Math.min(props.fieldHp??props.combatStats.maxHp,props.combatStats.maxHp));life.current=value;setHp(value);setDefeated(value===0);},[props.fieldHp,props.combatStats.maxHp]);
@@ -74,6 +77,7 @@ export default function Muspelheim3D(props:Props){
   let falling=false,fallVelocity=0,fallTime=0,respawnNotice=0,ravineVisited=false,snapCamera=false,hitFlash=0,sanctuaryHealTime=0;
   const follow:FollowCameraState={yaw:viewYaw.current,targetYaw:viewYaw.current,turnTime:0};
   let forge:ReturnType<typeof createMuspelheimForge>|undefined,transitioningForge=false;
+  let equipment:ReturnType<typeof createMuspelheimHeroEquipment>|undefined;
   let throne:ReturnType<typeof createSurtThrone>|undefined;
   let tower:ReturnType<typeof createSurtTower>|undefined,towerSource:THREE.Object3D|undefined;
   let volcano:ReturnType<typeof createMuspelheimVolcano>|undefined;
@@ -100,7 +104,7 @@ export default function Muspelheim3D(props:Props){
   bridgeTexture.colorSpace=THREE.SRGBColorSpace;bridgeTexture.wrapS=bridgeTexture.wrapT=THREE.RepeatWrapping;bridgeTexture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
   const attachTorches=()=>{if(!entrance||!torchSource||torchesReady)return;entrance.mountTorches(torchSource);torchSource.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});torchSource=undefined;torchesReady=true;ready();};
   const loader=new GLTFLoader();
-  loader.load(`${BASE}img/models/${FORGE_ASSET}`,g=>{if(!alive){dispose(g.scene);return;}try{forge=createMuspelheimForge(g.scene);scene.add(forge.root);ready();}catch{dispose(g.scene);loadError=true;setFailed(true);setStatus('Кузница не загрузилась. Повтори загрузку.');}},undefined,()=>{if(alive){loadError=true;setFailed(true);setStatus('Кузница не загрузилась. Повтори загрузку.');}});
+  loader.load(`${BASE}img/models/${FORGE_ASSET}`,g=>{if(!alive){dispose(g.scene);return;}try{forge=createMuspelheimForge(g.scene);scene.add(forge.root);if(roadMask)forge.setRampTexture(roadMask.stoneTexture);ready();}catch{dispose(g.scene);loadError=true;setFailed(true);setStatus('Кузница не загрузилась. Повтори загрузку.');}},undefined,()=>{if(alive){loadError=true;setFailed(true);setStatus('Кузница не загрузилась. Повтори загрузку.');}});
   openForge.current=()=>{if(forge?.near(position.current.x,position.current.z)){clear();forge.open();}};
   loader.load(`${BASE}img/models/${ICE_SANCTUARY_ASSET}`,g=>{if(!alive){dispose(g.scene);return;}iceSanctuary=createIceSanctuary(g.scene);scene.add(iceSanctuary.root);ready();},undefined,()=>{if(alive){loadError=true;setStatus('Ледяное святилище не загрузилось. Повтори загрузку.');setFailed(true);}});
   const attachWell=()=>{if(wellSource&&sample&&!nornsWell){nornsWell=createMuspelheimNornsWell(wellSource,sample(NORNS_WELL_POSITION.x,NORNS_WELL_POSITION.z)??0);scene.add(nornsWell.root);wellSource=undefined;}
@@ -119,7 +123,10 @@ export default function Muspelheim3D(props:Props){
    mixer=new THREE.AnimationMixer(g.scene);
    const find=(...names:string[])=>names.map(n=>THREE.AnimationClip.findByName(g.animations,n)).find(Boolean);
    const i=find('idle','sword_idle')||g.animations[0],w=find('walk_loop','walk')||i;
-   if(i)idle=mixer.clipAction(i);if(w)walk=mixer.clipAction(w);const r=find('run_loop','run','sprint');if(r)run=mixer.clipAction(r);idle?.play();current=idle;heroReady=true;ready();
+   equipment=createMuspelheimHeroEquipment(g.scene,{load:async asset=>(await loader.parseAsync(await cachedGlbBuffer(`${BASE}img/models/${asset}`),`${BASE}img/models/`)).scene,weaponAsset:weapon=>weapon==='default'?'Sword.glb':WEAPON_ASSET[weapon],prepare:(item,asset,weapon,isShield)=>{textureSteelOnWeapon(item,asset);if(!isShield)styleNiflheimWeapon(item,weapon);},dispose});
+   refreshEquipment.current=()=>{heroReady=false;equipment!.update(live.current).then(applied=>{if(alive&&applied){heroReady=true;ready();}}).catch(()=>{if(alive){loadError=true;setStatus('Оружие Vicki не загрузилось. Повтори загрузку.');setFailed(true);}});};
+   refreshEquipment.current();
+   if(i)idle=mixer.clipAction(i);if(w)walk=mixer.clipAction(w);const r=find('run_loop','run','sprint');if(r)run=mixer.clipAction(r);idle?.play();current=idle;ready();
   }).catch(()=>{if(alive){loadError=true;setStatus('Vicki не загрузилась. Проверь соединение и повтори.');setFailed(true);}});
   const attachTower=()=>{if(!volcano||!towerSource||tower)return;tower=createSurtTower(towerSource);scene.add(tower.root);towerSource=undefined;summit=createSummitFloor(`${BASE}img/`,renderer.capabilities.getMaxAnisotropy(),volcano.root,tower.buildingBounds);scene.add(summit.root);summit.ready.then(()=>{if(alive){summitReady=true;ready();}},()=>{if(alive){loadError=true;setStatus('Кладка у замка не загрузилась. Повтори загрузку.');setFailed(true);}});ready();};
   loader.load(`${BASE}img/models/${SURT_THRONE_ASSET}`,g=>{if(!alive){dispose(g.scene);return;}throne=createSurtThrone(g.scene);scene.add(throne.root);ready();},undefined,()=>{if(alive){loadError=true;setStatus('Трон Сурта не загрузился. Повтори загрузку.');setFailed(true);}});
@@ -161,7 +168,7 @@ export default function Muspelheim3D(props:Props){
    carveEntranceChasm(g.scene);
    carveSurtRavine(g.scene,ravinePitDepth);
    carveMineApproach(g.scene);
-   roadMask=configureMuspelheimGround(g.scene,renderer.capabilities.getMaxAnisotropy(),`${BASE}img/`,ravineLava);
+   roadMask=configureMuspelheimGround(g.scene,renderer.capabilities.getMaxAnisotropy(),`${BASE}img/`,ravineLava);if(forge)forge.setRampTexture(roadMask.stoneTexture);
    scene.add(g.scene);g.scene.name='Muspelheim editable terrain';sample=createTerrainSampler(g.scene);attachRidge();attachWell();
    roadGlow=createRoadGlow(sample,renderer.getDrawingBufferSize(new THREE.Vector2()).y);scene.add(roadGlow.points);
    Promise.all([roadMask.ready,ravineLava.ready]).then(()=>{if(alive){terrainReady=true;ready();}},()=>{if(alive){loadError=true;setStatus('Покрытие дороги не загрузилось. Повтори загрузку.');setFailed(true);}});
@@ -240,7 +247,7 @@ keeper.update(clock.elapsedTime);proximityTimer+=dt;if(proximityTimer>.15){proxi
    });
    renderer.render(scene,camera);
   }
-  tick();return()=>{alive=false;window.clearTimeout(loadingTimeout);cancelAnimationFrame(frame);clear();observer.disconnect();window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();for(const asset of entranceAssets)if(asset&&!asset.parent)dispose(asset);if(torchSource)dispose(torchSource);if(towerSource)dispose(towerSource);if(ridgeSource)dispose(ridgeSource);if(wellSource)dispose(wellSource);if(strangerSource)dispose(strangerSource);fireRain?.dispose();dispose(scene);summit?.dispose();roadMask?.dispose();ravineLava.dispose();bridgeTexture.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();};
+  tick();return()=>{alive=false;refreshEquipment.current=()=>{};equipment?.dispose();window.clearTimeout(loadingTimeout);cancelAnimationFrame(frame);clear();observer.disconnect();window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();for(const asset of entranceAssets)if(asset&&!asset.parent)dispose(asset);if(torchSource)dispose(torchSource);if(towerSource)dispose(towerSource);if(ridgeSource)dispose(ridgeSource);if(wellSource)dispose(wellSource);if(strangerSource)dispose(strangerSource);fireRain?.dispose();dispose(scene);summit?.dispose();roadMask?.dispose();ravineLava.dispose();bridgeTexture.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();};
  },[retry]);
  const pointer=useRef<number|null>(null);
  const move=(e:React.PointerEvent<HTMLDivElement>)=>{if(pointer.current!==e.pointerId)return;const b=e.currentTarget.getBoundingClientRect();input.current={x:THREE.MathUtils.clamp((e.clientX-b.left-b.width/2)/42,-1,1),z:THREE.MathUtils.clamp((e.clientY-b.top-b.height/2)/42,-1,1)};};

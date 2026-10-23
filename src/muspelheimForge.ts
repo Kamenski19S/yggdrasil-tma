@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 export const FORGE_ASSET='Muspelheim_Forge.glb';
 export const FORGE_POSITION={x:140,z:50};
-export const FORGE_SCALE=1.3;
+export const FORGE_SCALE=1.3*.85;
 export const FORGE_YAW=-Math.PI*.8;
 const facingCos=Math.cos(FORGE_YAW),facingSin=Math.sin(FORGE_YAW);
 export function forgeWorldPoint(x:number,z:number){return {x:FORGE_POSITION.x+FORGE_SCALE*(facingCos*x+facingSin*z),z:FORGE_POSITION.z+FORGE_SCALE*(-facingSin*x+facingCos*z)};}
@@ -32,7 +32,7 @@ export function createMuspelheimForge(source:THREE.Object3D){
  const backing=new THREE.Mesh(new THREE.BoxGeometry(13.8,14.4,.3),new THREE.MeshStandardMaterial({color:'#352416',roughness:1}));backing.position.set(7.2*1.1,11,-1.2);hinge.add(backing);
  const portal=new THREE.Mesh(new THREE.PlaneGeometry(14.8,23.2),new THREE.MeshBasicMaterial({color:'#100b08',side:THREE.DoubleSide}));portal.position.set(0,14.5,17.5*1.1);portal.visible=false;root.add(portal);
  // A shallow stone approach covers the raised threshold without a large step.
- const ramp=new THREE.BufferGeometry();ramp.setAttribute('position',new THREE.Float32BufferAttribute([-7,.7,doorZ+10,7,.7,doorZ+10,-7,3,doorZ-1,7,3,doorZ-1],3));ramp.setIndex([0,1,2,2,1,3]);ramp.computeVertexNormals();root.add(new THREE.Mesh(ramp,new THREE.MeshStandardMaterial({color:'#51463e',roughness:1,side:THREE.DoubleSide})));
+ const ramp=new THREE.BufferGeometry();ramp.setAttribute('position',new THREE.Float32BufferAttribute([-7,.7,doorZ+10,7,.7,doorZ+10,-7,3,doorZ-1,7,3,doorZ-1],3));ramp.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,1.4,0,0,1.1,1.4,1.1],2));ramp.setIndex([0,1,2,2,1,3]);ramp.computeVertexNormals();const rampMaterial=new THREE.MeshStandardMaterial({color:'#ffffff',roughness:1,side:THREE.DoubleSide});const approach=new THREE.Mesh(ramp,rampMaterial);approach.name='Stone-paved forge approach';root.add(approach);
  let opening=0,requested=false;
  const local=(x:number,z:number)=>{const dx=x-FORGE_POSITION.x,dz=z-FORGE_POSITION.z;return {x:(facingCos*dx-facingSin*dz)/FORGE_SCALE,z:(facingSin*dx+facingCos*dz)/FORGE_SCALE};};
  const near=(x:number,z:number)=>{const p=local(x,z);return Math.abs(p.x)<14&&p.z>doorZ-2&&p.z<doorZ+20;};
@@ -41,7 +41,7 @@ export function createMuspelheimForge(source:THREE.Object3D){
   if(p.z>doorZ-2&&Math.abs(p.x)<6.8*1.1-padding)return p.z<doorZ+3&&opening<.95;
   return Math.abs(p.x)<26+padding&&p.z>-26-padding&&p.z<25+padding;
  };
- return {root,hinge,doorTriangles,near,floorAt,blocks,open:()=>{requested=true;},get opening(){return opening;},get entering(){return requested;},
+ return {root,hinge,doorTriangles,setRampTexture:(texture:THREE.Texture)=>{rampMaterial.map=texture;rampMaterial.needsUpdate=true;},near,floorAt,blocks,open:()=>{requested=true;},get opening(){return opening;},get entering(){return requested;},
   canEnter:(x:number,z:number)=>{const p=local(x,z);return opening>=.99&&Math.abs(p.x)<5&&p.z<doorZ+1&&p.z>doorZ-3;},
   update:(dt:number,x:number,z:number)=>{if(requested&&!near(x,z))requested=false;const target=requested||near(x,z);opening=THREE.MathUtils.clamp(opening+(target?1:-1)*dt/.85,0,1);portal.visible=opening>.06;hinge.rotation.y=-opening*opening*(3-2*opening)*Math.PI*.56;return requested&&opening>=.99;}
  };

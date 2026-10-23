@@ -75,5 +75,5 @@ export function configureMuspelheimGround(root:THREE.Object3D,maxAnisotropy:numb
    ground.needsUpdate=true;
   }
  });
- return {ready:Promise.all([cobble.ready,basaltReady]),dispose:()=>{roadMask.dispose();cobble.dispose();basalt.dispose();}};
+ return {stoneTexture:cobble.color,ready:Promise.all([cobble.ready,basaltReady]),dispose:()=>{roadMask.dispose();cobble.dispose();basalt.dispose();}};
 }
