@@ -11,8 +11,8 @@ const len=bytes.readUInt32LE(12),doc=JSON.parse(bytes.subarray(20,20+len));asser
 const g=await loader.parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
 const volcano=createAshVolcano(g.scene);let solid=[],smoke=[];
 volcano.root.traverse(o=>{if(o.isMesh)(o.material.name.includes('Smoke')?smoke:solid).push(o);});assert.equal(solid.length,1);assert.equal(smoke.length,1);
-const b=new T.Box3().setFromObject(solid[0]);assert(Math.abs(b.max.x-b.min.x-ASH_VOLCANO_WIDTH)<.01);assert(Math.abs(b.min.y+1.8)<.01);assert(b.max.y>35&&b.max.y<45);
-assert(b.min.x>50&&b.max.x<240);assert(b.min.z>-458.75); // between canyon and eastern volcano, inside rear wall
+const b=new T.Box3().setFromObject(solid[0]);assert(Math.abs(b.max.x-b.min.x-ASH_VOLCANO_WIDTH)<.01);assert(Math.abs(b.min.y+1.8)<.01);assert(b.max.y>115&&b.max.y<125);
+assert.equal(at.x,0);assert.equal(at.z,-174.375);assert(b.min.x>=-61&&b.max.x<=61);assert(volcano.vent.y>100&&volcano.vent.y<b.max.y);
 const ray=new T.Raycaster(),down=new T.Vector3(0,-1,0);let checks=0;
 for(let x=b.min.x+1;x<b.max.x;x+=4)for(let z=b.min.z+1;z<b.max.z;z+=4){ray.set(new T.Vector3(x,250,z),down);const expected=ray.intersectObjects(solid,true)[0]?.point.y??null;const actual=volcano.floorAt(x,z);if(expected===null)assert.equal(actual,null);else{assert(Math.abs(actual-expected)<1e-4);checks++;}}
 assert(checks>400);assert.equal(volcano.floorAt(0,0),null);assert(!smoke[0].material.depthWrite);assert(solid[0].material.depthWrite);assert(!solid[0].material.transparent);
