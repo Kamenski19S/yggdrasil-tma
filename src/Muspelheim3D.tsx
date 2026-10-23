@@ -1,3 +1,4 @@
+import {ASH_VOLCANO_ASSET,ASH_VOLCANO_POSITION,ASH_VOLCANO_CREDIT,createAshVolcano} from './muspelheimAshVolcano';
 import {CANYON_RIDGE_ASSET,CANYON_RIDGE_LAYOUT,CANYON_RIDGE_CREDIT,createCanyonRidge} from './muspelheimCanyonRidge';
 import {EAST_VOLCANO_ASSET,EAST_VOLCANO_POSITION,EAST_VOLCANO_CREDIT,createEastVolcano} from './muspelheimEastVolcano';
 import {OCEAN_GUARDIAN_CREDIT} from './ashMineGuardian';
@@ -65,6 +66,7 @@ export default function Muspelheim3D(props:Props){
   let tower:ReturnType<typeof createSurtTower>|undefined,towerSource:THREE.Object3D|undefined;
   let volcano:ReturnType<typeof createMuspelheimVolcano>|undefined;
   let eastVolcano:ReturnType<typeof createEastVolcano>|undefined;
+  let ashVolcano:ReturnType<typeof createAshVolcano>|undefined;
   let canyonRidge:ReturnType<typeof createCanyonRidge>|undefined,ridgeSource:THREE.Object3D|undefined;
   let summit:ReturnType<typeof createSummitFloor>|undefined,summitReady=false;
   let roadGlow:ReturnType<typeof createRoadGlow>|undefined;
@@ -72,9 +74,9 @@ export default function Muspelheim3D(props:Props){
   let terrainReady=false,bridgeTextureReady=false,torchesReady=false,torchSource:THREE.Object3D|undefined,heroReady=false,wallsReady=0,loadError=false,entrance:MuspelheimGateway|undefined;
   const entranceAssets:Array<THREE.Object3D|undefined>=[];
   const blocked=(x:number,z:number)=>mineApproachSideBlocks(x,hero.position.y,z)||mineEntrance.blocks(x,z,hero.position.y)||chasmBlocks(x,z)||(throne?.blocks(x,z)??false)||(tower?.blocks(x,z)??false)||rockWallBlocks(wallRocks,x,z,2,hero.position.y)||ravineRockBlocks(ravineRocks,x,hero.position.y,z)||(entrance?.blocks(x,z)??false);
-  const heightAt=(x:number,z:number)=>{const approach=mineApproachFloorAt(x,z);if(approach!=null)return approach;const paved=summit?.floorAt(x,z);if(paved!=null)return paved;const base=sample?.(x,z);if(base==null)return null;const crossing=ravineBridgeFloorAt(x,z);if(crossing!=null)return Math.max(base,crossing);const deck=bridge?.floorAt(x,z);if(deck!=null)return Math.max(base,deck);const surface=Math.max(base,volcano?.floorAt(x,z)??base,eastVolcano?.floorAt(x,z)??base,canyonRidge?.floorAt(x,z)??base,summit?.floorAt(x,z)??base);return entrance?.floorAt(x,z,surface)??surface;};
+  const heightAt=(x:number,z:number)=>{const approach=mineApproachFloorAt(x,z);if(approach!=null)return approach;const paved=summit?.floorAt(x,z);if(paved!=null)return paved;const base=sample?.(x,z);if(base==null)return null;const crossing=ravineBridgeFloorAt(x,z);if(crossing!=null)return Math.max(base,crossing);const deck=bridge?.floorAt(x,z);if(deck!=null)return Math.max(base,deck);const surface=Math.max(base,volcano?.floorAt(x,z)??base,eastVolcano?.floorAt(x,z)??base,ashVolcano?.floorAt(x,z)??base,canyonRidge?.floorAt(x,z)??base,summit?.floorAt(x,z)??base);return entrance?.floorAt(x,z,surface)??surface;};
   const loadingTimeout=window.setTimeout(()=>{if(alive&&!loadError){loadError=true;setStatus(heroReady?'Загрузка мира затянулась. Повтори загрузку.':'Загрузка Vicki затянулась. Повтори загрузку.');setFailed(true);}},60000);
-  const ready=()=>{if(mineDoorReady&&crossingReady&&terrainReady&&heroReady&&volcano&&eastVolcano&&canyonRidge&&tower&&throne&&summitReady&&wallsReady===ROCK_ASSETS.length&&entrance&&bridge&&bridgeTextureReady&&torchesReady&&!loadError){window.clearTimeout(loadingTimeout);setStatus('Гиннунгагап · Мост к первым вратам.');}else if(!loadError)setStatus(heroReady?'Загрузка окружения Муспельхейма…':'Загрузка Vicki…');};
+  const ready=()=>{if(mineDoorReady&&crossingReady&&terrainReady&&heroReady&&volcano&&eastVolcano&&ashVolcano&&canyonRidge&&tower&&throne&&summitReady&&wallsReady===ROCK_ASSETS.length&&entrance&&bridge&&bridgeTextureReady&&torchesReady&&!loadError){window.clearTimeout(loadingTimeout);setStatus('Гиннунгагап · Мост к первым вратам.');}else if(!loadError)setStatus(heroReady?'Загрузка окружения Муспельхейма…':'Загрузка Vicki…');};
   const bridgeTexture=new THREE.TextureLoader().load(`${BASE}img/${BRIDGE_TEXTURE}`,()=>{if(!alive){bridgeTexture.dispose();return;}bridgeTextureReady=true;ready();},undefined,()=>{if(alive){loadError=true;setStatus('Текстура моста не загрузилась. Повтори загрузку.');setFailed(true);}});
   bridgeTexture.colorSpace=THREE.SRGBColorSpace;bridgeTexture.wrapS=bridgeTexture.wrapT=THREE.RepeatWrapping;bridgeTexture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
   const attachTorches=()=>{if(!entrance||!torchSource||torchesReady)return;entrance.mountTorches(torchSource);torchSource.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});torchSource=undefined;torchesReady=true;ready();};
@@ -99,6 +101,10 @@ export default function Muspelheim3D(props:Props){
    ridgeSource.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material])m.dispose();}});ridgeSource=undefined;ready();
   };
   loader.load(`${BASE}img/models/${CANYON_RIDGE_ASSET}`,g=>{if(!alive){dispose(g.scene);return;}ridgeSource=g.scene;attachRidge();},undefined,()=>{if(alive){loadError=true;setStatus('Хребет в каньоне не загрузился. Повтори загрузку.');setFailed(true);}});
+  loader.load(`${BASE}img/models/${ASH_VOLCANO_ASSET}`,g=>{
+   if(!alive){dispose(g.scene);return;}
+   ashVolcano=createAshVolcano(g.scene);scene.add(ashVolcano.root);ready();
+  },undefined,()=>{if(alive){loadError=true;setStatus('Дымящий вулкан не загрузился. Повтори загрузку.');setFailed(true);}});
   loader.load(`${BASE}img/models/${EAST_VOLCANO_ASSET}`,g=>{
    if(!alive){dispose(g.scene);return;}
    eastVolcano=createEastVolcano(g.scene);scene.add(eastVolcano.root);ready();
@@ -148,7 +154,7 @@ export default function Muspelheim3D(props:Props){
    const length=Math.hypot(x,z);let moving=false,dx=0,dz=0;
    const running=sprint.current||keys.has('ShiftLeft')||keys.has('ShiftRight');
    const speed=running?29:18; 
-   if(!falling&&crossingReady&&length&&terrainReady&&heroReady&&volcano&&eastVolcano&&canyonRidge&&tower&&throne&&summitReady&&entrance&&bridge&&bridgeTextureReady&&torchesReady&&!loadError&&wallsReady===ROCK_ASSETS.length&&!document.hidden&&!paused.current){x/=Math.max(1,length);z/=Math.max(1,length);const world=screenMoveToWorld(x,z,controlYaw.current);x=world.x;z=world.z;const p=moveAlongRockWalls(wallRocks,position.current,clampMuspelheimPosition(position.current.x+x*speed*dt,position.current.z+z*speed*dt),hero.position.y);let next=p;if(blocked(p.x,p.z)){const from=position.current;next=!blocked(p.x,from.z)?{x:p.x,z:from.z}:!blocked(from.x,p.z)?{x:from.x,z:p.z}:from;}const y=heightAt(next.x,next.z);
+   if(!falling&&crossingReady&&length&&terrainReady&&heroReady&&volcano&&eastVolcano&&ashVolcano&&canyonRidge&&tower&&throne&&summitReady&&entrance&&bridge&&bridgeTextureReady&&torchesReady&&!loadError&&wallsReady===ROCK_ASSETS.length&&!document.hidden&&!paused.current){x/=Math.max(1,length);z/=Math.max(1,length);const world=screenMoveToWorld(x,z,controlYaw.current);x=world.x;z=world.z;const p=moveAlongRockWalls(wallRocks,position.current,clampMuspelheimPosition(position.current.x+x*speed*dt,position.current.z+z*speed*dt),hero.position.y);let next=p;if(blocked(p.x,p.z)){const from=position.current;next=!blocked(p.x,from.z)?{x:p.x,z:from.z}:!blocked(from.x,p.z)?{x:from.x,z:p.z}:from;}const y=heightAt(next.x,next.z);
     const inRavine=Math.min(sample?.(position.current.x,position.current.z)??0,sample?.(next.x,next.z)??0)<-1&&next.z<30;
     const step=inRavine?classifyRavineStep(heightAt,position.current,next,isRavineAbyss):'walk';
     if(step==='fall'){position.current=next;falling=true;fallVelocity=0;fallTime=0;clear();setStatus('Vicki сорвалась в пучину…');}
@@ -166,7 +172,7 @@ export default function Muspelheim3D(props:Props){
 keeper.update(clock.elapsedTime);proximityTimer+=dt;if(proximityTimer>.15){proximityTimer=0;setNearMine(mineEntrance.near(p.x,p.z));setNearKeeper(Math.hypot(p.x+308,p.z+368)<24&&hero.position.y>25);}
    if(walk)walk.timeScale=running&&!run?1.6:1;
    const action=moving&&!falling?(running?run??walk:walk):idle;if(action&&action!==current){current?.fadeOut(.18);action.reset().fadeIn(.18).play();current=action;}
-   lava.update(paused.current?0:dt);ravineLava.update(paused.current?0:dt);summit?.update(paused.current?0:dt);mixer?.update(dt);viewYaw.current=updateFollowCamera(follow,dx,dz,dt);
+   ashVolcano?.update(paused.current?0:dt);lava.update(paused.current?0:dt);ravineLava.update(paused.current?0:dt);summit?.update(paused.current?0:dt);mixer?.update(dt);viewYaw.current=updateFollowCamera(follow,dx,dz,dt);
    const mineView=mineApproachCameraAt(p.x,hero.position.y,p.z);
    if(mineView){
     const targetPosition=new THREE.Vector3(mineView.position.x,mineView.position.y,mineView.position.z),targetLook=new THREE.Vector3(mineView.target.x,mineView.target.y,mineView.target.z);
@@ -176,7 +182,7 @@ keeper.update(clock.elapsedTime);proximityTimer+=dt;if(proximityTimer>.15){proxi
     mineCameraActive=false;
    const offset=safeCameraOffset(p.x,p.z,follow.yaw,(x,z)=>(throne?.blocks(x,z,2)??false)||(tower?.blocks(x,z,2)??false)||rockWallBlocks(wallRocks,x,z,2,hero.position.y+20,0)||ravineRockBlocks(ravineRocks,x,hero.position.y+20,z,2)||(entrance?.blocks(x,z,2)??false));
    const cameraFocus={x:p.x,y:hero.position.y+12,z:p.z};
-   const cameraSurface=(x:number,z:number)=>{const base=sample?.(x,z);return base==null?null:Math.max(base,eastVolcano?.floorAt(x,z)??base,canyonRidge?.floorAt(x,z)??base);};
+   const cameraSurface=(x:number,z:number)=>{const base=sample?.(x,z);return base==null?null:Math.max(base,eastVolcano?.floorAt(x,z)??base,ashVolcano?.floorAt(x,z)??base,canyonRidge?.floorAt(x,z)??base);};
    const desiredCamera=terrainSafeCameraPosition(cameraFocus,{x:p.x+offset.x,y:hero.position.y+20,z:p.z+offset.z},cameraSurface);
    if(snapCamera){camera.position.set(desiredCamera.x,desiredCamera.y,desiredCamera.z);lookTarget.set(p.x,hero.position.y+3,p.z-18);snapCamera=false;}
    camera.position.lerp(new THREE.Vector3(desiredCamera.x,desiredCamera.y,desiredCamera.z),1-Math.exp(-4.5*dt));
@@ -212,6 +218,7 @@ keeper.update(clock.elapsedTime);proximityTimer+=dt;if(proximityTimer>.15){proxi
     <path d={`M ${muspelheimMapPoint(0,158).x} ${muspelheimMapPoint(0,158).y} V ${muspelheimMapPoint(0,234).y}`} stroke="#a5a7ad" strokeWidth="5"/>
     <path d={`M ${muspelheimMapPoint(GATEWAY_POSITION.x,GATEWAY_POSITION.z).x-4} ${muspelheimMapPoint(GATEWAY_POSITION.x,GATEWAY_POSITION.z).y} h 8`} stroke="#ff8e35" strokeWidth="4"/>
     <g transform={`translate(${muspelheimMapPoint(VOLCANO_POSITION.x,VOLCANO_POSITION.z).x},${muspelheimMapPoint(VOLCANO_POSITION.x,VOLCANO_POSITION.z).y})`}><path d="M -12 9 L -5 -8 L 5 -8 L 12 9 Z" fill="#6c4c40" stroke="#ee9b58" strokeWidth="1.5"/><path d="M -5 -8 Q 0 -3 5 -8" fill="none" stroke="#ff632c" strokeWidth="2"/><text y="22" textAnchor="middle" fill="#ffe2ac" fontSize="9">Вулкан</text></g>
+    <g transform={`translate(${muspelheimMapPoint(ASH_VOLCANO_POSITION.x,ASH_VOLCANO_POSITION.z).x},${muspelheimMapPoint(ASH_VOLCANO_POSITION.x,ASH_VOLCANO_POSITION.z).y})`}><path d="M -8 6 L -3 -5 L 3 -5 L 8 6 Z" fill="#55505a" stroke="#b18e7b"/><path d="M 0 -5 Q -8 -12 1 -17 Q 8 -21 2 -25" fill="none" stroke="#a69c9e" strokeWidth="4" opacity=".7"/><text y="16" textAnchor="middle" fill="#ffe2ac" fontSize="8">Дымящий вулкан</text></g>
     <g transform={`translate(${muspelheimMapPoint(EAST_VOLCANO_POSITION.x,EAST_VOLCANO_POSITION.z).x},${muspelheimMapPoint(EAST_VOLCANO_POSITION.x,EAST_VOLCANO_POSITION.z).y})`}><path d="M -9 7 L -4 -5 L 4 -5 L 9 7 Z" fill="#414149" stroke="#b18e7b"/><path d="M -4 -5 Q 0 -1 4 -5" fill="none" stroke="#ff702f" strokeWidth="1.5"/><text y="17" textAnchor="middle" fill="#ffe2ac" fontSize="8">Второй вулкан</text></g>
     <g transform={`translate(${muspelheimMapPoint(SURT_TOWER_POSITION.x,SURT_TOWER_POSITION.z).x},${muspelheimMapPoint(SURT_TOWER_POSITION.x,SURT_TOWER_POSITION.z).y})`}><rect x="-5" y="-7" width="10" height="11" fill="#d4c3a1" stroke="#352820"/><text x="9" y="-5" fill="#ffe2ac" fontSize="8">Дом Сурта</text></g>
     <circle cx={muspelheimMapPoint(position.current.x,position.current.z).x} cy={muspelheimMapPoint(position.current.x,position.current.z).y} r="4" fill="#ffd45f"/>
@@ -220,6 +227,7 @@ keeper.update(clock.elapsedTime);proximityTimer+=dt;if(proximityTimer>.15){proxi
    <p style={{fontSize:12}}>Дороги: <a href={COBBLE_CREDIT.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{COBBLE_CREDIT.title} — {COBBLE_CREDIT.author}</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>CC BY 4.0</a>. Извлечены карты материала, сжаты текстуры, добавлен слабый голубой ореол над дорогой.</p>
    <p style={{fontSize:12}}>Вулкан: <a href={VOLCANO_CREDIT.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{VOLCANO_CREDIT.title} — {VOLCANO_CREDIT.author}</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>CC BY 4.0</a>. Упрощена геометрия, сжата текстура; изменены масштаб и положение.</p>
    <p style={{fontSize:12}}>Хребты каньона: <a href={CANYON_RIDGE_CREDIT.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{CANYON_RIDGE_CREDIT.title} — {CANYON_RIDGE_CREDIT.author}</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>CC BY 4.0</a>. Материал преобразован, текстура сжата; добавлены копии с разной высотой и ориентацией, склоны сглажены для ходьбы, основания подогнаны к земле.</p>
+   <p style={{fontSize:12}}>Дымящий вулкан: <a href={ASH_VOLCANO_CREDIT.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{ASH_VOLCANO_CREDIT.title} — {ASH_VOLCANO_CREDIT.author}</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>CC BY 4.0</a>. Упрощена сетка и сжаты текстуры; уменьшен масштаб, основание заглублено, цвет лавы изменён, добавлено движение дыма.</p>
    <p style={{fontSize:12}}>Второй вулкан: <a href={EAST_VOLCANO_CREDIT.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{EAST_VOLCANO_CREDIT.title} — {EAST_VOLCANO_CREDIT.author}</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>CC BY 4.0</a>. Упрощена сетка, сжаты текстуры; изменены масштаб и положение, задний склон расширен к стене, камень затемнён, лава перекрашена в оранжевый.</p>
    <p style={{fontSize:12}}>Дом Сурта: <a href={SURT_TOWER_CREDIT.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{SURT_TOWER_CREDIT.title} — {SURT_TOWER_CREDIT.author}</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>CC BY 4.0</a>. Упрощена сетка, сжаты текстуры; изменены масштаб и положение, башня поднята над склоном вулкана и сдвинута к задней стене.</p>
    <p style={{fontSize:12}}>Трон Сурта: <a href={SURT_THRONE_CREDIT.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{SURT_THRONE_CREDIT.title} — {SURT_THRONE_CREDIT.author}</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>CC BY 4.0</a>. Упрощена сетка, сжаты текстуры; изменены масштаб и положение.</p>
