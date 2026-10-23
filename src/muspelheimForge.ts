@@ -2,7 +2,8 @@ import * as THREE from 'three';
 export const FORGE_ASSET='Muspelheim_Forge.glb';
 export const FORGE_POSITION={x:140,z:50};
 export const FORGE_SCALE=1.3*.85;
-export const FORGE_YAW=-Math.PI*.8;
+export const FORGE_FACING_TARGET={x:0,z:140};
+export const FORGE_YAW=Math.atan2(FORGE_FACING_TARGET.x-FORGE_POSITION.x,FORGE_FACING_TARGET.z-FORGE_POSITION.z);
 const facingCos=Math.cos(FORGE_YAW),facingSin=Math.sin(FORGE_YAW);
 export function forgeWorldPoint(x:number,z:number){return {x:FORGE_POSITION.x+FORGE_SCALE*(facingCos*x+facingSin*z),z:FORGE_POSITION.z+FORGE_SCALE*(-facingSin*x+facingCos*z)};}
 export const FORGE_RETURN=forgeWorldPoint(0,36);
