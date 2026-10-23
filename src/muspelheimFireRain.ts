@@ -43,18 +43,16 @@ export function createFireRainState(floorAt:(x:number,z:number)=>number|null,blo
   }
  }};
 }
-/** Reusable sprites and rings: bounded allocations and no per-projectile lights. */
+/** Reusable sprites and red ground patches: bounded allocations and no per-projectile lights. */
 export function createFireRain(texture:THREE.Texture,floorAt:(x:number,z:number)=>number|null,blocked:(x:number,z:number)=>boolean){
  texture.colorSpace=THREE.SRGBColorSpace;texture.minFilter=texture.magFilter=THREE.LinearFilter;texture.generateMipmaps=false;
  const root=new THREE.Group();root.name='Огненный дождь вулканической башни';const state=createFireRainState(floorAt,blocked);
- const ringGeo=new THREE.RingGeometry(FIRE_RAIN.radius-.45,FIRE_RAIN.radius,48);ringGeo.rotateX(-Math.PI/2);
  const fillGeo=new THREE.CircleGeometry(FIRE_RAIN.radius,48);fillGeo.rotateX(-Math.PI/2);
  const pool=Array.from({length:FIRE_RAIN.pool},()=>{
   const group=new THREE.Group(),map=texture.clone();map.repeat.set(1/7,1/4);
   const fire=new THREE.Sprite(new THREE.SpriteMaterial({map,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,color:'#ffd5a0',toneMapped:false}));fire.scale.set(17,10,1);group.add(fire);
-  const ring=new THREE.Mesh(ringGeo.clone(),new THREE.MeshBasicMaterial({color:'#ff9d3b',transparent:true,opacity:.8,depthWrite:false,side:THREE.DoubleSide,toneMapped:false}));group.add(ring);
   const fill=new THREE.Mesh(fillGeo.clone(),new THREE.MeshBasicMaterial({color:'#ff3b0b',transparent:true,opacity:.12,depthWrite:false,side:THREE.DoubleSide,toneMapped:false}));group.add(fill);
-  group.visible=false;root.add(group);return {group,map,fire,ring,fill,shot:undefined as FireShot|undefined};
+  group.visible=false;root.add(group);return {group,map,fire,fill,shot:undefined as FireShot|undefined};
  });
  let disposed=false;
  return {root,reset:()=>{state.reset();pool.forEach(p=>p.group.visible=false);},update:(dt:number,hero:THREE.Vector3,vent:THREE.Vector3,camera:THREE.Camera,onHit:()=>void)=>{
@@ -63,12 +61,12 @@ export function createFireRain(texture:THREE.Texture,floorAt:(x:number,z:number)
   pool.forEach((p,i)=>{const shot=state.shots[i];p.group.visible=!!shot&&shot.age>=0;if(!shot||shot.age<0)return;
    const t=shot.age/shot.duration,burst=Math.max(0,shot.age-shot.duration)/FIRE_RAIN.burst;
    const frame=Math.floor(Math.max(0,shot.age)*24+shot.seed*28)%28;p.map.offset.set((frame%7)/7,1-(Math.floor(frame/7)+1)/4);
-   if(p.shot!==shot){p.shot=shot;for(const mesh of [p.ring,p.fill]){const pos=mesh.geometry.getAttribute('position');for(let v=0;v<pos.count;v++){const y=floorAt(shot.x+pos.getX(v),shot.z+pos.getZ(v))??shot.y;pos.setY(v,y+.35);}pos.needsUpdate=true;mesh.geometry.computeBoundingSphere();}}
-   p.ring.position.set(shot.x,0,shot.z);p.fill.position.set(shot.x,0,shot.z);
-   p.ring.material.opacity=t<1?.5+.45*Math.pow(t,2):.85*(1-burst);p.fill.material.opacity=t<1?.05+.15*t:.5*(1-burst);
+   if(p.shot!==shot){p.shot=shot;for(const mesh of [p.fill]){const pos=mesh.geometry.getAttribute('position');for(let v=0;v<pos.count;v++){const y=floorAt(shot.x+pos.getX(v),shot.z+pos.getZ(v))??shot.y;pos.setY(v,y+.35);}pos.needsUpdate=true;mesh.geometry.computeBoundingSphere();}}
+   p.fill.position.set(shot.x,0,shot.z);
+   p.fill.material.opacity=t<1?.05+.15*t:.5*(1-burst);
 
    if(t<1){p.fire.position.copy(fireTrajectory(vent,shot,t));const velocity=fireTrajectory(vent,shot,t+.005).sub(p.fire.position);p.fire.material.rotation=Math.atan2(velocity.dot(up),velocity.dot(right));p.fire.scale.set(17,10,1);p.fire.material.opacity=1;}
    else{p.fire.position.set(shot.x,shot.y+3,shot.z);p.fire.scale.setScalar(13+burst*22);p.fire.material.rotation=shot.seed*Math.PI*2;p.fire.material.opacity=1-burst;}
   });
- },dispose:()=>{if(disposed)return;disposed=true;root.removeFromParent();ringGeo.dispose();fillGeo.dispose();pool.forEach(p=>{p.map.dispose();p.ring.geometry.dispose();p.fill.geometry.dispose();p.fire.material.dispose();p.ring.material.dispose();p.fill.material.dispose();});texture.dispose();}};
+ },dispose:()=>{if(disposed)return;disposed=true;root.removeFromParent();fillGeo.dispose();pool.forEach(p=>{p.map.dispose();p.fill.geometry.dispose();p.fire.material.dispose();p.fill.material.dispose();});texture.dispose();}};
 }
