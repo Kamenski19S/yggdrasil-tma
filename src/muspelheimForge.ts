@@ -1,13 +1,17 @@
 import * as THREE from 'three';
 export const FORGE_ASSET='Muspelheim_Forge.glb';
 export const FORGE_POSITION={x:140,z:50};
-export const FORGE_RETURN={x:140,z:86};
+export const FORGE_SCALE=1.3;
+export const FORGE_YAW=-Math.PI*.8;
+const facingCos=Math.cos(FORGE_YAW),facingSin=Math.sin(FORGE_YAW);
+export function forgeWorldPoint(x:number,z:number){return {x:FORGE_POSITION.x+FORGE_SCALE*(facingCos*x+facingSin*z),z:FORGE_POSITION.z+FORGE_SCALE*(-facingSin*x+facingCos*z)};}
+export const FORGE_RETURN=forgeWorldPoint(0,36);
 export const FORGE_CREDIT={title:'Fantasy Building',author:'-X-ScornGames',url:'https://sketchfab.com/3d-models/fantasybuilding-8e0fbb61f9db460f90cceff61db71522'};
 /** The uploaded building has one fused shell. Separate its original wooden leaf. */
 export function createMuspelheimForge(source:THREE.Object3D){
  source.updateWorldMatrix(true,true);
  const bounds=new THREE.Box3().setFromObject(source),center=bounds.getCenter(new THREE.Vector3()),scale=50/(bounds.max.x-bounds.min.x);
- const root=new THREE.Group();root.name='Muspelheim forge';root.position.set(FORGE_POSITION.x,-.6,FORGE_POSITION.z);
+ const root=new THREE.Group();root.name='Muspelheim forge';root.position.set(FORGE_POSITION.x,-.6*FORGE_SCALE,FORGE_POSITION.z);root.scale.setScalar(FORGE_SCALE);root.rotation.y=FORGE_YAW;
  const hinge=new THREE.Group();hinge.name='Original forge door hinge';hinge.position.set(-7.2*1.1,0,17.8*1.1);root.add(hinge);
  let doorTriangles=0;
  source.traverse(o=>{if(!(o instanceof THREE.Mesh))return;
@@ -30,10 +34,10 @@ export function createMuspelheimForge(source:THREE.Object3D){
  // A shallow stone approach covers the raised threshold without a large step.
  const ramp=new THREE.BufferGeometry();ramp.setAttribute('position',new THREE.Float32BufferAttribute([-7,.7,doorZ+10,7,.7,doorZ+10,-7,3,doorZ-1,7,3,doorZ-1],3));ramp.setIndex([0,1,2,2,1,3]);ramp.computeVertexNormals();root.add(new THREE.Mesh(ramp,new THREE.MeshStandardMaterial({color:'#51463e',roughness:1,side:THREE.DoubleSide})));
  let opening=0,requested=false;
- const local=(x:number,z:number)=>({x:x-FORGE_POSITION.x,z:z-FORGE_POSITION.z});
+ const local=(x:number,z:number)=>{const dx=x-FORGE_POSITION.x,dz=z-FORGE_POSITION.z;return {x:(facingCos*dx-facingSin*dz)/FORGE_SCALE,z:(facingSin*dx+facingCos*dz)/FORGE_SCALE};};
  const near=(x:number,z:number)=>{const p=local(x,z);return Math.abs(p.x)<14&&p.z>doorZ-2&&p.z<doorZ+20;};
- const floorAt=(x:number,z:number)=>{const p=local(x,z);return Math.abs(p.x)<=7&&p.z>=doorZ-1&&p.z<=doorZ+10? .1+2.3*THREE.MathUtils.clamp((doorZ+10-p.z)/11,0,1):null;};
- const blocks=(x:number,z:number,padding=2)=>{const p=local(x,z);
+ const floorAt=(x:number,z:number)=>{const p=local(x,z);return Math.abs(p.x)<=7&&p.z>=doorZ-1&&p.z<=doorZ+10? FORGE_SCALE*(.1+2.3*THREE.MathUtils.clamp((doorZ+10-p.z)/11,0,1)):null;};
+ const blocks=(x:number,z:number,padding=2)=>{const p=local(x,z);padding/=FORGE_SCALE;
   if(p.z>doorZ-2&&Math.abs(p.x)<6.8*1.1-padding)return p.z<doorZ+3&&opening<.95;
   return Math.abs(p.x)<26+padding&&p.z>-26-padding&&p.z<25+padding;
  };
