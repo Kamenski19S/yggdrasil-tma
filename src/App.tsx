@@ -86,6 +86,7 @@ export function App() {
   const [craftPicker,setCraftPicker]=useState<'weapon'|'material'|null>(null);
   const forgeTimer = useRef<number>(0);
   const midgardReturn = useRef({x:0,z:28});
+  const muspelheimReturn=useRef<{x:number;z:number}|undefined>(undefined);
   const niflheimReturn=useRef({x:0,z:138});
   const rememberNiflheimPosition=useCallback((position:{x:number;z:number})=>{niflheimReturn.current=position;},[]);
   const [banditRespawnAt,setBanditRespawnAt]=useState<Record<string,number>>({});
@@ -185,7 +186,7 @@ const [roadT, setRoadT] = useState(0.06);
   const enterForge=(position?:{x:number;z:number},realm="midgard")=>{
     if(forgeTransition)return;
     setForgeRealm(realm);setPendingForgeWeapon(null);
-    if(position){if(realm==="niflheim")niflheimReturn.current={...position};else midgardReturn.current={...position};}
+    if(position){if(realm==="muspelheim")muspelheimReturn.current={...position};else if(realm==="niflheim")niflheimReturn.current={...position};else midgardReturn.current={...position};}
     const goldenSwordReady=MIDGARD_GUARDIAN_ORDER.slice(0,-1).every(id=>save.done.includes("guardian:stage:"+id));
     if(realm==="midgard"&&goldenSwordReady&&!save.ownedWeapons.includes("swordGolden")){
       setSave(state=>state.ownedWeapons.includes("swordGolden")?state:{...state,
@@ -268,13 +269,13 @@ const [roadT, setRoadT] = useState(0.06);
     });
     haptic();say((isOn?'Снято: ':'Надето: ')+(forgeItems.find(item=>item.id===id)?.name||id));
   };
-  const forgeLimit=(weaponOrShield:boolean)=>forgeRealm==="niflheim"?(weaponOrShield?20:15):(weaponOrShield?10:5);
+  const forgeLimit=(weaponOrShield:boolean)=>forgeRealm!=="midgard"?(weaponOrShield?20:15):(weaponOrShield?10:5);
   const forgeCost=(id:string)=>save.forgeFreeUsed?2+forgeLevel(id==='shield'?shieldForgeKey(save.shieldAsset):id)*2:0;
   const improveForgeItem=(item:typeof forgeItems[number])=>{
     if(!item.owned){say("Этот предмет ещё нужно получить в награду за испытание.");return;}
     const key=item.id==='shield'?shieldForgeKey(save.shieldAsset):item.id;
     const level=forgeLevel(key);
-    if(level>=forgeLimit(item.kind==='weapon'||item.id==='shield')){say(item.name+' уже достиг максимальной закалки '+(forgeRealm==="niflheim"?"Нифльхейма":"Мидгарда")+'.');return;}
+    if(level>=forgeLimit(item.kind==='weapon'||item.id==='shield')){say(item.name+' уже достиг максимальной закалки '+(forgeRealm==="muspelheim"?"Муспельхейма":forgeRealm==="niflheim"?"Нифльхейма":"Мидгарда")+'.');return;}
     const ashCost=forgeAshCost(item.kind==="weapon"||item.id==="shield",level,!save.forgeFreeUsed);
     if(save.stock.ashWood<ashCost){say("Для закалки от +5 нужна ясеневая древесина ×1.");return;}
     const cost=forgeCost(item.id);
@@ -593,7 +594,7 @@ const [roadT, setRoadT] = useState(0.06);
         {screen.t === "gift" && <div className="title">🎁 Дар</div>}
         {screen.t === "hall" && <div className="title">🏛️ Чертог</div>}
         {screen.t === "craft" && <button className="back" onClick={() => go({ t: "hall" })}>← Чертог · Крафт</button>}
-        {screen.t === "forge" && <button className="back" onClick={() => go({ t: "realm", id:forgeRealm })}>← {forgeRealm==="niflheim"?"Нифльхейм":"Мидгард"} · Кузница</button>}
+        {screen.t === "forge" && <button className="back" onClick={() => go({ t: "realm", id:forgeRealm })}>← {forgeRealm==="muspelheim"?"Муспельхейм":forgeRealm==="niflheim"?"Нифльхейм":"Мидгард"} · Кузница</button>}
         {screen.t === "trial" && <div className="title">🗝 Испытание</div>}
         {screen.t === "fight" && <div className="title">⚔ Бой</div>}
         <div className="sparks"><SparkDrop/> {screen.t==="mill"?<>{save.immortalityDrops} Капель бессмертия</>:<>{save.immortalityDrops} Капель бессмертия</>}</div>
@@ -649,7 +650,7 @@ const [roadT, setRoadT] = useState(0.06);
       {screen.t === "realm" && (() => {
   const realm = REALMS.find(r => r.id === screen.id)!;
 
-  if(realm.id==='muspelheim'){const crystal=waterCrystalProgress(save.done);return <React.Suspense fallback={<div className="content">Дорога в Муспельхейм открывается…</div>}><Muspelheim3D questDone={save.done} fireGold={save.lootCounts[FIRE_GOLD]||0} onMineEvent={(event:MineEvent)=>setSave(s=>applyMineEvent(s,event))} combatStats={currentCombat()} fieldHp={save.fieldHp} onFieldHpChange={hp=>setSave(s=>({...s,fieldHp:hp}))} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")} gateOpen={crystal.gateOpen} canOpenGate={crystal.canOpenGate} assembled={crystal.assembled} briefed={crystal.strangerBriefed} onInstallCrystal={()=>{setSave(s=>applyCrystalEvent(s,'openGate'));haptic('success');say('Кристалл установлен. Первые врата Муспельхейма открыты!');}} onTrial={()=>openGate(realm)}/></React.Suspense>;}
+  if(realm.id==='muspelheim'){const crystal=waterCrystalProgress(save.done);return <React.Suspense fallback={<div className="content">Дорога в Муспельхейм открывается…</div>}><Muspelheim3D startPosition={muspelheimReturn.current} onForge={position=>enterForge(position,"muspelheim")} questDone={save.done} fireGold={save.lootCounts[FIRE_GOLD]||0} onMineEvent={(event:MineEvent)=>setSave(s=>applyMineEvent(s,event))} combatStats={currentCombat()} fieldHp={save.fieldHp} onFieldHpChange={hp=>setSave(s=>({...s,fieldHp:hp}))} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")} gateOpen={crystal.gateOpen} canOpenGate={crystal.canOpenGate} assembled={crystal.assembled} briefed={crystal.strangerBriefed} onInstallCrystal={()=>{setSave(s=>applyCrystalEvent(s,'openGate'));haptic('success');say('Кристалл установлен. Первые врата Муспельхейма открыты!');}} onTrial={()=>openGate(realm)}/></React.Suspense>;}
 
   if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D sealWallet={{drops:save.immortalityDrops,steel:save.runeSteel}} onSealEvent={(event:NiflheimSealEvent)=>setSave(s=>applyNiflheimSealEvent(s,event))} onAmuletEvent={event=>setSave(s=>applyAmuletEvent(s,event))} onCrystalEvent={event=>setSave(s=>applyCrystalEvent(s,event))} combatStats={currentCombat()} onPotionBoostUsed={consumePotionBoost} onFrostGuardHit={()=>setSave(s=>({...s,frostGuard:Math.max(0,s.frostGuard-1)}))} questDone={save.done} onMemoryEvent={event=>setSave(s=>applyMemoryEvent(s,event))} onDragonEvent={(event:DragonEvent)=>setSave(s=>applyDragonQuestEvent(s,event))} onLiberationEvent={(event:LiberationEvent)=>setSave(s=>applyLiberationEvent(s,event))} onFieldHpChange={hp=>setSave(s=>({...s,fieldHp:hp}))} useBattlePotion={useInventoryPotion} locationCooldowns={save.locationCooldowns} onEnterUnderground={position=>{niflheimReturn.current={...position};go({t:"underground"});}} initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")} onOpenMill={()=>{setMillRealm("niflheim");go({t:"mill"});}} inventory={{potions:save.potions,runes:save.runes,equippedRune:save.equippedRune,lootCounts:save.lootCounts,runeLevels:save.forgeLevels,hp:Math.min(currentCombat().maxHp,save.fieldHp??currentCombat().maxHp),maxHp:currentCombat().maxHp,frostGuard:save.frostGuard,potionBoosts:save.potionBoosts,onUsePotion:useInventoryPotion,onEquipRune:equipInventoryRune,onFuseRune:fuseInventoryRune}} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")}/></React.Suspense>;
 
@@ -1246,7 +1247,7 @@ const [roadT, setRoadT] = useState(0.06);
         };
         return <div key="forge" className="scroll forge-screen" ref={element=>{if(element&&!element.dataset.forgeEntered){element.scrollTop=0;element.dataset.forgeEntered='yes';}}}>
           <div className="forge-head">
-            <div className="forge-title">{forgeRealm==="niflheim"?"Кузница хранителей":"Кузница Вёлунда"}</div>
+            <div className="forge-title">{forgeRealm==="muspelheim"?"Кузница Муспельхейма":forgeRealm==="niflheim"?"Кузница хранителей":"Кузница Вёлунда"}</div>
             <div className="forge-master">«Сталь помнит каждый бой. Отдай её огню — и она вернётся сильнее».</div>
             <div className="forge-advice"><b>Совет:</b> выбери оружие или щит на стене. Их предел закалки +{forgeLimit(true)}; броня, шлем и сапоги — до +{forgeLimit(false)}. Для оружия и щитов начиная с +5 дополнительно нужна ясеневая древесина ×1. В запасе: {save.stock.ashWood}.</div>
             <div className="forge-wallet"><span>Запас:</span><b><SparkDrop/> {save.immortalityDrops}</b><span>Капель бессмертия</span></div>
@@ -1254,9 +1255,9 @@ const [roadT, setRoadT] = useState(0.06);
           <div className={"forge-free"+(!save.forgeFreeUsed?" ready":"")}>{save.forgeFreeUsed
             ? "Следующая закалка оплачивается Каплями бессмертия. Цена растёт вместе с уровнем предмета."
             : "Дар кузнеца: первое улучшение любого доступного предмета бесплатно."}</div>
-          <div className="forge-group-title">{forgeRealm==="niflheim"?"Оружие для Нифльхейма":"Стена оружия Вёлунда"}</div>
+          <div className="forge-group-title">{forgeRealm==="muspelheim"?"Оружейная стена":forgeRealm==="niflheim"?"Оружие для Нифльхейма":"Стена оружия Вёлунда"}</div>
           {forgeRealm==="niflheim"&&<div className="forge-note">Оружие Мидгарда остаётся доступным. Новые клинки и секиры куются по рецептам хранителей. Для победы над Нидхёггом потребуется особое преобразование золотого меча.</div>}
-          <ForgeWeaponWall niflheim={forgeRealm==="niflheim"} owned={save.ownedWeapons} ownedShields={save.ownedShields} selected={pendingForgeWeapon||save.heroWeapon} selectedShield={equipped('shield')?save.shieldAsset:null} onChoose={chooseForgeWeapon}/>
+          <ForgeWeaponWall niflheim={forgeRealm!=="midgard"} owned={save.ownedWeapons} ownedShields={save.ownedShields} selected={pendingForgeWeapon||save.heroWeapon} selectedShield={equipped('shield')?save.shieldAsset:null} onChoose={chooseForgeWeapon}/>
           {pendingForgeWeapon&&pendingForgeWeapon!==save.heroWeapon&&<div className="forge-note" style={{padding:12,border:'1px solid #c69c53',margin:'8px 0'}}>
             Выбрано для осмотра: <b>{FORGE_WEAPON_MODELS.find(item=>item[2]===pendingForgeWeapon)?.[1]}</b>. Текущее оружие остаётся в руке до подтверждения.
             <div style={{display:'flex',gap:8,marginTop:10}}>
@@ -1301,7 +1302,7 @@ const [roadT, setRoadT] = useState(0.06);
           <div className="forge-group-title">Экипировка</div>
           <div className="forge-grid">{gear.map(forgeButton)}</div>
                     <div className="forge-note"><b>Закалка действует в бою.</b> Оружие усиливает обычный удар; броня и шлем добавляют здоровье и снижают урон; щит крепче держит защиту; улучшенные сапоги помогают быстрее восстановить энергию.</div>
-          <button className="forge-exit" onClick={()=>{haptic();go({t:"realm",id:forgeRealm});}}>🔥 Открыть дверь и вернуться в {forgeRealm==="niflheim"?"Нифльхейм":"Мидгард"}</button>
+          <button className="forge-exit" onClick={()=>{haptic();go({t:"realm",id:forgeRealm});}}>🔥 Открыть дверь и вернуться в {forgeRealm==="muspelheim"?"Муспельхейм":forgeRealm==="niflheim"?"Нифльхейм":"Мидгард"}</button>
         </div>;
       })()}
 
