@@ -1,16 +1,16 @@
 import * as THREE from 'three';
 import {createMeshHeightSampler} from './muspelheimSurface';
 export const ARMY_TOWER_ASSET='Muspelheim_Surt_Army_Tower.glb';
-export const ARMY_TOWER_POSITION={x:300,z:-65};
+export const ARMY_TOWER_POSITION={x:300,z:-110};
 export const ARMY_TOWER_HEIGHT=100;
-export const ARMY_TOWER_YAW=-Math.PI/5;
+export const ARMY_TOWER_YAW=0;
 export const ARMY_TOWER_CREDIT={title:'Steps to erewhon',author:'local.yany',url:'https://sketchfab.com/3d-models/steps-to-erewhon-d454558505bf485f877dfae1fc9b5817'};
-/** The staircase faces the entrance plaza; leave the surrounding plain for Surt's soldiers. */
+/** The commander's residence sits inside the rear court, with its staircase facing the parade ground. */
 export function createArmyTower(model:THREE.Object3D,groundY=0){
  model.updateWorldMatrix(true,true);const original=new THREE.Box3().setFromObject(model),center=original.getCenter(new THREE.Vector3()),scale=ARMY_TOWER_HEIGHT/(original.max.y-original.min.y);
  const offset=new THREE.Group();offset.position.set(-center.x,-original.min.y,-center.z);offset.add(model);
  const fit=new THREE.Group();fit.scale.setScalar(scale);fit.add(offset);
- const root=new THREE.Group();root.name='Башня войска Сурта';root.position.set(ARMY_TOWER_POSITION.x,groundY-2.8,ARMY_TOWER_POSITION.z);root.rotation.y=ARMY_TOWER_YAW;root.add(fit);root.updateWorldMatrix(true,true);
+ const root=new THREE.Group();root.name='Резиденция Владыки Пепельного легиона';root.position.set(ARMY_TOWER_POSITION.x,groundY-2.8,ARMY_TOWER_POSITION.z);root.rotation.y=ARMY_TOWER_YAW;root.add(fit);root.updateWorldMatrix(true,true);
  const leaves:THREE.Object3D[]=[];model.traverse(o=>{if(/^steDoor0[12]$/.test(o.name))leaves.push(o);if(o instanceof THREE.Mesh){o.receiveShadow=true;for(const m of Array.isArray(o.material)?o.material:[o.material])if(m instanceof THREE.MeshStandardMaterial){m.metalness=0;m.roughness=.96;m.color.set('#b2aaa4');}}});
  const floorVertices:number[]=[],points=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()],normal=new THREE.Vector3(),edge=new THREE.Vector3();
  type Triangle={v:THREE.Vector3[];low:number;high:number};const cells=new Map<string,Triangle[]>(),cellSize=5;

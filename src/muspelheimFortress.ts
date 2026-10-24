@@ -1,20 +1,25 @@
 import * as THREE from 'three';
 import {createMeshHeightSampler} from './muspelheimSurface';
 export const FORTRESS_ASSET='Muspelheim_Ancient_Fortress.glb';
-export const FORTRESS_POSITION={x:155,z:-195};
+export const FORTRESS_POSITION={x:240,z:-107.5};
+export const FORTRESS_SIZE={width:300,depth:185};
 export const FORTRESS_CREDIT={title:'Ancient Fortress Asset Pack - Part 2',author:'EqualizerX',url:'https://sketchfab.com/3d-models/ancient-fortress-asset-pack-part-2-43cab28dea5a47f69f8e30640cb9dd50'};
-export const FORTRESS_LAYOUT=[
- {part:'Gateway-Main_',x:0,z:44,scale:2.7,yaw:0},
- {part:'Gateway-Main_',x:0,z:-44,scale:2.7,yaw:Math.PI},
- {part:'Gateway-Main_',x:66,z:0,scale:2.7,yaw:Math.PI/2},
- ...[-1,1].flatMap(side=>[-1,1].map(end=>({part:'Wall-Type02_',x:side*48,z:end*44,scale:3.1,yaw:end>0?0:Math.PI}))),
- {part:'Wall-Type02_',x:-66,z:-20,scale:3.1,yaw:-Math.PI/2},
- {part:'Wall-Type02WithStairs_',x:-66,z:20,scale:3.1,yaw:-Math.PI/2},
- ...[-1,1].flatMap(side=>[-1,1].map(end=>({part:end>0?'WatchTowerBastion01-Large_':'WatchTowerBastion02-Large_',x:side*66,z:end*44,scale:end>0?2:2.2,yaw:side*end>0?0:Math.PI}))),
+export const FORTRESS_GATES=[
+ {x:0,z:92.5,yaw:0},
+ {x:-150,z:0,yaw:-Math.PI/2},
+ {x:150,z:0,yaw:Math.PI/2},
 ];
-/** Assemble the modular kit as a courtyard fortress, rather than its labelled display layout. */
+export const FORTRESS_LAYOUT=[
+ ...FORTRESS_GATES.map(gate=>({part:'Gateway-Main_',...gate,scale:2.7})),
+ // Repeated sections extend the perimeter without stretching the stonework.
+ ...[-1,1].flatMap(side=>[52,88,124].map(distance=>({part:'Wall-Type02_',x:side*distance,z:92.5,scale:3.1,yaw:0}))),
+ ...[-133,-95,-57,-19,19,57,95,133].map(x=>({part:'Wall-Type02_',x,z:-92.5,scale:3.1,yaw:Math.PI})),
+ ...[-1,1].flatMap(side=>[-80,-48,48,80].map(z=>({part:side<0&&z===48?'Wall-Type02WithStairs_':'Wall-Type02_',x:side*150,z,scale:3.1,yaw:side*Math.PI/2}))),
+ ...[-1,1].flatMap(side=>[-1,1].map(end=>({part:end>0?'WatchTowerBastion01-Large_':'WatchTowerBastion02-Large_',x:side*150,z:end*92.5,scale:end>0?2:2.2,yaw:side*end>0?0:Math.PI}))),
+];
+/** Assemble the modular kit as the fortified domain of the Ash Legion. */
 export function createMuspelheimFortress(source:THREE.Object3D){
- source.updateWorldMatrix(true,true);const templates=new Map<string,THREE.Mesh>(),root=new THREE.Group();root.name='Древняя крепость Сурта';root.position.set(FORTRESS_POSITION.x,-.6,FORTRESS_POSITION.z);
+ source.updateWorldMatrix(true,true);const templates=new Map<string,THREE.Mesh>(),root=new THREE.Group();root.name='Крепость Пепельного легиона';root.position.set(FORTRESS_POSITION.x,-.6,FORTRESS_POSITION.z);
  source.traverse(o=>{if(o instanceof THREE.Mesh)templates.set(o.name,o);});
  const find=(prefix:string)=>[...templates.values()].find(o=>o.name.startsWith(prefix));
  const normalWall=find('Wall-Type02_');if(!normalWall)throw Error('Fortress wall is missing');const wallDepth=new THREE.Box3().setFromObject(normalWall).getSize(new THREE.Vector3()).z;
@@ -24,7 +29,7 @@ export function createMuspelheimFortress(source:THREE.Object3D){
   const old=(Array.isArray(original.material)?original.material[0]:original.material) as THREE.MeshStandardMaterial,material=old.clone();material.color.set('#9b9692');material.roughness=1;material.metalness=0;material.side=THREE.DoubleSide;if(material.map)material.map.anisotropy=4;
   const mesh=new THREE.Mesh(geometry,material);mesh.name=placement.part;mesh.position.set(placement.x,0,placement.z);mesh.rotation.y=placement.yaw;mesh.scale.setScalar(placement.scale);mesh.receiveShadow=true;root.add(mesh);
  }
- const pavingGeometry=new THREE.PlaneGeometry(112,68);pavingGeometry.rotateX(-Math.PI/2);pavingGeometry.setAttribute('uv',new THREE.Float32BufferAttribute([0,3.4,5.6,3.4,0,0,5.6,0],2));const pavingMaterial=new THREE.MeshStandardMaterial({color:'#ffffff',roughness:1});const paving=new THREE.Mesh(pavingGeometry,pavingMaterial);paving.name='Fortress stone courtyard';paving.position.y=.68;root.add(paving);
+ const pavingGeometry=new THREE.PlaneGeometry(258,136);pavingGeometry.rotateX(-Math.PI/2);pavingGeometry.setAttribute('uv',new THREE.Float32BufferAttribute([0,6.8,12.9,6.8,0,0,12.9,0],2));const pavingMaterial=new THREE.MeshStandardMaterial({color:'#ffffff',roughness:1});const paving=new THREE.Mesh(pavingGeometry,pavingMaterial);paving.name='Fortress stone courtyard';paving.position.y=.68;root.add(paving);
  root.updateWorldMatrix(true,true);
  type Triangle={v:THREE.Vector3[];lo:number;hi:number};const cells=new Map<string,Triangle[]>(),vertices:number[]=[],v=[new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3()],a=new THREE.Vector3(),b=new THREE.Vector3(),normal=new THREE.Vector3();
  root.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const p=o.geometry.getAttribute('position'),ids=o.geometry.index,count=ids?.count??p.count;
