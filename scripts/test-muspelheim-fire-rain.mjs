@@ -26,10 +26,11 @@ assert.equal(fireStrikeDamage(100),18);assert.equal(fireStrikeDamage(500),90);as
 // is independent of arbitrarily high equipped armor/shield values.
 assert(fireHits({x:150,z:-70,y:hero.y},hero));assert(!fireHits({x:150,z:-70,y:hero.y},{...hero,x:160}));assert(!fireHits({x:150,z:-70,y:hero.y},{...hero,y:hero.y+10}));
 const vent=new T.Vector3(0,112,-174.375),shot={x:200,z:50,y:0};assert(fireTrajectory(vent,shot,0).distanceTo(vent)<1e-5);assert.equal(fireTrajectory(vent,shot,1).y,2);assert(fireTrajectory(vent,shot,.5).y>vent.y);
-// Rendering adapter: projected warnings follow uneven ground and stop on pause.
+// Rendering adapter: visible fire remains, with no meshes or ground warnings.
 const fx=createFireRain(new T.Texture(),floor,()=>false),camera=new T.PerspectiveCamera();camera.position.set(150,25,-30);camera.lookAt(150,0,-70);camera.updateMatrixWorld();
 for(let i=0;i<165;i++)fx.update(.05,new T.Vector3(hero.x,hero.y,hero.z),vent,camera,()=>{});
 const visible=fx.root.children.filter(p=>p.visible);assert(visible.length>0);
-for(const p of visible){const ring=p.children[1],a=ring.geometry.attributes.position;for(let i=0;i<a.count;i++)assert(Math.abs(a.getY(i)-floor(ring.position.x+a.getX(i),ring.position.z+a.getZ(i))-.35)<.001);}
+for(const p of fx.root.children){assert.equal(p.children.length,1);assert(p.children[0].isSprite,'Only flight/impact sprites; no landing markers');}
+const positions=visible.map(p=>p.children[0].position.toArray());fx.update(0,new T.Vector3(hero.x,hero.y,hero.z),vent,camera,()=>assert.fail('Paused hit'));assert.deepEqual(visible.map(p=>p.children[0].position.toArray()),positions);
 fx.reset();assert(fx.root.children.every(p=>!p.visible));fx.dispose();fx.dispose();
 console.log('Fire rain passed',{impacts,maxShots,regions:[...regions],armorPiercingDamage:fireStrikeDamage(500)});
