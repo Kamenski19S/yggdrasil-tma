@@ -6,12 +6,13 @@ export const SHADOW_ASSASSIN_POSITION={x:YMIR_PILLAR_POSITION.x+24,z:YMIR_PILLAR
 export const SHADOW_ASSASSIN_HEIGHT=14.5;
 export const SHADOW_ASSASSIN_CREDIT={title:'Faceless Shadow Assassin',author:'Pigcraft',url:'https://sketchfab.com/3d-models/faceless-shadow-assassin-c3fe097c89d0427e84152c0ad0f636cf'};
 /** Rigged hostile actor; navigation is supplied by the actual world collision/floor samplers. */
-export function createShadowAssassin(model:THREE.Object3D,animations:THREE.AnimationClip[],groundY=0,clock=Date.now){
- model.updateWorldMatrix(true,true);const box=new THREE.Box3().setFromObject(model),scale=SHADOW_ASSASSIN_HEIGHT/(box.max.y-box.min.y);
+export function createShadowAssassin(model:THREE.Object3D,animations:THREE.AnimationClip[],groundY=0,clock=Date.now,options:{position?:{x:number;z:number};height?:number;name?:string;cooldownKey?:string}={}){
+ const at=options.position??SHADOW_ASSASSIN_POSITION,height=options.height??SHADOW_ASSASSIN_HEIGHT,name=options.name??'Теневой ассасин';
+ model.updateWorldMatrix(true,true);const box=new THREE.Box3().setFromObject(model),scale=height/(box.max.y-box.min.y);
  const fit=new THREE.Group();fit.scale.setScalar(scale);model.position.y-=box.min.y;fit.add(model);
- const root=new THREE.Group();root.name='Теневой ассасин у памяти Имира';root.position.set(SHADOW_ASSASSIN_POSITION.x,groundY,SHADOW_ASSASSIN_POSITION.z);root.rotation.y=Math.atan2(-SHADOW_ASSASSIN_POSITION.x,140-SHADOW_ASSASSIN_POSITION.z);root.add(fit);
+ const root=new THREE.Group();root.name=name;root.position.set(at.x,groundY,at.z);root.rotation.y=Math.atan2(-at.x,140-at.z);root.add(fit);
  const skeletons=new Set<THREE.Skeleton>();model.traverse(o=>{if(o instanceof THREE.SkinnedMesh){o.frustumCulled=false;skeletons.add(o.skeleton);}if(o instanceof THREE.Mesh){o.receiveShadow=true;for(const m of Array.isArray(o.material)?o.material:[o.material])if(m instanceof THREE.MeshStandardMaterial){m.roughness=.9;if(m.map)m.map.anisotropy=4;}}});
- const cooldownKey='yggdrasil:muspelheim:assassin:defeatedAt';let savedDefeat:number|undefined;
+ const cooldownKey=options.cooldownKey??'yggdrasil:muspelheim:assassin:defeatedAt';let savedDefeat:number|undefined;
  try{const raw=localStorage.getItem(cooldownKey),value=raw===null?NaN:Number(raw);if(Number.isFinite(value)&&value<=clock())savedDefeat=value;}catch{}
  const mixer=new THREE.AnimationMixer(model),combat=createAssassinCombat({x:root.position.x,y:groundY,z:root.position.z},{now:clock,defeatedAt:savedDefeat,onDefeated:at=>{try{if(at===null)localStorage.removeItem(cooldownKey);else localStorage.setItem(cooldownKey,String(at));}catch{}}});
  const clip=(name:string)=>{const c=THREE.AnimationClip.findByName(animations,name);if(!c)throw Error('Missing assassin animation: '+name);return c;};
@@ -19,8 +20,8 @@ export function createShadowAssassin(model:THREE.Object3D,animations:THREE.Anima
  const colors=new Map<THREE.MeshStandardMaterial,THREE.Color>();model.traverse(o=>{if(o instanceof THREE.Mesh)for(const m of Array.isArray(o.material)?o.material:[o.material])if(m instanceof THREE.MeshStandardMaterial)colors.set(m,m.emissive.clone());});
  const play=(name:keyof typeof clips)=>{const action=mixer.clipAction(clips[name]);if(action===current)return;current?.fadeOut(.12);action.reset().setLoop(name==='attack'||name==='dead'?THREE.LoopOnce:THREE.LoopRepeat,name==='attack'||name==='dead'?1:Infinity);action.clampWhenFinished=name==='attack'||name==='dead';action.fadeIn(.12).play();current=action;};
  play('idle');root.visible=!combat.hidden;mixer.update(0);root.updateWorldMatrix(true,true);
- const blocks=(x:number,z:number,footY:number,padding=2)=>combat.phase!=='dead'&&footY<root.position.y+SHADOW_ASSASSIN_HEIGHT&&footY+14>root.position.y&&Math.hypot(x-root.position.x,z-root.position.z)<2.1+padding;
- return {root,mixer,combat,blocks,
+ const blocks=(x:number,z:number,footY:number,padding=2)=>combat.phase!=='dead'&&footY<root.position.y+height&&footY+14>root.position.y&&Math.hypot(x-root.position.x,z-root.position.z)<2.1+padding;
+ return {root,mixer,combat,blocks,name,
   hurt(damage:number){const hit=combat.hurt(damage);if(hit)flash=.2;return hit;},
   reset(){if(combat.phase==='dead')return;combat.reset();root.visible=true;root.position.set(combat.position.x,combat.position.y,combat.position.z);play('idle');},
   update(dt:number,hero?:AssassinPoint,available=true,floor:(x:number,z:number,y:number)=>number|null=()=>groundY,contact?:()=>boolean){
