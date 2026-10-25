@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {makeBasaltWall,type WallRock} from './muspelheimRockWalls';
-/** Sparse landmarks: seven on the upper plain and three along the canyon flanks. */
+/** Sparse landmarks: ten on the upper plain and four along the canyon flanks. */
 export const BASALT_PEAK_SITES=[
  {kind:0,x:-230,z:45,width:18,depth:16,height:36,yaw:.4,canyon:false},
  {kind:1,x:325,z:55,width:24,depth:19,height:70,yaw:-.7,canyon:false},
@@ -12,6 +12,10 @@ export const BASALT_PEAK_SITES=[
  {kind:1,x:-220,z:-172,width:16,depth:14,height:110,yaw:.6,canyon:true},
  {kind:0,x:-40,z:-290,width:20,depth:17,height:250,yaw:1.5,canyon:true},
  {kind:2,x:-95,z:-390,width:14,depth:13,height:75,yaw:-.5,canyon:true},
+ {kind:2,x:-25,z:65,width:18,depth:16,height:58,yaw:.25,canyon:false},
+ {kind:0,x:40,z:-40,width:22,depth:18,height:135,yaw:-.55,canyon:false},
+ {kind:1,x:-60,z:-75,width:20,depth:18,height:90,yaw:.7,canyon:false},
+ {kind:2,x:-140,z:-210,width:16,depth:14,height:160,yaw:-.4,canyon:true},
 ] as const;
 export function basaltPeakLayout(floor:(x:number,z:number)=>number|null):WallRock[]{
  return BASALT_PEAK_SITES.map(site=>{

@@ -252,13 +252,14 @@ keeper.update(clock.elapsedTime);proximityTimer+=dt;if(proximityTimer>.15){proxi
     const to=shadowAssassin.root.position.clone().sub(hero.position),facing=new THREE.Vector3(Math.sin(hero.rotation.y),0,Math.cos(hero.rotation.y));
     if(to.normalize().dot(facing)>.25&&shadowAssassin.combat.hp>0){
      const damage=artifactCombat.weaponHit(live.current.combatStats.artifactId,live.current.combatStats.attack);
-     if(shadowAssassin.hurt(damage))setStatus(shadowAssassin.combat.hp?`Удар по ассасину: −${damage} здоровья.`:'Теневой ассасин повержен.');
+     if(shadowAssassin.hurt(damage))setStatus(shadowAssassin.combat.hp?`Удар по ассасину: −${damage} здоровья.`:'Теневой ассасин повержен. Возродится через две минуты.');
     }
    }
    nornsWell?.update(clock.elapsedTime,paused.current?0:dt,p.x,p.z);
    const assassinEvent=shadowAssassin?.update(combatActive?dt:0,hero.position,!iceSanctuaryContains(p.x,p.z)&&!(nornsWell?.shelters(p.x,p.z,hero.position.y)??false),(x,z,y)=>{
     if(blocked(x,z,y,false)||isRavineAbyss(x,z))return null;return heightAt(x,z);
    },clearAssassinContact);
+   if(assassinEvent?.respawned){artifactCombat.reset();if(shadowAssassin&&hero.position.distanceTo(shadowAssassin.root.position)<60)setStatus('Теневой ассасин возродился и снова готов к бою.');}
    if(assassinEvent?.impact&&life.current>0){
     const guarded=live.current.shieldEquipped&&!!heroActions?.guarding,damage=incomingCombatDamage(ASSASSIN_COMBAT.attack,live.current.combatStats,guarded);
     life.current=artifactCombat.survive(live.current.combatStats.artifactId,Math.max(0,life.current-damage),live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);
@@ -389,7 +390,7 @@ keeper.update(clock.elapsedTime);proximityTimer+=dt;if(proximityTimer>.15){proxi
    <p style={{fontSize:12}}>Факелы: <a href={TORCH_CREDIT.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{TORCH_CREDIT.title} — {TORCH_CREDIT.author}</a>. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>CC BY 4.0</a>. Сжаты текстуры с сохранением прозрачности пламени, уменьшен масштаб, добавлены крепления к колоннам, мерцание и сияние.</p>
    <p style={{fontSize:12}}>Подвесной мост: <a href={RAVINE_BRIDGE_CREDIT.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{RAVINE_BRIDGE_CREDIT.title} — {RAVINE_BRIDGE_CREDIT.author}</a>. CC BY 4.0. Убраны верхние канаты и стойки, сжаты текстуры, изменены пропорции; повреждённый настил сохранён.</p>
    <p style={{fontSize:12}}>Мост: <a href={BRIDGE_CREDIT.url} target="_blank" rel="noopener noreferrer" style={{color:'#ffda85'}}>{BRIDGE_CREDIT.title} — {BRIDGE_CREDIT.author}</a>. CC BY 4.0. Упрощён, сжаты текстуры, изменены пропорции, добавлена готическая каменная текстура, созданная для Yggdrasil.</p>
-   <p style={{fontSize:11}}>Изменения: добавлены десять каменных пиков из трёх моделей скал с разной высотой, сужением к вершине и слоистой базальтовой текстурой; основания заглублены. Упрощена геометрия, сжаты текстуры, материал приведён к тёмному базальту, мох обесцвечен и затемнён; изменены масштаб и размещение.</p><button className="muspelheim-btn" onClick={()=>setMapOpen(false)}>Закрыть карту</button></div></div>}
+   <p style={{fontSize:11}}>Изменения: добавлены четырнадцать каменных пиков из трёх моделей скал с разной высотой, сужением к вершине и слоистой базальтовой текстурой; основания заглублены. Упрощена геометрия, сжаты текстуры, материал приведён к тёмному базальту, мох обесцвечен и затемнён; изменены масштаб и размещение.</p><button className="muspelheim-btn" onClick={()=>setMapOpen(false)}>Закрыть карту</button></div></div>}
   <button hidden={modal} className="muspelheim-btn muspelheim-sprint" style={{position:'absolute',bottom:66,right:18,touchAction:'none'}} aria-label="Удерживать для бега" onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);sprint.current=true;}} onPointerUp={()=>{sprint.current=false;}} onPointerCancel={()=>{sprint.current=false;}} onLostPointerCapture={()=>{sprint.current=false;}}>Бег ⚡</button>
   {nearForge&&!modal&&<button className="muspelheim-btn primary" style={{position:'absolute',bottom:52,left:150,right:12}} onClick={()=>{stop();openForge.current();}}>Войти в кузницу</button>}
   {nearStranger&&!modal&&<button className="muspelheim-btn primary" style={{position:'absolute',bottom:52,left:150,right:12}} onClick={()=>{stop();openWell.current();}}>Поговорить со Странницей</button>}
