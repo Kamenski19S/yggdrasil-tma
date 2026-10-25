@@ -1,3 +1,4 @@
+import {surtPassPitDepth} from './muspelheimSurtPassLayout';
 import * as THREE from 'three';
 import type {WallRock} from './muspelheimRockWalls';
 import {SURT_RAVINE_LINE,SURT_RAVINE_DEPTH} from './muspelheimSurtRavine';
@@ -24,7 +25,7 @@ export function ravineFrame(x:number,z:number){
 }
 export function ravinePitDepth(x:number,z:number){
  const f=ravineFrame(x,z),cross=1-THREE.MathUtils.smoothstep(f.distance,40,55);
- return -RAVINE_PIT_EXTRA_DEPTH*cross*Math.max(...RAVINE_CROSSINGS.map(p=>1-THREE.MathUtils.smoothstep(Math.abs(f.station-p.station),27,38)));
+ return surtPassPitDepth(x,z)-RAVINE_PIT_EXTRA_DEPTH*cross*Math.max(...RAVINE_CROSSINGS.map(p=>1-THREE.MathUtils.smoothstep(Math.abs(f.station-p.station),27,38)));
 }
 export function bridgeLocal(p:typeof RAVINE_CROSSINGS[number],x:number,z:number){const dx=x-p.x,dz=z-p.z;return {along:dx*p.tx+dz*p.tz,across:-dx*p.tz+dz*p.tx};}
 export function ravineBridgeHeight(along:number){return -SURT_RAVINE_DEPTH+.04-3.2*(1-THREE.MathUtils.smoothstep(Math.abs(along),0,42));}

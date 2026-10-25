@@ -1,3 +1,4 @@
+import {surtPassRidgeProtection} from './muspelheimSurtPassLayout';
 import * as THREE from 'three';
 import {RAVINE_CROSSINGS} from './muspelheimRavineCrossings';
 import {SURT_RAVINE_LINE} from './muspelheimSurtRavine';
@@ -68,7 +69,7 @@ export function createCanyonRidge(source:THREE.Object3D,sample:(x:number,z:numbe
    const mine=THREE.MathUtils.smoothstep(Math.min(...MINE_PATH.map(p=>Math.hypot(p.x-x,p.z-z))),9,18);
    const ascent=z< -112&&z> -235?THREE.MathUtils.smoothstep(Math.abs(x+270),15,28):1;
    const descent=z> -115&&z<35?THREE.MathUtils.smoothstep(Math.abs(x+365),16,28):1;
-   const protectedArea=bridge*mine*ascent*descent,fade=border*protectedArea;
+   const protectedArea=bridge*mine*ascent*descent*surtPassRidgeProtection(x,z),fade=border*protectedArea;
    const centerFloor=sample(f.x,f.z);if(centerFloor==null)throw new Error('Ridge center is outside terrain');
    // A real transverse rise joins BOTH banks. The old rim faded to the flat
    // canyon floor, leaving two optional bypasses around a central island.

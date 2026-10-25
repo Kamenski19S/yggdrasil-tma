@@ -22,13 +22,15 @@ for(const p of SURT_RAVINE_SITES)for(let dx=-12;dx<=12;dx+=3)for(let dz=-12;dz<=
 assert.ok(Math.abs(sample(0,196)+48)<.001,'Entrance chasm preserved');
 assert.ok(Math.abs(sample(-315,-385))<.001,'Volcano foundation preserved');
 assert.ok(Math.abs(sample(300,-300))<.001,'Eastern world preserved');
+const {surtPassRidgeProtection}=await moduleAt('src/muspelheimSurtPassLayout.ts');
 const walkSample=(x,z)=>Math.max(sample(x,z)??-1000,ravineBridgeFloorAt(x,z)??-1000);
 function walkLine(a,b){const n=Math.ceil(Math.hypot(b.x-a.x,b.z-a.z)/.2);let from=a;for(let i=1;i<=n;i++){const to={x:THREE.MathUtils.lerp(a.x,b.x,i/n),z:THREE.MathUtils.lerp(a.z,b.z,i/n)};assert.equal(classifyRavineStep(walkSample,from,to),'walk',`Route blocked at ${JSON.stringify(to)}`);from=to;}}
 walkLine({x:-365,z:30},{x:-365,z:-105});
 walkLine({x:-365,z:-105},{x:-270,z:-125});
 walkLine({x:-270,z:-125},{x:-270,z:-230});
-// The long bridge maintains the walkable crossing through the cut.
-for(let i=1;i<SURT_RAVINE_LINE.length;i++){const a=SURT_RAVINE_LINE[i-1],b=SURT_RAVINE_LINE[i];if(a.x>-510&&b.z>-445)walkLine(a,b);}
+// The existing canyon axis stays connected outside the new twin-tower passage.
+// Its changed section is checked with model collisions by test-muspelheim-surt-pass.
+for(let i=1;i<SURT_RAVINE_LINE.length;i++){const a=SURT_RAVINE_LINE[i-1],b=SURT_RAVINE_LINE[i];if(a.x>-510&&b.z>-445&&surtPassRidgeProtection(a.x,a.z)>.999&&surtPassRidgeProtection(b.x,b.z)>.999)walkLine(a,b);}
 let rejected=0;for(let z=-185;z<-130;z+=.2)if(!canWalkRavine(sample,{x:-420,z},{x:-420,z:z+.2}))rejected++;
 assert.ok(rejected>30,'Steep bank blocks climbing, even in short steps');
 const rocks=ravineRockLayout();assert.ok(rocks.length>50);
