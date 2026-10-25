@@ -16,7 +16,7 @@ const swing=mixer.clipAction(animations.find(c=>c.name==='sword_attack'));
 actions.update(.25,false,false,true);const time=swing.time,pose=hand.quaternion.clone();
 actions.update(0,false,false,true);assert.equal(swing.time,time);assert(hand.quaternion.toArray().every((v,i)=>Math.abs(v-pose.toArray()[i])<1e-6),'Panel pause holds animation');
 actions.update(.25,false,false,true);assert(hand.quaternion.angleTo(pose)>.01,'Weapon hand moves during actual Vicki swing');
-for(let i=0;i<30;i++)actions.update(.1,false,false,true);
+let impacts=0;for(let i=0;i<30;i++)impacts+=+actions.update(.1,false,false,true);assert.equal(impacts,1,'One damage opportunity per completed swing');
 assert.equal(mixer.clipAction(animations.find(c=>c.name==='idle')).getEffectiveWeight(),1,'Return to idle after swing');
 assert(actions.shield());actions.update(.2,false,false,true);const shieldPose=arm.quaternion.clone();
 actions.update(0,false,false,true);assert(arm.quaternion.toArray().every((v,i)=>Math.abs(v-shieldPose.toArray()[i])<1e-6),'Shield pose does not accumulate while paused');
