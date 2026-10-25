@@ -18,3 +18,17 @@
 .ash-mine-map{position:absolute;right:10px;top:48px;width:82px;padding:4px;background:#171718cc;border:1px solid #8b7860;border-radius:7px;pointer-events:none}.ash-mine-map svg{display:block;width:100%;height:148px}.ash-mine-map span{display:block;font-size:8px;color:#a9e7d3;text-align:center}.ash-mine .ash-mine-exit{top:210px}
 
 .muspelheim-fire-health{position:absolute;top:52px;left:12px;width:172px;color:#ffe4b6;font-size:11px;text-shadow:0 1px 3px #000;pointer-events:none}.muspelheim-fire-health progress{display:block;width:100%;height:7px;accent-color:#d84c31}.muspelheim-fire-health small{display:block;margin-top:4px;font-size:9px}.muspelheim-fire-flash{position:absolute;inset:0;pointer-events:none;transition:opacity .15s;background:radial-gradient(ellipse,transparent 35%,#fb3900 100%)}
+
+/* Shared Niflheim control artwork and responsive positions. */
+.muspelheim-joystick{padding:0;user-select:none}.muspelheim-joystick>img{width:100%;height:100%;pointer-events:none}
+.muspelheim-realm-title{pointer-events:auto;cursor:pointer;border:1px solid #bd9652!important;border-radius:10px;background:linear-gradient(#362415ee,#130c09ee)!important;font-size:14px;letter-spacing:.5px}
+.muspelheim-tasks{top:86px;left:10px}.muspelheim-tasks small{position:absolute;right:-4px;bottom:-2px;padding:2px 4px;border:1px solid #bda16b;border-radius:7px;background:#291911ee;color:#ffe1a0;font-size:9px}
+.muspelheim-world .muspelheim-fire-health{top:85px;left:80px;width:calc(100% - 190px);max-width:190px}
+.muspelheim-first-gate{position:absolute;top:78px;right:10px;z-index:8}
+.muspelheim-status{position:absolute;bottom:12px;left:10px;right:10px;padding:6px 10px;border:1px solid #ad915d;border-radius:9px;background:#291911e8;color:#ffe2ac;font-size:11px;text-align:center;z-index:6;line-height:1.4}
+.muspelheim-world .muspelheim-sprint{bottom:104px!important;right:88px!important;z-index:8}.muspelheim-world .muspelheim-sprint[hidden]{display:none}
+.muspelheim-danger{position:absolute;right:10px;top:182px;z-index:8;color:#ff6e65;font-size:10px;text-shadow:0 1px 3px #000}
+.muspelheim-ui-overlay{position:absolute;inset:0;z-index:40;display:grid;place-items:center;background:#0009;padding:12px;touch-action:pan-y}
+.muspelheim-ui-panel{box-sizing:border-box;width:min(100%,430px);max-height:100%;overflow-y:auto;overscroll-behavior:contain;padding:16px;border:1px solid #bda16b;border-radius:12px;background:#241711fa;color:#f0e1ba;font-size:12px;touch-action:pan-y}
+.muspelheim-ui-panel h3{margin:0 0 12px}.muspelheim-ui-panel p{line-height:1.5}.muspelheim-gate-backdrop{z-index:40;touch-action:pan-y}.muspelheim-gate-panel{max-height:75%;overflow-y:auto}
+@media(max-width:380px){.muspelheim-tasks{top:78px}.muspelheim-realm-title{font-size:12px}}
