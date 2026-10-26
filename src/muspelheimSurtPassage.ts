@@ -108,10 +108,35 @@ export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:n
   for(const d of doors)if(Math.abs(x-d.x)<padding+1&&Math.abs(z-at.z)>7-padding&&Math.abs(z-at.z)<15+padding&&y<entryY+28&&y+14>entryY)return true;
   for(const w of boundary){if(y>=w.high||y+14<=w.low)continue;const dx=w.bx-w.ax,dz=w.bz-w.az,t=THREE.MathUtils.clamp(((x-w.ax)*dx+(z-w.az)*dz)/(dx*dx+dz*dz),0,1);if(Math.hypot(x-w.ax-t*dx,z-w.az-t*dz)<padding)return true;}return false;
  };
- const cameraAt=(x:number,y:number,z:number,yaw:number)=>{const p=surface(x,z);if(!p||p.segment.kind==='apron'||!owns(x,z,y))return null;const direction=1,progress=p.segment.start+p.along;
-  const sample=(s:number)=>{const segment=s<0?segments[0]:segments.find(a=>s<=a.start+a.length)??segments[segments.length-1],t=(s-segment.start)/segment.length;return {x:THREE.MathUtils.lerp(segment.a.x,segment.b.x,t),y:THREE.MathUtils.lerp(segment.a.y,segment.b.y,THREE.MathUtils.clamp(t,0,1)),z:THREE.MathUtils.lerp(segment.a.z,segment.b.z,t)};};
-  const eye=sample(progress-direction*16);eye.y=(floorAt(eye.x,eye.z,eye.y)??eye.y)+18;return {position:eye,target:{x,y:y+7,z},yaw:Math.atan2(eye.x-x,eye.z-z)};
+ let cameraProgress:number|undefined,lastHeroProgress:number|undefined,cameraDirection=1,cameraEyeY:number|undefined,cameraLookY:number|undefined;
+ const cameraAt=(x:number,y:number,z:number,yaw:number,dt=1/60)=>{
+  const p=surface(x,z);if(!p||(p.segment.kind==='apron'&&p.along<12)||!owns(x,z,y)){cameraProgress=lastHeroProgress=cameraEyeY=cameraLookY=undefined;return null;}
+  const progress=p.segment.start+p.along,tangent=p.segment;
+  const facing=Math.sin(yaw)*tangent.dx+Math.cos(yaw)*tangent.dz,delta=lastHeroProgress==null?0:progress-lastHeroProgress;
+  // Follow longitudinal movement; sideways corrections do not flip the camera.
+  if(lastHeroProgress==null||Math.abs(delta)>8){if(Math.abs(facing)>.4)cameraDirection=Math.sign(facing);}
+  else if(Math.abs(delta)>.025)cameraDirection=Math.sign(delta);
+  lastHeroProgress=progress;
+  const sample=(s:number)=>{const segment=s<0?segments[0]:segments.find(a=>s<=a.start+a.length)??segments[segments.length-1],t=(s-segment.start)/segment.length,px=THREE.MathUtils.lerp(segment.a.x,segment.b.x,t),pz=THREE.MathUtils.lerp(segment.a.z,segment.b.z,t),base=THREE.MathUtils.lerp(segment.a.y,segment.b.y,THREE.MathUtils.clamp(t,0,1));return {x:px,y:floorAt(px,pz,base)??(s>total||s<0?worldFloor(px,pz):null)??base,z:pz};};
+  const cameraSurface=(px:number,pz:number)=>surface(px,pz)??(px>=points[0].x&&px<=points[0].x+24&&Math.abs(pz-at.z)<20?{y:worldFloor(px,pz)??entryY}:null)??(pz>=end.z&&pz<=end.z+25&&Math.abs(px-end.x)<9?{y:worldFloor(px,pz)??exitY}:null);
+  const clear=(a:Point,b:Point)=>{const count=Math.ceil(Math.hypot(b.x-a.x,b.z-a.z)/.5);for(let i=0;i<=count;i++){const t=i/Math.max(1,count),px=THREE.MathUtils.lerp(a.x,b.x,t),pz=THREE.MathUtils.lerp(a.z,b.z,t),py=THREE.MathUtils.lerp(a.y,b.y,t),q=cameraSurface(px,pz);if(!q||blocks(px,pz,py,.25)||py<q.y+2||py>q.y+26)return false;}return true;};
+  const desired=progress-cameraDirection*18,alpha=1-Math.exp(-12*Math.min(dt,.1));
+  if(cameraProgress==null||Math.abs(cameraProgress-desired)>35)cameraProgress=desired;else cameraProgress=THREE.MathUtils.lerp(cameraProgress,desired,alpha);
+  // Smooth along the route, never diagonally through the inside wall of the turn.
+  let eye=sample(cameraProgress),target=sample(progress+cameraDirection*6);
+  const fitEye=(v:Point)=>({...v,y:THREE.MathUtils.clamp(y+15,v.y+6,v.y+24)});
+  eye=fitEye(eye);target.y+=9;
+  const focus={x,y:y+9,z};
+  if(!clear(eye,focus)){for(let distance=16;distance>=4;distance-=2){const candidate=fitEye(sample(progress-cameraDirection*distance));if(clear(candidate,focus)){eye=candidate;cameraProgress=progress-cameraDirection*distance;break;}}}
+  // Keep the look-ahead on the visible part of a bend or behind a closed door.
+  if(!clear(eye,target))for(let distance=4;distance>=0;distance-=2){const candidate=sample(progress+cameraDirection*distance);candidate.y+=9;if(clear(eye,candidate)){target=candidate;break;}}
+  const vertical=1-Math.exp(-8*Math.min(dt,.1));
+  cameraEyeY=cameraEyeY==null?eye.y:THREE.MathUtils.lerp(cameraEyeY,eye.y,vertical);
+  cameraLookY=cameraLookY==null?target.y:THREE.MathUtils.lerp(cameraLookY,target.y,vertical);
+  const eyeFloor=sample(cameraProgress).y;eye.y=THREE.MathUtils.clamp(cameraEyeY,eyeFloor+6,eyeFloor+24);cameraEyeY=eye.y;target.y=cameraLookY;
+  return {position:eye,target,yaw:Math.atan2(eye.x-target.x,eye.z-target.z)};
  };
+
  const cut=segments.map(s=>{const f=(v:number)=>v.toFixed(6);return `{vec2 q=p.xz-vec2(${f(s.a.x)},${f(s.a.z)});float t=dot(q,vec2(${f(s.dx)},${f(s.dz)}));float crossD=dot(q,vec2(${f(-s.dz)},${f(s.dx)}));float h=${f(s.a.y)}+clamp(t/${f(s.length)},0.,1.)*${f(s.b.y-s.a.y)};if(t>=${f(-s.capStart-.12)}&&t<=${f(s.length+s.capEnd+.12)}&&abs(crossD)<${f(s.width-.04)}&&p.y>h-.4&&p.y<h+29.)return true;}`;}).join('\n');
  const cutMaterials=new Set<THREE.Material>();
  const clipWorld=(objects:THREE.Object3D[])=>{for(const object of objects)object.traverse(o=>{if(!(o instanceof THREE.Mesh)||o===floorMesh||o===roofMesh)return;for(const m of (Array.isArray(o.material)?o.material:[o.material]) as THREE.Material[]){if(cutMaterials.has(m))continue;cutMaterials.add(m);const previous=m.onBeforeCompile,cache=m.customProgramCacheKey;

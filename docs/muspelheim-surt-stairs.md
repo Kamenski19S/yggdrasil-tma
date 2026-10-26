@@ -16,3 +16,9 @@ Validation: TypeScript, production Vite build, and passage traversal test (2,144
 The runtime's separate 3-unit movement-height gate still rejected larger risers despite the passage slope bypass. Passage-owned movement now accepts an 8-unit step; the stair-floor continuity window also covers a running frame plus the model's tread offset. Natural-terrain limits are unchanged. Regression traversals cover 18/29 unit movement at 10, 20, 30 and 60 FPS, forward and backward, down the centre and both sides. Largest observed frame rise: 5.42 units.
 
 Both room doors close after passage in either direction, with a short delay. Closure waits until the hero clears the doorway and the full leaf swing; returning into that area reverses a closing door. Manual opening remains available from both sides.
+
+## Passage follow camera
+
+The passage camera now follows travel direction in both directions, with an 18-unit trailing distance and a 6-unit route look-ahead. Position smoothing runs along the route instead of cutting through the turn. Eye height is bounded by local floor/ceiling clearance; floor changes are damped vertically. A 72-degree vertical field of view keeps the route readable on portrait phones. Sight-line checks shorten the view at doors and bends. The approach activates the passage camera before the magical portal, and the upper endpoint can place the trailing camera on the terrace rather than directly above the hero.
+
+Regression checks cover portrait framing of Vicki, minimum trailing distance, viewing pitch, wall/ceiling sight lines, the stair turn, and the reverse journey.

@@ -285,12 +285,12 @@ keeper.update(clock.elapsedTime);proximityTimer+=dt;if(proximityTimer>.15){proxi
     }
    }
    ashVolcano?.update(paused.current?0:dt);lava.update(paused.current?0:dt);ravineLava.update(paused.current?0:dt);summit?.update(paused.current?0:dt);viewYaw.current=updateFollowCamera(follow,dx,dz,dt);
-   const passageView=passage?.cameraAt(p.x,hero.position.y,p.z,hero.rotation.y);
+   const passageView=passage?.cameraAt(p.x,hero.position.y,p.z,hero.rotation.y,dt);
    const mineView=mineApproachCameraAt(p.x,hero.position.y,p.z);
    const inWell=nornsWell?.shelters(p.x,p.z,hero.position.y)??false;
    if(passageView){
     camera.position.set(passageView.position.x,passageView.position.y,passageView.position.z);lookTarget.set(passageView.target.x,passageView.target.y,passageView.target.z);camera.lookAt(lookTarget);
-    if(!passageCameraActive){if(!length)controlYaw.current=passageView.yaw;camera.fov=60;camera.updateProjectionMatrix();}
+    if(!passageCameraActive){if(!length)controlYaw.current=passageView.yaw;camera.fov=72;camera.updateProjectionMatrix();}
     passageCameraActive=true;mineCameraActive=false;wellCameraActive=false;viewYaw.current=passageView.yaw;follow.yaw=passageView.yaw;follow.targetYaw=passageView.yaw;
    }else if(inWell){
     const eye=new THREE.Vector3(Math.max(NORNS_WELL_POSITION.x+14,p.x+10),hero.position.y+19,Math.max(NORNS_WELL_POSITION.z+24,p.z+22)),target=new THREE.Vector3((p.x+nornsWell!.npcPosition.x)/2,hero.position.y+8,(p.z+nornsWell!.npcPosition.z)/2);
