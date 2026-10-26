@@ -33,3 +33,19 @@ const body=actor.colliders.find(c=>c.kind==='body');const middle=body.a.clone().
 actor.update(3,s,h,hand,true);assert.equal(actor.canMove(from,to),true,'Defeated creature no longer blocks movement');assert.equal(actor.root.visible,false,'Defeated creature sinks');console.log('Lake guardian: shield, dodging, one hit, finite capture, sword escape, pause at 20/60/120 FPS; real optimized rig and hand reach passed.');
 
 const {applyMineEvent,mineProgress,MINE_GUARDS}=await mod('src/muspelheimMineQuest.ts');let save={done:[],lootCounts:{},immortalityDrops:0};assert.equal(applyMineEvent(save,'guardian'),save);save=applyMineEvent(save,'enter');for(const g of MINE_GUARDS)save=applyMineEvent(save,'guard:'+g.id);assert.equal(applyMineEvent(save,'gold'),save,'Gold waits for the lake guardian');save=applyMineEvent(save,'guardian');assert.equal(applyMineEvent(save,'guardian'),save,'No repeat guardian reward');save=JSON.parse(JSON.stringify(save));assert.ok(mineProgress(save.done).guardianDefeated);save=applyMineEvent(save,'gold');assert.equal(save.lootCounts.muspelheimFireGold,1000);assert.equal(applyMineEvent(save,'gold'),save);console.log('Guardian completion and one-time rewards persist; gold requires the guardian.');
+
+const {GUARDIAN_RESPAWN_MS,guardianRespawnDue,restoreGuardianLife,readGuardianDefeat,writeGuardianDefeat}=await mod('src/ashMineGuardianRespawn.ts');
+assert.equal(GUARDIAN_RESPAWN_MS,600000);const deathAt=1700000000000;
+const storage=new Map();globalThis.localStorage={getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)};
+writeGuardianDefeat(deathAt);assert.equal(readGuardianDefeat(deathAt+1),deathAt);
+assert.equal(guardianRespawnDue(deathAt,deathAt+599999),false);assert.equal(guardianRespawnDue(deathAt,deathAt+600000),true);
+assert.equal(restoreGuardianLife(0,readGuardianDefeat(deathAt+599999),deathAt+599999).hp,0,'Reload before deadline stays defeated');
+assert.equal(restoreGuardianLife(undefined,deathAt,deathAt+600000).hp,G.maxHp,'Leaving the mine does not reset the wall-clock timer');
+assert.equal(restoreGuardianLife(0,deathAt,deathAt+600001).hp,G.maxHp,'Expired zero-HP checkpoint revives');
+assert.equal(restoreGuardianLife(0,null,deathAt).hp,G.maxHp,'Legacy permanently defeated saves revive immediately');assert.equal(restoreGuardianLife(320,null,deathAt).hp,320,'Live damaged checkpoint keeps its HP');
+writeGuardianDefeat(null);assert.equal(readGuardianDefeat(deathAt+600001),null);
+// The same actor must reappear and sink again on every later death.
+actor.update(.1,createGuardianState(),h,hand,false);assert.equal(actor.root.visible,true);assert(actor.root.position.y>G.y-1);
+actor.update(.1,createGuardianState(),h,hand,true);assert.equal(actor.root.visible,true,'Second death restarts the sinking animation');actor.update(3,createGuardianState(),h,hand,true);assert.equal(actor.root.visible,false);
+actor.update(.1,createGuardianState(),h,hand,false);assert.equal(actor.root.visible,true,'Another respawn restores visibility');
+console.log('Kraken respawn: exact ten-minute deadline, reload, exit/reentry, legacy saves and repeated visual deaths passed.');

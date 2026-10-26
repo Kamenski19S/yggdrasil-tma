@@ -87,7 +87,7 @@ export function createOceanGuardian(source:THREE.Object3D,animations:THREE.Anima
   flash=Math.max(0,flash-dt);for(const m of materials){m.material.emissive.copy(m.emissive);m.material.emissiveIntensity=m.intensity;if(flash>0){m.material.emissive.lerp(new THREE.Color('#e5ad57'),flash*2);m.material.emissiveIntensity=Math.max(m.intensity,.8);}}
   solid=!dead;
   if(dead){deathTime+=dt;root.position.y=OCEAN_GUARDIAN.y-14*THREE.MathUtils.smoothstep(deathTime,0,2.5);root.visible=deathTime<2.5;warning.visible=false;collectColliders();return {contact:false};}
-  root.position.y=OCEAN_GUARDIAN.y+Math.sin(elapsed*1.3)*.22;
+  deathTime=0;root.visible=true;root.position.y=OCEAN_GUARDIAN.y+Math.sin(elapsed*1.3)*.22;
   const reaching=state.phase==='windup'||state.phase==='strike'||state.phase==='hold';root.position.x=THREE.MathUtils.lerp(root.position.x,OCEAN_GUARDIAN.x+(reaching?0:5),1-Math.exp(-5*dt));
   resolveBody(hero);
   ripples.children.forEach((o,i)=>{const t=(elapsed*.24+i/3)%1;o.scale.setScalar(1+t*2);(o as THREE.Mesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>).material.opacity=(1-t)*.18;});
