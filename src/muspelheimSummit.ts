@@ -1,25 +1,19 @@
 import * as THREE from 'three';
 import {loadCobbleTextures} from './muspelheimCobble';
 import {createChasmLava} from './muspelheimChasm';
-import {VOLCANO_POSITION} from './muspelheimVolcano';
+import {VOLCANO_POSITION,VOLCANO_SUMMIT_RADIUS,VOLCANO_SIZE} from './muspelheimVolcano';
 import {SURT_TOWER_BASE_Y} from './muspelheimSurtTower';
 export const SUMMIT_FLOOR_Y=SURT_TOWER_BASE_Y+.05;
-/** Find the inner shoreline against the original rock, without altering any mountain vertices. */
-export function craterShore(volcano:THREE.Object3D){
- const segments=128,radii:number[]=[],sides=new Map<THREE.Material,THREE.Side>();
- volcano.traverse(o=>{if(o instanceof THREE.Mesh)for(const m of Array.isArray(o.material)?o.material:[o.material])if(!sides.has(m)){sides.set(m,m.side);m.side=THREE.DoubleSide;}});
- const ray=new THREE.Raycaster();ray.near=.01;ray.far=65;
- try{for(let i=0;i<segments;i++){const angle=i/segments*Math.PI*2;ray.set(new THREE.Vector3(VOLCANO_POSITION.x,SUMMIT_FLOOR_Y-.15,VOLCANO_POSITION.z),new THREE.Vector3(Math.cos(angle),0,Math.sin(angle)));const hit=ray.intersectObject(volcano,true)[0];radii.push(hit?Math.min(65,hit.distance+.5):0);}}
- finally{for(const [m,side] of sides)m.side=side;}
- const measured=radii.slice();for(let i=0;i<segments;i++)if(!measured[i]){let left=1,right=1;while(left<segments&&!measured[(i-left+segments)%segments])left++;while(right<segments&&!measured[(i+right)%segments])right++;radii[i]=left<segments?THREE.MathUtils.lerp(measured[(i-left+segments)%segments],measured[(i+right)%segments],left/(left+right)):30;}
-
- const contains=(x:number,z:number)=>{const dx=x-VOLCANO_POSITION.x,dz=z-VOLCANO_POSITION.z,angle=(Math.atan2(dz,dx)+Math.PI*2)%(Math.PI*2),t=angle/(Math.PI*2)*segments,i=Math.floor(t);return Math.hypot(dx,dz)<=THREE.MathUtils.lerp(radii[i],radii[(i+1)%segments],t-i);};
+/** The cut summit is a continuous observation terrace at the castle floor height. */
+export function craterShore(_volcano:THREE.Object3D){
+ const radii=Array<number>(128).fill(VOLCANO_SUMMIT_RADIUS);
+ const contains=(x:number,z:number)=>Math.hypot(x-VOLCANO_POSITION.x,z-VOLCANO_POSITION.z)<=VOLCANO_SUMMIT_RADIUS;
  return {radii,contains};
 }
 export function createSummitFloor(assetBase:string,maxAnisotropy:number,volcano:THREE.Object3D,castleBounds:THREE.Box3){
  const shore=craterShore(volcano);
  const cutMaterials=new Set<THREE.Material>();
- // Cut rock only above the castle floor and inside its walls; preserve every exterior peak.
+ // Preserve the castle interior clearance after trimming the surrounding summit.
  volcano.traverse(o=>{if(!(o instanceof THREE.Mesh))return;for(const material of Array.isArray(o.material)?o.material:[o.material]){
   if(cutMaterials.has(material))continue;cutMaterials.add(material);
   const m=material as THREE.MeshStandardMaterial,previous=m.onBeforeCompile;
@@ -51,6 +45,18 @@ export function createSummitFloor(assetBase:string,maxAnisotropy:number,volcano:
  const lavaMaterial=lava.mesh.material as THREE.ShaderMaterial;
  lavaMaterial.fragmentShader=lavaMaterial.fragmentShader.replace('gl_FragColor=vec4(color,1.);',`vec2 cell=floor(p*.42);vec2 center=cell+.5;float phase=fract(time*.22+hash(cell));float bubble=1.-smoothstep(.025,.075,abs(length(p*.42-center)-phase*.42));color+=vec3(.8,.22,.015)*bubble*sin(phase*3.14159)*.35;gl_FragColor=vec4(color,1.);`);
  root.add(lava.mesh);
+ // A low stone parapet gives the impassable slope boundary a visible edge.
+ const railMaterial=new THREE.MeshStandardMaterial({map:cobble.color,normalMap:cobble.normal,roughness:1,color:'#92969a'});
+ const railGeometry=new THREE.BoxGeometry(1.3,3.2,VOLCANO_SUMMIT_RADIUS*Math.PI*2/128+.05),rail=new THREE.InstancedMesh(railGeometry,railMaterial,128),dummy=new THREE.Object3D();
+ rail.name='Stone parapet around Surt observation terrace';
+ for(let i=0;i<128;i++){const angle=i/128*Math.PI*2;dummy.position.set(VOLCANO_POSITION.x+VOLCANO_SUMMIT_RADIUS*Math.cos(angle),SUMMIT_FLOOR_Y+1.6,VOLCANO_POSITION.z+VOLCANO_SUMMIT_RADIUS*Math.sin(angle));dummy.rotation.y=-angle;dummy.updateMatrix();rail.setMatrixAt(i,dummy.matrix);}
+ rail.computeBoundingSphere();root.add(rail);
+ // Join the terrace edge to the actual rock below so the paving never hangs in the air.
+ const edgeRay=new THREE.Raycaster(),down=new THREE.Vector3(0,-1,0),edgeVertices:number[]=[],edgeUV:number[]=[],edgeIndices:number[]=[];
+ for(let i=0;i<=128;i++){const a=i/128*Math.PI*2,x=VOLCANO_POSITION.x+VOLCANO_SUMMIT_RADIUS*Math.cos(a),z=VOLCANO_POSITION.z+VOLCANO_SUMMIT_RADIUS*Math.sin(a);edgeRay.set(new THREE.Vector3(x,SUMMIT_FLOOR_Y+2,z),down);const ground=edgeRay.intersectObject(volcano,true)[0]?.point.y??0,bottom=Math.min(SUMMIT_FLOOR_Y-1,ground-.5);edgeVertices.push(x,bottom,z,x,SUMMIT_FLOOR_Y-.03,z);const u=i/128*VOLCANO_SUMMIT_RADIUS*Math.PI*2/8;edgeUV.push(u,bottom/8,u,SUMMIT_FLOOR_Y/8);if(i<128){const k=i*2;edgeIndices.push(k,k+1,k+3,k,k+3,k+2);}}
+ const edgeGeometry=new THREE.BufferGeometry();edgeGeometry.setAttribute('position',new THREE.Float32BufferAttribute(edgeVertices,3));edgeGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(edgeUV,2));edgeGeometry.setIndex(edgeIndices);edgeGeometry.computeVertexNormals();const edgeMaterial=railMaterial.clone();edgeMaterial.side=THREE.DoubleSide;const edge=new THREE.Mesh(edgeGeometry,edgeMaterial);edge.name='Stone terrace edge fitted down to volcanic rock';root.add(edge);
+
+ const blocks=(x:number,z:number,footY:number)=>footY>SUMMIT_FLOOR_Y-4&&Math.abs(x-VOLCANO_POSITION.x)<VOLCANO_SIZE.width/2+3&&Math.abs(z-VOLCANO_POSITION.z)<VOLCANO_SIZE.depth/2+3&&Math.hypot(x-VOLCANO_POSITION.x,z-VOLCANO_POSITION.z)>VOLCANO_SUMMIT_RADIUS-2.7;
  const floorAt=(x:number,z:number)=>shore.contains(x,z)||(x>=castleBounds.min.x&&x<=castleBounds.max.x&&z>=castleBounds.min.z&&z<=castleBounds.max.z)?SUMMIT_FLOOR_Y:null;
- return {root,shore,ready:cobble.ready,update:lava.update,floorAt,dispose:()=>cobble.dispose()};
+ return {root,shore,ready:cobble.ready,update:lava.update,floorAt,blocks,dispose:()=>cobble.dispose()};
 }

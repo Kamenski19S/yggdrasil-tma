@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 export const VOLCANO_ASSET='Muspelheim_Volcano.glb';
 export const VOLCANO_POSITION={x:-315,z:-385};
+export const VOLCANO_SUMMIT_Y=40.05;
+export const VOLCANO_SUMMIT_RADIUS=82;
 export const VOLCANO_SIZE={width:340,height:86,depth:340};
 export const VOLCANO_CREDIT={title:'Rocky hell terrain',author:'Nicothin',url:'https://sketchfab.com/3d-models/rocky-hell-terrain-6a4c6f4bd2f24cb1a3f63adf426b2774'};
 /** Preserve the imported hierarchy and texture; extend the rear foothills into the back wall, leaving the summit inside the playable world. */
@@ -21,9 +23,9 @@ export function createMuspelheimVolcano(model:THREE.Object3D,groundY:number){
   }
  });
  root.position.y-=Math.max(.5,rimY-groundY+1);root.updateWorldMatrix(true,true);
- // Raise only existing peaks above the crater shore, with varied heights around the rim.
+ // Cut the summit spires below the paved observation terrace; keep the lower slopes and footprint.
  model.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const p=o.geometry.getAttribute('position'),inverse=o.matrixWorld.clone().invert();
-  for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);if(v.y>40){const angle=Math.atan2(v.z-VOLCANO_POSITION.z,v.x-VOLCANO_POSITION.x),factor=2+.5*Math.sin(angle*3+.7);v.y=40+(v.y-40)*factor;v.applyMatrix4(inverse);p.setXYZ(i,v.x,v.y,v.z);}}
+  for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);if(v.y>VOLCANO_SUMMIT_Y-.15){v.y=VOLCANO_SUMMIT_Y-.15;v.applyMatrix4(inverse);p.setXYZ(i,v.x,v.y,v.z);}}
   p.needsUpdate=true;o.geometry.computeVertexNormals();o.geometry.computeBoundingBox();o.geometry.computeBoundingSphere();
  });root.updateWorldMatrix(true,true);
  const worldBounds=new THREE.Box3().setFromObject(root),ray=new THREE.Raycaster(),down=new THREE.Vector3(0,-1,0);
