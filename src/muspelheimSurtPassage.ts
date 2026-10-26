@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+export const SURT_STAIRS_ASSET='Muspelheim_Surt_Stairs.glb';
+export const SURT_STAIRS_CREDIT={title:'Stairs',author:'FantasyDragon',url:'https://sketchfab.com/3d-models/stairs-e2d8248414b74116b6e351142887593e'};
 export const SURT_PASSAGE_ASSET='Muspelheim_Magic_Portal.glb';
 export const SURT_PASSAGE_ENTRY={x:-108,z:-432};
 export const SURT_PASSAGE_EXIT={x:-265,z:-355};
@@ -6,7 +8,7 @@ export const SURT_PASSAGE_CREDIT={title:'Magic Portal',author:'Valerii_Melnychen
 type Point={x:number;y:number;z:number};
 type Segment={a:Point;b:Point;length:number;dx:number;dz:number;width:number;kind:'apron'|'hall'|'room'|'stairs'|'landing';start:number;capStart:number;capEnd:number};
 /** Continuous, walkable canyon entrance, future trap room and stair ascent. No teleportation. */
-export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:number)=>number|null){
+export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:number)=>number|null,stairSource:THREE.Object3D){
  const at=SURT_PASSAGE_ENTRY,end=SURT_PASSAGE_EXIT;
  const entryY=worldFloor(-92,at.z),exitY=worldFloor(end.x,end.z);if(entryY==null||exitY==null)throw Error('Passage endpoints have no ground');
  const firstRun=75,lastRun=65,turnY=entryY+(exitY-entryY)*firstRun/(firstRun+lastRun);
@@ -21,7 +23,10 @@ export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:n
  const groundCache=new Map<string,number>();const cachedGround=(x:number,z:number)=>{const gx=Math.floor(x/4),gz=Math.floor(z/4),tx=x/4-gx,tz=z/4-gz;const h=(a:number,b:number)=>{const key=`${a},${b}`;let y=groundCache.get(key);if(y===undefined){y=worldFloor(a*4,b*4)??entryY;groundCache.set(key,y);}return y;};return THREE.MathUtils.lerp(THREE.MathUtils.lerp(h(gx,gz),h(gx+1,gz),tx),THREE.MathUtils.lerp(h(gx,gz+1),h(gx+1,gz+1),tx),tz);};
  const covered=(x:number,z:number,y:number)=> cachedGround(x,z)>y+29;
  const owns=(x:number,z:number,y:number)=>{const p=surface(x,z);return !!p&&y>=p.y-5&&y<p.y+27;};
- const floorAt=(x:number,z:number,footY:number)=>{const p=surface(x,z);if(!p)return null;if(covered(x,z,p.y)&&Math.abs(footY-p.y)>6)return null;return p.y;};
+ const stairProfiles=new Map<Segment,number[]>();
+ const floorAt=(x:number,z:number,footY:number)=>{const p=surface(x,z);if(!p)return null;if(covered(x,z,p.y)&&Math.abs(footY-p.y)>6)return null;const profile=stairProfiles.get(p.segment);if(!profile)return p.y;
+  const t=THREE.MathUtils.clamp(p.along/p.segment.length,0,1)*(profile.length-1),i=Math.floor(t);return THREE.MathUtils.lerp(profile[i],profile[Math.min(i+1,profile.length-1)],t-i);
+ };
  const box=(w:number,h:number,d:number,x:number,y:number,z:number,material:THREE.Material=stone,parent:THREE.Object3D=root)=>{const geometry=new THREE.BoxGeometry(w,h,d);if(material===stone||material===doorStone){const uv=geometry.getAttribute('uv');for(let i=0;i<uv.count;i++){const face=Math.floor(i/4);uv.setXY(i,uv.getX(i)*(face<2?d:w)/8,uv.getY(i)*(face===2||face===3?d:h)/8);}}const mesh=new THREE.Mesh(geometry,material);mesh.position.set(x,y,z);mesh.receiveShadow=true;parent.add(mesh);return mesh;};
  const boundary:Array<{ax:number;az:number;bx:number;bz:number;low:number;high:number}>=[];
  const vertices:number[]=[],uvs:number[]=[],indices:number[]=[],roofVertices:number[]=[],roofIndices:number[]=[],wallVertices:number[]=[],wallUV:number[]=[],wallIndices:number[]=[];
@@ -29,7 +34,7 @@ export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:n
  const cells=new Map<string,{x:number;z:number;p:NonNullable<ReturnType<typeof surface>>;roof:boolean}>();
  for(let x=-275;x< -73;x++)for(let z=-453;z< -345;z++){const p=surface(x+.5,z+.5);if(p)cells.set(`${x},${z}`,{x,z,p,roof:p.segment.kind!=='apron'&&(p.segment.kind==='hall'||covered(x+.5,z+.5,p.y))});}
  for(const {x,z,p,roof}of cells.values()){
-  const y=(px:number,pz:number)=>surface(px,pz)?.y??p.y,lower=p.segment.kind==='stairs'?.5:0;
+  const y=(px:number,pz:number)=>surface(px,pz)?.y??p.y,lower=p.segment.kind==='stairs'?3.5:0;
   const corners=[[x,y(x,z)-lower,z],[x+1,y(x+1,z)-lower,z],[x+1,y(x+1,z+1)-lower,z+1],[x,y(x,z+1)-lower,z+1]];
   quad(vertices,indices,corners);corners.forEach(v=>uvs.push(v[0]/8,-v[2]/8));
   if(roof)quad(roofVertices,roofIndices,corners.map(v=>[v[0],v[1]+28+lower,v[2]]));
@@ -46,7 +51,36 @@ export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:n
  const floorGeometry=new THREE.BufferGeometry();floorGeometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));floorGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));floorGeometry.setIndex(indices);floorGeometry.computeVertexNormals();const floorMesh=new THREE.Mesh(floorGeometry,stone);floorMesh.name='Continuous passage walking floor';root.add(floorMesh);
  const roofGeometry=new THREE.BufferGeometry();roofGeometry.setAttribute('position',new THREE.Float32BufferAttribute(roofVertices,3));roofGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(roofVertices.flatMap((_,i)=>i%3===0?[roofVertices[i]/8,-roofVertices[i+2]/8]:[]),2));roofGeometry.setIndex(roofIndices);roofGeometry.computeVertexNormals();const roofMesh=new THREE.Mesh(roofGeometry,stone);roofMesh.name='Stone ceiling beneath the mountain';root.add(roofMesh);
  let stepCount=0;const magicMaterials:THREE.MeshStandardMaterial[]=[],platformMaterials:THREE.MeshStandardMaterial[]=[];let magicTime=0;
- for(const s of segments.filter(s=>s.kind==='stairs')){const count=Math.ceil(Math.abs(s.b.y-s.a.y)/.45),geometry=new THREE.BoxGeometry(18,1.1,s.length/count+.01),mesh=new THREE.InstancedMesh(geometry,stone,count);mesh.name='Individual stone stair treads';for(let i=0;i<count;i++){const t=(i+.5)/count,point=new THREE.Vector3().lerpVectors(new THREE.Vector3(s.a.x,s.a.y,s.a.z),new THREE.Vector3(s.b.x,s.b.y,s.b.z),t),matrix=new THREE.Matrix4().compose(point.add(new THREE.Vector3(0,-.5,0)),new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),Math.atan2(s.dx,s.dz)),new THREE.Vector3(1,1,1));mesh.setMatrixAt(i,matrix);}mesh.computeBoundingSphere();root.add(mesh);stepCount+=count;}
+ // The source's lower flight is repeated in two generous modules per ascent.
+ // Keep the continuous navigation ramp for smooth walking and reliable descent.
+ const stairMaterial=new THREE.MeshStandardMaterial({color:'#a4a8aa',roughness:1,side:THREE.DoubleSide});
+ const stairMeshes:THREE.Mesh[]=[];stairSource.updateWorldMatrix(true,true);
+ stairSource.traverse(o=>{if(o instanceof THREE.Mesh){const mesh=new THREE.Mesh(o.geometry.clone().applyMatrix4(o.matrixWorld),stairMaterial);stairMeshes.push(mesh);}});
+ const flightStartZ=.0043,flightEndZ=-.0997,flightStartY=.0091,flightEndY=.06831,flightCenterX=.02005;
+ const ray=new THREE.Raycaster(),down=new THREE.Vector3(0,-1,0),sourceProfile:number[]=[];
+ for(let j=0;j<=512;j++){const t=j/512;ray.set(new THREE.Vector3(flightCenterX,1,THREE.MathUtils.lerp(flightStartZ,flightEndZ,t)),down);sourceProfile.push(ray.intersectObjects(stairMeshes)[0]?.point.y??THREE.MathUtils.lerp(flightStartY,flightEndY,t));}
+ for(const s of segments.filter(s=>s.kind==='stairs')){
+  const modules=2,run=s.length/modules,rise=(s.b.y-s.a.y)/modules;
+  const profile:number[]=[];
+  for(let j=0;j<=1024;j++){const along=s.length*j/1024,module=Math.min(modules-1,Math.floor(along/run)),t=(along-module*run)/run;
+   const localY=sourceProfile[Math.round(t*512)];
+   const edge=THREE.MathUtils.smoothstep(Math.min(t,1-t),0,.06),linear=THREE.MathUtils.lerp(flightStartY,flightEndY,t);
+   profile.push(s.a.y+rise*module+(THREE.MathUtils.lerp(linear,localY,edge)-flightStartY)*rise/(flightEndY-flightStartY));
+  }stairProfiles.set(s,profile);
+  for(let i=0;i<modules;i++){
+   const flight=new THREE.Group();flight.name='FantasyDragon stone stair flight with handrails';
+   flight.position.set(s.a.x+s.dx*run*i,s.a.y+rise*i,s.a.z+s.dz*run*i);
+   flight.rotation.y=Math.atan2(-s.dx,-s.dz);
+   box(18,3.5,run*.05,0,-1.75,-run*.025,stone,flight);
+   for(const template of stairMeshes){const geometry=template.geometry.clone(),p=geometry.getAttribute('position');
+    for(let j=0;j<p.count;j++)p.setXYZ(j,(p.getX(j)-flightCenterX)*(18/.0535),(p.getY(j)-flightStartY)*(rise/(flightEndY-flightStartY)),(p.getZ(j)-flightStartZ)*(run/(flightStartZ-flightEndZ)));
+    geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();
+    const mesh=new THREE.Mesh(geometry,stairMaterial);mesh.name='Stair treads and balustrades';mesh.receiveShadow=true;flight.add(mesh);
+   }root.add(flight);stepCount+=11;
+  }
+ }
+ for(const mesh of stairMeshes)mesh.geometry.dispose();
+
  // Stone reveal fills the clipped bank around the arch, leaving the walking opening clear.
  for(const side of [-1,1])box(2,28,11,at.x-1,entryY+14,at.z+side*14.5,stone);
  box(2,7,18,at.x-1,entryY+24.5,at.z,stone);
@@ -75,7 +109,7 @@ export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:n
  };
  const cameraAt=(x:number,y:number,z:number,yaw:number)=>{const p=surface(x,z);if(!p||p.segment.kind==='apron'||!owns(x,z,y))return null;const direction=1,progress=p.segment.start+p.along;
   const sample=(s:number)=>{const segment=s<0?segments[0]:segments.find(a=>s<=a.start+a.length)??segments[segments.length-1],t=(s-segment.start)/segment.length;return {x:THREE.MathUtils.lerp(segment.a.x,segment.b.x,t),y:THREE.MathUtils.lerp(segment.a.y,segment.b.y,THREE.MathUtils.clamp(t,0,1)),z:THREE.MathUtils.lerp(segment.a.z,segment.b.z,t)};};
-  const eye=sample(progress-direction*16);eye.y+=18;return {position:eye,target:{x,y:y+7,z},yaw:Math.atan2(eye.x-x,eye.z-z)};
+  const eye=sample(progress-direction*16);eye.y=(floorAt(eye.x,eye.z,eye.y)??eye.y)+18;return {position:eye,target:{x,y:y+7,z},yaw:Math.atan2(eye.x-x,eye.z-z)};
  };
  const cut=segments.map(s=>{const f=(v:number)=>v.toFixed(6);return `{vec2 q=p.xz-vec2(${f(s.a.x)},${f(s.a.z)});float t=dot(q,vec2(${f(s.dx)},${f(s.dz)}));float crossD=dot(q,vec2(${f(-s.dz)},${f(s.dx)}));float h=${f(s.a.y)}+clamp(t/${f(s.length)},0.,1.)*${f(s.b.y-s.a.y)};if(t>=${f(-s.capStart-.12)}&&t<=${f(s.length+s.capEnd+.12)}&&abs(crossD)<${f(s.width-.04)}&&p.y>h-.4&&p.y<h+29.)return true;}`;}).join('\n');
  const cutMaterials=new Set<THREE.Material>();
@@ -85,6 +119,6 @@ export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:n
  return {root,points,segments,doors,entryY,exitY,stepCount,owns,floorAt,blocks,nearDoor,openNearby,cameraAt,clipWorld,
   roofAt:(x:number,z:number)=>{const p=surface(x,z);return p&&covered(x,z,p.y)?p.y+28:null;},
   update(dt:number,hero?:Point){magicTime+=dt;const crossing=hero&&Math.abs(hero.x-at.x)<19&&Math.abs(hero.z-at.z)<7&&Math.abs(hero.y-entryY)<6;for(const m of magicMaterials)m.opacity=crossing?.07:.48+Math.sin(magicTime*1.3)*.035;for(const d of doors){d.opening=Math.min(1,d.opening+dt*d.target/.85);const t=d.opening*d.opening*(3-2*d.opening);d.hinge.rotation.y=-t*Math.PI*.53;}},
-  setStoneTexture(texture:THREE.Texture){const map=texture.clone();map.wrapS=map.wrapT=THREE.RepeatWrapping;map.repeat.set(1,1);map.needsUpdate=true;stone.map=map;stone.needsUpdate=true;doorStone.map=map;doorStone.needsUpdate=true;for(const material of platformMaterials){material.map=map;material.needsUpdate=true;}},
+  setStoneTexture(texture:THREE.Texture){const map=texture.clone();map.wrapS=map.wrapT=THREE.RepeatWrapping;map.repeat.set(1,1);map.needsUpdate=true;stone.map=map;stone.needsUpdate=true;stairMaterial.map=map;stairMaterial.needsUpdate=true;doorStone.map=map;doorStone.needsUpdate=true;for(const material of platformMaterials){material.map=map;material.needsUpdate=true;}},
  };
 }
