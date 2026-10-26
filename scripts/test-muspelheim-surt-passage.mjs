@@ -4,7 +4,7 @@ const loader=new GLTFLoader();loader.register(()=>({name:'stub',loadTexture:()=>
 const {expandMuspelheimTerrain,createTerrainSampler}=await mod('src/muspelheimTerrain.ts'),{carveSurtRavine}=await mod('src/muspelheimSurtRavine.ts'),{ravinePitDepth,classifyRavineStep}=await mod('src/muspelheimRavineCrossings.ts'),{createCanyonRidge}=await mod('src/muspelheimCanyonRidge.ts'),{createRavineLava}=await mod('src/muspelheimRavineLava.ts'),{createMuspelheimVolcano}=await mod('src/muspelheimVolcano.ts'),{createSurtTower}=await mod('src/muspelheimSurtTower.ts'),{craterShore}=await mod('src/muspelheimSummit.ts'),{createSurtPass}=await mod('src/muspelheimSurtPass.ts');
 const terrain=await load('Muspelheim_Terrain_300m.glb');terrain.scale.set(1.75,1,1.75);expandMuspelheimTerrain(terrain);carveSurtRavine(terrain,ravinePitDepth);const base=createTerrainSampler(terrain),ridge=createCanyonRidge(await load('Muspelheim_Canyon_Ridge.glb'),base,createRavineLava()),volcano=createMuspelheimVolcano(await load('Muspelheim_Volcano.glb'),0),tower=createSurtTower(await load('Muspelheim_Surt_Tower.glb')),shore=craterShore(volcano.root),stoneBridge=createSurtPass(await load('Muspelheim_Surt_Twin_Bridge.glb'));
 const world=(x,z)=>shore.contains(x,z)||tower.buildingBounds.containsPoint(new T.Vector3(x,40.05,z))?40.05:Math.max(base(x,z)??-Infinity,ridge.floorAt(x,z)??-Infinity,volcano.floorAt(x,z)??-Infinity,stoneBridge.floorAt(x,z)??-Infinity);
-const {createSurtPassage,SURT_STAIRS_ASSET,SURT_PASSAGE_ASSET,SURT_PASSAGE_ENTRY:entry,SURT_PASSAGE_EXIT:exit}=await mod('src/muspelheimSurtPassage.ts');const bytes=readFileSync('public/img/models/'+SURT_PASSAGE_ASSET),doc=JSON.parse(bytes.subarray(20,20+bytes.readUInt32LE(12)));assert(bytes.length<500000);assert.match(doc.asset.extras.author,/Valerii_Melnychenko/);assert.match(doc.asset.extras.license,/CC-BY-4.0/);assert(!doc.materials.some(m=>/Chan_Texture|Fire_Bricks|aiStandardSurface3SG|aiStandardSurface5SG/.test(m.name)));assert(doc.materials.some(m=>m.alphaMode==='BLEND'),'Preserve magical transparency');
+const {SURT_PASSAGE_STEP_HEIGHT,createSurtPassage,SURT_STAIRS_ASSET,SURT_PASSAGE_ASSET,SURT_PASSAGE_ENTRY:entry,SURT_PASSAGE_EXIT:exit}=await mod('src/muspelheimSurtPassage.ts');const bytes=readFileSync('public/img/models/'+SURT_PASSAGE_ASSET),doc=JSON.parse(bytes.subarray(20,20+bytes.readUInt32LE(12)));assert(bytes.length<500000);assert.match(doc.asset.extras.author,/Valerii_Melnychenko/);assert.match(doc.asset.extras.license,/CC-BY-4.0/);assert(!doc.materials.some(m=>/Chan_Texture|Fire_Bricks|aiStandardSurface3SG|aiStandardSurface5SG/.test(m.name)));assert(doc.materials.some(m=>m.alphaMode==='BLEND'),'Preserve magical transparency');
 console.time('build passage');const passage=createSurtPassage(await load(SURT_PASSAGE_ASSET),world,await load(SURT_STAIRS_ASSET));console.timeEnd('build passage');passage.root.updateMatrixWorld(true);assert(passage.entryY<-60);assert(passage.exitY>20);assert.equal(passage.stepCount,44);assert.equal(passage.doors.length,2);assert(passage.blocks(-128,entry.z,passage.entryY));assert(passage.openNearby(-120,entry.z,passage.entryY));passage.update(0);assert.equal(passage.doors[0].opening,0);passage.update(.9);assert.equal(passage.doors[0].opening,1);assert(!passage.blocks(-128,entry.z,passage.entryY));assert(passage.blocks(-166,entry.z,passage.entryY));assert(passage.openNearby(-158,entry.z,passage.entryY));passage.update(.9);assert(!passage.blocks(-166,entry.z,passage.entryY));
 assert.equal(passage.floorAt(-147,entry.z,world(-147,entry.z)),null,'Upper world stays separate from buried room');assert.equal(passage.floorAt(-147,entry.z,passage.entryY),passage.entryY,'Saved room height restores the lower floor');
 passage.root.updateMatrixWorld(true);let checks=0,cameras=0;const ray=new T.Raycaster(),up=new T.Vector3(0,1,0);
@@ -30,3 +30,32 @@ for(const z of [-438,-435,-432,-429,-426]){
  }
 }
 console.log('Stone door and off-centre entrance approaches passed',approaches);
+
+// Reproduce the actual movement height gate at walking/running speeds and low frame rates.
+// The former hard-coded 3-unit gate rejected real source-model risers on the first flight.
+let maxRise=0,frameChecks=0;
+for(const fps of [10,20,30,60])for(const speed of [18,29])for(const reverse of [false,true])for(const side of [-4,0,4]){
+ const points=reverse?[...passage.points].reverse():passage.points;let footY=points[0].y;
+ for(let i=1;i<points.length;i++){const a=points[i-1],b=points[i],length=Math.hypot(b.x-a.x,b.z-a.z),count=Math.ceil(length/(speed/fps));
+  for(let j=1;j<=count;j++){const t=j/count,x=T.MathUtils.lerp(a.x,b.x,t),z=T.MathUtils.lerp(a.z,b.z,t),dx=(b.x-a.x)/length,dz=(b.z-a.z)/length,px=x-dz*side,pz=z+dx*side,y=passage.floorAt(px,pz,footY);
+   assert(y!=null,`Floor lost at ${fps}fps, ${speed}, ${px}, ${pz}`);assert(passage.owns(px,pz,footY),'Passage bypass stays active');
+   maxRise=Math.max(maxRise,Math.abs(y-footY));assert(Math.abs(y-footY)<SURT_PASSAGE_STEP_HEIGHT,'Runtime movement gate accepts each riser');assert(!passage.blocks(px,pz,footY),'No stair or landing snag');footY=y;frameChecks++;
+  }
+ }
+}
+assert(maxRise>3,'Regression includes a riser rejected by the old movement gate');
+assert.match(readFileSync('src/Muspelheim3D.tsx','utf8'),/insidePassage\?SURT_PASSAGE_STEP_HEIGHT/,'Game uses the passage step allowance');
+console.log('Runtime stair movement gate passed',{frameChecks,maxRise});
+// Both doors close after crossing from either side, remain open in the threshold,
+// and reverse when the hero returns while a leaf is closing.
+for(const d of passage.doors)for(const direction of [1,-1]){
+ const hero=(offset)=>({x:d.x+offset,z:entry.z,y:passage.entryY});
+ passage.update(2,hero(direction*24));passage.update(1,hero(direction*24));assert.equal(d.opening,0);
+ assert(passage.openNearby(d.x+direction*8,entry.z,passage.entryY));passage.update(.9,hero(direction*8));assert.equal(d.opening,1);
+ passage.update(2,hero(direction*3));assert.equal(d.opening,1,'Cannot close on the hero');
+ passage.update(.3,hero(-direction*18));assert.equal(d.target,1,'Delay after crossing');passage.update(.3,hero(-direction*18));assert.equal(d.target,0);assert(d.opening<1);
+ passage.update(.1,hero(-direction*3));assert.equal(d.target,1,'Return reverses closing door');passage.update(.9,hero(-direction*3));assert.equal(d.opening,1);
+ // Reopened from the new side: finish crossing back and let the door close.
+ passage.update(.5,hero(direction*18));passage.update(1,hero(direction*18));assert.equal(d.opening,0);assert(passage.blocks(d.x,entry.z,passage.entryY),'Closed leaf blocks the doorway');
+}
+console.log('Both passage doors close safely in both travel directions');

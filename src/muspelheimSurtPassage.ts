@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+export const SURT_PASSAGE_STEP_HEIGHT=8;
 export const SURT_STAIRS_ASSET='Muspelheim_Surt_Stairs.glb';
 export const SURT_STAIRS_CREDIT={title:'Stairs',author:'FantasyDragon',url:'https://sketchfab.com/3d-models/stairs-e2d8248414b74116b6e351142887593e'};
 export const SURT_PASSAGE_ASSET='Muspelheim_Magic_Portal.glb';
@@ -22,9 +23,9 @@ export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:n
  };
  const groundCache=new Map<string,number>();const cachedGround=(x:number,z:number)=>{const gx=Math.floor(x/4),gz=Math.floor(z/4),tx=x/4-gx,tz=z/4-gz;const h=(a:number,b:number)=>{const key=`${a},${b}`;let y=groundCache.get(key);if(y===undefined){y=worldFloor(a*4,b*4)??entryY;groundCache.set(key,y);}return y;};return THREE.MathUtils.lerp(THREE.MathUtils.lerp(h(gx,gz),h(gx+1,gz),tx),THREE.MathUtils.lerp(h(gx,gz+1),h(gx+1,gz+1),tx),tz);};
  const covered=(x:number,z:number,y:number)=> cachedGround(x,z)>y+29;
- const owns=(x:number,z:number,y:number)=>{const p=surface(x,z);return !!p&&y>=p.y-5&&y<p.y+27;};
+ const owns=(x:number,z:number,y:number)=>{const p=surface(x,z);return !!p&&y>=p.y-(p.segment.kind==='stairs'?SURT_PASSAGE_STEP_HEIGHT+5:5)&&y<p.y+27;};
  const stairProfiles=new Map<Segment,number[]>();
- const floorAt=(x:number,z:number,footY:number)=>{const p=surface(x,z);if(!p)return null;if(covered(x,z,p.y)&&Math.abs(footY-p.y)>6)return null;const profile=stairProfiles.get(p.segment);if(!profile)return p.y;
+ const floorAt=(x:number,z:number,footY:number)=>{const p=surface(x,z);if(!p)return null;if(covered(x,z,p.y)&&Math.abs(footY-p.y)>(p.segment.kind==='stairs'?SURT_PASSAGE_STEP_HEIGHT+5:6))return null;const profile=stairProfiles.get(p.segment);if(!profile)return p.y;
   const t=THREE.MathUtils.clamp(p.along/p.segment.length,0,1)*(profile.length-1),i=Math.floor(t);return THREE.MathUtils.lerp(profile[i],profile[Math.min(i+1,profile.length-1)],t-i);
  };
  const box=(w:number,h:number,d:number,x:number,y:number,z:number,material:THREE.Material=stone,parent:THREE.Object3D=root)=>{const geometry=new THREE.BoxGeometry(w,h,d);if(material===stone||material===doorStone){const uv=geometry.getAttribute('uv');for(let i=0;i<uv.count;i++){const face=Math.floor(i/4);uv.setXY(i,uv.getX(i)*(face<2?d:w)/8,uv.getY(i)*(face===2||face===3?d:h)/8);}}const mesh=new THREE.Mesh(geometry,material);mesh.position.set(x,y,z);mesh.receiveShadow=true;parent.add(mesh);return mesh;};
@@ -84,13 +85,13 @@ export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:n
  // Stone reveal fills the clipped bank around the arch, leaving the walking opening clear.
  for(const side of [-1,1])box(2,28,11,at.x-1,entryY+14,at.z+side*14.5,stone);
  box(2,7,18,at.x-1,entryY+24.5,at.z,stone);
- // Two actual hinged doors; both remain open once used, ready for the later trap mechanics.
+ // Hinged doors close after the hero clears the doorway, in either direction.
  const doors=[-128,-166].map((x,index)=>{const hinge=new THREE.Group();hinge.position.set(x,entryY,at.z-7);hinge.name=index?'Дверь выхода из комнаты':'Входная дверь комнаты';root.add(hinge);box(.8,20,14,0,10,7,doorStone,hinge);for(const y of [2,10,18])box(1,1,14,0,y,7,trim,hinge);box(1.2,1.5,1.5,.5,10,12,trim,hinge);for(const side of [-1,1])box(2,24,2,x,entryY+12,at.z+side*8,stone);box(2,3,18,x,entryY+22.5,at.z,stone);
   // Room front/rear wall panels beside each door opening.
   for(const side of [-1,1])box(1.5,28,8,x,entryY+14,at.z+side*11,stone);
-  return {x,index,hinge,opening:0,target:0};});
+  return {x,index,hinge,opening:0,target:0,openedFrom:0,closeTimer:0};});
  const nearDoor=(x:number,z:number,y:number)=>doors.find(d=>d.opening<.99&&Math.abs(y-entryY)<5&&Math.hypot(x-d.x,z-at.z)<10)??null;
- const openNearby=(x:number,z:number,y:number)=>{const door=nearDoor(x,z,y);if(!door)return false;door.target=1;return true;};
+ const openNearby=(x:number,z:number,y:number)=>{const door=nearDoor(x,z,y);if(!door)return false;door.target=1;door.openedFrom=Math.sign(x-door.x)||1;door.closeTimer=0;return true;};
  // Source frame and magical disc are enlarged independently of its terrain-sized base.
  portal.updateWorldMatrix(true,true);const sourceMeshes:THREE.Mesh[]=[];portal.traverse(o=>{if(o instanceof THREE.Mesh)sourceMeshes.push(o);});const portalScale=1.8;
  for(const source of sourceMeshes){const geometry=source.geometry.clone().applyMatrix4(source.matrixWorld),p=geometry.getAttribute('position'),material=(Array.isArray(source.material)?source.material[0]:source.material).clone();const isPlatform=material.name==='aiStandardSurface2SG';
@@ -118,7 +119,16 @@ export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:n
  }});};
  return {root,points,segments,doors,entryY,exitY,stepCount,owns,floorAt,blocks,nearDoor,openNearby,cameraAt,clipWorld,
   roofAt:(x:number,z:number)=>{const p=surface(x,z);return p&&covered(x,z,p.y)?p.y+28:null;},
-  update(dt:number,hero?:Point){magicTime+=dt;const crossing=hero&&Math.abs(hero.x-at.x)<19&&Math.abs(hero.z-at.z)<7&&Math.abs(hero.y-entryY)<6;for(const m of magicMaterials)m.opacity=crossing?.07:.48+Math.sin(magicTime*1.3)*.035;for(const d of doors){d.opening=Math.min(1,d.opening+dt*d.target/.85);const t=d.opening*d.opening*(3-2*d.opening);d.hinge.rotation.y=-t*Math.PI*.53;}},
+  update(dt:number,hero?:Point){magicTime+=dt;const crossing=hero&&Math.abs(hero.x-at.x)<19&&Math.abs(hero.z-at.z)<7&&Math.abs(hero.y-entryY)<6;for(const m of magicMaterials)m.opacity=crossing?.07:.48+Math.sin(magicTime*1.3)*.035;for(const d of doors){
+   if(hero&&dt>0){const dx=hero.x-d.x,inDoorway=dx> -17&&dx<6&&Math.abs(hero.z-at.z)<10&&Math.abs(hero.y-entryY)<22;
+    // Never close across the hero; reverse a closing leaf if she steps back.
+    if(inDoorway&&d.opening>0){if(!d.target)d.openedFrom=Math.sign(dx)||d.openedFrom;d.target=1;d.closeTimer=0;}
+    else if(d.target&&d.opening===1){const passed=dx*d.openedFrom< -6,walkedAway=Math.hypot(dx,hero.z-at.z)>20;
+     d.closeTimer=passed||walkedAway?d.closeTimer+dt:0;if(d.closeTimer>=.45)d.target=0;
+    }
+   }
+   d.opening=THREE.MathUtils.clamp(d.opening+dt*(d.target?1:-1)/.85,0,1);const t=d.opening*d.opening*(3-2*d.opening);d.hinge.rotation.y=-t*Math.PI*.53;
+  }},
   setStoneTexture(texture:THREE.Texture){const map=texture.clone();map.wrapS=map.wrapT=THREE.RepeatWrapping;map.repeat.set(1,1);map.needsUpdate=true;stone.map=map;stone.needsUpdate=true;stairMaterial.map=map;stairMaterial.needsUpdate=true;doorStone.map=map;doorStone.needsUpdate=true;for(const material of platformMaterials){material.map=map;material.needsUpdate=true;}},
  };
 }

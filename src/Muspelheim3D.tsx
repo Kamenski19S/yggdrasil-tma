@@ -1,4 +1,4 @@
-import {SURT_STAIRS_ASSET,SURT_STAIRS_CREDIT,SURT_PASSAGE_ASSET,SURT_PASSAGE_ENTRY,SURT_PASSAGE_EXIT,SURT_PASSAGE_CREDIT,createSurtPassage} from './muspelheimSurtPassage';
+import {SURT_PASSAGE_STEP_HEIGHT,SURT_STAIRS_ASSET,SURT_STAIRS_CREDIT,SURT_PASSAGE_ASSET,SURT_PASSAGE_ENTRY,SURT_PASSAGE_EXIT,SURT_PASSAGE_CREDIT,createSurtPassage} from './muspelheimSurtPassage';
 import {ORC_WARCHIEF_ASSET,ORC_WARCHIEF_POSITION,ORC_WARCHIEF_CREDIT,createOrcWarchief} from './muspelheimOrcWarchief';
 import {DARK_ELF_ASSET,DARK_ELF_POSITION,DARK_ELF_CREDIT,createDarkElf} from './muspelheimDarkElf';
 import {ASSASSIN_COMBAT} from './muspelheimAssassinCombat';
@@ -245,7 +245,7 @@ export default function Muspelheim3D(props:Props){
     const insidePassage=passage.owns(position.current.x,position.current.z,hero.position.y)&&passage.owns(next.x,next.z,hero.position.y);
     const step=inRavine&&!insidePassage?classifyRavineStep(heightAt,position.current,next,isRavineAbyss):'walk';
     if(step==='fall'){position.current=next;falling=true;fallVelocity=0;fallTime=0;clear();setStatus('Vicki сорвалась в пучину…');}
-    else if(step==='walk'&&y!=null&&Math.abs(y-hero.position.y)<(Math.abs(next.x-GATEWAY_POSITION.x)<13*GATEWAY_SCALE&&Math.abs(next.z-GATEWAY_POSITION.z)<42*GATEWAY_SCALE?8*GATEWAY_SCALE:iceSanctuaryContains(next.x,next.z)?5:3)){dx=next.x-position.current.x;dz=next.z-position.current.z;moving=Math.hypot(dx,dz)>.00001;position.current=next;if(moving)hero.rotation.y=Math.atan2(dx,dz);}}
+    else if(step==='walk'&&y!=null&&Math.abs(y-hero.position.y)<(Math.abs(next.x-GATEWAY_POSITION.x)<13*GATEWAY_SCALE&&Math.abs(next.z-GATEWAY_POSITION.z)<42*GATEWAY_SCALE?8*GATEWAY_SCALE:insidePassage?SURT_PASSAGE_STEP_HEIGHT:iceSanctuaryContains(next.x,next.z)?5:3)){dx=next.x-position.current.x;dz=next.z-position.current.z;moving=Math.hypot(dx,dz)>.00001;position.current=next;if(moving)hero.rotation.y=Math.atan2(dx,dz);}}
    if(falling&&!paused.current&&!document.hidden){
     fallTime+=dt;fallVelocity+=75*dt;hero.position.y-=fallVelocity*dt;
     if(fallTime>1.6){falling=false;fallVelocity=0;snapCamera=true;position.current={...RAVINE_RESTART};clear();fireRain?.reset();respawnNotice=5;setStatus('Vicki погибла в пучине. Путь через ущелье начинается заново. Задания и предметы сохранены.');}
