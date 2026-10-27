@@ -1,3 +1,4 @@
+import {createArmyLocomotion} from './muspelheimArmyLocomotion';
 import * as THREE from 'three';
 import {clone} from 'three/examples/jsm/utils/SkeletonUtils.js';
 import {createShadowAssassin} from './muspelheimShadowAssassin';
@@ -28,6 +29,7 @@ export function createArmyNavigation(floor:(x:number,z:number,y:number)=>number|
 }
 /** Three cached assets, shared geometry/textures, separate bones, hit flash and persistent timers. */
 export function createMuspelheimArmy(templates:Template[],nav:ReturnType<typeof createArmyNavigation>,clock=Date.now){
+ const clips=templates.map(t=>createArmyLocomotion(t.scene,t.animations));
  const root=new THREE.Group();root.name='Пепельное войско — 21 патрульный и 50 лагерных';
  const field:Point[]=[SHADOW_ASSASSIN_POSITION,DARK_ELF_POSITION].map(p=>nav.nearest({...p,y:0})).filter((p):p is Point=>!!p);const chosen:Point[]=[...field];
  const candidates=roadLines().flatMap(line=>line.filter((_,i)=>i%8===0)).map(p=>nav.nearest({...p,y:0})).filter((p):p is Point=>!!p&&p.z<95&&!(p.x>85&&p.z>-205&&p.z<-12));
@@ -37,20 +39,30 @@ export function createMuspelheimArmy(templates:Template[],nav:ReturnType<typeof 
  const actors=[...field,...camp].map((home,index)=>{
   const kind=index===0?2:index===2?0:index%3,source=templates[kind],model=clone(source.scene);model.traverse(o=>{if(o instanceof THREE.Mesh){o.material=Array.isArray(o.material)?o.material.map(m=>m.clone()):o.material.clone();o.castShadow=false;}});
   const respawnMs=index<21?ARMY_RESPAWN.field:ARMY_RESPAWN.camp;
-  let tickTime=(index%10)*.03;let path:Point[]=[],destination:Point|undefined,repath=0,wait=(index%7)*.4,patrolTime=0,patrolTarget:Point|undefined;
-  const navigate=(from:Point,to:Point)=>{if(!destination||distance(destination,to)>12||repath<=0){path=nav.route(from,to);destination={...to};repath=1.2+(index%5)*.1;}while(path.length&&distance(from,path[0])<2)path.shift();return path[0]??from;};
+  let tickTime=0;let path:Point[]=[],destination:Point|undefined,wait=(index%7)*.4,stuckTime=0,patrolChoice=0,patrolTarget:Point|undefined;
+  const navigate=(from:Point,to:Point)=>{if(!destination||distance(destination,to)>12){path=nav.route(from,to);destination={...to};}while(path.length&&distance(from,path[0])<2)path.shift();return path[0]??from;};
   const patrol=(p:Point,dt:number,floor:(x:number,z:number,y:number)=>number|null)=>{
-   wait-=dt;patrolTime+=dt;if(wait>0)return false;
-   if(!patrolTarget||distance(p,patrolTarget)<3||patrolTime>50){const pool=index<21?field:nav.nodes;patrolTarget=pool[(index*139+Math.floor(clock()/60000)*97)%pool.length];destination=undefined;patrolTime=0;}
-   const to=navigate(p,patrolTarget),d=distance(p,to);if(d<.1)return false;const step=Math.min(d,dt*6),x=p.x+(to.x-p.x)*step/d,z=p.z+(to.z-p.z)*step/d,y=floor(x,z,p.y);
-   if(y==null||Math.abs(y-p.y)>3){destination=undefined;wait=.5;return false;}Object.assign(p,{x,y,z});return true;
+   wait-=dt;if(wait>0)return false;
+   if(!patrolTarget||distance(p,patrolTarget)<3||stuckTime>3){
+    const pool=index<21?field:nav.nodes;
+    do{patrolTarget=pool[(index*139+patrolChoice++*97)%pool.length];}while(pool.length>1&&distance(p,patrolTarget)<12&&patrolChoice%pool.length!==0);
+    destination=undefined;stuckTime=0;
+   }
+   const to=navigate(p,patrolTarget),d=distance(p,to);if(d<.1){stuckTime+=dt;return false;}
+   const step=Math.min(d,dt*3.2),heading=Math.atan2(to.x-p.x,to.z-p.z),side=index%2?1:-1;
+   for(const offset of [0,side*Math.PI/3,-side*Math.PI/3,side*Math.PI/2]){
+    const x=p.x+Math.sin(heading+offset)*step,z=p.z+Math.cos(heading+offset)*step,y=floor(x,z,p.y);
+    if(y!=null&&Math.abs(y-p.y)<1.5){Object.assign(p,{x,y,z});stuckTime=0;return true;}
+   }
+   stuckTime+=dt;wait=.15;return false;
+
   };
-  const actor=createShadowAssassin(model,source.animations,home.y,clock,{position:home,height:13.8+(index%3)*.35,radius:1.8,name:['Воительница','Тёмная эльфийка','Теневой воин'][kind]+` · ${index<21?'патруль':'лагерь'} ${index<21?index+1:index-20}`,cooldownKey:`yggdrasil:muspelheim:army:v1:${index}:defeatedAt`,respawnMs,leash:1600,notice:25,speed:10,navigate,patrol,animationDistance:220});
+  const actor=createShadowAssassin(model,clips[kind],home.y,clock,{position:home,height:13.8+(index%3)*.35,radius:1.8,name:['Воительница','Тёмная эльфийка','Теневой воин'][kind]+` · ${index<21?'патруль':'лагерь'} ${index<21?index+1:index-20}`,cooldownKey:`yggdrasil:muspelheim:army:v1:${index}:defeatedAt`,respawnMs,combatEnabled:false,turnSpeed:2.8,leash:1600,notice:25,speed:10,navigate,patrol,animationDistance:220});
   const update=actor.update;actor.update=(dt,hero,available=true,floor=()=>home.y,contact)=>{
    tickTime+=dt;
-   const near=hero?distance(actor.combat.position,hero):Infinity,interval=near<65?0:near<180?.1:.3;
+   const near=hero?distance(actor.combat.position,hero):Infinity,interval=near<140?0:near<220?.08:.22;
    if(dt>0&&tickTime<interval)return {impact:false,started:false,walking:false,dying:false,respawned:false};
-   const advance=dt>0?Math.min(tickTime,.35):0;if(dt>0)tickTime=0;repath-=advance;const before=actor.combat.phase;
+   const advance=dt>0?Math.min(tickTime,.35):0;if(dt>0)tickTime=0;const before=actor.combat.phase;
    const event=update(advance,hero,available,floor,contact);
    if(before==='idle'&&actor.combat.phase!=='idle'){destination=undefined;patrolTarget=undefined;}
    // Animation remains independent; distant actors keep simulation but avoid rendering outside the view.
