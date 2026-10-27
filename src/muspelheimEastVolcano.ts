@@ -1,3 +1,4 @@
+import {CRATER_SMITH_POSITION,CRATER_WORKSHOP_Y} from './muspelheimCraterLayout';
 import {createMeshHeightSampler} from './muspelheimSurface';
 import * as THREE from 'three';
 export const EAST_VOLCANO_ASSET='Muspelheim_East_Volcano.glb';
@@ -44,6 +45,8 @@ export function createEastVolcano(model:THREE.Object3D,groundY=0){
   }
  });
  root.position.y-=Math.max(.8,rimY-groundY+.8);root.updateWorldMatrix(true,true);
+ // Seat the small workshop inside the existing vent, below the surrounding rim.
+ root.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const p=o.geometry.attributes.position,inverse=o.matrixWorld.clone().invert();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);const d=Math.hypot(v.x-CRATER_SMITH_POSITION.x,v.z-CRATER_SMITH_POSITION.z);if(d<11&&v.y>CRATER_WORKSHOP_Y-.2){const blend=1-THREE.MathUtils.smoothstep(d,7.8,11);v.y=THREE.MathUtils.lerp(v.y,CRATER_WORKSHOP_Y-.2,blend);v.applyMatrix4(inverse);p.setXYZ(i,v.x,v.y,v.z);}}p.needsUpdate=true;o.geometry.computeVertexNormals();o.geometry.computeBoundingBox();o.geometry.computeBoundingSphere();});root.updateWorldMatrix(true,true);
  // Index the real triangles in small XZ cells. Walking and camera checks avoid
  // repeated raycasts over the whole model, including its hollow crater.
  return {root,floorAt:createMeshHeightSampler(root)};
