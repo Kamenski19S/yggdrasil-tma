@@ -19,7 +19,7 @@ export function createGateGuardian(model:THREE.Object3D,clips:THREE.AnimationCli
  play('idle');mixer.update(0);root.updateMatrixWorld(true);
  const origin=()=>palms.reduce((sum,p)=>sum.add(p.bone.getWorldPosition(new THREE.Vector3())),new THREE.Vector3()).multiplyScalar(.5);
  const clearProjectiles=()=>{for(const mesh of projectileMeshes.values())effects.remove(mesh);projectileMeshes.clear();};
- return {root,mixer,combat,name,magic,palms,combatEnabled:true,respawnMs:120000,
+ return {root,mixer,combat,name,magic,palms,combatEnabled:true,get body(){return {x:root.position.x,y:root.position.y,z:root.position.z,radius:5.6,height:GATE_GUARDIAN_HEIGHT,solid:combat.phase!=='dead'};},respawnMs:120000,
   blocks(x:number,z:number,footY:number,padding=2){return combat.phase!=='dead'&&footY<groundY+GATE_GUARDIAN_HEIGHT&&footY+14>groundY&&Math.hypot(x-root.position.x,z-root.position.z)<5.6+padding;},
   hurt(damage:number){const hit=combat.hurt(damage);if(hit){flash=.25;if(combat.hp)play('hurt');}return hit;},
   reset(){if(combat.phase==='dead')return;combat.reset();magic.reset();clearProjectiles();root.visible=true;root.position.set(combat.position.x,combat.position.y,combat.position.z);play('idle');},

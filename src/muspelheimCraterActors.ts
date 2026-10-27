@@ -21,7 +21,7 @@ export function createCraterActors(smithSource:THREE.Object3D,necroSource:THREE.
  const floorAt=(x:number,z:number)=>{let y:number|null=null;for(const d of disks)if(Math.hypot(x-d.x,z-d.z)<=d.r)y=Math.max(y??-Infinity,d.y);return y;};
  const blocks=(x:number,z:number,y:number,padding=2)=>necromancers.some(n=>Math.abs(y-n.groundY)<14&&Math.hypot(x-n.root.position.x,z-n.root.position.z)<2.2+padding)||Math.abs(y-CRATER_WORKSHOP_Y)<12&&Math.hypot(x-CRATER_SMITH_POSITION.x,z-CRATER_SMITH_POSITION.z)<2.2+padding;
  const nearSmith=(x:number,y:number,z:number)=>Math.hypot(x-CRATER_SMITH_POSITION.x,z-CRATER_SMITH_POSITION.z)<15&&Math.abs(y-CRATER_WORKSHOP_Y)<6;
- return {root,smith,necromancers,floorAt,blocks,nearSmith,
+ return {root,smith,necromancers,floorAt,blocks,nearSmith,get bodies(){return [...necromancers.map(n=>({x:n.root.position.x,y:n.groundY,z:n.root.position.z,radius:3.1,height:14,solid:true})),{x:smith.root.position.x,y:CRATER_WORKSHOP_Y,z:smith.root.position.z,radius:2.4,height:9,solid:true}];},
   update(dt:number){if(dt<=0)return;forgeTime=(forgeTime+dt)%1.8;const p=forgeTime/1.8,angle=p<.18?0:p<.34?THREE.MathUtils.smoothstep(p,.18,.34)*1.55:p<.4?1.55:(1-THREE.MathUtils.smoothstep(p,.4,.9))*1.55;hammerHand.quaternion.copy(hammerRest).multiply(new THREE.Quaternion().setFromAxisAngle(hammerAxis,angle*.23));palm.quaternion.copy(palmRest).multiply(new THREE.Quaternion().setFromAxisAngle(palmAxis,angle*.48));},
   dispose(){const skeletons=new Set<THREE.Skeleton>();root.traverse(o=>{if(o instanceof THREE.SkinnedMesh)skeletons.add(o.skeleton);});skeletons.forEach(s=>s.dispose());},
  };

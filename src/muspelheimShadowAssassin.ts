@@ -1,3 +1,4 @@
+import {bodiesOverlap,type CharacterBody} from './characterCollision';
 import {createAssassinCombat,type AssassinPoint} from './muspelheimAssassinCombat';
 import * as THREE from 'three';
 import {YMIR_PILLAR_POSITION} from './muspelheimYmirPillar';
@@ -20,8 +21,10 @@ export function createShadowAssassin(model:THREE.Object3D,animations:THREE.Anima
  const colors=new Map<THREE.MeshStandardMaterial,THREE.Color>();model.traverse(o=>{if(o instanceof THREE.Mesh)for(const m of Array.isArray(o.material)?o.material:[o.material])if(m instanceof THREE.MeshStandardMaterial)colors.set(m,m.emissive.clone());});
  const play=(name:keyof typeof clips)=>{const action=mixer.clipAction(clips[name]);if(action===current)return;current?.fadeOut(.12);action.reset().setLoop(name==='attack'||name==='dead'?THREE.LoopOnce:THREE.LoopRepeat,name==='attack'||name==='dead'?1:Infinity);action.clampWhenFinished=name==='attack'||name==='dead';action.fadeIn(.12).play();current=action;};
  play('idle');root.visible=!combat.hidden;mixer.update(0);root.updateWorldMatrix(true,true);
- const blocks=(x:number,z:number,footY:number,padding=2)=>combat.phase!=='dead'&&footY<root.position.y+height&&footY+14>root.position.y&&Math.hypot(x-root.position.x,z-root.position.z)<(options.radius??2.1)+padding;
- return {root,mixer,combat,blocks,name,combatEnabled,respawnMs:options.respawnMs??120000,
+ const hips=model.getObjectByName('mixamorigHips'),offset=hips?root.worldToLocal(hips.getWorldPosition(new THREE.Vector3())):new THREE.Vector3();
+ const body=():CharacterBody=>{const c=Math.cos(root.rotation.y),s=Math.sin(root.rotation.y);return {x:root.position.x+c*offset.x+s*offset.z,z:root.position.z-s*offset.x+c*offset.z,y:root.position.y,height,radius:options.radius??2.1,solid:combat.phase!=='dead'};};
+ const blocks=(x:number,z:number,footY:number,padding=2)=>bodiesOverlap(body(),{x,y:footY,z,height:14,radius:padding,solid:true});
+ return {root,mixer,combat,blocks,name,combatEnabled,get body(){return body();},respawnMs:options.respawnMs??120000,
   hurt(damage:number){if(!combatEnabled)return false;const hit=combat.hurt(damage);if(hit)flash=.2;return hit;},
   reset(){if(combat.phase==='dead')return;combat.reset();root.visible=true;root.position.set(combat.position.x,combat.position.y,combat.position.z);play('idle');},
   update(dt:number,hero?:AssassinPoint,available=true,floor:(x:number,z:number,y:number)=>number|null=()=>groundY,contact?:()=>boolean){
