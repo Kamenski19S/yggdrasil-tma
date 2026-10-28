@@ -33,6 +33,21 @@ export function createThreadFlames(openingY:number){
  }
  return {root,materials,glowMaterials,update(dt:number){if(dt<=0)return;time.value+=dt;for(const item of lights){const p=threadWeaveOffset(.36,time.value,item.phase,item.baseX);item.light.position.set(p.x,3.96,p.z);item.light.intensity=item.power*(.9+.12*Math.sin(time.value*1.6+item.phase));}}};
 }
+/** The same three fires and halos, carried from a source into a recipient. */
+export function createLinkedThreadFlames(start:THREE.Vector3,end:THREE.Vector3){
+ const flames=createThreadFlames(0),from={value:start.clone()},to={value:end.clone()};
+ const vertex=`uniform float time,phase;uniform vec3 threadFrom,threadTo;varying vec2 flameUV;
+ void main(){flameUV=uv;float h=uv.y;vec3 axis=normalize(threadTo-threadFrom),side=normalize(cross(axis,vec3(0.,0.,1.))),up=cross(side,axis);
+ float envelope=sin(h*3.14159265),angle=phase+h*6.5-time*.85;vec3 p=mix(threadFrom,threadTo,h);
+ p.y+=envelope*2.;p+=envelope*(side*cos(angle)*1.7+up*sin(angle)*1.05);
+ p+=(modelMatrix*vec4(position.x,0.,0.,0.)).xyz;gl_Position=projectionMatrix*viewMatrix*vec4(p,1.);}`;
+ const orientation=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),end.clone().sub(start).normalize());flames.root.quaternion.copy(orientation);
+ for(const material of [...flames.materials,...flames.glowMaterials]){material.vertexShader=vertex;material.uniforms.threadFrom=from;material.uniforms.threadTo=to;}
+ // Independent world-space lights illuminate the curved link, rather than its old upright roots.
+ const lights:THREE.PointLight[]=[];flames.root.traverse(o=>{if(o instanceof THREE.PointLight)lights.push(o);});for(const light of lights)light.removeFromParent();
+ const lightRoot=new THREE.Group();flames.root.add(lightRoot);lightRoot.quaternion.copy(orientation).invert();for(let i=0;i<lights.length;i++){const light=lights[i];lightRoot.add(light);light.position.copy(start).lerp(end,(i+1)/4);light.position.y+=1.5;light.intensity=125;light.distance=38;}
+ let time=0;return {...flames,from,to,update(dt:number){if(dt<=0)return;flames.update(dt);time+=dt;for(let i=0;i<lights.length;i++){lights[i].position.copy(from.value).lerp(to.value,(i+1)/4);lights[i].position.y+=1.5;lights[i].intensity=125*(.9+.12*Math.sin(time*1.6+i*2));}}};
+}
 export function threadHallWalkable(x:number,z:number,radius=2.3){
  const h=THREAD_HALL;
  if(z>h.front-radius){if(Math.abs(x)>h.doorHalfWidth-radius||z>h.exitZ+4)return false;}else if(Math.abs(x)>h.halfWidth-radius||z<h.back+radius)return false;
