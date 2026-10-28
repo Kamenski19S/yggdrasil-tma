@@ -1,37 +1,42 @@
 import * as THREE from 'three';
+import {FORGE_RETURN} from './muspelheimForge';
 
-// Editable sketch coordinates, viewed from above: bottom tip meets the first gateway.
-// Each row is one cubic Bezier: start, two handles, end. Shared ends make junctions.
-export const ROAD_CURVES = [
- [703,1285,735,1160,760,1130,733,1040],
- [733,1040,710,875,625,885,564,905],
- [564,905,465,929,284,1016,341,911],
- [341,911,310,838,330,780,215,747],
- [215,747,80,700,66,810,77,904],
- [77,904,100,1060,226,1080,367,1150],
- [341,911,395,800,414,660,304,596],
- [304,596,226,551,211,476,219,401],
- [219,401,241,267,478,185,707,69],
- [742,1076,835,914,854,912,795,754],
- [795,754,666,661,670,648,683,529],
- [683,529,709,339,778,266,862,143],
- [795,754,667,727,524,735,489,630],
- [489,630,423,449,443,406,569,248],
- [795,754,738,669,773,597,864,581],
- [864,581,1046,562,1113,525,1218,299],
- [962,570,1075,620,1159,627,1061,736],
- [1061,736,943,860,970,884,1006,966],
- [1006,966,1034,1033,1061,1103,1078,1143],
-] as const;
 export const ROAD_WIDTH=15;
 export const ROAD_BOUNDS={minX:-525,maxX:525,minZ:-458.75,maxZ:140};
-export function roadWorldPoint(x:number,y:number){return {x:(x-703)*.8,z:-420+y*550/1285};}
-export function roadLines(){return ROAD_CURVES.map(c=>Array.from({length:65},(_,i)=>{
- const t=i/64,u=1-t;
- return roadWorldPoint(u*u*u*c[0]+3*u*u*t*c[2]+3*u*t*t*c[4]+t*t*t*c[6],u*u*u*c[1]+3*u*u*t*c[3]+3*u*t*t*c[5]+t*t*t*c[7]);
-}));}
-// A single mask joins every branch without overlapping transparent road meshes.
-// Ground shading reads it in world coordinates, so the road follows future terrain edits.
+type RoadPoint={x:number;z:number};
+type RoadRoute={id:string;name:string;points:readonly (readonly [number,number])[]};
+/** Roads now join the current entrances. No painted route climbs Surt's sealed bank. */
+export const ROAD_ROUTES:readonly RoadRoute[]=[
+ {id:'gate',name:'Первые врата — развилка',points:[[0,140],[0,95],[0,25]]},
+ {id:'west',name:'Западная дорога',points:[[0,25],[-60,0],[-140,0],[-210,0]]},
+ {id:'ymir',name:'Память Имира',points:[[-60,0],[-88,25],[-100,25]]},
+ {id:'norns',name:'Колодец трёх норн',points:[[-140,0],[-161,-28]]},
+ {id:'vault',name:'Хранилище тёмных нитей',points:[[-210,0],[-240,-20],[-274,-20]]},
+ {id:'sanctuary',name:'Ледяное святилище',points:[[-210,0],[-255,12],[-265,61.5],[-325,61.5],[-365,45],[-385,15]]},
+ {id:'ravine',name:'Подход к ущелью',points:[[-365,45],[-365,26]]},
+ {id:'forge',name:'Кузница',points:[[0,95],[65,95],[FORGE_RETURN.x,FORGE_RETURN.z]]},
+ {id:'east',name:'Крепость Пепельного легиона',points:[[0,25],[60,15],[140,2],[240,2],[240,-15]]},
+ {id:'ash-volcano',name:'Подножье пепельного вулкана',points:[[0,25],[0,-70],[0,-100]]},
+ {id:'fortress-east',name:'Восточные врата крепости',points:[[480,-85],[420,-85],[390,-107.5]]},
+ {id:'crater',name:'Восточный вулкан',points:[[240,2],[280,15],[325,15],[375,40],[450,55],[480,-20],[480,-85],[480,-190],[415,-220],[340,-240]]},
+];
+
+/** Small, bounded corner rounds stay inside the route's control polygon. */
+const junctions=new Set(ROAD_ROUTES.flatMap(r=>[r.points[0],r.points[r.points.length-1]]).map(p=>p.join(',')));
+function roundRoad(points:RoadRoute['points']):RoadPoint[]{
+ const output:RoadPoint[]=[];
+ const line=(a:RoadPoint,b:RoadPoint)=>{const count=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.z-a.z)/2));for(let i=1;i<=count;i++)output.push({x:THREE.MathUtils.lerp(a.x,b.x,i/count),z:THREE.MathUtils.lerp(a.z,b.z,i/count)});};
+ const p=points.map(([x,z])=>({x,z}));output.push(p[0]);let previous=p[0];
+ for(let i=1;i<p.length-1;i++){
+  const a=p[i-1],b=p[i],c=p[i+1];if(junctions.has(`${b.x},${b.z}`)){line(previous,b);previous=b;continue;}const ab=Math.hypot(b.x-a.x,b.z-a.z),bc=Math.hypot(c.x-b.x,c.z-b.z),radius=Math.min(7,ab*.2,bc*.2);
+  const entry={x:b.x+(a.x-b.x)*radius/ab,z:b.z+(a.z-b.z)*radius/ab},exit={x:b.x+(c.x-b.x)*radius/bc,z:b.z+(c.z-b.z)*radius/bc};line(previous,entry);
+  const count=Math.max(4,Math.ceil(radius));for(let k=1;k<=count;k++){const t=k/count,u=1-t;output.push({x:u*u*entry.x+2*u*t*b.x+t*t*exit.x,z:u*u*entry.z+2*u*t*b.z+t*t*exit.z});}previous=exit;
+ }
+ line(previous,p[p.length-1]);return output;
+}
+const lines=ROAD_ROUTES.map(route=>roundRoad(route.points));
+export function roadLines(){return lines;}
+// One mask drives the ground, air glow, map and road patrols.
 export function createRoadMask(){
  const canvas=document.createElement('canvas');canvas.width=2048;canvas.height=1168;
  const context=canvas.getContext('2d');if(!context)throw Error('Road mask canvas is unavailable');
@@ -42,5 +47,5 @@ export function createRoadMask(){
  for(const line of roadLines()){context.beginPath();line.forEach((p,i)=>i?context.lineTo(p.x,p.z):context.moveTo(p.x,p.z));context.stroke();}
  const texture=new THREE.CanvasTexture(canvas);texture.flipY=false;
  texture.generateMipmaps=false;texture.minFilter=texture.magFilter=THREE.LinearFilter;
- texture.name='Editable Muspelheim road layout';return texture;
+ texture.name='Muspelheim roads to current location entrances';return texture;
 }
