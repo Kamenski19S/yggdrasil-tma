@@ -35,5 +35,7 @@ export function createArmyTower(model:THREE.Object3D,groundY=0){
   for(const t of candidates)for(const y of [footY+4.5,footY+10]){if(y<t.low||y>t.high)continue;const cuts:THREE.Vector3[]=[];for(let k=0;k<3;k++){const a=t.v[k],b=t.v[(k+1)%3];if((a.y<=y&&b.y>y)||(b.y<=y&&a.y>y))cuts.push(a.clone().lerp(b,(y-a.y)/(b.y-a.y)));}if(cuts.length!==2)continue;const [a,b]=cuts,dx=b.x-a.x,dz=b.z-a.z,f=THREE.MathUtils.clamp(((x-a.x)*dx+(z-a.z)*dz)/Math.max(1e-8,dx*dx+dz*dz),0,1);if(Math.hypot(x-a.x-f*dx,z-a.z-f*dz)<padding)return true;}
   return false;
  };
- return {root,bounds,leaves,doorBounds,landingY,floorAt,roofAt,blocks};
+ const doorCenter=doorBounds.getCenter(new THREE.Vector3());
+ const nearDoor=(x:number,z:number,y:number)=>Math.hypot(x-doorCenter.x,z-doorCenter.z)<12&&Math.abs(y-landingY)<4;
+ return {root,bounds,leaves,doorBounds,landingY,floorAt,roofAt,blocks,nearDoor};
 }
