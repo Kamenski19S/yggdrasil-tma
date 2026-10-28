@@ -20,7 +20,11 @@
 .muspelheim-fire-health{position:absolute;top:52px;left:12px;width:172px;color:#ffe4b6;font-size:11px;text-shadow:0 1px 3px #000;pointer-events:none}.muspelheim-fire-health progress{display:block;width:100%;height:7px;accent-color:#d84c31}.muspelheim-fire-health small{display:block;margin-top:4px;font-size:9px}.muspelheim-fire-flash{position:absolute;inset:0;pointer-events:none;transition:opacity .15s;background:radial-gradient(ellipse,transparent 35%,#fb3900 100%)}
 
 /* Shared Niflheim control artwork and responsive positions. */
-.muspelheim-joystick{padding:0;user-select:none}.muspelheim-joystick>img{width:100%;height:100%;pointer-events:none}
+/* The control owns the touch area; the gold artwork covers the moving regulator. */
+.muspelheim-joystick{padding:0;user-select:none;display:block;line-height:0;isolation:isolate}
+.muspelheim-joystick>.mid3d-knob{left:calc(50% - 25px);top:calc(50% - 25px);z-index:1;pointer-events:none}
+/* The artwork's thumb centre is at y=240 of its 512px transparent canvas. */
+.muspelheim-joystick>img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain;transform:translateY(3.125%);z-index:2;pointer-events:none}
 .muspelheim-realm-title{height:48px;aspect-ratio:auto;pointer-events:auto;cursor:pointer;border:1px solid #bd9652!important;border-radius:10px;background:linear-gradient(#362415ee,#130c09ee)!important;font-size:14px;letter-spacing:.5px}
 .muspelheim-tasks{top:86px;left:10px}.muspelheim-tasks small{position:absolute;right:-4px;bottom:-2px;padding:2px 4px;border:1px solid #bda16b;border-radius:7px;background:#291911ee;color:#ffe1a0;font-size:9px}
 .muspelheim-world .muspelheim-fire-health{box-sizing:border-box;top:64px;left:80px;width:calc(100% - 170px);max-width:150px;font-size:9px;line-height:1.2}.muspelheim-world .muspelheim-fire-health progress{height:4px;margin-top:3px}.muspelheim-world .muspelheim-fire-health small{display:none}
