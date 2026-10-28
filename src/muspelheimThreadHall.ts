@@ -8,20 +8,30 @@ export const THREAD_WELL_CREDIT={title:"Good Ol' Well",author:'mikelkel2',url:'h
 export const THREAD_KEEPER_CREDIT={title:'Dark Necromancer - Corrupted Staff & Skulls',author:'Pigcraft',url:'https://sketchfab.com/3d-models/dark-necromancer-corrupted-staff-skulls-10c3bef4113b4e128ad41c9fdcab74e3'};
 export const THREAD_COLORS=['#f2faff','#ee182d','#050407'] as const;
 const hashGLSL=`float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),f.x),f.y);}float flow(vec2 p){return noise(p)*.57+noise(p*2.03)*.28+noise(p*4.01)*.15;}`;
+export function threadWeaveOffset(height:number,time:number,phase:number,baseX:number){
+ const blend=THREE.MathUtils.smoothstep(height,.03,.42),angle=phase+height*6.5-time*.85;
+ return {x:blend*(Math.cos(angle)*1.7-baseX),z:blend*Math.sin(angle)*1.05};
+}
+const weaveVertex=`uniform float time,phase,baseX;varying vec2 flameUV;void main(){flameUV=uv;float h=uv.y;vec3 p=(modelMatrix*vec4(position,1.)).xyz;float blend=smoothstep(.03,.42,h),angle=phase+h*6.5-time*.85;p.x+=blend*(cos(angle)*1.7-baseX);p.z+=blend*sin(angle)*1.05;p.x+=sin(h*17.-time*2.4+phase)*h*.1;gl_Position=projectionMatrix*viewMatrix*vec4(p,1.);}`;
 /** Three crossed sheets per flame: rising, rippling threads with a dark opaque core. */
 export function createThreadFlames(openingY:number){
  const root=new THREE.Group();root.name='Белая, красная и чёрная огненные нити';
- const time={value:0},materials:THREE.ShaderMaterial[]=[];
+ const time={value:0},materials:THREE.ShaderMaterial[]=[],glowMaterials:THREE.ShaderMaterial[]=[],lights:Array<{light:THREE.PointLight;phase:number;baseX:number;power:number}>=[];
  for(let i=0;i<3;i++){
+  const phase=i*Math.PI*2/3,baseX=(i-1)*1.1;
   const group=new THREE.Group();group.name=['Белое пламя','Красное пламя','Чёрное пламя'][i];group.position.set((i-1)*1.1,openingY,-1.5);root.add(group);
-  const material=new THREE.ShaderMaterial({uniforms:{time,color:{value:new THREE.Color(THREAD_COLORS[i])},dark:{value:i===2?1:0},phase:{value:i*2.17}},transparent:true,depthWrite:false,side:THREE.DoubleSide,toneMapped:false,
-   vertexShader:`uniform float time,phase;varying vec2 flameUV;void main(){flameUV=uv;vec3 p=position;float h=uv.y;p.x+=sin(h*8.-time*1.8+phase)*h*.38+sin(h*17.-time*2.4)*h*.12;gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);}`,
+  const material=new THREE.ShaderMaterial({uniforms:{time,color:{value:new THREE.Color(THREAD_COLORS[i])},dark:{value:i===2?1:0},phase:{value:phase},baseX:{value:baseX}},transparent:true,depthWrite:false,side:THREE.DoubleSide,toneMapped:false,
+   vertexShader:weaveVertex,
    fragmentShader:`uniform float time,dark,phase;uniform vec3 color;varying vec2 flameUV;${hashGLSL}void main(){vec2 uv=flameUV;float n=flow(vec2(uv.x*4.+phase,uv.y*8.-time*1.35));float width=mix(.48,.025,pow(uv.y,.8))*(.7+n*.55);float distance=abs(uv.x-.5+sin(uv.y*13.-time*2.+phase)*uv.y*.06);float shape=1.-smoothstep(width*.62,width,distance);float tip=1.-smoothstep(.7,1.,uv.y+(n-.5)*.22);float alpha=shape*tip*smoothstep(0.,.045,uv.y);if(alpha<.025)discard;float ripple=pow(.5+.5*sin(uv.y*46.-time*6.+n*5.),7.);float edge=smoothstep(width*.35,width*.85,distance);vec3 lightColor=mix(color*.75,vec3(1.),(1.-uv.y)*.2)+color*(ripple*.3+.15);vec3 soot=mix(vec3(.004,.003,.007),vec3(.56,.49,.65),edge*.8+ripple*.12);vec3 result=mix(lightColor,soot,dark);gl_FragColor=vec4(result,alpha*mix(.78,.97,dark));}`});materials.push(material);
   const geometry=new THREE.PlaneGeometry(1.2,11,4,20);geometry.translate(0,5.5,0);
-  for(let j=0;j<3;j++){const sheet=new THREE.Mesh(geometry,material);sheet.rotation.y=j*Math.PI/3;group.add(sheet);}
-  const glow=new THREE.PointLight(i===0?'#cfedff':i===1?'#ff2346':'#a39bb8',i===2?20:75,42,1.5);glow.position.set(0,3.5,0);group.add(glow);
+  for(let j=0;j<3;j++){const sheet=new THREE.Mesh(geometry,material);sheet.rotation.y=j*Math.PI/3;sheet.renderOrder=2;sheet.frustumCulled=false;group.add(sheet);}
+  const glowMaterial=new THREE.ShaderMaterial({uniforms:{time,phase:{value:phase},baseX:{value:baseX},color:{value:new THREE.Color(['#a7eaff','#ff244c','#b38bff'][i])}},vertexShader:weaveVertex,transparent:true,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,toneMapped:false,
+   fragmentShader:`uniform float time,phase;uniform vec3 color;varying vec2 flameUV;void main(){vec2 uv=flameUV;float across=(uv.x-.5)*8.;float halo=exp(-across*across)*smoothstep(0.,.06,uv.y)*(1.-smoothstep(.65,1.,uv.y));float core=exp(-across*across*12.);float pulse=.82+.18*sin(uv.y*27.-time*4.+phase);vec3 c=mix(color,vec3(1.),core*.32);gl_FragColor=vec4(c*2.2,halo*pulse*.26);}`});glowMaterials.push(glowMaterial);
+  const haloGeometry=new THREE.PlaneGeometry(4.8,11,6,40);haloGeometry.translate(0,5.5,0);
+  for(let j=0;j<3;j++){const halo=new THREE.Mesh(haloGeometry,glowMaterial);halo.name='Переплетающийся цветной ореол';halo.renderOrder=1;halo.frustumCulled=false;halo.rotation.y=j*Math.PI/3;group.add(halo);}
+  const power=i===0?270:i===1?300:230,glow=new THREE.PointLight(i===0?'#a7eaff':i===1?'#ff244c':'#b38bff',power,65,1.5);glow.position.set(0,3.5,0);group.add(glow);lights.push({light:glow,phase,baseX,power});
  }
- return {root,materials,update(dt:number){time.value+=Math.max(0,dt);}};
+ return {root,materials,glowMaterials,update(dt:number){if(dt<=0)return;time.value+=dt;for(const item of lights){const p=threadWeaveOffset(.36,time.value,item.phase,item.baseX);item.light.position.set(p.x,3.96,p.z);item.light.intensity=item.power*(.9+.12*Math.sin(time.value*1.6+item.phase));}}};
 }
 export function threadHallWalkable(x:number,z:number,radius=2.3){
  const h=THREAD_HALL;
