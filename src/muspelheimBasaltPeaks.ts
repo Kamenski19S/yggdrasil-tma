@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import {makeBasaltWall,type WallRock} from './muspelheimRockWalls';
 /** Sparse landmarks: ten on the upper plain and four along the canyon flanks. */
+export const SURT_LOWER_SPIRES=[
+ {kind:0,x:-445,z:-245,width:20,depth:18,height:120,yaw:.45,canyon:false},
+ {kind:1,x:-330,z:-260,width:22,depth:19,height:165,yaw:-.6,canyon:false},
+ {kind:2,x:-185,z:-310,width:18,depth:16,height:98,yaw:.9,canyon:false},
+] as const;
 export const BASALT_PEAK_SITES=[
  {kind:0,x:-230,z:45,width:18,depth:16,height:36,yaw:.4,canyon:false},
  {kind:1,x:325,z:55,width:24,depth:19,height:70,yaw:-.7,canyon:false},
@@ -18,7 +23,7 @@ export const BASALT_PEAK_SITES=[
  {kind:2,x:-140,z:-210,width:16,depth:14,height:160,yaw:-.4,canyon:true},
 ] as const;
 export function basaltPeakLayout(floor:(x:number,z:number)=>number|null):WallRock[]{
- return BASALT_PEAK_SITES.map(site=>{
+ return [...BASALT_PEAK_SITES,...SURT_LOWER_SPIRES].map(site=>{
   // Seat the whole footprint below its lowest sampled surface, including slopes.
   const c=Math.cos(site.yaw),s=Math.sin(site.yaw),heights:number[]=[];
   for(const u of [-.5,0,.5])for(const v of [-.5,0,.5]){const y=floor(site.x+c*u*site.width+s*v*site.depth,site.z-s*u*site.width+c*v*site.depth);if(y!=null&&Number.isFinite(y))heights.push(y);}

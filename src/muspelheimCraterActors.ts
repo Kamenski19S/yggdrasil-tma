@@ -12,8 +12,7 @@ export function createCraterActors(smithSource:THREE.Object3D,necroSource:THREE.
  const hammerHand=smithSource.getObjectByName('SmithL_Forearm') as THREE.Bone|undefined;
  if(!hammerHand)throw Error('Craftsman hammer palm missing');const hammerRest=hammerHand.quaternion.clone(),hammerAxis=new THREE.Vector3(1,0,.65).normalize().applyQuaternion(smith.root.quaternion).applyQuaternion(hammerHand.getWorldQuaternion(new THREE.Quaternion()).invert());const palm=smithSource.getObjectByName('SmithL_Palm')!,palmRest=palm.quaternion.clone(),palmAxis=new THREE.Vector3(1,0,.7).normalize();let forgeTime=0;
  const necromancers=CRATER_NECROMANCERS.map((site,i)=>{
-  const heights=[floor(site.x,site.z),...Array.from({length:8},(_,j)=>floor(site.x+Math.cos(j*Math.PI/4)*4.5,site.z+Math.sin(j*Math.PI/4)*4.5))].filter((y):y is number=>y!==null);
-  if(!heights.length)throw Error('Necromancer has no ground');const y=Math.max(0,...heights)+.16;pad(site.x,site.z,y,5.5);
+  const ground=floor(site.x,site.z);if(ground==null)throw Error('Necromancer has no ground');const y=ground+.04;
   const model=clone(necroSource),f=fit(model,14,site.x,y,site.z,site.yaw),staff=model.getObjectByName('NecroStaff'),hand=model.getObjectByName('NecroRHand'),forearm=model.getObjectByName('NecroRForearm');if(!staff||!hand||!forearm)throw Error('Necromancer fitted skeleton missing');
   const staffY=staff.position.y,handY=hand.position.y,forearmY=forearm.position.y,strike=createNecromancerStrike({x:site.x,y,z:site.z},i*.25);
   return {...f,name:site.name,strike,groundY:y,update(dt:number,hero:{x:number;y:number;z:number},available=true,contact=true){const event=strike.update(dt,hero,available,contact);const lift=strike.lift;staff.position.y=staffY+lift;forearm.position.y=forearmY+lift*.28;hand.position.y=handY+lift*.72;return event;}};
