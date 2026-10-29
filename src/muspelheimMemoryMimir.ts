@@ -7,7 +7,7 @@ export const MIMIR_CREDIT={title:'Storm Golem - Lightning Elemental',author:'Pig
 type Point={x:number;y:number;z:number};
 export function createMemoryMimir(model:THREE.Object3D,clips:THREE.AnimationClip[],pillar:THREE.Box3,floor:(x:number,z:number)=>number|null){
  model.updateWorldMatrix(true,true);const bounds=new THREE.Box3().setFromObject(model),scale=MIMIR_HEIGHT/(bounds.max.y-bounds.min.y),centre=bounds.getCenter(new THREE.Vector3());model.position.set(-centre.x,-bounds.min.y,-centre.z);
- const fit=new THREE.Group();fit.scale.setScalar(scale);fit.add(model);const root=new THREE.Group();root.name='Мимир · образ из белого столба памяти';root.add(fit);root.visible=false;
+ const fit=new THREE.Group();fit.scale.setScalar(scale);fit.add(model);const root=new THREE.Group();root.name='Имир · образ из белого столба памяти';root.add(fit);root.visible=false;
  const center=pillar.getCenter(new THREE.Vector3()),start={x:center.x,z:pillar.max.z-4},destination={x:center.x,z:pillar.max.z+8},ground=floor(destination.x,destination.z),startY=floor(start.x,start.z);
  if(ground==null||startY==null)throw Error('Mimir has no ground beside the memory pillar');
  root.position.set(start.x,startY,start.z);
