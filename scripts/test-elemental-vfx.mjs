@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';import {buildSync} from 'esbuild';import * as T from 'three';
+const code=buildSync({entryPoints:['src/elementalVfx.ts'],bundle:true,write:false,format:'esm',platform:'node',external:['three']}).outputFiles[0].text.replaceAll('from "three"',`from ${JSON.stringify(import.meta.resolve('three'))}`);
+const {createElementalVfx}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const load=T.TextureLoader.prototype.load;let loads=0;globalThis.document={};T.TextureLoader.prototype.load=function(url,callback){loads++;const t=new T.Texture();callback(t);return t;};
+const v=createElementalVfx('/assets/'),camera=new T.PerspectiveCamera();v.impact('fire',{x:0,y:7,z:0});v.impact('fire',{x:2,y:7,z:0});assert.equal(loads,1,'Concurrent animations share the loaded atlas');assert.equal(v.root.children[0].material,v.root.children[1].material);
+v.update(.3,camera);const uv=v.root.children[0].geometry.getAttribute('uv');assert.equal(uv.getX(0),1/8);assert(Math.abs(uv.getY(0)-2/3)<1e-6,'Frame 9 is on the second row, counted from the top');assert(v.root.children[0].visible);
+v.update(1,camera);assert.equal(v.root.children.length,0,'One-shot effects release their geometry');
+v.bolt('a','ice',{x:0,y:0,z:0,vx:0,vy:10,vz:0},8);v.update(.02,camera);assert.equal(v.root.children[0].scale.y,4,'Projectile keeps original 2:1 aspect');assert(Math.abs(v.root.children[0].rotation.z-Math.PI/2)<1e-6,'Projectile faces its direction in camera space');v.bolt('a','ice',{x:2,y:0,z:0},8);assert.equal(v.root.children.length,1,'Projectile key updates instead of duplicating');
+for(let i=0;i<100;i++)v.impact('water',{x:i,y:0,z:0});assert(v.root.children.length<=64,'Bounded effects under heavy spell traffic');v.clear();assert.equal(v.root.children.length,0);v.dispose();v.impact('fire',{x:0,y:0,z:0});assert.equal(v.root.children.length,0);
+T.TextureLoader.prototype.load=load;delete globalThis.document;
+console.log('VFX passed: shared atlases, top-to-bottom animated UVs, aspect and heading, bounded pool, keyed projectiles, expiry, reset and disposal.');

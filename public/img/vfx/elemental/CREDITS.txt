@@ -1,0 +1,3 @@
+Stylized Elemental VFX Pack Vol. 1 by AssetForge3D — https://assetforge3d.itch.io/
+Spell FX Free by heyheythere - https://heyheythere.itch.io/spell-fx-free - CC BY 4.0
+Modifications for Yggdrasil: elemental frames resized from 512 to 256 px; converted to lossless WebP; atlas animation metadata added.
