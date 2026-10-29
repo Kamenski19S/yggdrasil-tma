@@ -1,6 +1,6 @@
 import {pickEncounter} from './niflheimCombat';
 import * as THREE from 'three';
-import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
+import {GLTFLoader} from './modelLoader';
 import {clone as cloneSkeleton} from 'three/examples/jsm/utils/SkeletonUtils.js';
 import {BASE,cachedGlbBuffer,type HeroWeapon} from './core';
 import {normalizeOrcAnimations} from './niflheimRigRetarget';

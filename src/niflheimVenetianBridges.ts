@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
+import {GLTFLoader} from './modelLoader';
 import {BASE,cachedGlbBuffer} from './core';
 import {NIFL_RIVERS,niflGroundY} from './niflheimMapData';
 import profile from './niflheimVenetianProfile.json';

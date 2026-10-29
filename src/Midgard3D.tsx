@@ -12,7 +12,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { createBuildingTextures, textureBuildingPart, applyBuildingDetails } from './buildingTextures';
 import { createMidgardBoundary } from './midgardBoundary';
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { GLTFLoader } from "./modelLoader";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { type HeroDef, type HeroSkin, type HeroWeapon, type GearId, type GatherStock, type GatherKind, MIDGARD_GUARDIANS, WHISPER_GUARD, MIDGARD_GUARDIAN_ORDER, BASE, cachedGlbBuffer, textureSteelOnWeapon, GATHER_SPOTS, WEAPON_ASSET, COMBAT_ENERGY, combatEnergyColor } from './core';

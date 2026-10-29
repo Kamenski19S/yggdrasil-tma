@@ -43,7 +43,7 @@ import {createMemoryIgloo} from './niflheimIgloo';
 import {createNiflheimGiant} from './niflheimGiant';
 import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
-import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
+import {GLTFLoader} from './modelLoader';
 import {clone as cloneSkeleton} from 'three/examples/jsm/utils/SkeletonUtils.js';
 import {BASE,cachedGlbBuffer,WEAPON_ASSET,WEAPON_POWER,textureSteelOnWeapon,styleNiflheimWeapon,type HeroWeapon} from './core';
 import {addEntranceIce} from './niflheimEntranceIce';

@@ -1,7 +1,7 @@
 import { potionBoostKind, type PotionBoosts } from "./potionEffects";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { GLTFLoader } from "./modelLoader";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { BASE, type GatherKind, type HeroWeapon, cachedGlbBuffer, textureSteelOnWeapon, styleNiflheimWeapon } from './core';

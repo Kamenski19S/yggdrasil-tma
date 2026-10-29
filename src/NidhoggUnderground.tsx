@@ -9,7 +9,7 @@ import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
 import {createNidhoggEncounter} from './nidhoggEncounter';
 import {dragonProgress,NIFL_OBSIDIAN,type DragonEvent} from './niflheimDragonQuest';
-import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
+import {GLTFLoader} from './modelLoader';
 import {BASE,cachedGlbBuffer,WEAPON_ASSET,textureSteelOnWeapon,styleNiflheimWeapon,type HeroWeapon} from './core';
 
 export default function NidhoggUnderground({combatStats,fieldHp,onFieldHpChange,potionBoosts,frostGuard,onPotionBoostUsed,onFrostGuardHit,onBack,weapon,shieldAsset,shieldEquipped,whirlpoolHeart,questDone,onDragonEvent,potions,onUsePotion}:{combatStats:CombatStats;fieldHp:number|null;onFieldHpChange:(hp:number)=>void;potionBoosts:PotionBoosts;frostGuard:number;onPotionBoostUsed:(kind:PotionBoostKind)=>void;onFrostGuardHit:()=>void;onBack:()=>void;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;whirlpoolHeart:boolean;questDone:string[];onDragonEvent:(event:DragonEvent)=>void;potions:string[];onUsePotion:(id:string,currentHpOverride?:number)=>boolean}){

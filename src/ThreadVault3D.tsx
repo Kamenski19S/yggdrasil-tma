@@ -1,6 +1,6 @@
 import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
-import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
+import {GLTFLoader} from './modelLoader';
 import {BASE,cachedGlbBuffer,WEAPON_ASSET,textureSteelOnWeapon,styleNiflheimWeapon,type HeroWeapon} from './core';
 import {createThreadHall,threadHallWalkable,threadHallNearKeeper,threadHallExit,THREAD_WELL_ASSET,THREAD_KEEPER_ASSET,THREAD_WELL_CREDIT,THREAD_KEEPER_CREDIT} from './muspelheimThreadHall';
 import {readThreadVaultVisit,saveThreadVaultVisit} from './threadVaultSession';

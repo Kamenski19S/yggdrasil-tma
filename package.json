@@ -8,7 +8,7 @@
     "test:seals": "node scripts/test-niflheim-seals.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "prebuild": "node scripts/materialize-ice-assets.mjs",
+    "prebuild": "node scripts/materialize-ice-assets.mjs && node scripts/optimize-glb-lossless.mjs",
     "test:combat": "node scripts/test-niflheim-combat.mjs",
     "test:patrols": "node scripts/test-niflheim-patrols.mjs",
     "test:seal-combat": "node scripts/test-niflheim-seal-combat.mjs",
@@ -26,6 +26,8 @@
     "@types/react-dom": "^18.3.0",
     "@types/three": "^0.180.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "meshoptimizer": "0.23.0",
+    "sharp": "0.34.5",
     "typescript": "^5.5.3",
     "vite": "^5.3.4"
   }

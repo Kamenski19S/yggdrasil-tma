@@ -3,7 +3,7 @@ import {settleNidhoggReward} from './nidhoggBalance';
 import { EMPTY_POTION_BOOSTS, normalizePotionBoosts, type PotionBoosts } from "./potionEffects";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { GLTFLoader, versionedModelUrl } from "./modelLoader";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 
@@ -19,7 +19,7 @@ export const tg: any = (window as any).Telegram?.WebApp;
 export const BASE: string = (import.meta as any).env?.BASE_URL || "/";
 
 
-export const GLB_CACHE_NAME = "yggdrasil-glb-v1";
+export const GLB_CACHE_NAME = "yggdrasil-glb-v2-lossless";
 
 
 export const glbRequests = new Map<string, Promise<ArrayBuffer>>();
@@ -89,7 +89,7 @@ export function textureSteelOnWeapon(root:THREE.Object3D,asset:string){
 
 
 export async function cachedGlbBuffer(url:string):Promise<ArrayBuffer>{
-  const absolute=new URL(url,window.location.href).href;
+  const absolute=versionedModelUrl(new URL(url,window.location.href).href);
   const pending=glbRequests.get(absolute);
   if(pending)return pending.then(buffer=>buffer.slice(0));
   const request=(async()=>{

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {BASE,cachedGlbBuffer} from './core';
-import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
+import {GLTFLoader} from './modelLoader';
 import {MeshoptDecoder} from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import bridgeHeights from './niflheimMedievalBridgeHeights.json';
 

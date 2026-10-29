@@ -14,7 +14,7 @@ import {followMineCamera,type MineCameraState} from './ashMineCamera';
 import {readMineCheckpoint,writeMineCheckpoint} from './ashMineSession';
 import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
-import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
+import {GLTFLoader} from './modelLoader';
 import {BASE,cachedGlbBuffer,WEAPON_ASSET,textureSteelOnWeapon,styleNiflheimWeapon,type HeroWeapon} from './core';
 import {incomingCombatDamage,type CombatStats} from './combatStats';
 import {MINE_GUARDS,FIRE_GOLD_COST,mineProgress,type MineEvent} from './muspelheimMineQuest';

@@ -1,6 +1,6 @@
 import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
-import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
+import {GLTFLoader} from './modelLoader';
 import {BASE,cachedGlbBuffer,WEAPON_ASSET,textureSteelOnWeapon,styleNiflheimWeapon,type HeroWeapon} from './core';
 import {createAshLordHall,ashLordWalkable,ashLordNear,ashLordExit,ASH_LORD_ASSET,ASH_LORD_CREDIT} from './muspelheimAshLordHall';
 import {readAshLordVisit,saveAshLordVisit} from './ashLordSession';

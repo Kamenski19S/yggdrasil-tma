@@ -21,7 +21,7 @@ import { CHAOS_GATE_KEY, CHAOS_GATE_COST, CHAOS_GATE_RUNES, cleanseChaosGate } f
 import { potionBoostKind, boostedPotionDamage, potionDodges, type PotionBoostKind } from "./potionEffects";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { GLTFLoader } from "./modelLoader";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { type Screen, loadSave, type Save, type HeroWeapon, tg, cachedGlbBuffer, BASE, type GatherKind, GATHER_SPOTS, GATHER_RESPAWN_MS, refreshGathering, MIDGARD_GUARDIAN_ORDER, type Realm, today, LADDER, HEROES, type GearId, shieldForgeKey, ARTIFACT_INFO, WEAPON_POWER, QUESTS, MASTERS, COMBAT_ENERGY, BgImg, NAMES_F, NAMES_M, REALMS, MIDGARD_GUARDIANS, ARTIFACTS, MASTER_IMG, combatEnergyColor, GEAR_IDS, rank, NAV } from './core';
