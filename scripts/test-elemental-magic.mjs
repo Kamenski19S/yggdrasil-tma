@@ -6,7 +6,7 @@ const m=await mod('src/elementalMagic.ts'),{createGateMagic}=await mod('src/musp
 assert.equal(new Set(Object.values(m.MINE_ELEMENTS)).size,4);
 assert.equal(new Set(m.RAVINE_ELEMENTS.map(e=>m.ELEMENTS[e].damage)).size,4);
 for(const fps of [20,60,120]){
- const s=m.createAilments();m.applyElement(s,'ice',false);assert.equal(m.magicMoveScale(s),0);for(let i=0;i<fps;i++)m.stepAilments(s,1/fps);assert.equal(m.magicMoveScale(s),.55);m.applyElement(s,'lightning',false);assert.equal(s.stun,0,'Control immunity prevents stun lock');for(let i=0;i<fps*4;i++)m.stepAilments(s,1/fps);assert.equal(m.magicMoveScale(s),1);
+ const s=m.createAilments();m.applyElement(s,'ice',false);assert.equal(m.magicMoveScale(s),0);for(let i=0;i<fps;i++)m.stepAilments(s,1/fps);assert.equal(m.magicMoveScale(s),0,'Freeze remains visible for a full second');for(let i=0;i<fps*.5;i++)m.stepAilments(s,1/fps);assert.equal(m.magicMoveScale(s),.55);m.applyElement(s,'lightning',false);assert.equal(s.stun,0,'Control immunity prevents stun lock');for(let i=0;i<fps*4;i++)m.stepAilments(s,1/fps);assert.equal(m.magicMoveScale(s),1);
  const fire=m.createAilments();m.applyElement(fire,'fire',false);let damage=0;for(let i=0;i<fps*4;i++)damage+=m.stepAilments(fire,1/fps);assert.equal(damage,12,'Burn total independent of frame rate');
  for(const e of m.RAVINE_ELEMENTS){const shield=m.createAilments();m.applyElement(shield,e,true);assert.deepEqual(shield,m.createAilments(),'Shield prevents '+e);}
  const shadow=m.createAilments();m.applyElement(shadow,'shadow',false);assert.equal(m.magicRawDamage(100,shadow),120);m.stepAilments(shadow,4);assert.equal(m.magicRawDamage(100,shadow),100);

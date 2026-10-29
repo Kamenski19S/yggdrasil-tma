@@ -1,3 +1,4 @@
+export const ICE_FREEZE_SECONDS=1.15;
 export type Element='ice'|'fire'|'shadow'|'lightning'|'water';
 export const ELEMENTS:Record<Element,{name:string;color:string;damage:number;impact:string;bolt:string}>={
  ice:{name:'Лёд',color:'#8ceaff',damage:24,impact:'ice_impact',bolt:'ice_bolt'},
@@ -13,7 +14,7 @@ export const createAilments=():Ailments=>({slow:0,freeze:0,burn:0,burnClock:0,we
 /** Control immunity prevents several casters from keeping Vicki frozen indefinitely. */
 export function applyElement(s:Ailments,e:Element,blocked:boolean){
  if(blocked)return '';
- if(e==='ice'){s.slow=3;if(s.immunity<=0){s.freeze=.6;s.immunity=4;}return 'Холод: замедление 3 с, короткая заморозка.';}
+ if(e==='ice'){s.slow=3;if(s.immunity<=0){s.freeze=ICE_FREEZE_SECONDS;s.immunity=4;}return 'Ледяная статуя: заморозка на 1,15 с, замедление на 3 с.';}
  if(e==='fire'){s.burn=3;return 'Ожог на 3 с.';}
  if(e==='shadow'){s.weaken=3;return 'Уязвимость на 3 с: входящий урон +20%.';}
  if(e==='lightning'){if(s.immunity<=0){s.stun=.35;s.immunity=4;}return 'Молния: короткое оглушение.';}
