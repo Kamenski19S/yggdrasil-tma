@@ -1,3 +1,4 @@
+import {playtestHealth,MAGIC_PLAYTEST_INVULNERABLE} from './magicPlaytest';
 import {MIMIR_ASSET,MIMIR_CREDIT,createMemoryMimir} from './muspelheimMemoryMimir';
 import {canWalkRavine} from './muspelheimSurtRavine';
 import {createRavineGoblins} from './muspelheimRavineGoblins';
@@ -78,7 +79,7 @@ export default function Muspelheim3D(props:Props){
  const heroFootY=useRef(props.startPosition?.y??0);
  const [passageDoor,setPassageDoor]=useState('');const openPassageDoor=useRef<()=>void>(()=>{});
  const sprint=useRef(false),live=useRef(props);live.current=props;
- const life=useRef(Math.max(0,Math.min(props.fieldHp??props.combatStats.maxHp,props.combatStats.maxHp)));
+ const life=useRef(playtestHealth(props.fieldHp??props.combatStats.maxHp,props.combatStats.maxHp));
  const [hp,setHp]=useState(life.current),[defeated,setDefeated]=useState(life.current===0),[fireHit,setFireHit]=useState(false),[surtSafe,setSurtSafe]=useState(false);
  const [nearLord,setNearLord]=useState(false);const enterLord=useRef<()=>void>(()=>{});
  const [nearVault,setNearVault]=useState(false);const openVault=useRef<()=>void>(()=>{});
@@ -87,7 +88,7 @@ export default function Muspelheim3D(props:Props){
  useEffect(()=>{refreshEquipment.current();},[props.weapon,props.shieldAsset,props.shieldEquipped]);
  const respawn=useRef<()=>void>(()=>{}),openWell=useRef<()=>void>(()=>{});
  const [iceSafe,setIceSafe]=useState(false),[wellSafe,setWellSafe]=useState(false),[nearStranger,setNearStranger]=useState(false),[wellDialog,setWellDialog]=useState(false);
- useEffect(()=>{const value=Math.max(0,Math.min(props.fieldHp??props.combatStats.maxHp,props.combatStats.maxHp));life.current=value;setHp(value);setDefeated(value===0);},[props.fieldHp,props.combatStats.maxHp]);
+ useEffect(()=>{const value=playtestHealth(props.fieldHp??props.combatStats.maxHp,props.combatStats.maxHp);if(MAGIC_PLAYTEST_INVULNERABLE&&props.fieldHp!==value)props.onFieldHpChange(value);life.current=value;setHp(value);setDefeated(value===0);},[props.fieldHp,props.combatStats.maxHp]);
  const host=useRef<HTMLDivElement>(null),input=useRef({x:0,z:0}),position=useRef({...props.startPosition??BRIDGE_SPAWN});
  const [nearCraterSmith,setNearCraterSmith]=useState(false),[craterSmithDialog,setCraterSmithDialog]=useState(false);
  const [nearMine,setNearMine]=useState(false),[mineOpen,setMineOpen]=useState(false),[keeperDialog,setKeeperDialog]=useState(false),[nearKeeper,setNearKeeper]=useState(false),[status,setStatus]=useState('Загрузка площадки Муспельхейма…'),[retry,setRetry]=useState(0),[failed,setFailed]=useState(false),[gate,setGate]=useState(false),[mapOpen,setMapOpen]=useState(false);
@@ -315,20 +316,20 @@ if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.c
     if(event.respawned){artifactCombat.reset();if(hero.position.distanceTo(enemy.root.position)<60)setStatus(`${enemy.name}: возрождение. Снова можно вступить в бой.`);}
     if(event.impact&&life.current>0){
      const guarded=live.current.shieldEquipped&&!!heroActions?.guarding,damage=incomingCombatDamage(ASSASSIN_COMBAT.attack,live.current.combatStats,guarded);
-     life.current=artifactCombat.survive(live.current.combatStats.artifactId,Math.max(0,life.current-damage),live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);
+     life.current=artifactCombat.survive(live.current.combatStats.artifactId,playtestHealth(life.current-damage,live.current.combatStats.maxHp),live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);
      setStatus(guarded?`Щит смягчил удар: −${damage} здоровья.`:`${enemy.name}: удар по Vicki, −${damage} здоровья.`);
      if(!life.current){clear();setDefeated(true);setStatus('Vicki потеряла силы в бою.');}
     }
    }
    const goblinEvent=ravineGoblins?.update(combatActive?dt:0,hero.position,!iceSanctuaryContains(p.x,p.z)&&!(nornsWell?.shelters(p.x,p.z,hero.position.y)??false));
    if(goblinEvent?.blocked)setStatus('Магический барьер поглотил заклинание гнома.');
-   if(goblinEvent?.hits&&life.current>0){const damage=goblinEvent.damage;life.current=artifactCombat.survive(live.current.combatStats.artifactId,Math.max(0,life.current-damage),live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);setStatus(`Магия гномов: −${damage}. Защищайся магическим барьером.`);if(!life.current){clear();setDefeated(true);setStatus('Vicki потеряла силы от магии гномов.');}}
+   if(goblinEvent?.hits&&life.current>0){const damage=goblinEvent.damage;life.current=artifactCombat.survive(live.current.combatStats.artifactId,playtestHealth(life.current-damage,live.current.combatStats.maxHp),live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);setStatus(`Магия гномов: −${damage}. Защищайся магическим барьером.`);if(!life.current){clear();setDefeated(true);setStatus('Vicki потеряла силы от магии гномов.');}}
    craterActors?.update(paused.current||document.hidden?0:dt);
    for(const necro of craterActors?.necromancers??[]){
     const canHit=()=>{for(let i=1;i<6;i++){const t=i/6,x=THREE.MathUtils.lerp(necro.root.position.x,hero.position.x,t),z=THREE.MathUtils.lerp(necro.root.position.z,hero.position.z,t),y=THREE.MathUtils.lerp(necro.root.position.y,hero.position.y,t);if(blocked(x,z,y,false)&&Math.hypot(x-necro.root.position.x,z-necro.root.position.z)>5)return false;const surface=heightAt(x,z,y);if(surface!=null&&surface>y+8)return false;}return true;};
     const event=necro.update(combatActive&&life.current>0?dt:0,hero.position,!iceSanctuaryContains(p.x,p.z),canHit());
     if(event.started)setStatus(`${necro.name} поднимает посох. Отойди до удара о землю.`);
-    if(event.impact&&life.current>0){const guarded=live.current.shieldEquipped&&!!heroActions?.guarding,damage=incomingCombatDamage(NECRO_STRIKE.attack,live.current.combatStats,guarded);life.current=artifactCombat.survive(live.current.combatStats.artifactId,Math.max(0,life.current-damage),live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);setStatus(`${necro.name}: посох ударил о землю, −${damage} здоровья.`);if(!life.current){clear();setDefeated(true);setStatus('Vicki потеряла силы у некромантов.');}}
+    if(event.impact&&life.current>0){const guarded=live.current.shieldEquipped&&!!heroActions?.guarding,damage=incomingCombatDamage(NECRO_STRIKE.attack,live.current.combatStats,guarded);life.current=artifactCombat.survive(live.current.combatStats.artifactId,playtestHealth(life.current-damage,live.current.combatStats.maxHp),live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);setStatus(`${necro.name}: посох ударил о землю, −${damage} здоровья.`);if(!life.current){clear();setDefeated(true);setStatus('Vicki потеряла силы у некромантов.');}}
    }
    ashVolcano?.update(paused.current?0:dt);lava.update(paused.current?0:dt);ravineLava.update(paused.current?0:dt);summit?.update(paused.current?0:dt);viewYaw.current=updateFollowCamera(follow,dx,dz,dt);
    if(surtActor&&(hero.position.distanceTo(surtActor.root.position)<120||surtActor.phase!=='seated')){const event=surtActor.update(paused.current||document.hidden?0:dt,hero.position);if(event.started)setStatus('Сурт заметил Vicki и поднимается с трона…');if(event.impact){surtShake=.25;setStatus('Сурт ударил мечом по камню — искры рассыпались по полу.');}}
@@ -374,7 +375,7 @@ if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.c
    if(hitFlash>0&&fireActive){hitFlash-=dt;if(hitFlash<=0)setFireHit(false);}
    if(fireRain&&ashVolcano)fireRain.update(fireActive?dt:0,hero.position,ashVolcano.vent,camera,()=>{
     if(life.current<=0||iceSanctuaryContains(hero.position.x,hero.position.z)||isSurtTerritory(hero.position.x,hero.position.z)||nornsWell?.shelters(hero.position.x,hero.position.z,hero.position.y))return;
-    const damage=Math.min(life.current,fireStrikeDamage(live.current.combatStats.maxHp));life.current-=damage;setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);
+    const damage=Math.min(life.current,fireStrikeDamage(live.current.combatStats.maxHp));life.current=playtestHealth(life.current-damage,live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);
     setStatus(`Огненный удар пробил броню: −${damage} здоровья. Ищи укрытие!`);
     if(life.current===0){clear();setDefeated(true);setStatus('Огненный дождь лишил Vicki сил.');}
    });

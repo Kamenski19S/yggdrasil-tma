@@ -77,7 +77,7 @@ export function createMineCharacter(role:MineCharacterRole){
   if(walk)walk.timeScale=role==='helper'?1.35:role==='worker'?.9:1;
   idle?.play();current=idle;mixer.update(0);for(const r of rest){r.p.copy(r.bone.position);r.q.copy(r.bone.quaternion);r.s.copy(r.bone.scale);}
  };
- const update=(time:number,moving=false,striking=false,activity:MineActivity='walk')=>{
+ const update=(time:number,moving=false,striking=false,activity:MineActivity='walk',castDuration=.65)=>{
   if(!mixer||!visual)return;const dt=Math.max(0,Math.min(.1,time-last));last=time;
   for(const r of rest){r.bone.position.copy(r.p);r.bone.quaternion.copy(r.q);r.bone.scale.copy(r.s);}
   if(role==='helper'&&walk)walk.timeScale=activity==='run'?1.7:.7;
@@ -85,7 +85,7 @@ export function createMineCharacter(role:MineCharacterRole){
   for(const r of rest){r.p.copy(r.bone.position);r.q.copy(r.bone.quaternion);r.s.copy(r.bone.scale);}
   if(role==='guard'){
    if(striking&&!wasStriking){windupStart=time;attackSide=attackSide==='L'?'R':'L';}if(!striking&&wasStriking)release=time;
-   const wind=THREE.MathUtils.smoothstep(time-windupStart,0,.65),age=time-release;
+   const wind=THREE.MathUtils.smoothstep(time-windupStart,0,castDuration),age=time-release;
    const angle=striking?2.2*wind:age<.18?THREE.MathUtils.lerp(2.2,5.3,THREE.MathUtils.smoothstep(age,0,.14)):age<.4?THREE.MathUtils.lerp(5.3,Math.PI*2,THREE.MathUtils.smoothstep(age,.18,.4)):0;
    const bend=striking?-.35*wind:age<.4?-.35*(1-THREE.MathUtils.smoothstep(age,0,.4)):0;
    visual.updateWorldMatrix(true,true);
@@ -99,5 +99,5 @@ export function createMineCharacter(role:MineCharacterRole){
    visual.position.z=striking?.25*wind:age<.4?.7*Math.sin(Math.PI*Math.max(0,age)/.4):0;wasStriking=striking;
   }
  };
- return {root,install,update,dispose:()=>{mixer?.stopAllAction();for(const s of skeletons)s.dispose();}};
+ return {root,install,update,castOrigin:()=>{root.updateWorldMatrix(true,true);const hand=rest.find(r=>r.bone.name.startsWith('Hand'+attackSide+'_'))?.bone;return hand?hand.getWorldPosition(new THREE.Vector3()):root.position.clone().add(new THREE.Vector3(0,7,0));},dispose:()=>{mixer?.stopAllAction();for(const s of skeletons)s.dispose();}};
 }
