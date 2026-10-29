@@ -9,24 +9,25 @@ export const ELEMENTS:Record<Element,{name:string;color:string;damage:number;imp
 };
 export const RAVINE_ELEMENTS:Element[]=['fire','ice','shadow','lightning'];
 export const MINE_ELEMENTS:Record<string,Element>={entrance:'ice',turn:'fire',store:'shadow',foreman:'lightning'};
-export type Ailments={slow:number;freeze:number;burn:number;burnClock:number;weaken:number;stun:number;immunity:number};
-export const createAilments=():Ailments=>({slow:0,freeze:0,burn:0,burnClock:0,weaken:0,stun:0,immunity:0});
+export type Ailments={slow:number;freeze:number;burn:number;burnClock:number;weaken:number;stun:number;immunity:number;disorient:number;shockWindow:number;shockHits:number;fall:number;fallCooldown:number};
+export const createAilments=():Ailments=>({slow:0,freeze:0,burn:0,burnClock:0,weaken:0,stun:0,immunity:0,disorient:0,shockWindow:0,shockHits:0,fall:0,fallCooldown:0});
 /** Control immunity prevents several casters from keeping Vicki frozen indefinitely. */
 export function applyElement(s:Ailments,e:Element,blocked:boolean){
  if(blocked)return '';
  if(e==='ice'){s.slow=3;if(s.immunity<=0){s.freeze=ICE_FREEZE_SECONDS;s.immunity=4;}return 'Ледяная статуя: заморозка на 1,15 с, замедление на 3 с.';}
  if(e==='fire'){s.burn=3;return 'Ожог на 3 с.';}
  if(e==='shadow'){s.weaken=3;return 'Уязвимость на 3 с: входящий урон +20%.';}
- if(e==='lightning'){if(s.immunity<=0){s.stun=.35;s.immunity=4;}return 'Молния: короткое оглушение.';}
+ if(e==='lightning'){s.disorient=2.3;s.slow=Math.max(s.slow,2.3);s.shockHits=s.shockWindow>0?s.shockHits+1:1;s.shockWindow=8;if(s.shockHits>=3&&s.fallCooldown<=0){s.fall=1.15;s.fallCooldown=4;s.shockHits=0;return 'Три разряда: Vicki сбита с ног!';}return 'Электрический разряд: дезориентация и замедление.';}
  s.slow=Math.max(s.slow,1.5);return 'Водная волна: замедление.';
 }
 export function stepAilments(s:Ailments,dt:number){
  if(dt<=0)return 0;let damage=0;
  if(s.burn>0){s.burnClock+=Math.min(dt,s.burn);while(s.burnClock>=1-1e-8){s.burnClock=Math.max(0,s.burnClock-1);damage+=4;}}
- for(const k of ['slow','freeze','burn','weaken','stun','immunity'] as const)s[k]=Math.max(0,s[k]-dt);
+ for(const k of ['slow','freeze','burn','weaken','stun','immunity','disorient','shockWindow','fall','fallCooldown'] as const)s[k]=Math.max(0,s[k]-dt);
+ if(s.shockWindow===0)s.shockHits=0;
  if(s.burn===0)s.burnClock=0;return damage;
 }
-export const magicMoveScale=(s:Ailments)=>s.freeze>0||s.stun>0?0:s.slow>0?.55:1;
+export const magicMoveScale=(s:Ailments)=>s.freeze>0||s.stun>0||s.fall>0?0:s.slow>0?.55:1;
 export const magicRawDamage=(raw:number,s:Ailments)=>Math.round(raw*(s.weaken>0?1.2:1));
 export const WATER_BURST={windup:1.2,cooldown:9,radius:7,damage:120};
 export type WaterBurstState={remaining:number;charge:number;target:{x:number;y:number;z:number}|null};
@@ -38,3 +39,6 @@ export function stepWaterBurst(s:WaterBurstState,dt:number,hero:{x:number;y:numb
  if(s.target){s.charge-=dt;if(s.charge<=0){result.target={...s.target};result.impact=true;result.hit=Math.hypot(hero.x-s.target.x,hero.z-s.target.z)<=WATER_BURST.radius&&Math.abs(hero.y-s.target.y)<5;s.target=null;s.remaining=WATER_BURST.cooldown;}return result;}
  s.remaining=Math.max(0,s.remaining-dt);if(!s.remaining){s.target={...hero};s.charge=WATER_BURST.windup;result.started=true;result.target={...s.target};}return result;
 }
+
+/** Bounded, time-based steering error; keeps input magnitude and collision checks. */
+export function disorientedMove(x:number,z:number,s:Ailments,time:number){const angle=s.disorient>0?.85*Math.sin(time*9)+.4*Math.sin(time*17):0;return {x:x*Math.cos(angle)-z*Math.sin(angle),z:x*Math.sin(angle)+z*Math.cos(angle)};}
