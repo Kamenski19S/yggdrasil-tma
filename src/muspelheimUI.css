@@ -44,7 +44,7 @@
 
 /* Supplied gold artwork and the compact five-action drum. */
 .muspelheim-world canvas{display:block;background:#18110e}
-.muspelheim-world .muspelheim-realm-title{width:min(100%,280px);height:auto;aspect-ratio:2048/682;border:0!important;border-radius:0;background:transparent!important;padding:0;filter:drop-shadow(0 2px 5px #0008)}
+.muspelheim-world .muspelheim-realm-title{width:min(100%,280px);height:auto;aspect-ratio:2048/682;border:0!important;border-radius:0;background:transparent!important;padding:0;filter:none}
 .muspelheim-realm-title>img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none}
 .muspelheim-realm-title:active{transform:scale(.97)}
 .muspelheim-realm-title:focus-visible{outline:2px solid #ffe3a2;outline-offset:3px}
@@ -53,20 +53,20 @@
 .muspelheim-world .muspelheim-tasks{top:100px}
 .muspelheim-overview-actions{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 .muspelheim-action-wheel{position:absolute;z-index:12;right:6px;bottom:70px;width:184px;height:184px;pointer-events:none;border-radius:50%}
-.muspelheim-action-wheel.is-open{background:radial-gradient(circle,#1b110bd9 0,#24180a88 46%,transparent 69%)}
+.muspelheim-action-wheel.is-open{background:transparent}
 .muspelheim-wheel-hub,.muspelheim-wheel-action{appearance:none;border:0;padding:0;position:absolute;left:50%;top:50%;background:transparent;color:#ffe8ac;cursor:pointer;touch-action:none;pointer-events:auto;user-select:none}
-.muspelheim-wheel-hub{width:38px;height:38px;transform:translate(-50%,-50%);border:2px solid #d2a350;border-radius:50%;background:radial-gradient(circle,#7c5223,#241709 75%);box-shadow:0 1px 8px #0009,inset 0 0 8px #f8d78866;font-size:23px;line-height:1}
+.muspelheim-wheel-hub{width:38px;height:38px;transform:translate(-50%,-50%);border:2px solid #d2a350;border-radius:50%;background:radial-gradient(circle,#7c5223,#241709 75%);box-shadow:none;font-size:23px;line-height:1}
 .muspelheim-wheel-action{width:54px;height:54px;transform:translate(calc(-50% + var(--wheel-x)),calc(-50% + var(--wheel-y)))}
-.muspelheim-wheel-action>img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 2px 3px #0009);pointer-events:none}
-.muspelheim-wheel-action>span{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);font-size:9px;line-height:12px;white-space:nowrap;padding:0 4px;border-radius:5px;background:#1d120ce6;color:#ffe5a5;text-shadow:0 1px 2px #000}
-.muspelheim-wheel-action:active>img,.muspelheim-wheel-action[aria-pressed=true]>img{filter:brightness(1.25) drop-shadow(0 0 5px #ffbc40)}
+.muspelheim-wheel-action>img{display:block;width:100%;height:100%;object-fit:contain;filter:saturate(1.15) brightness(1.08);pointer-events:none}
+.muspelheim-wheel-action>span{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);font-size:9px;line-height:12px;white-space:nowrap;padding:0 4px;border-radius:5px;background:transparent;color:#ffe5a5;text-shadow:none}
+.muspelheim-wheel-action:active>img,.muspelheim-wheel-action[aria-pressed=true]>img{filter:saturate(1.15) brightness(1.2)}
 .muspelheim-wheel-action:disabled{opacity:.4}
 .muspelheim-wheel-action:focus-visible,.muspelheim-wheel-hub:focus-visible{outline:2px solid #fff0bf;outline-offset:3px;border-radius:50%}
 @media(max-width:350px){.muspelheim-action-wheel{right:0;bottom:76px;width:172px;height:172px}.muspelheim-wheel-action{width:48px;height:48px}.muspelheim-world .muspelheim-joystick{width:116px;height:116px;left:8px}}
 /* Match visible medals, including the different transparent margins in source art. */
-.muspelheim-wheel-action>img{filter:grayscale(1) sepia(1) saturate(1.65) drop-shadow(0 2px 3px #0009)}
-.wheel-magic>img,.wheel-barrier>img,.wheel-run>img{transform:translateY(-1px) scale(.78);filter:brightness(.84) grayscale(1) sepia(1) saturate(1.65) drop-shadow(0 2px 3px #0009)}
-.muspelheim-wheel-action:active>img,.muspelheim-wheel-action[aria-pressed=true]>img{filter:brightness(1.15) grayscale(1) sepia(1) saturate(1.65) drop-shadow(0 0 5px #ffbc40)}
+
+.wheel-magic>img,.wheel-barrier>img,.wheel-run>img{transform:translateY(-1px) scale(.78)}
+
 .muspelheim-world .muspelheim-inventory{position:absolute;top:100px;right:10px}
 .muspelheim-inventory>img{transform:scale(1.22)}
 .muspelheim-interior .thread-vault-title{top:76px;left:74px;right:74px;font-size:10px}

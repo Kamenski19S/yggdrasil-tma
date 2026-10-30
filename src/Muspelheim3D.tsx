@@ -1,3 +1,4 @@
+import {mineApproachControlYaw,settleMineApproachView} from './mineApproachNavigation';
 import {MuspelheimToolbar} from './MuspelheimToolbar';
 import {MuspelheimActionWheel} from './MuspelheimActionWheel';
 import {createSceneSuspension} from './sceneSuspension';
@@ -115,7 +116,7 @@ export default function Muspelheim3D(props:Props){
   const worldRocks=[...wallRocks],peakSources:Array<THREE.Object3D|undefined>=[];let peakRocks:ReturnType<typeof basaltPeakLayout>|undefined,peaksReady=0;
   const mineEntrance=createMineEntrance(`${BASE}img/`);scene.add(mineEntrance.root);openMine.current=()=>{mineEntrance.open();setMineOpen(true);};
   let gateGuardian:ReturnType<typeof createGateGuardian>|undefined,proximityTimer=0;
-  let mineDoorReady=false;let crossingReady=false,transitioningMine=false,mineCameraActive=false,wellCameraActive=false;
+  let mineDoorReady=false;let crossingReady=false,transitioningMine=false,mineCameraActive=false,mineExitViewHeld=false,wellCameraActive=false;
   let falling=false,fallVelocity=0,fallTime=0,respawnNotice=0,ravineVisited=false,snapCamera=false,hitFlash=0,sanctuaryHealTime=0;
   const follow:FollowCameraState={yaw:viewYaw.current,targetYaw:viewYaw.current,turnTime:0};
   let forge:ReturnType<typeof createMuspelheimForge>|undefined,transitioningForge=false;
@@ -153,7 +154,7 @@ export default function Muspelheim3D(props:Props){
   let terrainReady=false,bridgeTextureReady=false,torchesReady=false,torchSource:THREE.Object3D|undefined,heroReady=false,wallsReady=0,loadError=false,entrance:MuspelheimGateway|undefined;
   const entranceAssets:Array<THREE.Object3D|undefined>=[];
   const blocked=(x:number,z:number,footY=hero.position.y,includeAssassin=true)=>{if(includeAssassin&&(solidActors().some(actor=>actor.blocks(x,z,footY,2.3))||(craterActors?.blocks(x,z,footY,2.3)??false)))return true;if(passage?.owns(x,z,footY))return passage.blocks(x,z,footY);return (surtActor?.blocks(x,z,footY)??false)||(summit?.blocks(x,z,footY)??false)||(passage?.blocks(x,z,footY)??false)||(surtPass?.blocks(x,z,footY)??false)||(ymirPillar?.blocks(x,z,footY)??false)||(darkVault?.blocks(x,z,footY)??false)||(fortress?.blocks(x,z,footY)??false)||(armyTower?.blocks(x,z,footY)??false)||(forge?.blocks(x,z)??false)||(iceSanctuary?.blocks(x,z,footY)??false)||(nornsWell?.blocks(x,z)??false)||mineApproachSideBlocks(x,footY,z)||mineEntrance.blocks(x,z,footY)||chasmBlocks(x,z)||(throne?.blocks(x,z)??false)||(tower?.blocks(x,z)??false)||rockWallBlocks(worldRocks,x,z,2,footY)||ravineRockBlocks(ravineRocks,x,footY,z)||(entrance?.blocks(x,z)??false);};
-  const heightAt=(x:number,z:number,footY=hero.position.y,includePassage=true)=>{const passageFloor=includePassage?passage?.floorAt(x,z,footY):null;if(passageFloor!=null)return passageFloor;const approach=mineApproachFloorAt(x,z);if(approach!=null)return approach;const paved=summit?.floorAt(x,z);if(paved!=null)return paved;const base=sample?.(x,z);if(base==null)return null;const crossing=ravineBridgeFloorAt(x,z);if(crossing!=null)return Math.max(base,crossing);const deck=bridge?.floorAt(x,z);if(deck!=null)return Math.max(base,deck);const surface=Math.max(base,craterActors?.floorAt(x,z)??base,surtPass?.floorAt(x,z)??base,darkVault?.floorAt(x,z)??base,fortress?.floorAt(x,z)??base,armyTower?.floorAt(x,z)??base,forge?.floorAt(x,z)??base,iceSanctuary?.floorAt(x,z)??base,nornsWell?.floorAt(x,z)??base,volcano?.floorAt(x,z)??base,eastVolcano?.floorAt(x,z)??base,ashVolcano?.floorAt(x,z)??base,canyonRidge?.floorAt(x,z)??base,summit?.floorAt(x,z)??base);return entrance?.floorAt(x,z,surface)??surface;};
+  const heightAt=(x:number,z:number,footY=hero.position.y,includePassage=true)=>{const passageFloor=includePassage?passage?.floorAt(x,z,footY):null;if(passageFloor!=null)return passageFloor;const approach=mineApproachFloorAt(x,z,sample?.(x,z));if(approach!=null)return approach;const paved=summit?.floorAt(x,z);if(paved!=null)return paved;const base=sample?.(x,z);if(base==null)return null;const crossing=ravineBridgeFloorAt(x,z);if(crossing!=null)return Math.max(base,crossing);const deck=bridge?.floorAt(x,z);if(deck!=null)return Math.max(base,deck);const surface=Math.max(base,craterActors?.floorAt(x,z)??base,surtPass?.floorAt(x,z)??base,darkVault?.floorAt(x,z)??base,fortress?.floorAt(x,z)??base,armyTower?.floorAt(x,z)??base,forge?.floorAt(x,z)??base,iceSanctuary?.floorAt(x,z)??base,nornsWell?.floorAt(x,z)??base,volcano?.floorAt(x,z)??base,eastVolcano?.floorAt(x,z)??base,ashVolcano?.floorAt(x,z)??base,canyonRidge?.floorAt(x,z)??base,summit?.floorAt(x,z)??base);return entrance?.floorAt(x,z,surface)??surface;};
   let fireRain:ReturnType<typeof createFireRain>|undefined,fireTextureReady=false;
   const fireTexture=new THREE.TextureLoader().load(`${BASE}img/${FIRE_SPRITE}`,()=>{if(!alive){fireTexture.dispose();return;}fireTextureReady=true;ready();},undefined,()=>{if(alive){loadError=true;setStatus('Огненный дождь не загрузился. Повтори загрузку.');setFailed(true);}});
   fireRain=createFireRain(fireTexture,(x,z)=>Math.max(heightAt(x,z)??-Infinity,passage?.roofAt(x,z)??-Infinity,surtPass?.roofAt(x,z)??-Infinity,ymirPillar?.roofAt(x,z)??-Infinity,darkVault?.roofAt(x,z)??-Infinity,nornsWell?.roofAt(x,z)??-Infinity,armyTower?.roofAt(x,z)??-Infinity,fortress?.roofAt(x,z)??-Infinity),isRavineAbyss);scene.add(fireRain.root);
@@ -273,6 +274,7 @@ export default function Muspelheim3D(props:Props){
    let x=input.current.x+(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0);
    let z=input.current.z+(keys.has('KeyS')||keys.has('ArrowDown')?1:0)-(keys.has('KeyW')||keys.has('ArrowUp')?1:0);
    const length=Math.hypot(x,z);let moving=false,dx=0,dz=0;
+   controlYaw.current=mineApproachControlYaw(controlYaw.current,viewYaw.current,mineCameraActive||mineExitViewHeld);
    const running=sprint.current||keys.has('ShiftLeft')||keys.has('ShiftRight');
    const speed=(running?29:18)*(ravineGoblins?.moveScale??1);
    if(craterActors&&army&&passage&&orcWarchief&&surtPass&&ymirPillar&&darkVault&&fortress&&armyTower&&peaksReady===ROCK_ASSETS.length&&!transitioningForge&&!forge?.entering&&forge&&!falling&&life.current>0&&iceSanctuary&&nornsWell&&strangerReady&&fireTextureReady&&crossingReady&&length&&terrainReady&&heroReady&&volcano&&eastVolcano&&ashVolcano&&canyonRidge&&tower&&throne&&summitReady&&entrance&&bridge&&bridgeTextureReady&&torchesReady&&!loadError&&wallsReady===ROCK_ASSETS.length&&!document.hidden&&!paused.current){x/=Math.max(1,length);z/=Math.max(1,length);const steering=ravineGoblins?.steer(x,z)??{x,z};const world=screenMoveToWorld(steering.x,steering.z,controlYaw.current);x=world.x;z=world.z;const candidate=clampMuspelheimPosition(position.current.x+x*speed*dt,position.current.z+z*speed*dt);const p=passage.owns(candidate.x,candidate.z,hero.position.y)?candidate:moveAlongRockWalls(worldRocks,position.current,candidate,hero.position.y);let next=p;if(blocked(p.x,p.z,hero.position.y,false)){const from=position.current;next=!blocked(p.x,from.z,hero.position.y,false)?{x:p.x,z:from.z}:!blocked(from.x,p.z,hero.position.y,false)?{x:from.x,z:p.z}:from;}const bodies=characterBodies(),slide=moveAgainstBodies(position.current,next,hero.position.y,14,2.3,bodies);next=blocked(slide.x,slide.z,hero.position.y,false)?position.current:slide;const y=heightAt(next.x,next.z);
@@ -338,11 +340,11 @@ if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.c
     if(event.started)setStatus(`${necro.name} поднимает посох. Отойди до удара о землю.`);
     if(event.impact&&life.current>0){const guarded=live.current.shieldEquipped&&!!heroActions?.guarding,damage=incomingCombatDamage(NECRO_STRIKE.attack,live.current.combatStats,guarded);life.current=artifactCombat.survive(live.current.combatStats.artifactId,playtestHealth(life.current-damage,live.current.combatStats.maxHp),live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);setStatus(`${necro.name}: посох ударил о землю, −${damage} здоровья.`);if(!life.current){clear();setDefeated(true);setStatus('Vicki потеряла силы у некромантов.');}}
    }
-   ashVolcano?.update(paused.current?0:dt);lava.update(paused.current?0:dt);ravineLava.update(paused.current?0:dt);summit?.update(paused.current?0:dt);viewYaw.current=updateFollowCamera(follow,dx,dz,dt);
+   ashVolcano?.update(paused.current?0:dt);lava.update(paused.current?0:dt);ravineLava.update(paused.current?0:dt);summit?.update(paused.current?0:dt);const mineView=mineApproachCameraAt(p.x,hero.position.y,p.z);
+   if(!mineView&&!mineCameraActive&&!mineExitViewHeld)viewYaw.current=updateFollowCamera(follow,dx,dz,dt);
    if(surtActor&&(hero.position.distanceTo(surtActor.root.position)<120||surtActor.phase!=='seated')){const event=surtActor.update(paused.current||document.hidden?0:dt,hero.position);if(event.started)setStatus('Сурт заметил Vicki и поднимается с трона…');if(event.impact){surtShake=.25;setStatus('Сурт ударил мечом по камню — искры рассыпались по полу.');}}
    const surtView=surtActor?.greetingView(hero.position);
    const passageView=passage?.cameraAt(p.x,hero.position.y,p.z,hero.rotation.y,dt);
-   const mineView=mineApproachCameraAt(p.x,hero.position.y,p.z);
    const inWell=nornsWell?.shelters(p.x,p.z,hero.position.y)??false;
    if(passageView){
     camera.position.set(passageView.position.x,passageView.position.y,passageView.position.z);lookTarget.set(passageView.target.x,passageView.target.y,passageView.target.z);camera.lookAt(lookTarget);
@@ -357,12 +359,19 @@ if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.c
     const wellYaw=Math.atan2(eye.x-target.x,eye.z-target.z);if(!wellCameraActive)controlYaw.current=wellYaw;wellCameraActive=true;mineCameraActive=false;viewYaw.current=wellYaw;follow.yaw=wellYaw;follow.targetYaw=wellYaw;camera.lookAt(lookTarget);
    }else if(mineView){
     const targetPosition=new THREE.Vector3(mineView.position.x,mineView.position.y,mineView.position.z),targetLook=new THREE.Vector3(mineView.target.x,mineView.target.y,mineView.target.z);
-    if(!mineCameraActive||snapCamera){camera.position.copy(targetPosition);lookTarget.copy(targetLook);snapCamera=false;}else{camera.position.lerp(targetPosition,1-Math.exp(-6*dt));lookTarget.lerp(targetLook,1-Math.exp(-7*dt));}
-    mineCameraActive=true;viewYaw.current=mineView.yaw;follow.yaw=mineView.yaw;follow.targetYaw=mineView.yaw;camera.lookAt(lookTarget);
+    if(snapCamera){camera.position.copy(targetPosition);lookTarget.copy(targetLook);snapCamera=false;}else{camera.position.lerp(targetPosition,1-Math.exp(-6*dt));lookTarget.lerp(targetLook,1-Math.exp(-7*dt));}
+    // Protect the interpolated line of sight at entry, where two safe endpoints can cross a bank.
+    const safe=terrainSafeCameraPosition({x:p.x,y:hero.position.y+10.5,z:p.z},camera.position,(x,z)=>sample?.(x,z)??null,2);
+    camera.position.set(safe.x,safe.y,safe.z);
+    mineCameraActive=true;mineExitViewHeld=false;
+    viewYaw.current=settleMineApproachView(follow,camera.position,lookTarget);camera.lookAt(lookTarget);
    }else{
     if(surtCameraActive){surtCameraActive=false;snapCamera=true;camera.fov=48;camera.updateProjectionMatrix();}
     if(passageCameraActive){passageCameraActive=false;snapCamera=true;camera.fov=48;camera.updateProjectionMatrix();}
-    mineCameraActive=false;if(wellCameraActive){snapCamera=true;wellCameraActive=false;}
+    if(mineCameraActive){mineExitViewHeld=length>0;settleMineApproachView(follow,camera.position,lookTarget);}
+    mineCameraActive=false;
+    if(mineExitViewHeld&&!length){mineExitViewHeld=false;follow.turnTime=0;}
+    if(wellCameraActive){snapCamera=true;wellCameraActive=false;}
    const offset=safeCameraOffset(p.x,p.z,follow.yaw,(x,z)=>(surtPass?.blocks(x,z,hero.position.y+8,1)??false)||(ymirPillar?.blocks(x,z,hero.position.y+8,1)??false)||(darkVault?.blocks(x,z,hero.position.y+8,1)??false)||(fortress?.blocks(x,z,hero.position.y+8,1)??false)||(armyTower?.blocks(x,z,hero.position.y+8,1)??false)||(forge?.blocks(x,z,1)??false)||(iceSanctuary?.blocks(x,z,hero.position.y+8,1)??false)||(nornsWell?.blocks(x,z,1)??false)||(throne?.blocks(x,z,2)??false)||(tower?.blocks(x,z,2)??false)||rockWallBlocks(worldRocks,x,z,2,hero.position.y+20,0)||ravineRockBlocks(ravineRocks,x,hero.position.y+20,z,2)||(entrance?.blocks(x,z,2)??false));
    const cameraFocus={x:p.x,y:hero.position.y+12,z:p.z};
    const cameraSurface=(x:number,z:number)=>{const base=sample?.(x,z);return base==null?null:Math.max(base,craterActors?.floorAt(x,z)??base,surtPass?.floorAt(x,z)??base,darkVault?.floorAt(x,z)??base,fortress?.floorAt(x,z)??base,armyTower?.floorAt(x,z)??base,forge?.floorAt(x,z)??base,iceSanctuary?.floorAt(x,z)??base,eastVolcano?.floorAt(x,z)??base,ashVolcano?.floorAt(x,z)??base,canyonRidge?.floorAt(x,z)??base);};

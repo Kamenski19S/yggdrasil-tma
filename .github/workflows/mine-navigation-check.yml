@@ -1,0 +1,33 @@
+name: Mine approach regression checks
+on:
+  pull_request:
+    paths:
+      - 'src/Muspelheim3D.tsx'
+      - 'src/muspelheimMineEntrance.ts'
+      - 'src/mineApproachNavigation.ts'
+      - 'src/muspelheimCamera.ts'
+      - 'src/muspelheimUI.css'
+      - 'scripts/test-mine-approach-navigation.mjs'
+      - 'scripts/test-ash-mine.mjs'
+      - '.github/workflows/mine-navigation-check.yml'
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+      - name: Type check
+        run: npx tsc --noEmit
+      - name: Check held controls and transition styling
+        run: node scripts/test-mine-approach-navigation.mjs
+      - name: Prepare scene models
+        run: node scripts/materialize-ice-assets.mjs
+      - name: Check terrain approach and physical mine exit
+        run: node scripts/test-ash-mine.mjs
+      - name: Check full-body view and actual camera occlusion
+        run: node scripts/test-ash-mine-return-view.mjs
