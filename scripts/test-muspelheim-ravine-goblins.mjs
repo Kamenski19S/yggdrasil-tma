@@ -1,10 +1,11 @@
+import {MeshoptDecoder} from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {buildSync} from 'esbuild';
 import * as T from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 async function mod(path){const code=buildSync({entryPoints:[path],bundle:true,write:false,format:'esm',platform:'node',external:['three','three/*']}).outputFiles[0].text.replaceAll(/from "(three[^\"]*)"/g,(_,p)=>`from ${JSON.stringify(import.meta.resolve(p))}`);return import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));}
-const loader=new GLTFLoader();loader.register(()=>({name:'EXT_texture_webp',loadTexture:()=>Promise.resolve(new T.Texture())}));loader.register(()=>({name:'stub',loadTexture:()=>Promise.resolve(new T.Texture())}));
+const loader=new GLTFLoader();loader.setMeshoptDecoder(MeshoptDecoder);loader.register(()=>({name:'EXT_texture_webp',loadTexture:()=>Promise.resolve(new T.Texture())}));loader.register(()=>({name:'stub',loadTexture:()=>Promise.resolve(new T.Texture())}));
 async function load(name){const b=readFileSync('public/img/models/'+name);return loader.parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'');}
 const {createRavineGoblins,RAVINE_GOBLIN_HEIGHT}=await mod('src/muspelheimRavineGoblins.ts');
 const {expandMuspelheimTerrain,createTerrainSampler}=await mod('src/muspelheimTerrain.ts');
