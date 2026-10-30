@@ -7,7 +7,13 @@ export const MINE_RETURN={x:MINE_DOOR.x+.2,z:MINE_DOOR.z-7};
 function frame(x:number,z:number){let distance=Infinity,y=0,progress=0;for(let i=1;i<MINE_PATH.length;i++){const a=MINE_PATH[i-1],b=MINE_PATH[i],dx=b.x-a.x,dz=b.z-a.z,t=THREE.MathUtils.clamp(((x-a.x)*dx+(z-a.z)*dz)/(dx*dx+dz*dz),0,1),d=Math.hypot(x-a.x-t*dx,z-a.z-t*dz);if(d<distance){distance=d;y=THREE.MathUtils.lerp(a.y,b.y,t);progress=(i-1+t)/(MINE_PATH.length-1);}}return {distance,y,progress};}
 export function mineLandingAt(x:number,z:number){return Math.abs(x-MINE_DOOR.x)<=8&&z>=MINE_DOOR.z-8&&z<=MINE_DOOR.z+8;}
 export function mineApproachDepth(x:number,z:number){const f=frame(x,z),ramp=(f.y+82)*(1-THREE.MathUtils.smoothstep(f.distance,7,13));const dx=Math.max(0,Math.abs(x-MINE_DOOR.x)-8),dz=Math.max(0,MINE_DOOR.z-8-z,z-MINE_DOOR.z-8),landing=-30*(1-THREE.MathUtils.smoothstep(Math.hypot(dx,dz),0,5));return Math.min(ramp,landing);}
-export function mineApproachSideBlocks(x:number,y:number,z:number){const f=frame(x,z);return f.progress>.055&&f.progress<.92&&f.distance>4.6&&f.distance<9.5&&y+14>f.y-4&&y<f.y+8;}
+export function mineApproachSideBlocks(x:number,y:number,z:number,from?:{x:number;z:number}){
+ const f=frame(x,z),wall=f.progress>.055&&f.progress<.92&&f.distance>4.6&&f.distance<9.5&&y+14>f.y-4&&y<f.y+8;
+ if(!wall)return false;
+ // A saved position or a spell push can leave Vicki inside the edge band.
+ // Permit returning to the deck and sliding along it, while keeping outward collision.
+ return !from||f.distance>frame(from.x,from.z).distance+1e-5;
+}
 export function carveMineApproach(root:THREE.Object3D){root.updateWorldMatrix(true,true);root.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const p=o.geometry.getAttribute('position'),v=new THREE.Vector3(),inverse=o.matrixWorld.clone().invert();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);v.y+=mineApproachDepth(v.x,v.z);const f=frame(v.x,v.z),blend=1-THREE.MathUtils.smoothstep(f.distance,4,13);v.y=THREE.MathUtils.lerp(v.y,f.y,blend);v.applyMatrix4(inverse);p.setXYZ(i,v.x,v.y,v.z);}p.needsUpdate=true;o.geometry.computeVertexNormals();o.geometry.computeBoundingBox();o.geometry.computeBoundingSphere();});}
 /** Blend the lip into the actual terrain instead of introducing a step at six metres. */
 export function mineApproachFloorAt(x:number,z:number,terrainY?:number|null){

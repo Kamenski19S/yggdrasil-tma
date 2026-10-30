@@ -6,6 +6,9 @@ on:
       - 'src/muspelheimMineEntrance.ts'
       - 'src/mineApproachNavigation.ts'
       - 'src/muspelheimCamera.ts'
+      - 'src/AshMine3D.tsx'
+      - 'src/minePlayerActions.ts'
+      - 'scripts/test-mine-player-actions.mjs'
       - 'src/muspelheimUI.css'
       - 'scripts/test-mine-approach-navigation.mjs'
       - 'scripts/test-ash-mine.mjs'
@@ -24,7 +27,10 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
       - name: Check held controls and transition styling
-        run: node scripts/test-mine-approach-navigation.mjs
+        run: |
+          node scripts/test-mine-approach-navigation.mjs
+          node scripts/test-mine-player-actions.mjs
+          node scripts/test-muspelheim-equipment.mjs
       - name: Prepare scene models
         run: node scripts/materialize-ice-assets.mjs
       - name: Check terrain approach and physical mine exit
