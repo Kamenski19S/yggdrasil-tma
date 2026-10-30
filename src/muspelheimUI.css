@@ -63,3 +63,16 @@
 .muspelheim-wheel-action:disabled{opacity:.4}
 .muspelheim-wheel-action:focus-visible,.muspelheim-wheel-hub:focus-visible{outline:2px solid #fff0bf;outline-offset:3px;border-radius:50%}
 @media(max-width:350px){.muspelheim-action-wheel{right:0;bottom:76px;width:172px;height:172px}.muspelheim-wheel-action{width:48px;height:48px}.muspelheim-world .muspelheim-joystick{width:116px;height:116px;left:8px}}
+/* Match visible medals, including the different transparent margins in source art. */
+.muspelheim-wheel-action>img{filter:grayscale(1) sepia(1) saturate(1.65) drop-shadow(0 2px 3px #0009)}
+.wheel-magic>img,.wheel-barrier>img,.wheel-run>img{transform:translateY(-1px) scale(.78);filter:brightness(.84) grayscale(1) sepia(1) saturate(1.65) drop-shadow(0 2px 3px #0009)}
+.muspelheim-wheel-action:active>img,.muspelheim-wheel-action[aria-pressed=true]>img{filter:brightness(1.15) grayscale(1) sepia(1) saturate(1.65) drop-shadow(0 0 5px #ffbc40)}
+.muspelheim-world .muspelheim-inventory{position:absolute;top:100px;right:10px}
+.muspelheim-inventory>img{transform:scale(1.22)}
+.muspelheim-interior .thread-vault-title{top:76px;left:74px;right:74px;font-size:10px}
+.muspelheim-interior .thread-vault-title b{font-size:10px}
+.muspelheim-interior .thread-vault-title span{display:none}
+.muspelheim-interior .thread-vault-health,.muspelheim-interior .ash-mine-health{top:92px;left:82px;right:82px;width:auto;font-size:10px}
+.muspelheim-interior .ash-mine-health span{font-size:10px}
+.muspelheim-interior .thread-vault-talk,.muspelheim-interior .ash-mine-interact,.muspelheim-interior .ash-mine-exit{top:auto;bottom:34px;left:50%;right:auto;transform:translateX(-50%);max-width:90%;font-size:11px!important;min-height:32px!important;padding:6px 12px!important;white-space:normal}
+.muspelheim-interior-map{display:block;width:100%;max-height:260px;background:#241713;border-radius:8px}

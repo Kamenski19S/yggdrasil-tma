@@ -1,3 +1,4 @@
+import {MuspelheimToolbar} from './MuspelheimToolbar';
 import {MuspelheimActionWheel} from './MuspelheimActionWheel';
 import {createSceneSuspension} from './sceneSuspension';
 import {playtestHealth,MAGIC_PLAYTEST_INVULNERABLE} from './magicPlaytest';
@@ -405,14 +406,9 @@ if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.c
   {!modal&&goblinHud?.active&&<div className="muspelheim-assassin-health" role="status"><b>{goblinHud.name}</b><span>{goblinHud.hp}/420</span><progress value={goblinHud.hp} max={420}/></div>}
   {!modal&&!goblinHud?.active&&assassinHud.active&&<div className="muspelheim-assassin-health" role="status"><b>{assassinHud.name}</b><span>{assassinHud.hp}/{ASSASSIN_COMBAT.maxHp}</span><progress value={assassinHud.hp} max={ASSASSIN_COMBAT.maxHp}/></div>}
   {!modal&&<>
-   <div className="mid3d-ui mid3d-top">
-    <button className="mid3d-top-btn" aria-label="Карта Муспельхейма" onClick={()=>openPanel(()=>setMapOpen(true))}><img className="mid3d-top-button-art" src={`${BASE}img/models/ui_map.png`} alt="" draggable={false}/></button>
-    <button className="mid3d-realm-title muspelheim-realm-title" aria-label="Обзор Муспельхейма" onClick={()=>openPanel(()=>setGuideOpen(true))}><img src={`${BASE}img/ui/muspelheim-title.webp`} alt="Муспельхейм" draggable={false}/></button>
-    <button className="mid3d-top-btn" aria-label="Мельница капель бессмертия" onClick={()=>{stop();props.onOpenMill({...position.current,y:heroFootY.current});}}><img className="mid3d-top-button-art" src={`${BASE}img/models/ui_mill.png`} alt="" draggable={false}/></button>
-   </div>
-   <button className="mid3d-ui mid3d-top-btn muspelheim-tasks" aria-label="Пройденные задания Муспельхейма" onClick={()=>openPanel(()=>setJournalOpen(true))}><img className="mid3d-top-button-art" src={`${BASE}img/models/ui_tasks.webp`} alt="" draggable={false}/><small>{tasks.filter(t=>t.done).length}/{tasks.length}</small></button>
+   <MuspelheimToolbar onMap={()=>openPanel(()=>setMapOpen(true))} onOverview={()=>openPanel(()=>setGuideOpen(true))} onMill={()=>{stop();props.onOpenMill({...position.current,y:heroFootY.current});}} onTasks={()=>openPanel(()=>setJournalOpen(true))} onInventory={()=>openPanel(()=>setInventoryOpen(true))} completed={tasks.filter(t=>t.done).length} total={tasks.length} lowHealth={lowHealth}/>
    <button className="mid3d-ui mid3d-joy muspelheim-joystick" aria-label="Управление Vicki: тяни в нужном направлении" onPointerDown={e=>{if(paused.current||pointer.current!==null)return;e.preventDefault();controlYaw.current=viewYaw.current;pointer.current=e.pointerId;e.currentTarget.setPointerCapture(e.pointerId);move(e);}} onPointerMove={move} onPointerUp={stop} onPointerCancel={stop} onLostPointerCapture={stop}><span className="mid3d-knob" ref={knob} aria-hidden="true"/><img src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/></button>
-   <button className="mid3d-ui mid3d-action" style={{top:125,filter:lowHealth?'drop-shadow(0 0 9px #ff2945)':undefined}} aria-label={lowHealth?'Опасно: мало здоровья. Открыть сумочку с зельями':'Запас рун и эликсиров'} onClick={()=>openPanel(()=>setInventoryOpen(true))}><img className="mid3d-control-art" src={`${BASE}img/models/ui_inventory.png`} alt="" draggable={false}/></button>
+
    <MuspelheimActionWheel base={BASE} shieldEquipped={props.shieldEquipped} onAttack={()=>attackAction.current()} onShield={()=>shieldAction.current()} onMagic={()=>magicAction.current()} onBarrier={()=>wardAction.current()} onRunChange={value=>{sprint.current=value;}}/>
    {lowHealth&&<span className="muspelheim-danger">⚠ Опасно</span>}
   </>}
