@@ -8,8 +8,14 @@ function frame(x:number,z:number){let distance=Infinity,y=0,progress=0;for(let i
 export function mineLandingAt(x:number,z:number){return Math.abs(x-MINE_DOOR.x)<=8&&z>=MINE_DOOR.z-8&&z<=MINE_DOOR.z+8;}
 export function mineApproachDepth(x:number,z:number){const f=frame(x,z),ramp=(f.y+82)*(1-THREE.MathUtils.smoothstep(f.distance,7,13));const dx=Math.max(0,Math.abs(x-MINE_DOOR.x)-8),dz=Math.max(0,MINE_DOOR.z-8-z,z-MINE_DOOR.z-8),landing=-30*(1-THREE.MathUtils.smoothstep(Math.hypot(dx,dz),0,5));return Math.min(ramp,landing);}
 export function mineApproachSideBlocks(x:number,y:number,z:number){const f=frame(x,z);return f.progress>.055&&f.progress<.92&&f.distance>4.6&&f.distance<9.5&&y+14>f.y-4&&y<f.y+8;}
-export function carveMineApproach(root:THREE.Object3D){root.updateWorldMatrix(true,true);root.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const p=o.geometry.getAttribute('position'),v=new THREE.Vector3(),inverse=o.matrixWorld.clone().invert();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);v.y+=mineApproachDepth(v.x,v.z);v.applyMatrix4(inverse);p.setXYZ(i,v.x,v.y,v.z);}p.needsUpdate=true;o.geometry.computeVertexNormals();o.geometry.computeBoundingBox();o.geometry.computeBoundingSphere();});}
-export function mineApproachFloorAt(x:number,z:number){if(mineLandingAt(x,z))return MINE_DOOR.y+.12;const f=frame(x,z);return f.distance<=6?f.y+.12:null;}
+export function carveMineApproach(root:THREE.Object3D){root.updateWorldMatrix(true,true);root.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const p=o.geometry.getAttribute('position'),v=new THREE.Vector3(),inverse=o.matrixWorld.clone().invert();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);v.y+=mineApproachDepth(v.x,v.z);const f=frame(v.x,v.z),blend=1-THREE.MathUtils.smoothstep(f.distance,4,13);v.y=THREE.MathUtils.lerp(v.y,f.y,blend);v.applyMatrix4(inverse);p.setXYZ(i,v.x,v.y,v.z);}p.needsUpdate=true;o.geometry.computeVertexNormals();o.geometry.computeBoundingBox();o.geometry.computeBoundingSphere();});}
+/** Blend the lip into the actual terrain instead of introducing a step at six metres. */
+export function mineApproachFloorAt(x:number,z:number,terrainY?:number|null){
+ if(mineLandingAt(x,z))return MINE_DOOR.y+.12;
+ const f=frame(x,z);if(f.distance<=6)return f.y+.12;
+ if(f.distance<13&&terrainY!=null)return THREE.MathUtils.lerp(f.y+.12,terrainY,THREE.MathUtils.smoothstep(f.distance,6,13));
+ return null;
+}
 export function mineApproachRocks():WallRock[]{return [];}
 /** A camera on the open path behind Vicki, independent of nearby cliff proxies. */
 export function mineApproachCameraAt(x:number,y:number,z:number){
