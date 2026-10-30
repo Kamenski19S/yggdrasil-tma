@@ -41,3 +41,10 @@
 .thread-vault-open{position:absolute!important;z-index:12;left:50%;bottom:64px;transform:translateX(-50%);min-height:40px!important;max-width:85%;white-space:normal!important}
 .thread-vault-title{position:absolute;z-index:8;left:16px;right:16px;top:16px;text-align:center;color:#eee5ff;text-shadow:0 2px 6px #000;pointer-events:none}.thread-vault-title b{display:block;font-size:18px}.thread-vault-title span{font-size:11px;color:#c5b8cc}.thread-vault-health{position:absolute;z-index:8;top:70px;left:16px;color:#e7d6d4;font-size:11px;pointer-events:none}
 .thread-vault-run{position:absolute!important;right:18px;bottom:105px;z-index:10;min-height:40px!important}.thread-vault-talk{position:absolute!important;right:18px;bottom:160px;z-index:10;min-height:44px!important;max-width:55%;white-space:normal!important}
+
+/* Keep the three magic test buttons reachable on a phone. */
+.ash-mine-playtest .muspelheim-toolbar{flex-wrap:wrap;gap:5px}
+.ash-mine-playtest .muspelheim-toolbar>b{flex-basis:100%}
+.ash-mine-playtest .muspelheim-toolbar .muspelheim-btn{flex:1;padding:6px 5px;font-size:10px}
+.ash-mine-playtest .ash-mine-health,.ash-mine-playtest .ash-mine-map{top:82px}
+.ash-mine-playtest .ash-mine-exit{top:244px}
