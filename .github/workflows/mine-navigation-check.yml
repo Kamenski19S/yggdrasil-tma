@@ -6,6 +6,8 @@ on:
       - 'src/muspelheimMineEntrance.ts'
       - 'src/mineApproachNavigation.ts'
       - 'src/muspelheimCamera.ts'
+      - 'src/muspelheimCanyonRidge.ts'
+      - 'scripts/test-mine-approach-full-world.mjs'
       - 'src/AshMine3D.tsx'
       - 'src/minePlayerActions.ts'
       - 'scripts/test-mine-player-actions.mjs'
@@ -34,6 +36,8 @@ jobs:
       - name: Prepare scene models
         run: node scripts/materialize-ice-assets.mjs
       - name: Check terrain approach and physical mine exit
-        run: node scripts/test-ash-mine.mjs
+        run: |
+          node scripts/test-ash-mine.mjs
+          node scripts/test-mine-approach-full-world.mjs
       - name: Check full-body view and actual camera occlusion
         run: node scripts/test-ash-mine-return-view.mjs

@@ -2,6 +2,8 @@ import {createSlidingMineDoor,MINE_DOOR_CLEAR_HALF,MINE_DOOR_BLOCK_HALF} from '.
 import * as THREE from 'three';
 import type {WallRock} from './muspelheimRockWalls';
 export const MINE_PATH=Array.from({length:49},(_,i)=>{const t=i/48,a=t*Math.PI;return {x:-435+24*Math.cos(a),z:-100-24*Math.sin(a),y:-82-30*THREE.MathUtils.smoothstep(t,0,.88)};});
+/** Clear the actual approach from the ravine road as well as the curved stair deck. */
+export const MINE_ACCESS_PATH=Array.from({length:25},(_,i)=>{const t=i/24;return {x:THREE.MathUtils.lerp(-365,MINE_PATH[0].x,t),z:THREE.MathUtils.lerp(-105,MINE_PATH[0].z,t)};});
 export const MINE_DOOR={...MINE_PATH[MINE_PATH.length-1]};
 export const MINE_RETURN={x:MINE_DOOR.x+.2,z:MINE_DOOR.z-7};
 function frame(x:number,z:number){let distance=Infinity,y=0,progress=0;for(let i=1;i<MINE_PATH.length;i++){const a=MINE_PATH[i-1],b=MINE_PATH[i],dx=b.x-a.x,dz=b.z-a.z,t=THREE.MathUtils.clamp(((x-a.x)*dx+(z-a.z)*dz)/(dx*dx+dz*dz),0,1),d=Math.hypot(x-a.x-t*dx,z-a.z-t*dz);if(d<distance){distance=d;y=THREE.MathUtils.lerp(a.y,b.y,t);progress=(i-1+t)/(MINE_PATH.length-1);}}return {distance,y,progress};}

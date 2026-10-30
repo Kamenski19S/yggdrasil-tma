@@ -2,11 +2,12 @@ import {surtPassRidgeProtection} from './muspelheimSurtPassLayout';
 import * as THREE from 'three';
 import {RAVINE_CROSSINGS} from './muspelheimRavineCrossings';
 import {SURT_RAVINE_LINE} from './muspelheimSurtRavine';
-import {MINE_PATH} from './muspelheimMineEntrance';
+import {MINE_PATH,MINE_ACCESS_PATH} from './muspelheimMineEntrance';
 import {RAVINE_LAVA_GLSL,type RavineLava} from './muspelheimRavineLava';
 import {createMeshHeightSampler} from './muspelheimSurface';
 export const CANYON_RIDGE_ASSET='Muspelheim_Canyon_Ridge.glb';
 export const CANYON_RIDGE_CREDIT={title:'Volcán Paricutín',author:'Marco Sánchez',url:'https://sketchfab.com/3d-models/volcan-paricutin-cd66df19c33c49ad88a0bde2b7471b07'};
+const MINE_CLEARANCE_POINTS=[...MINE_PATH,...MINE_ACCESS_PATH];
 const lengths=[0];
 for(let i=1;i<SURT_RAVINE_LINE.length;i++)lengths.push(lengths[i-1]+Math.hypot(SURT_RAVINE_LINE[i].x-SURT_RAVINE_LINE[i-1].x,SURT_RAVINE_LINE[i].z-SURT_RAVINE_LINE[i-1].z));
 function frameAt(station:number){
@@ -66,7 +67,8 @@ export function createCanyonRidge(source:THREE.Object3D,sample:(x:number,z:numbe
    const x=f.x+f.nx*across,z=f.z+f.nz*across;
    const edge=Math.min(.5-Math.abs(u),.5-Math.abs(w)),border=THREE.MathUtils.smoothstep(edge,0,.18);
    const bridge=THREE.MathUtils.smoothstep(Math.min(...RAVINE_CROSSINGS.map(c=>Math.abs(station-c.station))),55,68);
-   const mine=THREE.MathUtils.smoothstep(Math.min(...MINE_PATH.map(p=>Math.hypot(p.x-x,p.z-z))),9,18);
+   // Reserve a broad strip through every ridge layer, including the road leading to the first step.
+   const mine=THREE.MathUtils.smoothstep(Math.min(...MINE_CLEARANCE_POINTS.map(p=>Math.hypot(p.x-x,p.z-z))),18,30);
    const ascent=z< -112&&z> -235?THREE.MathUtils.smoothstep(Math.abs(x+270),15,28):1;
    const descent=z> -115&&z<35?THREE.MathUtils.smoothstep(Math.abs(x+365),16,28):1;
    const protectedArea=bridge*mine*ascent*descent*surtPassRidgeProtection(x,z),fade=border*protectedArea;
