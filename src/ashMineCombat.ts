@@ -1,4 +1,10 @@
 export type MineGuardState={windup:number;cooldown:number};
+/** Playtests revive the actors without removing permanent quest/reward records. */
+export function restoreMineGuardHp(maxHp:number,savedHp:number|undefined,defeated:boolean,playtest:boolean){
+ if(playtest)return maxHp;
+ if(defeated)return 0;
+ return Number.isFinite(savedHp)?Math.max(0,Math.min(maxHp,savedHp!)):maxHp;
+}
 /** Resolve against the current position; turning away cancels a strike before damage. */
 export function stepMineGuard(state:MineGuardState,dt:number,distance:number,retreating:boolean,lineOfSight:boolean){
  state.cooldown=Math.max(0,state.cooldown-dt);
