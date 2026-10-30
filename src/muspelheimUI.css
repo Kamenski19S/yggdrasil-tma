@@ -41,3 +41,25 @@
 .thread-vault-open{position:absolute!important;z-index:12;left:50%;bottom:64px;transform:translateX(-50%);min-height:40px!important;max-width:85%;white-space:normal!important}
 .thread-vault-title{position:absolute;z-index:8;left:16px;right:16px;top:16px;text-align:center;color:#eee5ff;text-shadow:0 2px 6px #000;pointer-events:none}.thread-vault-title b{display:block;font-size:18px}.thread-vault-title span{font-size:11px;color:#c5b8cc}.thread-vault-health{position:absolute;z-index:8;top:70px;left:16px;color:#e7d6d4;font-size:11px;pointer-events:none}
 .thread-vault-run{position:absolute!important;right:18px;bottom:105px;z-index:10;min-height:40px!important}.thread-vault-talk{position:absolute!important;right:18px;bottom:160px;z-index:10;min-height:44px!important;max-width:55%;white-space:normal!important}
+
+/* Supplied gold artwork and the compact five-action drum. */
+.muspelheim-world canvas{display:block;background:#18110e}
+.muspelheim-world .muspelheim-realm-title{width:min(100%,280px);height:auto;aspect-ratio:2048/682;border:0!important;border-radius:0;background:transparent!important;padding:0;filter:drop-shadow(0 2px 5px #0008)}
+.muspelheim-realm-title>img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none}
+.muspelheim-realm-title:active{transform:scale(.97)}
+.muspelheim-realm-title:focus-visible{outline:2px solid #ffe3a2;outline-offset:3px}
+.muspelheim-world .muspelheim-fire-health{top:92px}
+.muspelheim-world .muspelheim-assassin-health{top:123px}
+.muspelheim-world .muspelheim-tasks{top:100px}
+.muspelheim-overview-actions{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.muspelheim-action-wheel{position:absolute;z-index:12;right:6px;bottom:70px;width:184px;height:184px;pointer-events:none;border-radius:50%}
+.muspelheim-action-wheel.is-open{background:radial-gradient(circle,#1b110bd9 0,#24180a88 46%,transparent 69%)}
+.muspelheim-wheel-hub,.muspelheim-wheel-action{appearance:none;border:0;padding:0;position:absolute;left:50%;top:50%;background:transparent;color:#ffe8ac;cursor:pointer;touch-action:none;pointer-events:auto;user-select:none}
+.muspelheim-wheel-hub{width:38px;height:38px;transform:translate(-50%,-50%);border:2px solid #d2a350;border-radius:50%;background:radial-gradient(circle,#7c5223,#241709 75%);box-shadow:0 1px 8px #0009,inset 0 0 8px #f8d78866;font-size:23px;line-height:1}
+.muspelheim-wheel-action{width:54px;height:54px;transform:translate(calc(-50% + var(--wheel-x)),calc(-50% + var(--wheel-y)))}
+.muspelheim-wheel-action>img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 2px 3px #0009);pointer-events:none}
+.muspelheim-wheel-action>span{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);font-size:9px;line-height:12px;white-space:nowrap;padding:0 4px;border-radius:5px;background:#1d120ce6;color:#ffe5a5;text-shadow:0 1px 2px #000}
+.muspelheim-wheel-action:active>img,.muspelheim-wheel-action[aria-pressed=true]>img{filter:brightness(1.25) drop-shadow(0 0 5px #ffbc40)}
+.muspelheim-wheel-action:disabled{opacity:.4}
+.muspelheim-wheel-action:focus-visible,.muspelheim-wheel-hub:focus-visible{outline:2px solid #fff0bf;outline-offset:3px;border-radius:50%}
+@media(max-width:350px){.muspelheim-action-wheel{right:0;bottom:76px;width:172px;height:172px}.muspelheim-wheel-action{width:48px;height:48px}.muspelheim-world .muspelheim-joystick{width:116px;height:116px;left:8px}}
