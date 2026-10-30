@@ -48,3 +48,5 @@
 .ash-mine-playtest .muspelheim-toolbar .muspelheim-btn{flex:1;padding:6px 5px;font-size:10px}
 .ash-mine-playtest .ash-mine-health,.ash-mine-playtest .ash-mine-map{top:82px}
 .ash-mine-playtest .ash-mine-exit{top:244px}
+
+@media(max-width:420px){.ash-mine-playtest .muspelheim-toolbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.ash-mine-playtest .muspelheim-toolbar>b{grid-column:1/-1}.ash-mine-playtest .ash-mine-health,.ash-mine-playtest .ash-mine-map{top:116px}.ash-mine-playtest .ash-mine-exit{top:278px}}
