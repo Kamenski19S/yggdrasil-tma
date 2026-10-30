@@ -14,9 +14,9 @@ for(const fps of [10,20,60,120]){
 const fx=createFireStrikeVfx(),camera=new T.PerspectiveCamera();
 fx.charge({x:0,y:7,z:0});for(let i=0;i<100;i++)fx.bolt(String(i),{x:i,y:7,z:0,vx:0,vy:0,vz:-160});assert(fx.root.children.length<=13,'Bounded projectile pool');fx.impact({x:0,y:0,z:0});
 const body=fx.root.getObjectByName('Пламя на теле Vicki'),smoke=fx.root.getObjectByName('Дым после огненного удара'),flash=fx.root.getObjectByName('Короткая вспышка огненного попадания');
-fx.update(.01,camera,{x:10,y:3,z:-20},3);assert(body.visible);assert.deepEqual(body.position.toArray(),[10,3,-20]);assert(flash.visible);assert.equal(body.children.length,22);
+fx.update(.01,camera,{x:10,y:3,z:-20},3);assert(body.visible);assert.deepEqual(body.position.toArray(),[10,3,-20]);assert(flash.visible);assert.equal(body.children.length,1,'One continuous volume replaces the stacked flame planes');assert.equal(body.children[0].geometry.type,'BoxGeometry');assert(body.children[0].material.uniforms.field.value.isData3DTexture);assert(body.children[0].material.depthTest,'Fire respects opaque scene depth');
 fx.update(.3,camera,{x:25,y:3,z:-35},2.7);assert.deepEqual(body.position.toArray(),[25,3,-35]);assert(!flash.visible,'Impact is brief');
 fx.update(.1,camera,{x:25,y:3,z:-35},0);assert(!body.visible);assert(smoke.visible,'Smoke remains after flames');fx.update(1.3,camera,{x:25,y:3,z:-35},0);assert(!smoke.visible);
-fx.update(.1,camera,{x:0,y:0,z:0},3);const before=body.children.map(x=>x.position.toArray());fx.update(0,camera,{x:0,y:0,z:0},3);assert.deepEqual(body.children.map(x=>x.position.toArray()),before,'Visual pause freezes flame animation');
+fx.update(.1,camera,{x:0,y:0,z:0},3);const before=body.children[0].material.uniforms.clock.value;fx.update(0,camera,{x:0,y:0,z:0},3);assert.equal(body.children[0].material.uniforms.clock.value,before,'Visual pause freezes the volume animation');
 fx.clear();assert(!body.visible);assert(!smoke.visible);fx.dispose();fx.dispose();
 console.log('Fire strike passed: fast flight and thin walls at 10/20/60/120 FPS, shield, full movement, burn expiry and protected HP, bounded flames/trails, body tracking, brief impact, residual smoke, pause and cleanup.');
