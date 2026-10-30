@@ -54,7 +54,7 @@ export function createAshLordHall(lord:THREE.Object3D,clips:THREE.AnimationClip[
  float ashVeinMask=ashVeins(ashPoint*1.25+sin(ashPoint.zxy*1.8)*.15);float ashRelief=clamp(dot(diffuseColor.rgb,vec3(.333)),.01,1.);diffuseColor.rgb=mix(vec3(.003,.002,.004),vec3(.58,.008,.015)*(.58+ashRelief*4.),ashVeinMask);`);
  shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance*=ashVeinMask*(.38+ashRelief*2.);');};
  const core=new THREE.Mesh(new THREE.SphereGeometry(2.7,48,32),molten);core.position.set(ASH_SOURCE.x,8,ASH_SOURCE.z);root.add(core);
- const rings:THREE.Mesh[]=[];for(let i=0;i<3;i++){const ring=new THREE.Mesh(new THREE.TorusGeometry(3.5+i*.6,.2,10,96),new THREE.MeshBasicMaterial({color:i===1?'#ffc25c':i===0?'#ff3624':'#f92355',toneMapped:false}));ring.position.copy(core.position);ring.rotation.set(i*.8,0,.6+i);root.add(ring);rings.push(ring);}
+ const rings:THREE.Mesh[]=[];for(let i=0;i<3;i++){const ring=new THREE.Mesh(new THREE.TorusGeometry(3.5+i*.6,.2,10,96),new THREE.MeshBasicMaterial({color:['#f2faff','#050407','#ee182d'][i],toneMapped:false}));ring.position.copy(core.position);ring.rotation.set(i*.8,0,.6+i);root.add(ring);rings.push(ring);}
  const glow=new THREE.PointLight('#ff5a20',480,70,1.5);glow.position.copy(core.position);root.add(glow);const chestLight=new THREE.PointLight('#ff3e18',180,32,1.4);chestLight.position.set(ASH_LORD.x,15,ASH_LORD.z+2);root.add(chestLight);
  // Identical white/red/black threads to the keeper's well, now linking the water to the lord.
  const threads=createLinkedThreadFlames(new THREE.Vector3(ASH_SOURCE.x,2.9,ASH_SOURCE.z),new THREE.Vector3(ASH_LORD.x,15,ASH_LORD.z+1));root.add(threads.root);
