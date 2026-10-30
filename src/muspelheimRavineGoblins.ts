@@ -40,7 +40,7 @@ export function createRavineGoblins(source:THREE.Object3D,clips:THREE.AnimationC
  const beam=new THREE.Mesh(new THREE.CylinderGeometry(.35,.35,1,8),new THREE.MeshBasicMaterial({color:'#9becff',toneMapped:false}));beam.visible=false;root.add(beam);
  let time=0,spellCooldown=0,wardCooldown=0,wardLeft=0,beamLeft=0;
  const target=(hero:Point)=>actors.filter(a=>a.magic.life.hp>0&&a.actor.root.position.distanceTo(new THREE.Vector3(hero.x,hero.y,hero.z))<RAVINE_SPELL.range&&Math.abs(a.home.y-hero.y)<6&&contact(hero,a.home)).sort((a,b)=>Math.hypot(a.home.x-hero.x,a.home.z-hero.z)-Math.hypot(b.home.x-hero.x,b.home.z-hero.z))[0];
- return {root,actors,
+ return {root,actors,pauseForInterior(){wardLeft=wardCooldown=spellCooldown=0;actors.forEach(a=>a.magic.reset());clearEffects();},
   get ailments(){return ailments;},get moveScale(){return magicMoveScale(ailments);},get immobilized(){return ailments.freeze>0||ailments.fall>0;},
   steer:(x:number,z:number)=>disorientedMove(x,z,ailments,time),
   updateVfx(dt:number,camera:THREE.Camera,hero?:THREE.Object3D){if(hero&&!bound&&hero.getObjectByProperty('isSkinnedMesh',true)){ice.bindHero(hero);lightning.bindHero(hero);bound=true;}ice.frost(lastHero,ailments.freeze,ailments.slow);ice.update(dt,camera);lightning.update(dt,camera,ailments.disorient);fire.update(dt,camera,lastHero,ailments.burn);shadow.update(dt,camera,lastHero,drain.remaining);},get warding(){return wardLeft>0;},
