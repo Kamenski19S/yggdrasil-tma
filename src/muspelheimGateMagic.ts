@@ -4,13 +4,14 @@ export type MagmaProjectile={id:number;x:number;y:number;z:number;vx:number;vy:n
 /** Stationary caster: telegraphed charge, then a non-homing, dodgeable magma projectile. */
 export function createGateMagic(home:AssassinPoint,options:Parameters<typeof createAssassinCombat>[1]={},profile:Partial<typeof GATE_MAGIC>={}){
  const tuning={...GATE_MAGIC,...profile};
- const life=createAssassinCombat(home,options);let stage:'idle'|'charge'|'recover'='idle',elapsed=0,cooldown=1.2,nextId=0;const projectiles:MagmaProjectile[]=[];
+ const life=createAssassinCombat(home,options);let stage:'idle'|'charge'|'recover'='idle',elapsed=0,cooldown=1.2,nextId=0,stun=0;const projectiles:MagmaProjectile[]=[];
  const clear=()=>{stage='idle';elapsed=0;cooldown=1.2;projectiles.length=0;};
  const segmentHits=(a:AssassinPoint,b:AssassinPoint,hero:AssassinPoint)=>{const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z,length=dx*dx+dy*dy+dz*dz;let t=length?((hero.x-a.x)*dx+(hero.y+7-a.y)*dy+(hero.z-a.z)*dz)/length:0;for(let i=0;i<2;i++){t=Math.max(0,Math.min(1,t));const y=a.y+dy*t,cy=Math.max(hero.y+3,Math.min(hero.y+12,y));t=length?((hero.x-a.x)*dx+(cy-a.y)*dy+(hero.z-a.z)*dz)/length:0;}t=Math.max(0,Math.min(1,t));const x=a.x+dx*t,y=a.y+dy*t,z=a.z+dz*t,cy=Math.max(hero.y+3,Math.min(hero.y+12,y));return Math.hypot(x-hero.x,y-cy,z-hero.z)<=2.1+tuning.radius;};
- return {life,projectiles,get stage(){return stage;},reset:clear,
+ return {life,projectiles,get stage(){return stage;},get stunned(){return stun>0;},interrupt(seconds=2){if(life.hp<=0)return;clear();cooldown=0;stun=Math.max(stun,seconds);},reset(){stun=0;clear();},
   step(dt:number,hero?:AssassinPoint,available=true,origin:AssassinPoint={x:home.x,y:home.y+14,z:home.z+5},contact=true,floor:(x:number,z:number,y:number)=>number|null=()=>home.y){
    const event={impact:false,started:false,walking:false,dying:false,respawned:false,released:false};if(dt<=0)return event;
    if(life.phase==='dead'){clear();return {...event,...life.step(dt,hero??{x:home.x+100,y:home.y,z:home.z},false,floor)};}
+   if(stun>0){stun=Math.max(0,stun-dt);return event;}
    if(!hero||!available){clear();return event;}
    const near=Math.hypot(hero.x-home.x,hero.z-home.z)<tuning.notice&&Math.abs(hero.y-home.y)<6;
    for(let i=projectiles.length-1;i>=0;i--){const p=projectiles[i],previous={x:p.x,y:p.y,z:p.z};p.x+=p.vx*dt;p.y+=p.vy*dt;p.z+=p.vz*dt;p.age+=dt;let remove=false,from=previous;const samples=Math.max(1,Math.ceil(Math.hypot(p.x-previous.x,p.y-previous.y,p.z-previous.z)/.25));

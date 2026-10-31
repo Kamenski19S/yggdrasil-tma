@@ -1,3 +1,4 @@
+import {createPlayerFireball} from './playerFireball';
 import {MuspelheimInteriorHUD,type InteriorHUDData} from './MuspelheimInteriorHUD';
 import {MuspelheimActionWheel} from './MuspelheimActionWheel';
 import React,{useEffect,useRef,useState} from 'react';
@@ -15,7 +16,7 @@ function dispose(root:THREE.Object3D){const gs=new Set<THREE.BufferGeometry>(),m
 export default function AshLord3D(props:Props){
  const host=useRef<HTMLDivElement>(null),input=useRef({x:0,z:0}),pointer=useRef<number|null>(null),knob=useRef<HTMLSpanElement>(null),run=useRef(false),view=useRef(0),basis=useRef(0),live=useRef(props);live.current=props;
  const [dialog,setDialog]=useState(false),[nearKeeper,setNearKeeper]=useState(false),[failed,setFailed]=useState(false),[retry,setRetry]=useState(0),[ready,setReady]=useState(false),[status,setStatus]=useState('Открывается Резиденция Владыки…');
- const [panelOpen,setPanelOpen]=useState(false);const combat=useRef({attack:()=>{},shield:()=>{}});const paused=useRef(false);paused.current=dialog||panelOpen;const clearRef=useRef(()=>{});
+ const [panelOpen,setPanelOpen]=useState(false);const combat=useRef({attack:()=>{},shield:()=>{},magic:()=>{}});const paused=useRef(false);paused.current=dialog||panelOpen;const clearRef=useRef(()=>{});
  useEffect(()=>{
   const mount=host.current;if(!mount)return;let renderer:THREE.WebGLRenderer;
   setFailed(false);setReady(false);
@@ -26,6 +27,7 @@ export default function AshLord3D(props:Props){
   const scene=new THREE.Scene();scene.background=new THREE.Color('#181b1e');scene.fog=new THREE.FogExp2('#181b1e',.014);scene.add(new THREE.HemisphereLight('#b6c3d2','#171416',1.25));const light=new THREE.DirectionalLight('#b5c4d3',1.1);light.position.set(-30,45,35);scene.add(light);
   const camera=new THREE.PerspectiveCamera(54,1,.1,240),hero=new THREE.Group();hero.rotation.y=Math.PI;scene.add(hero);const pos=readAshLordVisit()??{x:0,z:43};if(!ashLordWalkable(pos.x,pos.z)){pos.x=0;pos.z=43;}
   let hall:ReturnType<typeof createAshLordHall>|undefined,mixer:THREE.AnimationMixer|undefined,actions:ReturnType<typeof createMuspelheimHeroActions>|undefined,equipment:ReturnType<typeof createMuspelheimHeroEquipment>|undefined;
+  const playerFire=createPlayerFireball(()=>[],(_a,b)=>!ashLordWalkable(b.x,b.z));scene.add(playerFire.root);
   const keys=new Set<string>(),follow:FollowCameraState={yaw:0,targetYaw:0,turnTime:0};
   const persist=()=>{if(loaded&&!exiting)saveAshLordVisit(pos);};
   const clear=()=>{input.current={x:0,z:0};pointer.current=null;run.current=false;keys.clear();if(knob.current)knob.current.style.transform='';persist();};clearRef.current=clear;
@@ -39,7 +41,7 @@ export default function AshLord3D(props:Props){
    if(!alive){assets.forEach(a=>dispose(a.scene));return;}if(results.some(r=>r.status==='rejected')){assets.forEach(a=>dispose(a.scene));throw Error('Модель зала не загрузилась');}
    const [vicki,lord]=assets;hall=createAshLordHall(lord.scene,lord.animations,`${BASE}img/`);scene.add(hall.root);
    const bounds=new THREE.Box3().setFromObject(vicki.scene),scale=13.94/(bounds.max.y-bounds.min.y);vicki.scene.scale.setScalar(scale);vicki.scene.position.y=-bounds.min.y*scale;hero.add(vicki.scene);mixer=new THREE.AnimationMixer(vicki.scene);actions=createMuspelheimHeroActions(vicki.scene,mixer,vicki.animations);
-   combat.current={attack:()=>{if(!paused.current)actions?.attack();},shield:()=>{if(!paused.current)actions?.shield();}};
+   combat.current={attack:()=>{if(!paused.current)actions?.attack();},shield:()=>{if(!paused.current&&live.current.shieldEquipped)actions?.shield();},magic:()=>{if(!paused.current&&loaded)setStatus(playerFire.cast(hero,0)?'Алый огненный сгусток!':'Магия восстанавливается.');}};
    equipment=createMuspelheimHeroEquipment(vicki.scene,{load:async asset=>(await load(asset)).scene,weaponAsset:weapon=>weapon==='default'?'Sword.glb':WEAPON_ASSET[weapon],prepare:(item,asset,weapon,isShield)=>{textureSteelOnWeapon(item,asset);if(!isShield)styleNiflheimWeapon(item,weapon);},dispose});
    await equipment.update(live.current);if(!alive)return;loaded=true;setReady(true);setStatus('Резиденция Владыки · Источник питает его силой. Выход — через дверь позади.');saveAshLordVisit(pos);
   };
@@ -55,9 +57,9 @@ export default function AshLord3D(props:Props){
     hudTime+=dt;if(hudTime>.18){hudTime=0;setNearKeeper(ashLordNear(pos.x,pos.z));}if(clockTime-lastSave>1){lastSave=clockTime;persist();}
    }
    hero.position.set(pos.x,0,pos.z);target.set(pos.x,8,pos.z);const desired=new THREE.Vector3(pos.x+Math.sin(follow.yaw)*27,22,pos.z+Math.cos(follow.yaw)*27),direction=desired.clone().sub(target),distance=direction.length();ray.set(target,direction.normalize());ray.far=distance;
-   const solids=hall?.root.children.filter(o=>o instanceof THREE.Mesh&&!(o.material as THREE.Material).transparent)??[],hit=ray.intersectObjects(solids,false)[0];if(hit)desired.copy(target).addScaledVector(direction,Math.max(2,hit.distance-1.3));camera.position.lerp(desired,1-Math.exp(-10*dt));camera.lookAt(target);renderer.render(scene,camera);
+   const solids=hall?.root.children.filter(o=>o instanceof THREE.Mesh&&!(o.material as THREE.Material).transparent)??[],hit=ray.intersectObjects(solids,false)[0];if(hit)desired.copy(target).addScaledVector(direction,Math.max(2,hit.distance-1.3));camera.position.lerp(desired,1-Math.exp(-10*dt));camera.lookAt(target);playerFire.update(active?dt:0,camera);renderer.render(scene,camera);
   }tick();
-  return()=>{persist();alive=false;combat.current={attack:()=>{},shield:()=>{}};clearRef.current=()=>{};window.clearTimeout(timeout);cancelAnimationFrame(frame);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();equipment?.dispose();hall?.dispose();dispose(scene);renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();};
+  return()=>{persist();alive=false;combat.current={attack:()=>{},shield:()=>{},magic:()=>{}};clearRef.current=()=>{};window.clearTimeout(timeout);cancelAnimationFrame(frame);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();equipment?.dispose();playerFire.dispose();hall?.dispose();dispose(scene);renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();};
  },[retry]);
  const stop=()=>clearRef.current();const steer=(e:React.PointerEvent<HTMLButtonElement>)=>{if(pointer.current!==e.pointerId||paused.current||!ready)return;const r=e.currentTarget.getBoundingClientRect(),dx=e.clientX-r.left-r.width/2,dz=e.clientY-r.top-r.height/2,limit=r.width*.32,n=Math.max(limit,Math.hypot(dx,dz));input.current={x:dx/n,z:dz/n};if(knob.current)knob.current.style.transform=`translate(${input.current.x*36}px,${input.current.z*36}px)`;};
  return <section className="muspelheim-world thread-vault-world muspelheim-interior" aria-label="Резиденция Владыки" style={{position:'relative',flex:1,minHeight:0,overflow:'hidden',touchAction:'none',background:'#181b1e'}}>
@@ -65,7 +67,7 @@ export default function AshLord3D(props:Props){
   <div className="thread-vault-title"><b>Резиденция Владыки</b><span>Хранитель Вечного Жара</span></div>
   <div className="thread-vault-health">Vicki · {props.fieldHp??props.maxHp}/{props.maxHp}</div>
   {!dialog&&!panelOpen&&<><button className="mid3d-ui mid3d-joy muspelheim-joystick" disabled={!ready} aria-label="Управление Vicki: тяни в нужном направлении" onPointerDown={e=>{if(!ready||pointer.current!==null)return;e.preventDefault();pointer.current=e.pointerId;basis.current=view.current;e.currentTarget.setPointerCapture(e.pointerId);steer(e);}} onPointerMove={steer} onPointerUp={stop} onPointerCancel={stop} onLostPointerCapture={stop}><span ref={knob} className="mid3d-knob" aria-hidden="true"/><img src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/></button>
-  <MuspelheimActionWheel base={BASE} shieldEquipped={props.shieldEquipped} onAttack={()=>combat.current.attack()} onShield={()=>combat.current.shield()} onMagic={()=>setStatus('В этом зале нет противников для магической атаки.')} onBarrier={()=>setStatus('Здесь безопасно: вражеских заклинаний нет.')} onRunChange={value=>{run.current=value;}}/>
+  <MuspelheimActionWheel base={BASE} shieldEquipped={props.shieldEquipped} onAttack={()=>combat.current.attack()} onShield={()=>combat.current.shield()} onMagic={()=>combat.current.magic()} onBarrier={()=>setStatus('Здесь безопасно: вражеских заклинаний нет.')} onRunChange={value=>{run.current=value;}}/>
 
   {nearKeeper&&<button className="muspelheim-btn thread-vault-talk" onClick={()=>{stop();setDialog(true);}}>Обратиться к Владыке</button>}</>}
   {!dialog&&<MuspelheimInteriorHUD data={props.hud} location="Резиденция Владыки" hp={props.fieldHp??props.maxHp} stop={stop} onPauseChange={setPanelOpen}/>}
