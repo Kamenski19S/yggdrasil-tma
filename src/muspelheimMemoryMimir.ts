@@ -15,11 +15,15 @@ export function createMemoryMimir(model:THREE.Object3D,clips:THREE.AnimationClip
  const materials=new Map<THREE.Material,{transparent:boolean;opacity:number;depthWrite:boolean}>(),skeletons=new Set<THREE.Skeleton>();
  model.traverse(o=>{if(o instanceof THREE.SkinnedMesh){o.frustumCulled=false;skeletons.add(o.skeleton);}if(o instanceof THREE.Mesh)for(const m of Array.isArray(o.material)?o.material:[o.material]){materials.set(m,{transparent:m.transparent,opacity:m.opacity,depthWrite:m.depthWrite});}});
  const mixer=new THREE.AnimationMixer(model),clip=(name:string)=>{const c=clips.find(c=>c.name===name);if(!c)throw Error('Missing Mimir clip '+name);return mixer.clipAction(c);},idle=clip('idle'),walk=clip('walk_loop'),greet=clip('greet');greet.setLoop(THREE.LoopOnce,1);greet.clampWhenFinished=true;idle.play();
+ const memoryKey='yggdrasil:muspelheim:ymir:memory-released';
+ let released=false;try{released=localStorage.getItem(memoryKey)==='1';}catch{}
  let progress=0,present=false,current=idle,greetTime=0;
  const play=(action:THREE.AnimationAction)=>{if(current===action)return;current.fadeOut(.2);action.reset().fadeIn(.2).play();current=action;};
  const body=():CharacterBody=>({x:root.position.x,y:root.position.y,z:root.position.z,radius:MIMIR_RADIUS,height:MIMIR_HEIGHT,solid:progress>=1});
- return {root,mixer,destination:{...destination,y:ground},get progress(){return progress;},get body(){return body();},
-  update(dt:number,hero:Point){if(dt<=0)return false;const distance=Math.hypot(hero.x-center.x,hero.z-center.z);if(!present&&distance<40&&Math.abs(hero.y-ground)<9)present=true;else if(present&&(distance>65||Math.abs(hero.y-ground)>20))present=false;
+ return {root,mixer,destination:{...destination,y:ground},get progress(){return progress;},get released(){return released;},
+  release(){if(released)return false;released=true;try{localStorage.setItem(memoryKey,'1');}catch{}return true;},
+  talk(hero:Point){if(!released||progress<1||Math.hypot(hero.x-root.position.x,hero.z-root.position.z)>35||Math.abs(hero.y-root.position.y)>9)return false;play(greet);greetTime=greet.getClip().duration;return true;},get body(){return body();},
+  update(dt:number,hero:Point){if(dt<=0)return false;const distance=Math.hypot(hero.x-center.x,hero.z-center.z);if(released&&!present&&distance<40&&Math.abs(hero.y-ground)<9)present=true;else if(present&&(distance>65||Math.abs(hero.y-ground)>20))present=false;
    const before=progress;progress=THREE.MathUtils.clamp(progress+(present?1:-1)*dt/2.4,0,1);
    // Leave room for Vicki before giving the apparition a physical body.
    if(progress>before&&before<1&&Math.hypot(hero.x-destination.x,hero.z-destination.z)<MIMIR_RADIUS+3.3)progress=Math.min(progress,.8);
