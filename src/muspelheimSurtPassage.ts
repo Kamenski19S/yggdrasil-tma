@@ -45,6 +45,7 @@ export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:n
   for(const [nx,nz,ax,az,bx,bz]of [[x-1,z,x,z,x,z+1],[x+1,z,x+1,z,x+1,z+1],[x,z-1,x,z,x+1,z],[x,z+1,x,z+1,x+1,z+1]])if(!cells.has(`${nx},${nz}`)){
    // The exit and magical entrance are open; all other exposed edges have stone walls.
    if((Math.abs(az-end.z)<.01&&Math.abs(bz-end.z)<.01)||(Math.abs(ax-at.x)<.01&&Math.abs(bx-at.x)<.01))continue;
+   if(p.segment.kind==='room'&&Math.abs(az-bz)<.01&&Math.abs(Math.abs(az-at.z)-15)<.01)continue;
    const ground=cachedGround((ax+bx)/2,(az+bz)/2),high=p.y+(roof?28:Math.max(3,Math.min(28,ground-p.y+1.2)));
    const low=Math.min(y(ax,az),y(bx,bz));boundary.push({ax,az,bx,bz,low,high});
    quad(wallVertices,wallIndices,[[ax,low-.7,az],[bx,low-.7,bz],[bx,high,bz],[ax,high,az]]);wallUV.push(0,0,1/8,0,1/8,(high-low)/8,0,(high-low)/8);
@@ -87,16 +88,14 @@ export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:n
  // Stone reveal fills the clipped bank around the arch, leaving the walking opening clear.
  for(const side of [-1,1])box(2,28,11,at.x-1,entryY+14,at.z+side*14.5,stone);
  box(2,7,18,at.x-1,entryY+24.5,at.z,stone);
- const trapKey='yggdrasil:muspelheim:surt:isa-room:v1';let trapWasComplete=false;try{trapWasComplete=localStorage.getItem(trapKey)==='1';}catch{}
+ const trapKey='yggdrasil:muspelheim:surt:isa-room:v2-full-triangle';let trapWasComplete=false;try{trapWasComplete=localStorage.getItem(trapKey)==='1';}catch{}
  const trap=createIsaWallPuzzle(trapWasComplete);
  // Hinged doors close after the hero clears the doorway, in either direction.
  const doors=[-128,-166].map((x,index)=>{const hinge=new THREE.Group();hinge.position.set(x,entryY,at.z-7);hinge.name=index?'Дверь выхода из комнаты':'Входная дверь комнаты';root.add(hinge);box(.8,20,14,0,10,7,doorStone,hinge);for(const y of [2,10,18])box(1,1,14,0,y,7,trim,hinge);box(1.2,1.5,1.5,.5,10,12,trim,hinge);for(const side of [-1,1])box(2,24,2,x,entryY+12,at.z+side*8,stone);box(2,3,18,x,entryY+22.5,at.z,stone);
   // Room front/rear wall panels beside each door opening.
   for(const side of [-1,1])box(1.5,28,8,x,entryY+14,at.z+side*11,stone);
   return {x,index,hinge,opening:0,target:0,openedFrom:0,closeTimer:0,get locked(){return index===1?!trap.completed:trap.active;}};});
- const coldStone=stone.clone(),coldUniform={value:0};
- coldStone.onBeforeCompile=shader=>{shader.uniforms.isaCold=coldUniform;shader.fragmentShader='uniform float isaCold;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\n float frost=.5+.5*sin(vViewPosition.y*15.+sin(vViewPosition.x*9.));totalEmissiveRadiance+=isaCold*vec3(.035,.12,.17)*(0.7+frost*.3);');};coldStone.customProgramCacheKey=()=> 'isa-trap-frozen-stone-v1';
- const movingWalls=[-1,1].map(side=>box(38,28,1.2,-147,entryY+14,at.z+side*15,coldStone));movingWalls.forEach((wall,i)=>wall.name='Сдвигающаяся стена '+i);
+ const movingWalls=[-1,1].map(side=>box(38,28,1.2,-147,entryY+14,at.z+side*15.6,stone));movingWalls.forEach((wall,i)=>wall.name='Сдвигающаяся стена '+i);
  const puzzle=createIsaWallPuzzleScene(trap);puzzle.root.position.set(-147,entryY+10.3,at.z-14.26);root.add(puzzle.root);
  const inTrapRoom=(hero:Point)=>hero.x< -133&&hero.x> -161&&Math.abs(hero.z-at.z)<12&&Math.abs(hero.y-entryY)<6;
  const nearDoor=(x:number,z:number,y:number)=>doors.find(d=>d.opening<.99&&Math.abs(y-entryY)<5&&Math.hypot(x-d.x,z-at.z)<10)??null;
@@ -118,11 +117,17 @@ export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:n
   for(const d of doors)if(Math.abs(x-d.x)<padding+1&&Math.abs(z-at.z)>7-padding&&Math.abs(z-at.z)<15+padding&&y<entryY+28&&y+14>entryY)return true;
   for(const w of boundary){if(y>=w.high||y+14<=w.low)continue;const dx=w.bx-w.ax,dz=w.bz-w.az,t=THREE.MathUtils.clamp(((x-w.ax)*dx+(z-w.az)*dz)/(dx*dx+dz*dz),0,1);if(Math.hypot(x-w.ax-t*dx,z-w.az-t*dz)<padding)return true;}return false;
  };
+ let roomCameraActive=false,roomLookYaw=0,roomLookPitch=0;
  let cameraProgress:number|undefined,lastHeroProgress:number|undefined,cameraDirection=1,cameraEyeY:number|undefined,cameraLookY:number|undefined;
  const cameraAt=(x:number,y:number,z:number,yaw:number,dt=1/60)=>{
   const p=surface(x,z);if(!p||(p.segment.kind==='apron'&&p.along<12)||!owns(x,z,y)){cameraProgress=lastHeroProgress=cameraEyeY=cameraLookY=undefined;return null;}
-  if(trap.active&&inTrapRoom({x,y,z})){
-   const position={x:-131.5,y:entryY+21,z:at.z+Math.max(.5,trap.halfWidth-3.5)},target={x:-147,y:entryY+12.4,z:puzzle.root.position.z+.25};
+  const insideRoom=x< -129&&x> -165&&Math.abs(z-at.z)<15&&Math.abs(y-entryY)<6;
+  if(insideRoom)roomCameraActive=true;
+  if(roomCameraActive&&!insideRoom){roomCameraActive=false;roomLookYaw=roomLookPitch=0;}
+  if(roomCameraActive&&insideRoom){
+   const position={x:-131.5,y:entryY+21,z:at.z+Math.max(.5,trap.halfWidth-3.5)},anchor={x:-147,y:entryY+12.4,z:puzzle.root.position.z+.25};
+   const distance=Math.hypot(anchor.x-position.x,anchor.z-position.z),angle=Math.atan2(anchor.x-position.x,anchor.z-position.z)+roomLookYaw;
+   const target={x:position.x+Math.sin(angle)*distance,y:anchor.y+roomLookPitch*distance,z:position.z+Math.cos(angle)*distance};
    return {position,target,yaw:Math.atan2(position.x-target.x,position.z-target.z),fov:76};
   }
   const progress=p.segment.start+p.along,tangent=p.segment;
@@ -156,14 +161,15 @@ export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:n
  const clipWorld=(objects:THREE.Object3D[])=>{for(const object of objects)object.traverse(o=>{if(!(o instanceof THREE.Mesh)||o===floorMesh||o===roofMesh)return;for(const m of (Array.isArray(o.material)?o.material:[o.material]) as THREE.Material[]){if(cutMaterials.has(m))continue;cutMaterials.add(m);const previous=m.onBeforeCompile,cache=m.customProgramCacheKey;
   m.onBeforeCompile=(shader,renderer)=>{previous.call(m,shader,renderer);shader.vertexShader='varying vec3 surtPassagePosition;\n'+shader.vertexShader;const standardVertex=shader.vertexShader.includes('#include <begin_vertex>');shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>\nvec4 passagePoint=vec4(transformed,1.);\n#ifdef USE_INSTANCING\npassagePoint=instanceMatrix*passagePoint;\n#endif\nsurtPassagePosition=(modelMatrix*passagePoint).xyz;`);if(!standardVertex)shader.vertexShader=shader.vertexShader.replace(/void\s+main\s*\(\s*\)\s*\{/, 'void main(){surtPassagePosition=(modelMatrix*vec4(position,1.)).xyz;');shader.fragmentShader='varying vec3 surtPassagePosition;\nbool surtPassageCut(vec3 p){'+'if(p.x< -276.||p.x> -73.||p.z< -454.||p.z> -345.)return false;'+cut+'return false;}\n'+shader.fragmentShader;const standardFragment=shader.fragmentShader.includes('#include <clipping_planes_fragment>');shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>','#include <clipping_planes_fragment>\nif(surtPassageCut(surtPassagePosition))discard;');if(!standardFragment)shader.fragmentShader=shader.fragmentShader.replace(/void\s+main\s*\(\s*\)\s*\{/, 'void main(){if(surtPassageCut(surtPassagePosition))discard;');};m.customProgramCacheKey=()=>cache.call(m)+'-surt-passage-v1';m.needsUpdate=true;
  }});};
- return {root,points,segments,doors,entryY,exitY,stepCount,owns,floorAt,blocks,nearDoor,openNearby,cameraAt,clipWorld,trap,puzzle,movingWalls,
+ return {root,points,segments,doors,entryY,exitY,stepCount,owns,floorAt,blocks,nearDoor,openNearby,cameraAt,clipWorld,trap,puzzle,movingWalls,get inspectingRoom(){return roomCameraActive;},
+  rotateRoomView(yaw:number,pitch:number){if(!roomCameraActive)return false;roomLookYaw+=yaw;roomLookPitch=THREE.MathUtils.clamp(roomLookPitch+pitch,-.45,.55);return true;},focusPuzzle(){roomLookYaw=roomLookPitch=0;},
   moveRuneAt:(camera:THREE.Camera,x:number,y:number,hero:Point)=>inTrapRoom(hero)&&puzzle.press(camera,x,y,hero),takeTrapEvent:()=>trap.takeEvent(),
   roofAt:(x:number,z:number)=>{const p=surface(x,z);return p&&covered(x,z,p.y)?p.y+28:null;},
   update(dt:number,hero?:Point){
    if(hero&&dt>0){if(inTrapRoom(hero))trap.enter();else if(trap.phase==='failed')trap.reset();}
    trap.step(dt);if(hero&&trap.phase==='closing'&&Math.abs(hero.y-entryY)<6&&hero.x< -130&&hero.x> -164&&Math.abs(hero.z-at.z)+2.3>=trap.halfWidth-.6)trap.fail();
    if(trap.completed&&!trapWasComplete){trapWasComplete=true;try{localStorage.setItem(trapKey,'1');}catch{}doors[1].target=1;doors[1].openedFrom=1;doors[1].closeTimer=0;}
-   movingWalls.forEach((wall,i)=>wall.position.z=at.z+(i?1:-1)*trap.halfWidth);puzzle.root.position.z=at.z-trap.halfWidth+.74;puzzle.update(dt);coldUniform.value=trap.cold;
+   movingWalls.forEach((wall,i)=>wall.position.z=at.z+(i?1:-1)*(trap.halfWidth+.6));puzzle.root.position.z=at.z-trap.halfWidth+.74;puzzle.update(dt);
    for(const door of doors)if(door.locked){door.target=0;door.closeTimer=0;}else if(door.index===1&&trap.completed)door.target=1;
    magicTime+=dt;const crossing=hero&&Math.abs(hero.x-at.x)<19&&Math.abs(hero.z-at.z)<7&&Math.abs(hero.y-entryY)<6;for(const m of magicMaterials)m.opacity=crossing?.07:.48+Math.sin(magicTime*1.3)*.035;for(const d of doors){
    if(hero&&dt>0&&!d.locked&&!(d.index===1&&trap.completed)){const dx=hero.x-d.x,inDoorway=dx> -17&&dx<6&&Math.abs(hero.z-at.z)<10&&Math.abs(hero.y-entryY)<22;
@@ -175,6 +181,6 @@ export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:n
    }
    d.opening=THREE.MathUtils.clamp(d.opening+dt*(d.target?1:-1)/.85,0,1);const t=d.opening*d.opening*(3-2*d.opening);d.hinge.rotation.y=-t*Math.PI*.53;
   }},
-  setStoneTexture(texture:THREE.Texture){const map=texture.clone();map.wrapS=map.wrapT=THREE.RepeatWrapping;map.repeat.set(1,1);map.needsUpdate=true;stone.map=map;stone.needsUpdate=true;coldStone.map=map;coldStone.needsUpdate=true;puzzle.setStoneTexture(map);stairMaterial.map=map;stairMaterial.needsUpdate=true;doorStone.map=map;doorStone.needsUpdate=true;for(const material of platformMaterials){material.map=map;material.needsUpdate=true;}},
+  setStoneTexture(texture:THREE.Texture){const map=texture.clone();map.wrapS=map.wrapT=THREE.RepeatWrapping;map.repeat.set(1,1);map.needsUpdate=true;stone.map=map;stone.needsUpdate=true;puzzle.setStoneTexture(map);stairMaterial.map=map;stairMaterial.needsUpdate=true;doorStone.map=map;doorStone.needsUpdate=true;for(const material of platformMaterials){material.map=map;material.needsUpdate=true;}},
  };
 }
