@@ -9,6 +9,17 @@ on:
       - 'src/muspelheimCanyonRidge.ts'
       - 'scripts/test-mine-approach-full-world.mjs'
       - 'src/AshMine3D.tsx'
+      - 'src/AshLord3D.tsx'
+      - 'src/ThreadVault3D.tsx'
+      - 'src/MuspelheimActionWheel.tsx'
+      - 'src/playerFireball.ts'
+      - 'src/heroShieldPose.ts'
+      - 'src/muspelheimHeroActions.ts'
+      - 'src/fireStrikeVfx.ts'
+      - 'src/muspelheimGateMagic.ts'
+      - 'src/muspelheimAssassinCombat.ts'
+      - 'src/muspelheimNecromancerStrike.ts'
+      - 'scripts/test-player-fireball.mjs'
       - 'src/minePlayerActions.ts'
       - 'scripts/test-mine-player-actions.mjs'
       - 'src/muspelheimUI.css'
@@ -37,6 +48,7 @@ jobs:
         run: node scripts/materialize-ice-assets.mjs
       - name: Check terrain approach and physical mine exit
         run: |
+          node scripts/test-player-fireball.mjs
           node scripts/test-ash-mine.mjs
           node scripts/test-mine-approach-full-world.mjs
       - name: Check full-body view and actual camera occlusion
