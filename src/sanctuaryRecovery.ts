@@ -4,33 +4,33 @@ export const SANCTUARY_RECOVERY_SECONDS=15;
 export function recoveryHealth(startHp:number,maxHp:number,elapsed:number){
  return Math.min(maxHp,Math.floor(startHp+(maxHp-startHp)*Math.min(1,Math.max(0,elapsed)/SANCTUARY_RECOVERY_SECONDS)));
 }
+/** The supplied golden cloud is the visible effect; there are no untextured rings or tubes. */
 export function createRecoveryAura(texture?:THREE.Texture){
- const root=new THREE.Group();root.name='Золотая спираль возрождения Vicki';root.visible=false;
- const resources:{dispose:()=>void}[]=[];
- const own=<T extends {dispose:()=>void}>(item:T)=>{resources.push(item);return item;};
- const gold=(opacity:number)=>own(new THREE.MeshBasicMaterial({color:'#ffdb74',transparent:true,opacity,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,toneMapped:false}));
+ const root=new THREE.Group();root.name='Живое золотое сияние возрождения';root.visible=false;
+ if(texture){texture.colorSpace=THREE.SRGBColorSpace;texture.offset.set(0,0);texture.repeat.set(1,1);texture.needsUpdate=true;}
  const spirals=[new THREE.Group(),new THREE.Group()];
+ const materials:THREE.ShaderMaterial[]=[],geometries:THREE.CylinderGeometry[]=[];
  spirals.forEach((group,index)=>{
-  group.name=index?'Встречная золотая спираль':'Золотая спираль';root.add(group);
-  const points=Array.from({length:145},(_,i)=>{const t=i/144,a=t*Math.PI*4.8*(index?-1:1);return new THREE.Vector3(Math.cos(a)*(4.5+index*.45),.4+t*15.5,Math.sin(a)*(4.5+index*.45));});
-  const path=new THREE.CatmullRomCurve3(points);
-  const core=new THREE.Mesh(own(new THREE.TubeGeometry(path,144,.065,5,false)),gold(.85));group.add(core);
-  const glow=new THREE.Mesh(own(new THREE.TubeGeometry(path,144,.27,5,false)),gold(.16));group.add(glow);
-  if(texture){
-   const material=gold(.18);material.map=texture;
-   const veil=new THREE.Mesh(own(new THREE.CylinderGeometry(5+index*.6,4.6+index*.6,17,40,1,true)),material);veil.position.y=8;group.add(veil);
-  }
+  group.name=index?'Встречное текстурное сияние':'Текстурное сияние';root.add(group);
+  const material=new THREE.ShaderMaterial({transparent:true,depthWrite:false,side:THREE.DoubleSide,blending:THREE.NormalBlending,toneMapped:false,uniforms:{auraMap:{value:texture??null},clock:{value:0},direction:{value:index?-1:1},opacity:{value:index?.67:.94}},
+   vertexShader:`uniform float clock,direction;varying vec2 auraUv;
+    void main(){auraUv=uv;vec3 p=position;float swell=1.+.025*sin(p.y*.6-clock*1.8+direction*uv.x*6.28);p.xz*=swell;gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);}`,
+   fragmentShader:`uniform sampler2D auraMap;uniform float clock,direction,opacity;varying vec2 auraUv;
+    void main(){
+     vec2 uv=auraUv;uv.x+=.018*sin(uv.y*9.-clock*1.5*direction);uv.y+=.009*sin(uv.x*12.+clock*1.3);
+     if(uv.x<0.||uv.x>1.||uv.y<0.||uv.y>1.)discard;
+     // Skip the narrow piece of marble at the left of the supplied image.
+     vec4 cloud=texture2D(auraMap,vec2(.105+.895*uv.x,uv.y));
+     float edge=smoothstep(0.,.06,uv.x)*smoothstep(0.,.06,1.-uv.x)*smoothstep(0.,.05,uv.y)*smoothstep(0.,.05,1.-uv.y);
+     float shimmer=.87+.13*sin(uv.y*19.-clock*3.+direction*uv.x*7.);
+     float alpha=cloud.a*opacity*edge*shimmer;if(alpha<.008)discard;
+     vec3 gold=cloud.rgb*vec3(1.15,.95,.57)*(1.04+.1*sin(clock*2.+uv.y*10.));
+     gl_FragColor=vec4(gold,alpha);
+     #include <colorspace_fragment>
+    }`});
+  const geometry=new THREE.CylinderGeometry(4.7+index*.65,4.4+index*.65,17.5,48,16,true),veil=new THREE.Mesh(geometry,material);veil.position.y=8.2;group.add(veil);materials.push(material);geometries.push(geometry);
  });
- if(texture){texture.colorSpace=THREE.SRGBColorSpace;texture.offset.set(.105,0);texture.repeat.set(.895,1);texture.needsUpdate=true;own(texture);}
- const ring=new THREE.Mesh(own(new THREE.TorusGeometry(5,.12,8,64)),gold(.5));ring.rotation.x=Math.PI/2;ring.position.y=.2;root.add(ring);
- const coords=new Float32Array(72*3),geometry=own(new THREE.BufferGeometry());geometry.setAttribute('position',new THREE.BufferAttribute(coords,3));
- const stars=own(new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,toneMapped:false,uniforms:{clock:{value:0}},vertexShader:`uniform float clock;varying float twinkle;void main(){vec4 p=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*p;gl_PointSize=clamp(130./max(1.,-p.z),2.,15.);twinkle=.45+.55*sin(clock*4.+position.y*3.);}`,fragmentShader:`varying float twinkle;void main(){vec2 p=gl_PointCoord-.5;float r=length(p);float star=exp(-r*18.)+exp(-abs(p.x)*65.-abs(p.y)*5.)+exp(-abs(p.y)*65.-abs(p.x)*5.);float a=star*twinkle;if(a<.015)discard;gl_FragColor=vec4(1.,.84,.4,a);}`}));
- root.add(new THREE.Points(geometry,stars));let time=0;
- return {root,update(dt:number,hero:THREE.Object3D,active:boolean){
-  root.visible=active;if(!active)return;time+=dt;root.position.copy(hero.position);
-  spirals[0].rotation.y=time*.75;spirals[1].rotation.y=-time*.61;stars.uniforms.clock.value=time;
-  spirals.forEach((group,k)=>group.children.forEach((child,i)=>{const material=(child as THREE.Mesh<THREE.BufferGeometry,THREE.MeshBasicMaterial>).material;material.opacity=[.8,.15,.17][i]*(.82+.18*Math.sin(time*2.7+k*2));material.color.setHSL(.115+.025*Math.sin(time*1.7+k),1,.68);}));
-  ring.scale.setScalar(1+.07*Math.sin(time*4));
-  for(let i=0;i<72;i++){const t=(i/72+time*.12)%1,a=i*2.39996+time*(i%2?-.75:.75),r=4.7+.5*Math.sin(i);coords[i*3]=Math.cos(a)*r;coords[i*3+1]=t*16;coords[i*3+2]=Math.sin(a)*r;}geometry.attributes.position.needsUpdate=true;
- },dispose(){resources.forEach(r=>r.dispose());}};
+ let time=0;
+ return {root,update(dt:number,hero:THREE.Object3D,active:boolean){root.visible=active;if(!active)return;time+=dt;root.position.copy(hero.position);spirals[0].rotation.y=time*.58;spirals[1].rotation.y=-time*.43;materials.forEach(m=>{m.uniforms.clock.value=time;});},
+  dispose(){materials.forEach(m=>m.dispose());geometries.forEach(g=>g.dispose());texture?.dispose();}};
 }
