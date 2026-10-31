@@ -1,34 +1,66 @@
 import * as THREE from 'three';
-import {DecalGeometry} from 'three/examples/jsm/geometries/DecalGeometry.js';
 
-type Segment=readonly [number,number,number,number];
-const GLYPHS:Segment[][]=[[[.2,.12,.2,.88],[.2,.12,.58,.34],[.58,.34,.83,.14],[.2,.88,.58,.66],[.58,.66,.83,.86]],[[.22,.1,.22,.9],[.22,.1,.8,.38],[.22,.39,.8,.67]]];
-/** Transparent signed-distance strokes: only gold rune marks, no marble or rectangular frame. */
-export function createGoldRuneTexture(index:number){
- const width=128,height=192,data=new Uint8Array(width*height*4),segments=GLYPHS[index];
- for(let y=0;y<height;y++)for(let x=0;x<width;x++){
-  const u=x/(width-1),v=1-y/(height-1);let distance=1;
-  for(const [ax,ay,bx,by]of segments){const dx=bx-ax,dy=by-ay,t=THREE.MathUtils.clamp(((u-ax)*dx+(v-ay)*dy)/(dx*dx+dy*dy),0,1);distance=Math.min(distance,Math.hypot((u-ax-t*dx)*.67,v-ay-t*dy));}
-  const core=1-THREE.MathUtils.smoothstep(distance,.014,.025),halo=Math.exp(-distance*distance/.003)*.28,at=(y*width+x)*4;
-  data[at]=255;data[at+1]=175+Math.round(core*48);data[at+2]=28+Math.round(core*48);data[at+3]=Math.round(Math.max(core,halo)*255);
- }
- const texture=new THREE.DataTexture(data,width,height,THREE.RGBAFormat);texture.colorSpace=THREE.SRGBColorSpace;texture.magFilter=texture.minFilter=THREE.LinearFilter;texture.needsUpdate=true;return texture;
-}
+/** Replace the pillar's painted ornament with stone and recessed, luminous rune channels. */
 export function createYmirPillarRunes(pillar:THREE.Object3D){
- pillar.updateWorldMatrix(true,true);const bounds=new THREE.Box3().setFromObject(pillar),center=bounds.getCenter(new THREE.Vector3()),ray=new THREE.Raycaster(),projector=new THREE.Object3D();
- const root=new THREE.Group();root.name='Сияющие золотые руны на камне со стороны дорожки';
- const runes=[0,1].map(index=>{
-  // The authored approach road ends at (-100,25), east (+X) of the pillar.
-  ray.set(new THREE.Vector3(bounds.max.x+10,bounds.min.y+11,center.z+(index?-1.8:1.8)),new THREE.Vector3(-1,0,0));
-  const hit=ray.intersectObject(pillar,true)[0];if(!hit||!(hit.object instanceof THREE.Mesh))throw Error('Missing road-facing Ymir rune surface');
-  const normal=hit.face!.normal.clone().transformDirection(hit.object.matrixWorld);projector.position.copy(hit.point);projector.lookAt(hit.point.clone().add(normal));
-  const geometry=new DecalGeometry(hit.object,hit.point,projector.rotation,new THREE.Vector3(2.5,4.2,1.6));geometry.translate(-hit.point.x,-hit.point.y,-hit.point.z);
-  const material=new THREE.MeshBasicMaterial({map:createGoldRuneTexture(index),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2,toneMapped:false});
-  const mesh=new THREE.Mesh(geometry,material);mesh.position.copy(hit.point);mesh.name=index?'Ансуз · голос Имира':'Пертр · память Имира';root.add(mesh);return mesh;
- });let time=0,flash=0;
- return {root,runes,
+ pillar.updateWorldMatrix(true,true);const bounds=new THREE.Box3().setFromObject(pillar),center=bounds.getCenter(new THREE.Vector3()),ray=new THREE.Raycaster();
+ const root=new THREE.Group();root.name='Резные руны в камне Имира';
+ const clock={value:0},pulse={value:1},materials=new Set<THREE.MeshStandardMaterial>(),oldTextures=new Set<THREE.Texture>();
+ const carving=`
+ varying vec3 carvedWorld;
+ uniform float runeClock,runePulse;
+ float channelSegment(vec2 p,vec2 a,vec2 b){vec2 scale=vec2(4.,8.);p*=scale;a*=scale;b*=scale;vec2 d=b-a;return length(p-a-d*clamp(dot(p-a,d)/dot(d,d),0.,1.));}
+ float runeChannel(vec3 world){
+  vec3 q=world-vec3(${center.x},${bounds.min.y},${center.z});
+  if(q.x<3.)return 100.;
+  vec2 p=vec2((-q.z+2.6)/4.+.5,(16.5-q.y)/8.);
+  float d=channelSegment(p,vec2(.2,.12),vec2(.2,.88));
+  d=min(d,channelSegment(p,vec2(.2,.12),vec2(.58,.34)));d=min(d,channelSegment(p,vec2(.58,.34),vec2(.83,.14)));
+  d=min(d,channelSegment(p,vec2(.2,.88),vec2(.58,.66)));d=min(d,channelSegment(p,vec2(.58,.66),vec2(.83,.86)));
+  p.x=(-q.z-2.6)/4.+.5;
+  d=min(d,channelSegment(p,vec2(.22,.1),vec2(.22,.9)));d=min(d,channelSegment(p,vec2(.22,.1),vec2(.8,.38)));d=min(d,channelSegment(p,vec2(.22,.39),vec2(.8,.67)));
+  return d;
+ }
+ `;
+ pillar.traverse(object=>{
+  if(!(object instanceof THREE.Mesh))return;
+  for(const material of Array.isArray(object.material)?object.material:[object.material]){
+   if(!(material instanceof THREE.MeshStandardMaterial)||materials.has(material))continue;materials.add(material);
+   // The old swirls are baked into these maps. Remove them, rather than covering them with another decal.
+   for(const key of ['map','normalMap','bumpMap','roughnessMap','metalnessMap','aoMap','emissiveMap'] as const){const texture=material[key];if(texture)oldTextures.add(texture);material[key]=null;}
+   material.color.set('#ded2b9');material.roughness=.88;material.metalness=0;material.emissive.set(0);material.needsUpdate=true;
+   material.onBeforeCompile=shader=>{
+    shader.uniforms.runeClock=clock;shader.uniforms.runePulse=pulse;
+    shader.vertexShader='varying vec3 carvedWorld;\n'+shader.vertexShader;
+    shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n carvedWorld=(modelMatrix*vec4(position,1.)).xyz;');
+    shader.fragmentShader=carving+shader.fragmentShader;
+    shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
+     float grain=sin(carvedWorld.x*9.7+sin(carvedWorld.z*6.3))*sin(carvedWorld.y*13.1+carvedWorld.z*5.7);
+     float vein=sin(carvedWorld.y*.9+sin(carvedWorld.z*.6+carvedWorld.x*.45)*1.8);
+     diffuseColor.rgb*=.94+.025*grain+.035*vein;
+     float channelDistance=runeChannel(carvedWorld);
+     float recess=1.-smoothstep(.025,.19,channelDistance);
+     diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.105,.065,.022),recess*.88);
+    `);
+    shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
+     float channelDepth=-.24*pow(max(0.,1.-channelDistance/.20),1.35);
+     vec3 q0=dFdx(-vViewPosition),q1=dFdy(-vViewPosition);
+     vec3 r1=cross(q1,normal),r2=cross(normal,q0);float determinant=dot(q0,r1);
+     vec3 surfaceGradient=sign(determinant)*(dFdx(channelDepth)*r1+dFdy(channelDepth)*r2);
+     normal=normalize(max(abs(determinant),1e-8)*normal-surfaceGradient);
+    `);
+    shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',`#include <emissivemap_fragment>
+     float goldCore=1.-smoothstep(.018,.078,channelDistance);
+     float goldHalo=exp(-channelDistance*channelDistance/.022)*.12;
+     // One emission value and phase for both carvings, including after memory release.
+     float sameGlow=(.94+.06*sin(runeClock*2.))*runePulse;
+     totalEmissiveRadiance+=vec3(1.,.57,.075)*(goldCore*1.25+goldHalo)*sameGlow;
+    `);
+   };material.customProgramCacheKey=()=> 'ymir-replaced-ornament-recessed-runes-v1';
+  }
+ });
+ oldTextures.forEach(texture=>texture.dispose());
+ return {root,materials,
   canStrike(hero:{x:number;y:number;z:number},yaw:number){if(hero.x<center.x||Math.abs(hero.y-bounds.min.y)>7)return false;ray.set(new THREE.Vector3(hero.x,hero.y+9,hero.z),new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw)));const hit=ray.intersectObject(pillar,true)[0];return !!hit&&hit.distance<=13&&!!hit.face&&hit.face.normal.clone().transformDirection(hit.object.matrixWorld).x>.3;},
-  strike(){flash=.45;},update(dt:number,released:boolean){time+=dt;flash=Math.max(0,flash-dt);runes.forEach((r,i)=>{r.material.opacity=Math.min(1,.83+.12*Math.sin(time*2.6+i)+(flash>0?.2:0));r.material.color.set(i===1&&!released?'#e5b94a':'#ffffff');});},
-  dispose(){runes.forEach(r=>{r.geometry.dispose();r.material.map?.dispose();r.material.dispose();});},
+  strike(){pulse.value=1.25;},update(dt:number,_released:boolean){clock.value+=dt;pulse.value=Math.max(1,pulse.value-dt*.6);},dispose(){},
  };
 }
