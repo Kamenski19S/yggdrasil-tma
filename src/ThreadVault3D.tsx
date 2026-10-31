@@ -1,3 +1,4 @@
+import {useTransientStatus} from './useTransientStatus';
 import {createPlayerFireball} from './playerFireball';
 import {MuspelheimInteriorHUD,type InteriorHUDData} from './MuspelheimInteriorHUD';
 import {MuspelheimActionWheel} from './MuspelheimActionWheel';
@@ -15,7 +16,7 @@ type Props={hud:InteriorHUDData;onBack:()=>void;weapon:HeroWeapon;shieldAsset:st
 function dispose(root:THREE.Object3D){const gs=new Set<THREE.BufferGeometry>(),ms=new Set<THREE.Material>(),ts=new Set<THREE.Texture>();root.traverse(o=>{if(o instanceof THREE.Mesh||o instanceof THREE.Sprite){if(o instanceof THREE.Mesh)gs.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material]){ms.add(m);for(const v of Object.values(m))if(v instanceof THREE.Texture)ts.add(v);}}});gs.forEach(g=>g.dispose());ms.forEach(m=>m.dispose());ts.forEach(t=>t.dispose());}
 export default function ThreadVault3D(props:Props){
  const host=useRef<HTMLDivElement>(null),input=useRef({x:0,z:0}),pointer=useRef<number|null>(null),knob=useRef<HTMLSpanElement>(null),run=useRef(false),view=useRef(0),basis=useRef(0),live=useRef(props);live.current=props;
- const [dialog,setDialog]=useState(false),[nearKeeper,setNearKeeper]=useState(false),[failed,setFailed]=useState(false),[retry,setRetry]=useState(0),[ready,setReady]=useState(false),[status,setStatus]=useState('Открывается Хранилище трёх нитей…');
+ const [dialog,setDialog]=useState(false),[nearKeeper,setNearKeeper]=useState(false),[failed,setFailed]=useState(false),[retry,setRetry]=useState(0),[ready,setReady]=useState(false),[status,setStatus]=useTransientStatus('Открывается Хранилище трёх нитей…');
  const [panelOpen,setPanelOpen]=useState(false);const combat=useRef({attack:()=>{},shield:()=>{},magic:()=>{}});const paused=useRef(false);paused.current=dialog||panelOpen;const clearRef=useRef(()=>{});
  useEffect(()=>{
   const mount=host.current;if(!mount)return;let renderer:THREE.WebGLRenderer;
@@ -71,7 +72,7 @@ export default function ThreadVault3D(props:Props){
 
   {nearKeeper&&<button className="muspelheim-btn thread-vault-talk" onClick={()=>{stop();setDialog(true);}}>Поговорить с Хранителем</button>}</>}
   {!dialog&&<MuspelheimInteriorHUD data={props.hud} location="Хранилище трёх нитей" hp={props.fieldHp??props.maxHp} stop={stop} onPauseChange={setPanelOpen}/>}
-  <div className="muspelheim-status" role="status">{status}{failed&&<><button className="muspelheim-btn" onClick={()=>setRetry(v=>v+1)}>Повторить загрузку</button><button className="muspelheim-btn" onClick={props.onBack}>Вернуться ко входу</button></>}</div>
+  <div className="muspelheim-status" role="status" hidden={!status&&!failed}>{status}{failed&&<><button className="muspelheim-btn" onClick={()=>setRetry(v=>v+1)}>Повторить загрузку</button><button className="muspelheim-btn" onClick={props.onBack}>Вернуться ко входу</button></>}</div>
   {dialog&&<div className="muspelheim-ui-overlay"><section className="muspelheim-ui-panel" role="dialog" aria-modal="true" aria-label="Хранитель трёх нитей"><h3>Хранитель трёх нитей</h3><p>«Ты вошла в Хранилище. Здесь белая, красная и чёрная нити поднимаются из одного колодца. Смотри на них, но не пытайся оборвать».</p><p>«Когда захочешь уйти, возвращайся через дверь, которой пришла».</p><details><summary>Авторство моделей</summary><p><a href={THREAD_WELL_CREDIT.url} target="_blank" rel="noopener noreferrer">{THREAD_WELL_CREDIT.title} — {THREAD_WELL_CREDIT.author}</a>, CC BY 4.0. Колодец из Нифльхейма увеличен для зала, сохранены исходные материалы; добавлены три огненные нити.</p><p><a href={THREAD_KEEPER_CREDIT.url} target="_blank" rel="noopener noreferrer">{THREAD_KEEPER_CREDIT.title} — {THREAD_KEEPER_CREDIT.author}</a>, CC BY 4.0. Использована копия подготовленной модели со скелетом; изменены роль, масштаб и поза ожидания.</p></details><button className="muspelheim-btn" onClick={()=>setDialog(false)}>Продолжить осмотр</button></section></div>}
  </section>;
 }

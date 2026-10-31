@@ -1,3 +1,4 @@
+import {useTransientStatus} from './useTransientStatus';
 import {createPlayerFireball} from './playerFireball';
 import {createHeroShieldPose} from './heroShieldPose';
 import {createMinePlayerActions} from './minePlayerActions';
@@ -35,7 +36,7 @@ import {createMineCharacter,MINE_CHARACTER_ASSETS,MINE_CHARACTER_CREDITS,MINE_WO
 import {createAshMineLayout,MINE_TREASURE,MINE_EXIT,MINE_ROUTE} from './ashMineLayout';
 import {screenMoveToWorld} from './muspelheimCamera';
 import './muspelheimUI.css';
-type Props={hud:InteriorHUDData;questDone:string[];onMineEvent:(event:MineEvent)=>void;combatStats:CombatStats;fieldHp:number|null;onFieldHpChange:(hp:number)=>void;onDrainDrops:(amount:number)=>void;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;onBack:()=>void};
+type Props={hud:InteriorHUDData;questDone:string[];onMineEvent:(event:MineEvent)=>void;combatStats:CombatStats;fieldHp:number|null;onFieldHpChange:(hp:number)=>void;onDrainDrops:(amount:number)=>void;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;onBack:()=>void;onRespawn:()=>void};
 function dispose(root:THREE.Object3D){const gs=new Set<THREE.BufferGeometry>(),ms=new Set<THREE.Material>(),ts=new Set<THREE.Texture>();root.traverse(o=>{if(o instanceof THREE.Mesh){gs.add(o.geometry);if(o instanceof THREE.InstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){ms.add(m);for(const v of Object.values(m))if(v instanceof THREE.Texture)ts.add(v);}}});gs.forEach(g=>g.dispose());ms.forEach(m=>m.dispose());ts.forEach(t=>t.dispose());}
 export default function AshMine3D(props:Props){
  const refreshEquipment=useRef(()=>{});
@@ -43,7 +44,7 @@ export default function AshMine3D(props:Props){
  const host=useRef<HTMLDivElement>(null),live=useRef(props);live.current=props;
  const input=useRef({x:0,z:0}),sprint=useRef(false),pointer=useRef<number|null>(null),basis=useRef(0),view=useRef(0);
  const [guardianAlive,setGuardianAlive]=useState(true);
- const [grabbed,setGrabbed]=useState(false),[status,setStatus]=useState('Загрузка пепельной шахты…'),[defeated,setDefeated]=useState(false),[ready,setReady]=useState(false),[failed,setFailed]=useState(false),[retry,setRetry]=useState(0),[nearExit,setNearExit]=useState(false),[exitOpened,setExitOpened]=useState(false),[nearGold,setNearGold]=useState(false),[help,setHelp]=useState(false),[enemy,setEnemy]=useState<{name:string;hp:number;max:number}|null>(null),[hp,setHp]=useState(props.fieldHp&&props.fieldHp>0?Math.min(props.fieldHp,props.combatStats.maxHp):props.combatStats.maxHp);
+ const [grabbed,setGrabbed]=useState(false),[status,setStatus]=useTransientStatus('Загрузка пепельной шахты…'),[defeated,setDefeated]=useState(false),[ready,setReady]=useState(false),[failed,setFailed]=useState(false),[retry,setRetry]=useState(0),[nearExit,setNearExit]=useState(false),[exitOpened,setExitOpened]=useState(false),[nearGold,setNearGold]=useState(false),[help,setHelp]=useState(false),[enemy,setEnemy]=useState<{name:string;hp:number;max:number}|null>(null),[hp,setHp]=useState(props.fieldHp&&props.fieldHp>0?Math.min(props.fieldHp,props.combatStats.maxHp):props.combatStats.maxHp);
  const [panelOpen,setPanelOpen]=useState(false);const paused=useRef(false);paused.current=help||panelOpen;const actions=useRef({hit:()=>{},magic:()=>{},barrier:()=>{},shield:()=>{},gold:()=>{},openExit:()=>{},respawn:()=>{}});
  useEffect(()=>{
   if(!host.current)return;const mount=host.current;let renderer:THREE.WebGLRenderer;
@@ -121,8 +122,7 @@ export default function AshMine3D(props:Props){
 
   actions.current.shield=()=>{if(!loaded||knockedOut||paused.current||document.hidden||ailments.freeze>0||ailments.fall>0)return;if(!live.current.shieldEquipped){setStatus('Сначала надень щит в Чертоге.');return;}shieldUntil=time+1.6;attackUntil=time;attack?.fadeOut(.1);if(guardianState.phase==='hold'){releaseGuardian(guardianState);setGrabbed(false);setStatus('Щитом оттолкнула щупальце — Vicki свободна.');}else setStatus('Щит поднят на 1,6 секунды.');};
   actions.current.gold=()=>{if(!loaded||knockedOut||paused.current||Math.hypot(pos.x-MINE_TREASURE.x,pos.z-MINE_TREASURE.z)>13)return;if(MINE_GUARDS.some(g=>!dead.has(g.id)&&!mineProgress(live.current.questDone).defeated.includes(g.id))){setStatus('Сокровищница заперта. Победи всех четырёх стражников.');return;}if(!lakeCleared()){setStatus('Золото охраняет Страж глубин. Победи его у озера.');return;}if(mineProgress(live.current.questDone).goldTaken)return;live.current.onMineEvent('gold');layout.chest.visible=false;setStatus('Получено '+FIRE_GOLD_COST+' огненного золота. Вернись к двери выхода по рельсам, затем к хранителю у замка Сурта.');};
-  const retreat=()=>{clear();Object.assign(ailments,createAilments());Object.assign(waterBurst,createWaterBurst());waterWarning.visible=false;vfx.clear();iceVfx.clear();lightningVfx.clear();shadowVfx.clear();fireVfx.clear();playerFire.clear();Object.assign(shadowDrain,createShadowDrain());pos.x=0;pos.z=12;hero.position.set(0,0,12);for(const g of guards){g.actor.root.position.set(g.spec.x,layout.floorAt(g.spec.x,g.spec.z),g.spec.z);g.hp=g.spec.hp;g.windup=0;g.cooldown=1.7;g.magic.reset();}if(guardianHp>0)guardianHp=OCEAN_GUARDIAN.maxHp;Object.assign(guardianState,createGuardianState());setGrabbed(false);cameraState.initialized=false;setEnemy(null);};
-  actions.current.respawn=()=>{if(!knockedOut)return;retreat();knockedOut=false;setDefeated(false);health(live.current.combatStats.maxHp);setStatus('Vicki восстановила силы у входа.');};
+  actions.current.respawn=()=>{if(!knockedOut||exiting)return;clear();playerFire.clear();exiting=true;live.current.onRespawn();};
   actions.current.openExit=()=>{layout.openExit();setExitOpened(true);setStatus('Дверь выхода открывается. Пройди через неё в Муспельхейм.');};
   const loader=new GLTFLoader(),load=async(file:string)=>loader.parseAsync(await cachedGlbBuffer(`${BASE}img/models/${file}`),`${BASE}img/models/`);
   const timeout=window.setTimeout(()=>{if(alive&&!loaded){setFailed(true);setStatus('Загрузка Vicki затянулась. Повтори или вернись к двери.');}},60000);
@@ -176,7 +176,7 @@ export default function AshMine3D(props:Props){
    if(water.impact&&water.target){vfx.impact('water',{...water.target,y:water.target.y+7},30);if(water.hit){const blocked=time<shieldUntil||time<wardUntil,damage=incomingCombatDamage(magicRawDamage(WATER_BURST.damage,ailments),live.current.combatStats,blocked);applyElement(ailments,'water',blocked);health(Math.max(0,heroLife-damage));setStatus('Водный взрыв Кракена: −'+damage+'. '+(blocked?'Щит смягчил волну.':'Vicki замедлена.'));if(!blocked){const ax=pos.x-OCEAN_GUARDIAN.x,az=pos.z-OCEAN_GUARDIAN.z,d=Math.hypot(ax,az)||1;for(let i=0;i<8;i++){const nx=pos.x+ax/d*.5,nz=pos.z+az/d*.5;const to={x:nx,y:layout.floorAt(nx,nz),z:nz};if(!layout.walkable(nx,nz,lakeCleared())||Math.abs(to.y-hero.position.y)>2||layout.exitBlocks(nx,nz)||!guardian?.canMove(hero.position,new THREE.Vector3(nx,to.y,nz))||guards.some(g=>bodyPathBlocked({...pos,y:hero.position.y,radius:2.3,height:14,solid:true},{...to,radius:2.3,height:14,solid:true},guardBody(g))))break;pos.x=nx;pos.z=nz;hero.position.set(nx,to.y,nz);}}}}
    const drained=stepShadowDrain(shadowDrain,knockedOut?0:dt);if(drained)live.current.onDrainDrops(drained);
    const burn=stepAilments(ailments,knockedOut?0:dt);if(burn&&heroLife>0){health(Math.max(0,heroLife-burn));setStatus(MAGIC_PLAYTEST_INVULNERABLE?'Ожог: пламя на Vicki, здоровье защищено.':'Ожог: −'+burn+' здоровья.');}
-   if(heroLife<=0&&!knockedOut){knockedOut=true;releaseGuardian(guardianState);waterBurst.target=null;waterWarning.visible=false;setGrabbed(false);clear();setDefeated(true);persist();setStatus('Vicki потеряла силы. Бой остановлен.');}
+   if(heroLife<=0&&!knockedOut){knockedOut=true;releaseGuardian(guardianState);waterBurst.target=null;waterWarning.visible=false;setGrabbed(false);clear();setDefeated(true);persist();setStatus('Vicki потеряла силы. Бой остановлен.');actions.current.respawn();return;}
    if(knockedOut){shadowVfx.clear();fireVfx.clear();playerFire.clear();Object.assign(shadowDrain,createShadowDrain());waterBurst.target=null;waterWarning.visible=false;vfx.clear();guards.forEach(g=>g.magic.reset());Object.assign(ailments,createAilments());}
    workers.forEach(w=>{const p=mineWorkerPose(w.route,time);w.actor.root.visible=w.actor.root.position.distanceTo(hero.position)<85;if(layout.walkable(p.x,p.z,lakeCleared())){w.actor.root.position.set(p.x,layout.floorAt(p.x,p.z),p.z);w.actor.root.rotation.y=p.yaw;}if(w.actor.root.visible)w.actor.update(time,p.moving,false,w.route.activity);});
    const fallAngle=ailments.fall>0?-Math.PI/2*Math.sin(Math.min(1,ailments.fall/.25)*Math.PI/2):0;heroVisual.rotation.z=fallAngle;heroVisual.position.set(7*Math.sin(fallAngle),2*Math.sin(fallAngle)**2,0);
@@ -204,9 +204,9 @@ export default function AshMine3D(props:Props){
 
  {nearGold&&!help&&!panelOpen&&!progress.goldTaken&&<button className="muspelheim-btn primary ash-mine-interact" disabled={!ready||help||defeated} onClick={()=>actions.current.gold()}>{progress.cleared&&progress.guardianDefeated?'Забрать огненное золото':!progress.cleared?'Сокровищница · нужна победа над охраной':'Сокровищница · победи Стража глубин'}</button>}
  {nearExit&&!help&&!panelOpen&&<button className="muspelheim-btn ash-mine-exit" onClick={()=>actions.current.openExit()}>{exitOpened?'Пройди через открытую дверь':'Открыть дверь выхода'}</button>}
- {defeated&&<div className="muspelheim-gate-backdrop"><div className="muspelheim-gate-panel"><h3>Vicki потеряла силы</h3><p>Бой остановлен. Побеждённые стражники и предметы сохранены.</p><button className="muspelheim-btn" onClick={()=>actions.current.respawn()}>Восстановиться у входа</button></div></div>}
+ {defeated&&<div className="muspelheim-gate-backdrop"><div className="muspelheim-gate-panel"><h3>Vicki потеряла силы</h3><p>Бой остановлен. Побеждённые стражники и предметы сохранены.</p><button className="muspelheim-btn" onClick={()=>actions.current.respawn()}>Возродиться в святилище</button></div></div>}
  {failed&&<button className="muspelheim-btn ash-mine-exit" onClick={props.onBack}>Вернуться из-за ошибки загрузки</button>}
 
- <div role="status" className="ash-mine-status">{status}{failed&&<button className="muspelheim-btn" onClick={()=>setRetry(n=>n+1)}>Повторить</button>}</div></section>;
+ <div role="status" className="ash-mine-status" hidden={!status&&!failed}>{status}{failed&&<button className="muspelheim-btn" onClick={()=>setRetry(n=>n+1)}>Повторить</button>}</div></section>;
 }
 

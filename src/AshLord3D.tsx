@@ -1,3 +1,4 @@
+import {useTransientStatus} from './useTransientStatus';
 import {createPlayerFireball} from './playerFireball';
 import {MuspelheimInteriorHUD,type InteriorHUDData} from './MuspelheimInteriorHUD';
 import {MuspelheimActionWheel} from './MuspelheimActionWheel';
@@ -15,7 +16,7 @@ type Props={hud:InteriorHUDData;onBack:()=>void;weapon:HeroWeapon;shieldAsset:st
 function dispose(root:THREE.Object3D){const gs=new Set<THREE.BufferGeometry>(),ms=new Set<THREE.Material>(),ts=new Set<THREE.Texture>();root.traverse(o=>{if(o instanceof THREE.Mesh||o instanceof THREE.Sprite||o instanceof THREE.Points||o instanceof THREE.Line){if(!(o instanceof THREE.Sprite))gs.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material]){ms.add(m);for(const v of Object.values(m))if(v instanceof THREE.Texture)ts.add(v);}}});gs.forEach(g=>g.dispose());ms.forEach(m=>m.dispose());ts.forEach(t=>t.dispose());}
 export default function AshLord3D(props:Props){
  const host=useRef<HTMLDivElement>(null),input=useRef({x:0,z:0}),pointer=useRef<number|null>(null),knob=useRef<HTMLSpanElement>(null),run=useRef(false),view=useRef(0),basis=useRef(0),live=useRef(props);live.current=props;
- const [dialog,setDialog]=useState(false),[nearKeeper,setNearKeeper]=useState(false),[failed,setFailed]=useState(false),[retry,setRetry]=useState(0),[ready,setReady]=useState(false),[status,setStatus]=useState('Открывается Резиденция Владыки…');
+ const [dialog,setDialog]=useState(false),[nearKeeper,setNearKeeper]=useState(false),[failed,setFailed]=useState(false),[retry,setRetry]=useState(0),[ready,setReady]=useState(false),[status,setStatus]=useTransientStatus('Открывается Резиденция Владыки…');
  const [panelOpen,setPanelOpen]=useState(false);const combat=useRef({attack:()=>{},shield:()=>{},magic:()=>{}});const paused=useRef(false);paused.current=dialog||panelOpen;const clearRef=useRef(()=>{});
  useEffect(()=>{
   const mount=host.current;if(!mount)return;let renderer:THREE.WebGLRenderer;
@@ -71,7 +72,7 @@ export default function AshLord3D(props:Props){
 
   {nearKeeper&&<button className="muspelheim-btn thread-vault-talk" onClick={()=>{stop();setDialog(true);}}>Обратиться к Владыке</button>}</>}
   {!dialog&&<MuspelheimInteriorHUD data={props.hud} location="Резиденция Владыки" hp={props.fieldHp??props.maxHp} stop={stop} onPauseChange={setPanelOpen}/>}
-  <div className="muspelheim-status" role="status">{status}{failed&&<><button className="muspelheim-btn" onClick={()=>setRetry(v=>v+1)}>Повторить загрузку</button><button className="muspelheim-btn" onClick={props.onBack}>Вернуться ко входу</button></>}</div>
+  <div className="muspelheim-status" role="status" hidden={!status&&!failed}>{status}{failed&&<><button className="muspelheim-btn" onClick={()=>setRetry(v=>v+1)}>Повторить загрузку</button><button className="muspelheim-btn" onClick={props.onBack}>Вернуться ко входу</button></>}</div>
   {dialog&&<div className="muspelheim-ui-overlay"><section className="muspelheim-ui-panel" role="dialog" aria-modal="true" aria-label="Владыка Пепельного легиона"><h3>Владыка Пепельного легиона</h3><p>«Пока Вечный Жар течёт во мне, пепел не станет покоем для моего легиона».</p><p>Раскалённый источник рядом с Владыкой пульсирует. Каждая вспышка посылает новый поток энергии в его грудь.</p><details><summary>Авторство модели</summary><p><a href={ASH_LORD_CREDIT.url} target="_blank" rel="noopener noreferrer">{ASH_LORD_CREDIT.title} — {ASH_LORD_CREDIT.author}</a>, CC BY 4.0. Копия подготовленной модели вождя: изменены размер, оттенки и роль; сохранён скелет. Анимация ожидания перенесена из <a href="https://sketchfab.com/3d-models/low-poly-orc-62f1637181cb4f6aa38897f5b7ab5edf" target="_blank" rel="noopener noreferrer">Low-poly Orc — Riltariki</a>, CC BY 4.0.</p></details><button className="muspelheim-btn" onClick={()=>setDialog(false)}>Продолжить осмотр</button></section></div>}
  </section>;
 }

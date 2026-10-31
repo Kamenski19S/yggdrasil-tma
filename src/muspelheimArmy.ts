@@ -57,7 +57,7 @@ export function createMuspelheimArmy(templates:Template[],nav:ReturnType<typeof 
    stuckTime+=dt;wait=.15;return false;
 
   };
-  const actor=createShadowAssassin(model,clips[kind],home.y,clock,{position:home,height:13.8+(index%3)*.35,radius:3.1,name:['Воительница','Тёмная эльфийка','Теневой воин'][kind]+` · ${index<21?'патруль':'лагерь'} ${index<21?index+1:index-20}`,cooldownKey:`yggdrasil:muspelheim:army:v1:${index}:defeatedAt`,respawnMs,combatEnabled:false,turnSpeed:2.8,leash:1600,notice:25,speed:10,navigate,patrol,animationDistance:220});
+  const actor=createShadowAssassin(model,clips[kind],home.y,clock,{position:home,height:13.8+(index%3)*.35,radius:3.1,name:['Воительница','Тёмная эльфийка','Теневой воин'][kind]+` · ${index<21?'патруль':'лагерь'} ${index<21?index+1:index-20}`,cooldownKey:`yggdrasil:muspelheim:army:v1:${index}:defeatedAt`,respawnMs,combatEnabled:true,turnSpeed:2.8,leash:1600,notice:25,speed:10,navigate,patrol,animationDistance:220});
   const update=actor.update;actor.update=(dt,hero,available=true,floor=()=>home.y,contact)=>{
    tickTime+=dt;
    const near=hero?distance(actor.combat.position,hero):Infinity,interval=near<140?0:near<220?.08:.22;
