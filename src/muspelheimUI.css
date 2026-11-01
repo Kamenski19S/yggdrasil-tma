@@ -76,3 +76,12 @@
 .muspelheim-interior .ash-mine-health span{font-size:10px}
 .muspelheim-interior .thread-vault-talk,.muspelheim-interior .ash-mine-interact,.muspelheim-interior .ash-mine-exit{top:auto;bottom:34px;left:50%;right:auto;transform:translateX(-50%);max-width:90%;font-size:11px!important;min-height:32px!important;padding:6px 12px!important;white-space:normal}
 .muspelheim-interior-map{display:block;width:100%;max-height:260px;background:#241713;border-radius:8px}
+
+.muspelheim-wheel-hub.door-hub{width:44px;height:44px;border:0;background:transparent;box-shadow:none;isolation:isolate}
+.door-hub>img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none}
+.door-hub:disabled{cursor:default}
+.door-hub::before{content:"";position:absolute;inset:2px;border-radius:50%;border:2px solid transparent;z-index:-1;pointer-events:none}
+.door-hub.door-ready::before{border-color:#6fff85;box-shadow:0 0 6px #3fff75,0 0 13px #25e75c,inset 0 0 5px #63ff84;animation:door-ready-glow 1.4s ease-in-out infinite}
+@keyframes door-ready-glow{50%{box-shadow:0 0 9px #83ff9c,0 0 19px #25e75c,inset 0 0 7px #63ff84}}
+.interior-lightning-hit{position:absolute;inset:0;z-index:18;pointer-events:none;background:radial-gradient(ellipse,transparent 35%,#a5cfff99);box-shadow:inset 0 0 50px #d9eaff88}
+@media(prefers-reduced-motion:reduce){.door-hub.door-ready::before{animation:none}}
