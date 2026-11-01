@@ -18,11 +18,11 @@ export function createGoldenBallLightning(){
 }
 export function createCeilingLightning(walkable:(x:number,z:number)=>boolean){
  const root=new THREE.Group();root.name='Молнии с потолка хранилища';const bolt=lightning('#8dbbff');root.add(bolt.root);bolt.root.visible=false;
- const marker=new THREE.Mesh(new THREE.RingGeometry(4.4,5,48),new THREE.MeshBasicMaterial({color:'#e8be50',transparent:true,opacity:.65,side:THREE.DoubleSide,depthWrite:false}));marker.rotation.x=-Math.PI/2;marker.position.y=.12;marker.visible=false;root.add(marker);
+ const target=new THREE.Vector3();
  const light=new THREE.PointLight('#bfdfff',0,40,2);root.add(light);let age=0,cooldown=1.5,phase:'idle'|'warning'|'strike'='idle',flashTime=0;
- return {root,marker,get phase(){return phase;},update(dt:number,hero:Position){if(dt<=0)return false;flashTime+=dt;let hit=false;
-  if(phase==='idle'){cooldown-=dt;if(cooldown<=0&&hero.z<43&&walkable(hero.x,hero.z)){marker.position.x=hero.x;marker.position.z=hero.z;marker.visible=true;phase='warning';age=0;}}
-  else{age+=dt;if(phase==='warning'){marker.material.opacity=.35+.4*Math.abs(Math.sin(age*12));if(age>=.9){phase='strike';age=0;bolt.root.visible=true;marker.material.color.set('#b9e5ff');hit=Math.hypot(hero.x-marker.position.x,hero.z-marker.position.z)<5;}}
-   if(phase==='strike'){const x=marker.position.x,z=marker.position.z;const points=Array.from({length:19},(_,i)=>new THREE.Vector3(x+(i===0||i===18?0:Math.sin(i*13+Math.floor(flashTime*30))*2),58-i*58/18,z+(i===0||i===18?0:Math.cos(i*7+Math.floor(flashTime*30))*2)));bolt.set(points);light.position.set(x,10,z);light.intensity=age<.13?190:45;if(age>.32){phase='idle';cooldown=1.5;age=0;bolt.root.visible=marker.visible=false;light.intensity=0;marker.material.color.set('#e8be50');}}
+ return {root,get phase(){return phase;},update(dt:number,hero:Position){if(dt<=0)return false;flashTime+=dt;let hit=false;
+  if(phase==='idle'){cooldown-=dt;if(cooldown<=0&&hero.z<43&&walkable(hero.x,hero.z)){target.set(hero.x,0,hero.z);phase='warning';age=0;}}
+  else{age+=dt;if(phase==='warning'){if(age>=.9){phase='strike';age=0;bolt.root.visible=true;hit=Math.hypot(hero.x-target.x,hero.z-target.z)<5;}}
+   if(phase==='strike'){const x=target.x,z=target.z;const points=Array.from({length:19},(_,i)=>new THREE.Vector3(x+(i===0||i===18?0:Math.sin(i*13+Math.floor(flashTime*30))*2),58-i*58/18,z+(i===0||i===18?0:Math.cos(i*7+Math.floor(flashTime*30))*2)));bolt.set(points);light.position.set(x,10,z);light.intensity=age<.13?190:45;if(age>.32){phase='idle';cooldown=1.5;age=0;bolt.root.visible=false;light.intensity=0;}}
   }return hit;}};
 }

@@ -49,7 +49,7 @@ export default function ThreadVault3D(props:Props){
    const bounds=new THREE.Box3().setFromObject(vicki.scene),scale=13.94/(bounds.max.y-bounds.min.y);vicki.scene.scale.setScalar(scale);vicki.scene.position.y=-bounds.min.y*scale;hero.add(vicki.scene);mixer=new THREE.AnimationMixer(vicki.scene);actions=createMuspelheimHeroActions(vicki.scene,mixer,vicki.animations);
    combat.current={attack:()=>{if(!paused.current)actions?.attack();},shield:()=>{if(!paused.current&&live.current.shieldEquipped)actions?.shield();},magic:()=>{if(!paused.current&&loaded)setStatus(playerFire.cast(hero,0)?'Алый огненный сгусток!':'Магия восстанавливается.');}};
    equipment=createMuspelheimHeroEquipment(vicki.scene,{load:async asset=>(await load(asset)).scene,weaponAsset:weapon=>weapon==='default'?'Sword.glb':WEAPON_ASSET[weapon],prepare:(item,asset,weapon,isShield)=>{textureSteelOnWeapon(item,asset);if(!isShield)styleNiflheimWeapon(item,weapon);},dispose});
-   await equipment.update(live.current);if(!alive)return;loaded=true;setReady(true);setNearDoor(atDoor());setStatus('Свечение на полу предупреждает об ударе с потолка. Отойди или используй барьер.',5500);saveThreadVaultVisit(pos);
+   await equipment.update(live.current);if(!alive)return;loaded=true;setReady(true);setNearDoor(atDoor());setStatus('Хранилище трёх нитей.',2800);saveThreadVaultVisit(pos);
   };
   loadAll().catch(error=>{if(alive){console.error(error);setFailed(true);setStatus('Не удалось загрузить зал. Повтори загрузку или вернись ко входу.');}});
   const timeout=window.setTimeout(()=>{if(alive&&!loaded){setFailed(true);setStatus('Загрузка зала затянулась. Повтори загрузку или вернись ко входу.');}},60000);
@@ -74,7 +74,7 @@ export default function ThreadVault3D(props:Props){
   {hit&&<div className="interior-lightning-hit" aria-hidden="true"/>}
   <div ref={host} style={{position:'absolute',inset:0}}/>
   <div className="thread-vault-title"><b>Хранилище трёх нитей</b><span>Белая · Красная · Чёрная</span></div>
-  <div className="thread-vault-health">Vicki · {hp}/{props.maxHp}</div>
+  <div className="thread-vault-health">Vicki · {hp}/{props.maxHp}<progress aria-label="Здоровье Vicki" value={hp} max={props.maxHp}/></div>
   {!dialog&&!panelOpen&&<><button className="mid3d-ui mid3d-joy muspelheim-joystick" disabled={!ready} aria-label="Управление Vicki: тяни в нужном направлении" onPointerDown={e=>{if(!ready||pointer.current!==null)return;e.preventDefault();pointer.current=e.pointerId;basis.current=view.current;e.currentTarget.setPointerCapture(e.pointerId);steer(e);}} onPointerMove={steer} onPointerUp={stop} onPointerCancel={stop} onLostPointerCapture={stop}><span ref={knob} className="mid3d-knob" aria-hidden="true"/><img src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/></button>
   <MuspelheimActionWheel base={BASE} shieldEquipped={props.shieldEquipped} onAttack={()=>combat.current.attack()} onShield={()=>combat.current.shield()} onMagic={()=>combat.current.magic()} onBarrier={()=>{barrier.current=2.5;setStatus('Магический барьер: защита от молний на 2,5 секунды.');}} doorReady={nearDoor&&ready} onDoor={()=>doorAction.current()} onRunChange={value=>{run.current=value;}}/>
 

@@ -1,3 +1,4 @@
+import {groundTrapLayout,createGroundTraps} from './muspelheimGroundTraps';
 import {createYmirPillarRunes} from './ymirPillarRunes';
 import {createSanctuaryRecoveryCamera,RECOVERY_CAMERA_FOV} from './sanctuaryRecoveryCamera';
 import {createRecoveryAura,recoveryHealth,SANCTUARY_RECOVERY_SECONDS} from './sanctuaryRecovery';
@@ -90,6 +91,7 @@ export default function Muspelheim3D(props:Props){
  const [passageDoor,setPassageDoor]=useState('');const openPassageDoor=useRef<()=>void>(()=>{});
  const sprint=useRef(false),live=useRef(props);live.current=props;
  const recovering=useRef(false),pendingRespawn=useRef(false);
+ const groundInjury=useRef(false);
  const life=useRef(props.fieldHp===0?0:playtestHealth(props.fieldHp??props.combatStats.maxHp,props.combatStats.maxHp));
  const [hp,setHp]=useState(life.current),[defeated,setDefeated]=useState(life.current===0),[fireHit,setFireHit]=useState(false),[surtSafe,setSurtSafe]=useState(false);
  const [ymirDialog,setYmirDialog]=useState(false),[ymirLine,setYmirLine]=useState('');
@@ -100,7 +102,7 @@ export default function Muspelheim3D(props:Props){
  useEffect(()=>{refreshEquipment.current();},[props.weapon,props.shieldAsset,props.shieldEquipped]);
  const respawn=useRef<()=>void>(()=>{}),openWell=useRef<()=>void>(()=>{});
  const [iceSafe,setIceSafe]=useState(false),[wellSafe,setWellSafe]=useState(false),[nearStranger,setNearStranger]=useState(false),[wellDialog,setWellDialog]=useState(false);
- useEffect(()=>{if(props.suspended)return;const value=props.fieldHp===0?0:recovering.current?Math.max(1,Math.min(props.fieldHp??1,props.combatStats.maxHp)):playtestHealth(props.fieldHp??props.combatStats.maxHp,props.combatStats.maxHp);if(!recovering.current&&props.fieldHp!==0&&MAGIC_PLAYTEST_INVULNERABLE&&props.fieldHp!==value)props.onFieldHpChange(value);life.current=value;setHp(value);setDefeated(value===0);},[props.fieldHp,props.combatStats.maxHp,props.suspended]);
+ useEffect(()=>{if(props.suspended)return;const value=props.fieldHp===0?0:(recovering.current||groundInjury.current)?Math.max(1,Math.min(props.fieldHp??1,props.combatStats.maxHp)):playtestHealth(props.fieldHp??props.combatStats.maxHp,props.combatStats.maxHp);if(!recovering.current&&!groundInjury.current&&props.fieldHp!==0&&MAGIC_PLAYTEST_INVULNERABLE&&props.fieldHp!==value)props.onFieldHpChange(value);life.current=value;setHp(value);setDefeated(value===0);},[props.fieldHp,props.combatStats.maxHp,props.suspended]);
  useEffect(()=>{if(props.respawnRequest)pendingRespawn.current=true;},[props.respawnRequest]);
  const host=useRef<HTMLDivElement>(null),input=useRef({x:0,z:0}),position=useRef({...props.startPosition??BRIDGE_SPAWN});
  const [nearCraterSmith,setNearCraterSmith]=useState(false),[craterSmithDialog,setCraterSmithDialog]=useState(false);
@@ -130,6 +132,8 @@ export default function Muspelheim3D(props:Props){
   const follow:FollowCameraState={yaw:viewYaw.current,targetYaw:viewYaw.current,turnTime:0};
   let forge:ReturnType<typeof createMuspelheimForge>|undefined,transitioningForge=false;
   const artifactCombat=createArtifactCombat();
+  let groundTraps:ReturnType<typeof createGroundTraps>|undefined;
+  const combatHealth=(value:number,max:number)=>groundInjury.current&&MAGIC_PLAYTEST_INVULNERABLE?life.current:playtestHealth(value,max);
   const auraTexture=new THREE.TextureLoader().load(`${BASE}img/ui/resurrection_aura.png`);
   const recoveryAura=createRecoveryAura(auraTexture);scene.add(recoveryAura.root);
   let passage:ReturnType<typeof createSurtPassage>|undefined,stairSource:THREE.Object3D|undefined,passageSource:THREE.Object3D|undefined,passageCameraActive=false;
@@ -181,7 +185,7 @@ export default function Muspelheim3D(props:Props){
   respawn.current=()=>{
    if(!iceSanctuary||!loadedWorld()){pendingRespawn.current=true;return;}
    const spawn=iceSanctuary.respawnPosition();
-   playerFire.clear();pendingYmirTalk=false;recovering.current=true;pendingRespawn.current=false;recoveryTime=sanctuaryHealTime=0;
+   groundTraps?.reset();groundInjury.current=false;playerFire.clear();pendingYmirTalk=false;recovering.current=true;pendingRespawn.current=false;recoveryTime=sanctuaryHealTime=0;
    life.current=1;setHp(1);live.current.onFieldHpChange(1);setDefeated(false);setFireHit(false);
    hitFlash=0;falling=false;fallVelocity=fallTime=0;transitioningMine=transitioningForge=transitioningVault=false;
    position.current={x:spawn.x,z:spawn.z};hero.position.copy(spawn);heroFootY.current=spawn.y;
@@ -305,13 +309,19 @@ export default function Muspelheim3D(props:Props){
   const suspension=createSceneSuspension(renderer,()=>{renderer.domElement.style.visibility='hidden';clear();playerFire.clear();ravineGoblins?.pauseForInterior();},()=>{transitioningMine=transitioningVault=transitioningForge=false;falling=false;fallVelocity=0;const target=live.current.startPosition;if(target){position.current={x:target.x,z:target.z};hero.position.set(target.x,target.y??heightAt(target.x,target.z)??hero.position.y,target.z);}snapCamera=true;clock.getDelta();resize();setStatus('Муспельхейм · Vicki вернулась из локации.');});
   function tick(){
    if(!alive)return;frame=requestAnimationFrame(tick);if(!suspension.update(!!live.current.suspended)){clock.getDelta();return;}const dt=Math.min(clock.getDelta(),.1);if(loadedWorld()){firstWorldReady=true;if(pendingRespawn.current||life.current<=0)respawn.current();}
+   if(loadedWorld()&&!groundTraps){
+    const floor=(x:number,z:number)=>heightAt(x,z,0,false);
+    const allowed=(x:number,y:number,z:number)=>x> -500&&x<500&&z> -435&&z<95&&!iceSanctuaryContains(x,z,12)&&Math.hypot(x-NORNS_WELL_POSITION.x,z-NORNS_WELL_POSITION.z)>40&&Math.hypot(x-FORGE_POSITION.x,z-FORGE_POSITION.z)>65&&Math.hypot(x-ARMY_TOWER_POSITION.x,z-ARMY_TOWER_POSITION.z)>60&&Math.hypot(x-DARK_VAULT_POSITION.x,z-DARK_VAULT_POSITION.z)>60&&Math.hypot(x-MINE_DOOR.x,z-MINE_DOOR.z)>75&&!isRavineAbyss(x,z)&&!(passage?.owns(x,z,y))&&!blocked(x,z,y,false)&&Math.abs(y-(sample?.(x,z)??Infinity))<1.5;
+    groundTraps=createGroundTraps(groundTrapLayout(floor,allowed),floor);scene.add(groundTraps.root);
+   }
+   if(groundTraps?.captured){const c=groundTraps.captured;position.current={x:c.x,z:c.z};hero.position.set(c.x,c.y,c.z);}
    let x=input.current.x+(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0);
    let z=input.current.z+(keys.has('KeyS')||keys.has('ArrowDown')?1:0)-(keys.has('KeyW')||keys.has('ArrowUp')?1:0);
    const length=Math.hypot(x,z);let moving=false,dx=0,dz=0;
    controlYaw.current=mineApproachControlYaw(controlYaw.current,viewYaw.current,mineCameraActive||mineExitViewHeld);
    const running=sprint.current||keys.has('ShiftLeft')||keys.has('ShiftRight');
    const speed=(running?29:18)*(ravineGoblins?.moveScale??1);
-   if(craterActors&&army&&passage&&orcWarchief&&surtPass&&ymirPillar&&darkVault&&fortress&&armyTower&&peaksReady===ROCK_ASSETS.length&&!transitioningForge&&!forge?.entering&&forge&&!falling&&life.current>0&&iceSanctuary&&nornsWell&&strangerReady&&fireTextureReady&&crossingReady&&length&&!recovering.current&&terrainReady&&heroReady&&volcano&&eastVolcano&&ashVolcano&&canyonRidge&&tower&&throne&&summitReady&&entrance&&bridge&&bridgeTextureReady&&torchesReady&&!loadError&&wallsReady===ROCK_ASSETS.length&&!document.hidden&&!paused.current){x/=Math.max(1,length);z/=Math.max(1,length);const steering=ravineGoblins?.steer(x,z)??{x,z};const world=screenMoveToWorld(steering.x,steering.z,controlYaw.current);x=world.x;z=world.z;const candidate=clampMuspelheimPosition(position.current.x+x*speed*dt,position.current.z+z*speed*dt);const p=passage.owns(candidate.x,candidate.z,hero.position.y)?candidate:moveAlongRockWalls(worldRocks,position.current,candidate,hero.position.y);let next=p;if(blocked(p.x,p.z,hero.position.y,false)){const from=position.current;next=!blocked(p.x,from.z,hero.position.y,false)?{x:p.x,z:from.z}:!blocked(from.x,p.z,hero.position.y,false)?{x:from.x,z:p.z}:from;}const bodies=characterBodies(),slide=moveAgainstBodies(position.current,next,hero.position.y,14,2.3,bodies);next=blocked(slide.x,slide.z,hero.position.y,false)?position.current:slide;const y=heightAt(next.x,next.z);
+   if(craterActors&&army&&passage&&orcWarchief&&surtPass&&ymirPillar&&darkVault&&fortress&&armyTower&&peaksReady===ROCK_ASSETS.length&&!transitioningForge&&!forge?.entering&&forge&&!falling&&life.current>0&&iceSanctuary&&nornsWell&&strangerReady&&fireTextureReady&&crossingReady&&length&&!groundTraps?.captured&&!recovering.current&&terrainReady&&heroReady&&volcano&&eastVolcano&&ashVolcano&&canyonRidge&&tower&&throne&&summitReady&&entrance&&bridge&&bridgeTextureReady&&torchesReady&&!loadError&&wallsReady===ROCK_ASSETS.length&&!document.hidden&&!paused.current){x/=Math.max(1,length);z/=Math.max(1,length);const steering=ravineGoblins?.steer(x,z)??{x,z};const world=screenMoveToWorld(steering.x,steering.z,controlYaw.current);x=world.x;z=world.z;const candidate=clampMuspelheimPosition(position.current.x+x*speed*dt,position.current.z+z*speed*dt);const p=passage.owns(candidate.x,candidate.z,hero.position.y)?candidate:moveAlongRockWalls(worldRocks,position.current,candidate,hero.position.y);let next=p;if(blocked(p.x,p.z,hero.position.y,false)){const from=position.current;next=!blocked(p.x,from.z,hero.position.y,false)?{x:p.x,z:from.z}:!blocked(from.x,p.z,hero.position.y,false)?{x:from.x,z:p.z}:from;}const bodies=characterBodies(),slide=moveAgainstBodies(position.current,next,hero.position.y,14,2.3,bodies);next=blocked(slide.x,slide.z,hero.position.y,false)?position.current:slide;const y=heightAt(next.x,next.z);
     const inRavine=Math.min(sample?.(position.current.x,position.current.z)??0,sample?.(next.x,next.z)??0)<-1&&next.z<30;
     const insidePassage=passage.owns(position.current.x,position.current.z,hero.position.y)&&passage.owns(next.x,next.z,hero.position.y);
     const step=inRavine&&!insidePassage?classifyRavineStep(heightAt,position.current,next,isRavineAbyss):'walk';
@@ -342,7 +352,7 @@ export default function Muspelheim3D(props:Props){
    }
    if(loadedWorld()&&!transitioningMine&&!falling&&!paused.current&&life.current>0&&mineEntrance.canEnter(p.x,hero.position.y,p.z)){transitioningMine=true;clear();enterMine.current();}
 if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.current||document.hidden?0:dt);proximityTimer+=dt;if(proximityTimer>.15){proximityTimer=0;setTrapFocusAvailable(!!passage?.inspectingRoom);setGoblinHud(ravineGoblins?.hud(hero.position)??null);setSurtSafe(isSurtTerritory(p.x,p.z));setIceSafe(iceSanctuaryContains(p.x,p.z));setWellSafe(nornsWell?.shelters(p.x,p.z,hero.position.y)??false);setNearStranger(nornsWell?.canTalk(p.x,p.z,hero.position.y)??false);setNearVault(darkVault?.near(p.x,p.z,hero.position.y)??false);setNearLord(armyTower?.nearDoor(p.x,p.z,hero.position.y)??false);setNearForge(forge?.near(p.x,p.z)??false);setNearMine(mineEntrance.near(p.x,p.z));setNearCraterSmith(craterActors?.nearSmith(p.x,hero.position.y,p.z)??false);setNearKeeper(Math.hypot(p.x-GATE_GUARDIAN_POSITION.x,p.z-GATE_GUARDIAN_POSITION.z)<24&&hero.position.y>25);const door=passage?.nearDoor(p.x,p.z,hero.position.y);setPassageDoor(door?(door.locked?'Дверь удерживает руна Иса':door.target?'Дверь открывается…':door.index?'Открыть дверь выхода':'Открыть дверь комнаты'):'');{const enemy=enemies().filter(e=>e.combatEnabled&&e.combat.hp>0&&(e.combat.phase==='attack'||e.combat.phase==='chase'||hero.position.distanceTo(e.root.position)<20)).sort((a,b)=>hero.position.distanceToSquared(a.root.position)-hero.position.distanceToSquared(b.root.position))[0];const value={hp:enemy?.combat.hp??0,active:!!enemy,name:enemy?.name??''};setAssassinHud(old=>old.hp===value.hp&&old.active===value.active&&old.name===value.name?old:value);}}
-   const combatActive=loadedWorld()&&!paused.current&&!document.hidden&&!falling&&!transitioningForge&&!transitioningMine&&!forge?.entering&&life.current>0;
+   const combatActive=!groundTraps?.captured&&loadedWorld()&&!paused.current&&!document.hidden&&!falling&&!transitioningForge&&!transitioningMine&&!forge?.entering&&life.current>0;
    playerFire.update(combatActive?dt:0,camera);
    const weaponImpact=heroActions?.update(combatActive&&!ravineGoblins?.immobilized?dt:0,moving&&!falling,running,live.current.shieldEquipped);
    const clearEnemyContact=(enemy:ReturnType<typeof createShadowAssassin>)=>{
@@ -372,7 +382,7 @@ if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.c
     if(event.respawned){artifactCombat.reset();if(hero.position.distanceTo(enemy.root.position)<60)setStatus(`${enemy.name}: возрождение. Снова можно вступить в бой.`);}
     if(event.impact&&life.current>0){
      const guarded=live.current.shieldEquipped&&!!heroActions?.guarding,damage=incomingCombatDamage(ASSASSIN_COMBAT.attack,live.current.combatStats,guarded);
-     life.current=artifactCombat.survive(live.current.combatStats.artifactId,playtestHealth(life.current-damage,live.current.combatStats.maxHp),live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);
+     life.current=artifactCombat.survive(live.current.combatStats.artifactId,combatHealth(life.current-damage,live.current.combatStats.maxHp),live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);
      setStatus(guarded?`Щит смягчил удар: −${damage} здоровья.`:`${enemy.name}: удар по Vicki, −${damage} здоровья.`);
      if(!life.current){clear();setDefeated(true);setStatus('Vicki потеряла силы в бою.');}
     }
@@ -381,13 +391,13 @@ if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.c
    if(goblinEvent?.blocked)setStatus('Магический барьер поглотил заклинание гнома.');
    if(goblinEvent?.drops)live.current.onDrainDrops(goblinEvent.drops);
    if(goblinEvent?.message)setStatus(goblinEvent.message);
-   if(goblinEvent&&goblinEvent.damage>0&&life.current>0){const damage=goblinEvent.damage;life.current=artifactCombat.survive(live.current.combatStats.artifactId,playtestHealth(life.current-damage,live.current.combatStats.maxHp),live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);setStatus((goblinEvent.message?goblinEvent.message+' ':'')+(MAGIC_PLAYTEST_INVULNERABLE?'Здоровье защищено.':`Магия гномов: −${damage}.`));if(!life.current){clear();setDefeated(true);setStatus('Vicki потеряла силы от магии гномов.');}}
+   if(goblinEvent&&goblinEvent.damage>0&&life.current>0){const damage=goblinEvent.damage;life.current=artifactCombat.survive(live.current.combatStats.artifactId,combatHealth(life.current-damage,live.current.combatStats.maxHp),live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);setStatus((goblinEvent.message?goblinEvent.message+' ':'')+(MAGIC_PLAYTEST_INVULNERABLE?'Здоровье защищено.':`Магия гномов: −${damage}.`));if(!life.current){clear();setDefeated(true);setStatus('Vicki потеряла силы от магии гномов.');}}
    craterActors?.update(paused.current||document.hidden?0:dt);
    for(const necro of craterActors?.necromancers??[]){
     const canHit=()=>{for(let i=1;i<6;i++){const t=i/6,x=THREE.MathUtils.lerp(necro.root.position.x,hero.position.x,t),z=THREE.MathUtils.lerp(necro.root.position.z,hero.position.z,t),y=THREE.MathUtils.lerp(necro.root.position.y,hero.position.y,t);if(blocked(x,z,y,false)&&Math.hypot(x-necro.root.position.x,z-necro.root.position.z)>5)return false;const surface=heightAt(x,z,y);if(surface!=null&&surface>y+8)return false;}return true;};
     const event=necro.update(combatActive&&life.current>0?dt:0,hero.position,!iceSanctuaryContains(p.x,p.z),canHit());
     if(event.started)setStatus(`${necro.name} поднимает посох. Отойди до удара о землю.`);
-    if(event.impact&&life.current>0){const guarded=live.current.shieldEquipped&&!!heroActions?.guarding,damage=incomingCombatDamage(NECRO_STRIKE.attack,live.current.combatStats,guarded);life.current=artifactCombat.survive(live.current.combatStats.artifactId,playtestHealth(life.current-damage,live.current.combatStats.maxHp),live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);setStatus(`${necro.name}: посох ударил о землю, −${damage} здоровья.`);if(!life.current){clear();setDefeated(true);setStatus('Vicki потеряла силы у некромантов.');}}
+    if(event.impact&&life.current>0){const guarded=live.current.shieldEquipped&&!!heroActions?.guarding,damage=incomingCombatDamage(NECRO_STRIKE.attack,live.current.combatStats,guarded);life.current=artifactCombat.survive(live.current.combatStats.artifactId,combatHealth(life.current-damage,live.current.combatStats.maxHp),live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);setStatus(`${necro.name}: посох ударил о землю, −${damage} здоровья.`);if(!life.current){clear();setDefeated(true);setStatus('Vicki потеряла силы у некромантов.');}}
    }
    ashVolcano?.update(paused.current?0:dt);lava.update(paused.current?0:dt);ravineLava.update(paused.current?0:dt);summit?.update(paused.current?0:dt);const mineView=mineApproachCameraAt(p.x,hero.position.y,p.z);
    if(!mineView&&!mineCameraActive&&!mineExitViewHeld)viewYaw.current=updateFollowCamera(follow,dx,dz,dt);
@@ -439,7 +449,7 @@ if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.c
    camera.position.set(clearCamera.x,clearCamera.y,clearCamera.z);
    const lookAhead=18*offset.distance/32;lookTarget.lerp(new THREE.Vector3(p.x-Math.sin(follow.yaw)*lookAhead,hero.position.y+3,p.z-Math.cos(follow.yaw)*lookAhead),1-Math.exp(-5*dt));camera.lookAt(lookTarget);   }
    if(surtShake>0&&!paused.current){surtShake=Math.max(0,surtShake-dt);camera.position.x+=Math.sin(clock.elapsedTime*75)*surtShake*.7;}
-   const fireActive=loadedWorld()&&!paused.current&&!document.hidden&&!falling&&!transitioningMine&&!transitioningForge&&!forge?.entering&&life.current>0;
+   const fireActive=!groundTraps?.captured&&loadedWorld()&&!paused.current&&!document.hidden&&!falling&&!transitioningMine&&!transitioningForge&&!forge?.entering&&life.current>0;
    if(recovering.current&&fireActive){recoveryTime=Math.min(SANCTUARY_RECOVERY_SECONDS,recoveryTime+dt);const next=recoveryHealth(1,live.current.combatStats.maxHp,recoveryTime);if(next!==life.current){life.current=next;setHp(next);live.current.onFieldHpChange(next);}if(recoveryTime>=SANCTUARY_RECOVERY_SECONDS){recovering.current=false;setStatus('Силы Vicki полностью восстановлены.');}}
    else if(fireActive&&iceSanctuary?.resting(p.x,p.z,hero.position.y)&&life.current<live.current.combatStats.maxHp){
     sanctuaryHealTime+=dt;if(sanctuaryHealTime>=1){const seconds=Math.floor(sanctuaryHealTime);sanctuaryHealTime-=seconds;life.current=recoverInIceSanctuary(life.current,live.current.combatStats.maxHp,seconds);setHp(life.current);live.current.onFieldHpChange(life.current);}
@@ -447,12 +457,18 @@ if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.c
    if(hitFlash>0&&fireActive){hitFlash-=dt;if(hitFlash<=0)setFireHit(false);}
    if(fireRain&&ashVolcano)fireRain.update(fireActive?dt:0,hero.position,ashVolcano.vent,camera,()=>{
     if(life.current<=0||iceSanctuaryContains(hero.position.x,hero.position.z)||isSurtTerritory(hero.position.x,hero.position.z)||nornsWell?.shelters(hero.position.x,hero.position.z,hero.position.y))return;
-    const damage=Math.min(life.current,fireStrikeDamage(live.current.combatStats.maxHp));life.current=playtestHealth(life.current-damage,live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);
+    const damage=Math.min(life.current,fireStrikeDamage(live.current.combatStats.maxHp));life.current=combatHealth(life.current-damage,live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);
     setStatus(`Огненный удар пробил броню: −${damage} здоровья. Ищи укрытие!`);
     if(life.current===0){clear();setDefeated(true);setStatus('Огненный дождь лишил Vicki сил.');}
    });
+   const trapActive=loadedWorld()&&!paused.current&&!document.hidden&&!falling&&!recovering.current&&!transitioningMine&&!transitioningForge&&!transitioningVault&&life.current>0;
+   const groundEvent=groundTraps?.update(trapActive?dt:0,hero.position);
+   if(groundEvent?.caught){clear();playerFire.clear();}
+   if(groundEvent?.fireHits){groundInjury.current=true;const damage=incomingCombatDamage(Math.max(25,Math.ceil(live.current.combatStats.maxHp*.28)),live.current.combatStats,false)*groundEvent.fireHits;life.current=Math.max(0,life.current-damage);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);if(life.current===0){respawn.current();return;}}
+   if(groundEvent?.swallowed){respawn.current();return;}
    if(heroModel){const fall=ravineGoblins?.ailments.fall??0,angle=fall>0?-Math.PI/2*Math.sin(Math.min(1,fall/.25)*Math.PI/2):0;heroModel.rotation.z=angle;heroModel.position.x=7*Math.sin(angle);heroModel.position.y=heroModelY+2*Math.sin(angle)**2;}
    ravineGoblins?.updateVfx(combatActive?dt:0,camera,hero);
+   const sink=groundTraps?.sinkPose();if(sink){hero.position.set(sink.x,sink.y,sink.z);if(heroModel)heroModel.rotation.z=sink.tilt;}
    recoveryAura.update(fireActive?dt:0,hero,recovering.current);playerFire.syncCamera(camera);renderer.render(scene,camera);renderer.domElement.style.visibility='visible';
   }
   tick();return()=>{alive=false;renderer.domElement.removeEventListener('pointerdown',puzzleDown);renderer.domElement.removeEventListener('pointerup',puzzleUp);renderer.domElement.removeEventListener('pointermove',puzzleMove);renderer.domElement.removeEventListener('pointercancel',puzzleCancel);ymirRunes?.root.removeFromParent();ymirRunes?.dispose();recovering.current=false;recoveryAura.root.removeFromParent();recoveryAura.dispose();suspension.dispose();playerFire.dispose();memoryMimir?.dispose();if(mimirPending)dispose(mimirPending.scene);enterLord.current=()=>{};openVault.current=()=>{};magicAction.current=()=>{};wardAction.current=()=>{};ravineGoblins?.dispose();if(goblinPending)dispose(goblinPending.scene);craterActors?.dispose();if(smithPending)dispose(smithPending);if(necroPending)dispose(necroPending);armyTemplates.forEach(t=>{if(t)dispose(t.scene);});openPassageDoor.current=()=>{};if(passageSource)dispose(passageSource);if(stairSource)dispose(stairSource);surtActor?.dispose();if(surtModel)dispose(surtModel);if(surtSword)dispose(surtSword);if(!SURT_GUARD_COMBAT_ENABLED)orcWarchief?.dispose();clearControls.current=()=>{};attackAction.current=()=>{};shieldAction.current=()=>{};refreshEquipment.current=()=>{};equipment?.dispose();gateGuardian?.dispose();enemies().filter(enemy=>enemy!==gateGuardian).forEach(enemy=>enemy.dispose());if(orcPending)dispose(orcPending.model);window.clearTimeout(loadingTimeout);cancelAnimationFrame(frame);clear();observer.disconnect();window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();for(const asset of entranceAssets)if(asset&&!asset.parent)dispose(asset);for(const source of peakSources)if(source)dispose(source);if(torchSource)dispose(torchSource);if(towerSource)dispose(towerSource);if(ridgeSource)dispose(ridgeSource);if(wellSource)dispose(wellSource);if(strangerSource)dispose(strangerSource);fireRain?.dispose();dispose(scene);summit?.dispose();roadMask?.dispose();ravineLava.dispose();bridgeTexture.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();};
