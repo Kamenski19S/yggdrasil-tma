@@ -393,7 +393,7 @@ if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.c
    if(!mineView&&!mineCameraActive&&!mineExitViewHeld)viewYaw.current=updateFollowCamera(follow,dx,dz,dt);
    if(surtActor&&(hero.position.distanceTo(surtActor.root.position)<120||surtActor.phase!=='seated')){const event=surtActor.update(paused.current||document.hidden?0:dt,hero.position);if(event.started)setStatus('Сурт заметил Vicki и поднимается с трона…');if(event.impact){surtShake=.25;setStatus('Сурт ударил мечом по камню — искры рассыпались по полу.');}}
    const surtView=surtActor?.greetingView(hero.position);
-   const passageView=passage?.cameraAt(p.x,hero.position.y,p.z,hero.rotation.y,dt);
+   const passageView=passage?.cameraAt(p.x,hero.position.y,p.z,hero.rotation.y,dt,length>0);
    const inWell=nornsWell?.shelters(p.x,p.z,hero.position.y)??false;
    if(recoveryCameraActive&&!recovering.current){recoveryCameraActive=false;camera.fov=48;camera.updateProjectionMatrix();}
    if(recovering.current&&recoveryView){
@@ -403,7 +403,7 @@ if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.c
     recoveryCameraActive=true;mineCameraActive=wellCameraActive=false;snapCamera=false;
    }else if(passageView){
     camera.position.set(passageView.position.x,passageView.position.y,passageView.position.z);lookTarget.set(passageView.target.x,passageView.target.y,passageView.target.z);camera.lookAt(lookTarget);
-    if(!passageCameraActive&&!length)controlYaw.current=passageView.yaw;if(camera.fov!==passageView.fov){camera.fov=passageView.fov;camera.updateProjectionMatrix();}
+    if(!length)controlYaw.current=passageView.yaw;if(camera.fov!==passageView.fov){camera.fov=passageView.fov;camera.updateProjectionMatrix();}
     passageCameraActive=true;mineCameraActive=false;wellCameraActive=false;viewYaw.current=passageView.yaw;follow.yaw=passageView.yaw;follow.targetYaw=passageView.yaw;
    }else if(surtView){
     if(!surtCameraActive){camera.position.copy(surtView.position);lookTarget.copy(surtView.target);camera.fov=70;camera.updateProjectionMatrix();if(!length)controlYaw.current=surtView.yaw;}else{camera.position.lerp(surtView.position,1-Math.exp(-5*dt));lookTarget.lerp(surtView.target,1-Math.exp(-5*dt));}

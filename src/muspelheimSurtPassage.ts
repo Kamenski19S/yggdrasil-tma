@@ -88,7 +88,7 @@ export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:n
  // Stone reveal fills the clipped bank around the arch, leaving the walking opening clear.
  for(const side of [-1,1])box(2,28,11,at.x-1,entryY+14,at.z+side*14.5,stone);
  box(2,7,18,at.x-1,entryY+24.5,at.z,stone);
- const trapKey='yggdrasil:muspelheim:surt:isa-room:v2-full-triangle';let trapWasComplete=false;try{trapWasComplete=localStorage.getItem(trapKey)==='1';}catch{}
+ const trapKey='yggdrasil:muspelheim:surt:isa-room:v3-follow-camera';let trapWasComplete=false;try{trapWasComplete=localStorage.getItem(trapKey)==='1';}catch{}
  const trap=createIsaWallPuzzle(trapWasComplete);
  // Hinged doors close after the hero clears the doorway, in either direction.
  const doors=[-128,-166].map((x,index)=>{const hinge=new THREE.Group();hinge.position.set(x,entryY,at.z-7);hinge.name=index?'Дверь выхода из комнаты':'Входная дверь комнаты';root.add(hinge);box(.8,20,14,0,10,7,doorStone,hinge);for(const y of [2,10,18])box(1,1,14,0,y,7,trim,hinge);box(1.2,1.5,1.5,.5,10,12,trim,hinge);for(const side of [-1,1])box(2,24,2,x,entryY+12,at.z+side*8,stone);box(2,3,18,x,entryY+22.5,at.z,stone);
@@ -106,7 +106,7 @@ export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:n
   for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i);if(isPlatform){const wx=at.x+7+(x+10.6245)*.72,wz=at.z+(z-4.261)*.72;p.setXYZ(i,wx,(surface(wx,wz)?.y??cachedGround(wx,wz)??entryY)-.18,wz);geometry.getAttribute('uv')?.setXY(i,wx/8,-wz/8);}else p.setXYZ(i,at.x+(x+13.6679163)*portalScale,entryY+(y-1.72544)*portalScale,at.z+(z-4.2130213)*portalScale);}
   geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();if(material instanceof THREE.MeshStandardMaterial){if(isPlatform){material.color.set('#92999b');material.roughness=1;material.metalness=0;material.normalMap=null;material.aoMap=null;platformMaterials.push(material);}if(material.transparent){material.opacity=.5;material.depthWrite=false;material.emissiveIntensity=1.2;magicMaterials.push(material);}}const mesh=new THREE.Mesh(geometry,material);mesh.name=isPlatform?'Portal base fitted to canyon relief':'Magic portal '+source.name;mesh.receiveShadow=true;root.add(mesh);
  }
- for(const x of [-122,-146,-174]){box(1,2,2,x,entryY+20,at.z-8,glow);const light=new THREE.PointLight('#a9d3df',18,36,2);light.position.set(x,entryY+17,at.z);root.add(light);}
+ for(const x of [-122,-146,-174]){if(x!==-146)box(1,2,2,x,entryY+20,at.z-8,glow);const light=new THREE.PointLight('#a9d3df',18,36,2);light.position.set(x,entryY+17,at.z);root.add(light);}
  const blocks=(x:number,z:number,y:number,padding=2)=>{
   if(x< -278||x> -70||z< -456||z> -342)return false;
   if(x< -130&&x> -164&&y<entryY+28&&y+14>entryY&&Math.abs(z-at.z)>trap.halfWidth-padding-.6)return true;
@@ -117,18 +117,26 @@ export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:n
   for(const d of doors)if(Math.abs(x-d.x)<padding+1&&Math.abs(z-at.z)>7-padding&&Math.abs(z-at.z)<15+padding&&y<entryY+28&&y+14>entryY)return true;
   for(const w of boundary){if(y>=w.high||y+14<=w.low)continue;const dx=w.bx-w.ax,dz=w.bz-w.az,t=THREE.MathUtils.clamp(((x-w.ax)*dx+(z-w.az)*dz)/(dx*dx+dz*dz),0,1);if(Math.hypot(x-w.ax-t*dx,z-w.az-t*dz)<padding)return true;}return false;
  };
- let roomCameraActive=false,roomLookYaw=0,roomLookPitch=0;
+ let roomCameraActive=false,roomPuzzleFocus=false,roomLookYaw=0,roomLookPitch=0;
  let cameraProgress:number|undefined,lastHeroProgress:number|undefined,cameraDirection=1,cameraEyeY:number|undefined,cameraLookY:number|undefined;
- const cameraAt=(x:number,y:number,z:number,yaw:number,dt=1/60)=>{
+ const cameraAt=(x:number,y:number,z:number,yaw:number,dt=1/60,moving=false)=>{
   const p=surface(x,z);if(!p||(p.segment.kind==='apron'&&p.along<12)||!owns(x,z,y)){cameraProgress=lastHeroProgress=cameraEyeY=cameraLookY=undefined;return null;}
   const insideRoom=x< -129&&x> -165&&Math.abs(z-at.z)<15&&Math.abs(y-entryY)<6;
-  if(insideRoom)roomCameraActive=true;
+  if(insideRoom&&!roomCameraActive){roomCameraActive=true;roomPuzzleFocus=!trap.completed;roomLookYaw=roomLookPitch=0;}
+  if(moving||trap.phase==='restoring'||trap.completed)roomPuzzleFocus=false;
   if(roomCameraActive&&!insideRoom){roomCameraActive=false;roomLookYaw=roomLookPitch=0;}
-  if(roomCameraActive&&insideRoom){
+  if(roomCameraActive&&insideRoom&&roomPuzzleFocus){
    const position={x:-131.5,y:entryY+21,z:at.z+Math.max(.5,trap.halfWidth-3.5)},anchor={x:-147,y:entryY+12.4,z:puzzle.root.position.z+.25};
    const distance=Math.hypot(anchor.x-position.x,anchor.z-position.z),angle=Math.atan2(anchor.x-position.x,anchor.z-position.z)+roomLookYaw;
    const target={x:position.x+Math.sin(angle)*distance,y:anchor.y+roomLookPitch*distance,z:position.z+Math.cos(angle)*distance};
    return {position,target,yaw:Math.atan2(position.x-target.x,position.z-target.z),fov:76};
+  }
+  if(roomCameraActive&&insideRoom){
+   // Walking always tracks Vicki. Keep the eye within the physical room walls.
+   const angle=Math.PI/4+roomLookYaw,reach=18;
+   const position={x:THREE.MathUtils.clamp(x+Math.cos(angle)*reach,-163.5,-130.5),y:y+22,z:THREE.MathUtils.clamp(z+Math.sin(angle)*reach,at.z-trap.halfWidth+1.5,at.z+trap.halfWidth-1.5)};
+   const target={x,y:y+8+roomLookPitch*8,z};
+   return {position,target,yaw:Math.atan2(position.x-x,position.z-z),fov:76};
   }
   const progress=p.segment.start+p.along,tangent=p.segment;
   const facing=Math.sin(yaw)*tangent.dx+Math.cos(yaw)*tangent.dz,delta=lastHeroProgress==null?0:progress-lastHeroProgress;
@@ -161,8 +169,8 @@ export function createSurtPassage(portal:THREE.Object3D,worldFloor:(x:number,z:n
  const clipWorld=(objects:THREE.Object3D[])=>{for(const object of objects)object.traverse(o=>{if(!(o instanceof THREE.Mesh)||o===floorMesh||o===roofMesh)return;for(const m of (Array.isArray(o.material)?o.material:[o.material]) as THREE.Material[]){if(cutMaterials.has(m))continue;cutMaterials.add(m);const previous=m.onBeforeCompile,cache=m.customProgramCacheKey;
   m.onBeforeCompile=(shader,renderer)=>{previous.call(m,shader,renderer);shader.vertexShader='varying vec3 surtPassagePosition;\n'+shader.vertexShader;const standardVertex=shader.vertexShader.includes('#include <begin_vertex>');shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>\nvec4 passagePoint=vec4(transformed,1.);\n#ifdef USE_INSTANCING\npassagePoint=instanceMatrix*passagePoint;\n#endif\nsurtPassagePosition=(modelMatrix*passagePoint).xyz;`);if(!standardVertex)shader.vertexShader=shader.vertexShader.replace(/void\s+main\s*\(\s*\)\s*\{/, 'void main(){surtPassagePosition=(modelMatrix*vec4(position,1.)).xyz;');shader.fragmentShader='varying vec3 surtPassagePosition;\nbool surtPassageCut(vec3 p){'+'if(p.x< -276.||p.x> -73.||p.z< -454.||p.z> -345.)return false;'+cut+'return false;}\n'+shader.fragmentShader;const standardFragment=shader.fragmentShader.includes('#include <clipping_planes_fragment>');shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>','#include <clipping_planes_fragment>\nif(surtPassageCut(surtPassagePosition))discard;');if(!standardFragment)shader.fragmentShader=shader.fragmentShader.replace(/void\s+main\s*\(\s*\)\s*\{/, 'void main(){if(surtPassageCut(surtPassagePosition))discard;');};m.customProgramCacheKey=()=>cache.call(m)+'-surt-passage-v1';m.needsUpdate=true;
  }});};
- return {root,points,segments,doors,entryY,exitY,stepCount,owns,floorAt,blocks,nearDoor,openNearby,cameraAt,clipWorld,trap,puzzle,movingWalls,get inspectingRoom(){return roomCameraActive;},
-  rotateRoomView(yaw:number,pitch:number){if(!roomCameraActive)return false;roomLookYaw+=yaw;roomLookPitch=THREE.MathUtils.clamp(roomLookPitch+pitch,-.45,.55);return true;},focusPuzzle(){roomLookYaw=roomLookPitch=0;},
+ return {root,points,segments,doors,entryY,exitY,stepCount,owns,floorAt,blocks,nearDoor,openNearby,cameraAt,clipWorld,trap,puzzle,movingWalls,get inspectingRoom(){return roomCameraActive&&!trap.completed&&trap.phase!=='restoring';},
+  rotateRoomView(yaw:number,pitch:number){if(!roomCameraActive)return false;roomLookYaw+=yaw;roomLookPitch=THREE.MathUtils.clamp(roomLookPitch+pitch,-.45,.55);return true;},focusPuzzle(){if(roomCameraActive&&!trap.completed&&trap.phase!=='restoring')roomPuzzleFocus=true;roomLookYaw=roomLookPitch=0;},
   moveRuneAt:(camera:THREE.Camera,x:number,y:number,hero:Point)=>inTrapRoom(hero)&&puzzle.press(camera,x,y,hero),takeTrapEvent:()=>trap.takeEvent(),
   roofAt:(x:number,z:number)=>{const p=surface(x,z);return p&&covered(x,z,p.y)?p.y+28:null;},
   update(dt:number,hero?:Point){
