@@ -1,3 +1,5 @@
+import {createWallWeaponTraps} from './wallWeaponTraps';
+import {mineArrowTrapSites} from './mineArrowTrapSites';
 import {useTransientStatus} from './useTransientStatus';
 import {createPlayerFireball} from './playerFireball';
 import {createHeroShieldPose} from './heroShieldPose';
@@ -56,7 +58,7 @@ export default function AshMine3D(props:Props){
   setHp(heroLife);if(MAGIC_PLAYTEST_INVULNERABLE)live.current.onFieldHpChange(heroLife);setReady(false);setExitOpened(false);setFailed(false);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.outputColorSpace=THREE.SRGBColorSpace;mount.appendChild(renderer.domElement);
   const scene=new THREE.Scene();scene.background=new THREE.Color('#171213');scene.fog=new THREE.Fog('#171213',55,125);scene.add(new THREE.HemisphereLight('#c8b7a1','#201919',2.3));
   const lamp=new THREE.PointLight('#ffc183',220,52,1.5);scene.add(lamp);const camera=new THREE.PerspectiveCamera(53,1,.1,155);
-  const layout=createAshMineLayout(`${BASE}img/`);scene.add(layout.root);let goldReflection:THREE.WebGLRenderTarget|undefined;
+  const layout=createAshMineLayout(`${BASE}img/`);scene.add(layout.root);let arrowTraps:ReturnType<typeof createWallWeaponTraps>|undefined;let goldReflection:THREE.WebGLRenderTarget|undefined;
   const fireVfx=createFireStrikeVfx();scene.add(fireVfx.root);
   const shadowDrain=createShadowDrain(),shadowVfx=createShadowStrikeVfx();scene.add(shadowVfx.root);
   const lightningVfx=createLightningStrikeVfx();scene.add(lightningVfx.root);
@@ -142,6 +144,7 @@ export default function AshMine3D(props:Props){
    equipment=createMuspelheimHeroEquipment(model,{load:async asset=>(await load(asset)).scene,weaponAsset:weapon=>weapon==='default'?'Sword.glb':WEAPON_ASSET[weapon],prepare:(item,asset,weapon,isShield)=>{textureSteelOnWeapon(item,asset);if(!isShield)styleNiflheimWeapon(item,weapon);},dispose});
    refreshEquipment.current=()=>{equipment?.update(live.current).catch(()=>{if(alive)setStatus('Не удалось обновить оружие. Повтори загрузку шахты.');});};
    await equipment.update(live.current);if(!alive)return;
+   arrowTraps=createWallWeaponTraps('arrow',mineArrowTrapSites(layout.floorAt,(x,z)=>layout.walkable(x,z,true)&&layout.dryFloorAt(x,z)!==null),(x,z)=>layout.floorAt(x,z));scene.add(arrowTraps.root);
    loaded=true;window.clearTimeout(timeout);setReady(true);hero.position.set(pos.x,layout.floorAt(pos.x,pos.z),pos.z);setStatus('Пепельная шахта · Найди сокровищницу. Назад к выходу ведут рельсы. Рабочие не нападают.');
   }).catch(()=>{if(alive){setFailed(true);setStatus('Не удалось загрузить шахту или её обитателей. Повтори загрузку или вернись.');}});
   const keydown=(e:KeyboardEvent)=>{if(paused.current)return;if(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight'].includes(e.code)){if(!keys.size)basis.current=view.current;keys.add(e.code);e.preventDefault();}if(e.code==='Space'){e.preventDefault();actions.current.hit();}if(e.code==='KeyQ')actions.current.shield();};const keyup=(e:KeyboardEvent)=>keys.delete(e.code);window.addEventListener('keydown',keydown);window.addEventListener('keyup',keyup);window.addEventListener('blur',clear);document.addEventListener('visibilitychange',clear);
@@ -181,6 +184,7 @@ export default function AshMine3D(props:Props){
    workers.forEach(w=>{const p=mineWorkerPose(w.route,time);w.actor.root.visible=w.actor.root.position.distanceTo(hero.position)<85;if(layout.walkable(p.x,p.z,lakeCleared())){w.actor.root.position.set(p.x,layout.floorAt(p.x,p.z),p.z);w.actor.root.rotation.y=p.yaw;}if(w.actor.root.visible)w.actor.update(time,p.moving,false,w.route.activity);});
    const fallAngle=ailments.fall>0?-Math.PI/2*Math.sin(Math.min(1,ailments.fall/.25)*Math.PI/2):0;heroVisual.rotation.z=fallAngle;heroVisual.position.set(7*Math.sin(fallAngle),2*Math.sin(fallAngle)**2,0);
    if(ailments.freeze<=0&&ailments.fall<=0){shieldPose?.restore();if(walk)walk.timeScale=run?1.6:1;const action=time<attackUntil?attack:moving?walk:idle;if(action&&current!==action){current?.fadeOut(.15);action.reset().fadeIn(.15).play();current=action;}mixer?.update(dt);shieldPose?.apply(dt,live.current.shieldEquipped&&time<shieldUntil);}ui+=dt;if(ui>.15){ui=0;layout.crystals?.update(hero.position);setNearExit(Math.hypot(pos.x-MINE_EXIT.x,pos.z-MINE_EXIT.z)<13);persist();setNearGold(Math.hypot(pos.x-MINE_TREASURE.x,pos.z-MINE_TREASURE.z)<13);setGrabbed(guardianState.phase==='hold');const guardianNear=guardianHp>0&&Math.hypot(pos.x-OCEAN_GUARDIAN.shoreX,pos.z-OCEAN_GUARDIAN.shoreZ)<24;const g=nearest();setEnemy(guardianNear?{name:OCEAN_GUARDIAN.name,hp:guardianHp,max:OCEAN_GUARDIAN.maxHp}:g&&Math.hypot(pos.x-g.actor.root.position.x,pos.z-g.actor.root.position.z)<23?{name:g.spec.name+' · '+ELEMENTS[g.element].name,hp:g.hp,max:g.spec.hp}:null);layout.chest.visible=!mineProgress(live.current.questDone).goldTaken;}}
+   if(arrowTraps?.update(active&&!exiting?dt:0,hero.position)){heroLife=0;setHp(0);live.current.onFieldHpChange(0);knockedOut=true;exiting=true;clear();playerFire.clear();live.current.onRespawn();return;}
    ward.position.copy(hero.position).add(new THREE.Vector3(0,7,0));ward.visible=!knockedOut&&time<wardUntil;
    playerFire.update(active?dt:0,camera);
    layout.updateExit(active?dt:0);
@@ -189,7 +193,7 @@ export default function AshMine3D(props:Props){
    const pose=followMineCamera(cameraState,{x:pos.x,y:hero.position.y,z:pos.z},dt,layout.floorAt,layout.root);
    camera.position.copy(pose.position);camera.lookAt(pose.target);view.current=pose.yaw;if(camera.fov!==pose.fov){camera.fov=pose.fov;camera.updateProjectionMatrix();}
    fireVfx.update(active?dt:0,camera,hero.position,ailments.burn);shadowVfx.update(active?dt:0,camera,hero.position,shadowDrain.remaining);lightningVfx.update(active?dt:0,camera,ailments.disorient);iceVfx.frost(hero.position,ailments.freeze,ailments.slow);iceVfx.update(active?dt:0,camera);vfx.update(active?dt:0,camera);lamp.position.set(pos.x,hero.position.y+18,pos.z+6);playerFire.syncCamera(camera);renderer.render(scene,camera);
-  }tick();return()=>{if(loaded&&!exiting)persist();alive=false;clearControls.current=()=>{};applyExternalHealth.current=()=>{};refreshEquipment.current=()=>{};equipment?.dispose();playerFire.dispose();window.clearTimeout(timeout);cancelAnimationFrame(frame);clear();observer.disconnect();window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();iceVfx.dispose();lightningVfx.dispose();shadowVfx.dispose();fireVfx.dispose();vfx.dispose();guardian?.dispose();guards.forEach(g=>g.actor.dispose());workers.forEach(w=>w.actor.dispose());dispose(scene);goldReflection?.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();};
+  }tick();return()=>{if(loaded&&!exiting)persist();alive=false;clearControls.current=()=>{};applyExternalHealth.current=()=>{};refreshEquipment.current=()=>{};equipment?.dispose();playerFire.dispose();window.clearTimeout(timeout);cancelAnimationFrame(frame);clear();observer.disconnect();window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();iceVfx.dispose();lightningVfx.dispose();shadowVfx.dispose();fireVfx.dispose();vfx.dispose();guardian?.dispose();guards.forEach(g=>g.actor.dispose());workers.forEach(w=>w.actor.dispose());arrowTraps?.dispose();dispose(scene);goldReflection?.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();};
  },[retry]);
  useEffect(()=>refreshEquipment.current(),[props.weapon,props.shieldAsset,props.shieldEquipped]);
  useEffect(()=>{if(props.fieldHp!==null)applyExternalHealth.current(props.fieldHp);},[props.fieldHp]);
