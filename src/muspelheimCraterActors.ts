@@ -15,7 +15,7 @@ export function createCraterActors(smithSource:THREE.Object3D,necroSource:THREE.
   const ground=floor(site.x,site.z);if(ground==null)throw Error('Necromancer has no ground');const y=ground+.04;
   const model=clone(necroSource),f=fit(model,14,site.x,y,site.z,site.yaw),staff=model.getObjectByName('NecroStaff'),hand=model.getObjectByName('NecroRHand'),forearm=model.getObjectByName('NecroRForearm');if(!staff||!hand||!forearm)throw Error('Necromancer fitted skeleton missing');
   const staffY=staff.position.y,handY=hand.position.y,forearmY=forearm.position.y,strike=createNecromancerStrike({x:site.x,y,z:site.z},i*.25);
-  return {...f,name:site.name,strike,groundY:y,update(dt:number,hero:{x:number;y:number;z:number},available=true,contact=true){const event=strike.update(dt,hero,available,contact);const lift=strike.lift;staff.position.y=staffY+lift;forearm.position.y=forearmY+lift*.28;hand.position.y=handY+lift*.72;return event;}};
+  return {...f,id:site.id,name:site.name,strike,groundY:y,update(dt:number,hero:{x:number;y:number;z:number},available=true,contact=true){const event=strike.update(dt,hero,available,contact);const lift=strike.lift;staff.position.y=staffY+lift;forearm.position.y=forearmY+lift*.28;hand.position.y=handY+lift*.72;return event;}};
  });
  const floorAt=(x:number,z:number)=>{let y:number|null=null;for(const d of disks)if(Math.hypot(x-d.x,z-d.z)<=d.r)y=Math.max(y??-Infinity,d.y);return y;};
  const blocks=(x:number,z:number,y:number,padding=2)=>necromancers.some(n=>Math.abs(y-n.groundY)<14&&Math.hypot(x-n.root.position.x,z-n.root.position.z)<2.2+padding)||Math.abs(y-CRATER_WORKSHOP_Y)<12&&Math.hypot(x-CRATER_SMITH_POSITION.x,z-CRATER_SMITH_POSITION.z)<2.2+padding;
