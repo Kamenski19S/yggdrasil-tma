@@ -1,3 +1,4 @@
+import {createArrowDefeatSequence as createTrapDefeatSequence} from './arrowDefeat';
 import {createMuspelheimArmorAppearance,type ArmorAppearance} from './muspelheimArmor';
 import type {MuspelheimLootKind} from './muspelheimCombatLoot';
 import {selectVisibleEnemy} from './muspelheimEnemyHud';
@@ -139,6 +140,7 @@ export default function Muspelheim3D(props:Props){
   const follow:FollowCameraState={yaw:viewYaw.current,targetYaw:viewYaw.current,turnTime:0};
   let forge:ReturnType<typeof createMuspelheimForge>|undefined,transitioningForge=false;
   const artifactCombat=createArtifactCombat();
+  let axeDefeat=createTrapDefeatSequence();
   let groundTraps:ReturnType<typeof createGroundTraps>|undefined,axeTraps:ReturnType<typeof createWallWeaponTraps>|undefined,fireStun=0;
   const combatHealth=(value:number,max:number)=>groundInjury.current&&MAGIC_PLAYTEST_INVULNERABLE?life.current:playtestHealth(value,max);
   const auraTexture=new THREE.TextureLoader().load(`${BASE}img/ui/resurrection_aura.png`);
@@ -323,7 +325,13 @@ export default function Muspelheim3D(props:Props){
   const clock=new THREE.Clock();camera.position.set(position.current.x,20,position.current.z+32);
   const suspension=createSceneSuspension(renderer,()=>{renderer.domElement.style.visibility='hidden';clear();playerFire.clear();ravineGoblins?.pauseForInterior();},()=>{forge?.cancelRequest();transitioningMine=transitioningVault=transitioningForge=false;falling=false;fallVelocity=0;const target=live.current.startPosition;if(target){position.current={x:target.x,z:target.z};hero.position.set(target.x,target.y??heightAt(target.x,target.z)??hero.position.y,target.z);}snapCamera=true;clock.getDelta();resize();setStatus('Муспельхейм · Vicki вернулась из локации.');});
   function tick(){
-   if(!alive)return;frame=requestAnimationFrame(tick);if(!suspension.update(!!live.current.suspended,!live.current.keepGpu)){clock.getDelta();return;}const dt=Math.min(clock.getDelta(),.1);if(loadedWorld()){firstWorldReady=true;if(pendingRespawn.current||life.current<=0)respawn.current();}
+   if(!alive)return;frame=requestAnimationFrame(tick);if(!suspension.update(!!live.current.suspended,!live.current.keepGpu)){clock.getDelta();return;}const dt=Math.min(clock.getDelta(),.1);
+   if(axeDefeat.active){const advance=!paused.current&&!document.hidden?dt:0;axeTraps?.update(advance,{x:hero.position.x,y:-10000,z:hero.position.z});const pose=axeDefeat.step(advance);
+    if(heroModel){heroModel.rotation.z=pose.angle;heroModel.position.x=pose.x;heroModel.position.y=heroModelY+pose.y;}
+    if(pose.finished){if(heroModel){heroModel.rotation.z=0;heroModel.position.x=0;heroModel.position.y=heroModelY;}axeDefeat=createTrapDefeatSequence();respawn.current();return;}
+    renderer.render(scene,camera);return;
+   }
+   if(loadedWorld()){firstWorldReady=true;if(pendingRespawn.current||life.current<=0)respawn.current();}
    if(loadedWorld()&&!paused.current&&!document.hidden)fireStun=Math.max(0,fireStun-dt);
    if(loadedWorld()&&!axeTraps){axeTraps=createWallWeaponTraps('axe',passage!.stairTrapSites(),(x,z,y)=>passage!.floorAt(x,z,y));scene.add(axeTraps.root);}
    if(loadedWorld()&&!groundTraps){
@@ -480,7 +488,8 @@ if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.c
    });
    const trapActive=loadedWorld()&&!paused.current&&!document.hidden&&!falling&&!recovering.current&&!transitioningMine&&!transitioningForge&&!transitioningVault&&life.current>0;
    const groundEvent=groundTraps?.update(trapActive?dt:0,hero.position,enemies().filter(e=>e.combatEnabled).map(e=>fireEnemies.get(e)!));
-   if(axeTraps?.update(trapActive?dt:0,hero.position)){respawn.current();return;}
+   if(axeTraps?.update(trapActive?dt:0,hero.position)&&axeDefeat.start()){clear();playerFire.clear();life.current=0;setHp(0);setStatus('Секира попала в Vicki. Возрождение в святилище…');renderer.render(scene,camera);return;}
+   if(trapActive&&axeTraps?.triggeredSites.length)setStatus('Камень нажался! Отступи за линию секир и пережди залпы.');
    if(groundEvent?.fireStarted)fireStun=FIRE_TRAP.stunSeconds;
    if(groundEvent?.fireFatal){respawn.current();return;}
    if(groundEvent?.caught){clear();playerFire.clear();}
