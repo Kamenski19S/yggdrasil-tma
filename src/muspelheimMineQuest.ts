@@ -5,10 +5,10 @@ import type {Save} from './core';
 export const FIRE_GOLD='muspelheimFireGold';
 export const FIRE_GOLD_COST=1000;
 export const MINE_GUARDS=[
- {id:'entrance',name:'Страж выработок',x:0,z:-56,hp:200,attack:45,reward:160},
- {id:'turn',name:'Страж рудной дороги',x:60,z:-96,hp:280,attack:58,reward:220},
- {id:'store',name:'Страж сокровищницы',x:84,z:-180,hp:360,attack:72,reward:280},
- {id:'foreman',name:'Начальник стражи',x:24,z:-240,hp:600,attack:90,reward:400},
+ {id:'entrance',name:'Страж выработок',x:0,z:-56,hp:200,attack:45,reward:3000},
+ {id:'turn',name:'Страж рудной дороги',x:60,z:-96,hp:280,attack:58,reward:5000},
+ {id:'store',name:'Страж сокровищницы',x:84,z:-180,hp:360,attack:72,reward:7000},
+ {id:'foreman',name:'Начальник стражи',x:24,z:-240,hp:600,attack:90,reward:10000},
 ] as const;
 export type MineEvent='enter'|'gold'|'pay'|'guardian'|`guard:${typeof MINE_GUARDS[number]['id']}`;
 export const mineKey=(id:string)=>'muspelheim:ashMine:'+id;

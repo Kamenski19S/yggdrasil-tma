@@ -1,4 +1,4 @@
-export const OCEAN_GUARDIAN={id:'lakeGuardian',name:'Страж глубин',maxHp:900,attack:95,reward:800,x:29,z:-314,y:3,shoreX:26,shoreZ:-305};
+export const OCEAN_GUARDIAN={id:'lakeGuardian',name:'Страж глубин',maxHp:900,attack:95,reward:20000,x:29,z:-314,y:3,shoreX:26,shoreZ:-305};
 export const GUARDIAN_TIMING={firstDelay:1.4,windup:.8,strike:.4,impact:.2,recover:.65,pause:1.1,hold:2};
 export type GuardianAttack='slam'|'grab'|'sweep'|'wrap';
 export type GuardianState={phase:'idle'|'windup'|'strike'|'hold'|'recover';kind:GuardianAttack;elapsed:number;cooldown:number;cycle:number;target:{x:number;y:number;z:number};impacted:boolean};
