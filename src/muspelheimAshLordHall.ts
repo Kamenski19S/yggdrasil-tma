@@ -13,7 +13,7 @@ export function ashLordWalkable(x:number,z:number,radius=2.3){
 }
 export function ashLordNear(x:number,z:number){return Math.hypot(x-ASH_LORD.x,z-ASH_LORD.z)<20;}
 export function ashLordExit(x:number,z:number){return Math.abs(x)<5.7&&z>65;}
-/** A peaceful preview of the commander's hall; no combat or quest progression yet. */
+/** The source links the commander to his legion until a runic seal interrupts it. */
 export function createAshLordHall(lord:THREE.Object3D,clips:THREE.AnimationClip[],assetBase:string){
  const root=new THREE.Group();root.name='Туманный зал Владыки Пепельного легиона';
  const texture=new THREE.TextureLoader().load(assetBase+'muspelheim-basalt-wall.jpg');texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.repeat.set(5,3);
@@ -62,7 +62,7 @@ export function createAshLordHall(lord:THREE.Object3D,clips:THREE.AnimationClip[
  vertexShader:'varying vec3 p;void main(){p=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
  fragmentShader:`uniform float time;varying vec3 p;void main(){vec2 q=p.xy;float n=sin(q.x*.11+time*.14+sin(q.y*.09))*sin(q.y*.12-time*.12);float veil=.08+.055*n;float edge=smoothstep(0.,12.,min(49.-abs(q.x),63.-abs(q.y)));gl_FragColor=vec4(.44,.48,.52,veil*edge);}`});
  for(let i=0;i<4;i++){const veil=new THREE.Mesh(new THREE.PlaneGeometry(98,126,1,1),mistMaterial);veil.rotation.x=-Math.PI/2;veil.position.set(0,1+i*1.1,-12);veil.name='Движущийся низкий туман';root.add(veil);}
- let time=0;const update=(dt:number,_hero:{x:number;z:number})=>{if(dt<=0)return;time+=dt;mistTime.value=time;mixer.update(dt);if(!idle)fit.scale.y=scale*(1+Math.sin(time*1.2)*.006);core.position.y=8+Math.sin(time*1.3)*.35;core.rotation.y=time*.2;rings.forEach((r,i)=>{r.rotation.y=time*(.22+i*.07);r.rotation.z=.6+i+time*.16;r.position.y=core.position.y;});glow.intensity=480*(.9+.12*Math.sin(time*2));chestLight.intensity=180*(.9+.15*Math.sin(time*2-1));molten.emissiveIntensity=.9+Math.sin(time*2)*.12;waterMap.offset.y=(time*.035)%1;waterMap.rotation=time*.025;threads.update(dt);
+ let time=0,sealed=false;const update=(dt:number,_hero:{x:number;z:number})=>{if(dt<=0)return;time+=dt;mistTime.value=time;mixer.update(dt);if(!idle)fit.scale.y=scale*(1+Math.sin(time*1.2)*.006);core.position.y=8+Math.sin(time*1.3)*.35;core.rotation.y=time*.2;rings.forEach((r,i)=>{r.rotation.y=time*(.22+i*.07);r.rotation.z=.6+i+time*.16;r.position.y=core.position.y;});glow.intensity=(sealed?25:480)*(.9+.12*Math.sin(time*2));chestLight.intensity=(sealed?0:180)*(.9+.15*Math.sin(time*2-1));molten.emissiveIntensity=sealed?.05:.9+Math.sin(time*2)*.12;threads.root.visible=!sealed;waterMap.offset.y=(time*.035)%1;waterMap.rotation=time*.025;threads.update(dt);
  };update(.001,{x:0,z:43});
- return {root,lord:actor,source:basin,pool,core,rings,threads,mistTime,update,dispose(){mixer.stopAllAction();mixer.uncacheRoot(lord);const skeletons=new Set<THREE.Skeleton>();lord.traverse(o=>{if(o instanceof THREE.SkinnedMesh)skeletons.add(o.skeleton);});skeletons.forEach(s=>s.dispose());}};
+ return {root,setSourceSealed(value:boolean){sealed=value;threads.root.visible=!value;},lord:actor,source:basin,pool,core,rings,threads,mistTime,update,dispose(){mixer.stopAllAction();mixer.uncacheRoot(lord);const skeletons=new Set<THREE.Skeleton>();lord.traverse(o=>{if(o instanceof THREE.SkinnedMesh)skeletons.add(o.skeleton);});skeletons.forEach(s=>s.dispose());}};
 }

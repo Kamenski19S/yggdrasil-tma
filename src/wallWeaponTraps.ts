@@ -19,11 +19,12 @@ export function createWallWeaponTraps(kind:'axe'|'arrow',sites:WallTrapSite[],fl
  const template=make(),shots:Shot[]=[],timers=sites.map(()=>({age:-1,next:timing.warning,cooldown:0,wave:0}));
  const fire=(site:WallTrapSite,wave:number)=>{for(const offset of(kind==='axe'?[-4,0,4]:[-3,0,3])){const side=wave%2?1:-1,mesh=template.clone(true);root.add(mesh);shots.push({mesh,site,offset,side,distance:-(side<0?site.right:site.left),age:0,hit:false});}};
  const pose=(shot:Shot)=>{const s=shot.site,nx=-s.tz,nz=s.tx,x=s.x+s.tx*shot.offset+nx*shot.distance*shot.side,z=s.z+s.tz*shot.offset+nz*shot.distance*shot.side;return new THREE.Vector3(x,(kind==='arrow'?s.y:(floor(x,z,s.y)??s.y))+8,z);};
- return {root,sites,shots,triggeredSites,reset(){triggeredSites.length=0;warnings.forEach(w=>w.visible=false);shots.forEach(s=>s.mesh.removeFromParent());shots.length=0;timers.forEach(t=>{t.age=-1;t.cooldown=0;t.wave=0;t.next=timing.warning;});},update(dt:number,hero:{x:number;y:number;z:number}){triggeredSites.length=0;if(dt<=0)return false;let hit=false;
+ let revealed=0;
+ return {root,sites,shots,triggeredSites,reveal(seconds=.15){revealed=Math.max(revealed,seconds);},reset(){revealed=0;triggeredSites.length=0;warnings.forEach(w=>w.visible=false);shots.forEach(s=>s.mesh.removeFromParent());shots.length=0;timers.forEach(t=>{t.age=-1;t.cooldown=0;t.wave=0;t.next=timing.warning;});},update(dt:number,hero:{x:number;y:number;z:number}){triggeredSites.length=0;if(dt<=0)return false;revealed=Math.max(0,revealed-dt);let hit=false;
   sites.forEach((s,i)=>{const t=timers[i];t.cooldown=Math.max(0,t.cooldown-dt);const along=(hero.x-s.x)*s.tx+(hero.z-s.z)*s.tz,cross=-(hero.x-s.x)*s.tz+(hero.z-s.z)*s.tx;
    if(t.age<0&&t.cooldown===0&&Math.abs(along)<2.8&&Math.abs(cross)<(kind==='axe'?5:4)&&Math.abs(hero.y-s.y)<5){t.age=0;t.next=timing.warning;t.wave=0;t.cooldown=timing.cooldown;triggeredSites.push(s);}
    if(t.age>=0){t.age+=dt;while(t.age>=t.next&&t.wave<timing.waves){fire(s,t.wave++);t.next+=timing.waveInterval;}if(t.age>timing.warning+(timing.waves-1)*timing.waveInterval+(s.left+s.right+6)/timing.speed)t.age=-1;}
-   if(warnings[i]){warnings[i].visible=t.age>=0&&t.age<timing.warning;warnings[i].material.opacity=.25+.2*Math.sin(t.age*24)**2;}
+   if(warnings[i]){warnings[i].visible=revealed>0||t.age>=0&&t.age<timing.warning;warnings[i].material.opacity=.25+.2*Math.sin(t.age*24)**2;}
   });
   for(let i=shots.length-1;i>=0;i--){const s=shots[i],a=pose(s);s.distance+=timing.speed*dt;s.age+=dt;const b=pose(s);s.mesh.position.copy(b);s.mesh.rotation.set(0,-Math.atan2(s.site.tx,-s.site.tz)+(s.side<0?Math.PI:0),kind==='axe'?s.age*22:0);
    const vx=b.x-a.x,vz=b.z-a.z,q=THREE.MathUtils.clamp(((hero.x-a.x)*vx+(hero.z-a.z)*vz)/(vx*vx+vz*vz||1),0,1),y=THREE.MathUtils.lerp(a.y,b.y,q);

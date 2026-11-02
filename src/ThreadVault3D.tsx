@@ -1,3 +1,9 @@
+import {incomingCombatDamage,type CombatStats} from './combatStats';
+import {useRunicWard} from './useRunicWard';
+import {createRunicWardVfx} from './runicWardVfx';
+import {createInteriorRunicEncounter} from './interiorRunicEncounter';
+import {THREAD_SECRET,ASH_SOURCE_SEALED} from './runicCombinations';
+import {playtestHealth} from './magicPlaytest';
 import {createMuspelheimArmorAppearance,type ArmorAppearance} from './muspelheimArmor';
 import {createCeilingLightning} from './muspelheimInteriorHazards';
 import {useTransientStatus} from './useTransientStatus';
@@ -8,18 +14,19 @@ import React,{useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
 import {GLTFLoader} from './modelLoader';
 import {BASE,cachedGlbBuffer,WEAPON_ASSET,textureSteelOnWeapon,styleNiflheimWeapon,type HeroWeapon} from './core';
-import {createThreadHall,threadHallWalkable,threadHallNearKeeper,threadHallExit,THREAD_WELL_ASSET,THREAD_KEEPER_ASSET,THREAD_WELL_CREDIT,THREAD_KEEPER_CREDIT} from './muspelheimThreadHall';
+import {createThreadHall,threadHallWalkable,threadHallNearKeeper,threadHallExit,THREAD_WELL_POSITION,THREAD_WELL_ASSET,THREAD_KEEPER_ASSET,THREAD_WELL_CREDIT,THREAD_KEEPER_CREDIT} from './muspelheimThreadHall';
 import {readThreadVaultVisit,saveThreadVaultVisit} from './threadVaultSession';
 import {screenMoveToWorld,updateFollowCamera,type FollowCameraState} from './muspelheimCamera';
 import {createMuspelheimHeroActions} from './muspelheimHeroActions';
 import {createMuspelheimHeroEquipment} from './muspelheimHeroEquipment';
 import './muspelheimUI.css';
-type Props={armorAppearance:ArmorAppearance;hud:InteriorHUDData;onBack:()=>void;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;fieldHp:number|null;maxHp:number;onFieldHpChange:(hp:number)=>void;onRespawn:()=>void};
+type Props={combatStats:CombatStats;armorAppearance:ArmorAppearance;hud:InteriorHUDData;onBack:()=>void;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;fieldHp:number|null;maxHp:number;onFieldHpChange:(hp:number)=>void;onRespawn:()=>void};
 function dispose(root:THREE.Object3D){const gs=new Set<THREE.BufferGeometry>(),ms=new Set<THREE.Material>(),ts=new Set<THREE.Texture>();root.traverse(o=>{if(o instanceof THREE.InstancedMesh)o.dispose();if(o instanceof THREE.Mesh||o instanceof THREE.Sprite){if(o instanceof THREE.Mesh)gs.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material]){ms.add(m);for(const v of Object.values(m))if(v instanceof THREE.Texture)ts.add(v);}}});gs.forEach(g=>g.dispose());ms.forEach(m=>m.dispose());ts.forEach(t=>t.dispose());}
 export default function ThreadVault3D(props:Props){
+ const runes=useRunicWard();
  const host=useRef<HTMLDivElement>(null),input=useRef({x:0,z:0}),pointer=useRef<number|null>(null),knob=useRef<HTMLSpanElement>(null),run=useRef(false),view=useRef(0),basis=useRef(0),live=useRef(props);live.current=props;
  const [dialog,setDialog]=useState(false),[nearKeeper,setNearKeeper]=useState(false),[failed,setFailed]=useState(false),[retry,setRetry]=useState(0),[ready,setReady]=useState(false),[status,setStatus]=useTransientStatus('Открывается Хранилище трёх нитей…');
- const [hp,setHp]=useState(props.fieldHp??props.maxHp),[hit,setHit]=useState(false),[nearDoor,setNearDoor]=useState(false);const doorAction=useRef(()=>{}),barrier=useRef(0),health=useRef(props.fieldHp??props.maxHp);
+ const [hp,setHp]=useState(props.fieldHp??props.maxHp),[hit,setHit]=useState(false),[nearDoor,setNearDoor]=useState(false);const doorAction=useRef(()=>{}),health=useRef(props.fieldHp??props.maxHp);
  const armorLook=useRef<ReturnType<typeof createMuspelheimArmorAppearance>>();
  useEffect(()=>{armorLook.current?.update(props.armorAppearance);},[props.armorAppearance.armor,props.armorAppearance.helmet,props.armorAppearance.boots]);
  useEffect(()=>{health.current=props.fieldHp??props.maxHp;setHp(health.current);},[props.fieldHp,props.maxHp]);
@@ -35,6 +42,7 @@ export default function ThreadVault3D(props:Props){
   const camera=new THREE.PerspectiveCamera(54,1,.1,240),hero=new THREE.Group();hero.rotation.y=Math.PI;scene.add(hero);const pos=readThreadVaultVisit()??{x:0,z:43};if(!threadHallWalkable(pos.x,pos.z)){pos.x=0;pos.z=43;}
   let hall:ReturnType<typeof createThreadHall>|undefined,mixer:THREE.AnimationMixer|undefined,actions:ReturnType<typeof createMuspelheimHeroActions>|undefined,equipment:ReturnType<typeof createMuspelheimHeroEquipment>|undefined;
   const hazards=createCeilingLightning(threadHallWalkable);scene.add(hazards.root);
+  const runeVfx=createRunicWardVfx(),encounter=createInteriorRunicEncounter('vault');scene.add(runeVfx.root,encounter.root);
   const playerFire=createPlayerFireball(()=>[],(_a,b)=>!threadHallWalkable(b.x,b.z));scene.add(playerFire.root);
   const keys=new Set<string>(),follow:FollowCameraState={yaw:0,targetYaw:0,turnTime:0};
   const persist=()=>{if(loaded&&!exiting)saveThreadVaultVisit(pos);};
@@ -63,15 +71,29 @@ export default function ThreadVault3D(props:Props){
    if(active){clockTime+=dt;let x=input.current.x+Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft')),z=input.current.z+Number(keys.has('KeyS')||keys.has('ArrowDown'))-Number(keys.has('KeyW')||keys.has('ArrowUp'));const length=Math.hypot(x,z),running=run.current||keys.has('ShiftLeft')||keys.has('ShiftRight');
     if(length){x/=Math.max(1,length);z/=Math.max(1,length);const move=screenMoveToWorld(x,z,basis.current),speed=running?26:17,nx=pos.x+move.x*speed*dt,nz=pos.z+move.z*speed*dt;let next={x:nx,z:nz};if(!threadHallWalkable(nx,nz))next=threadHallWalkable(nx,pos.z)?{x:nx,z:pos.z}:threadHallWalkable(pos.x,nz)?{x:pos.x,z:nz}:{...pos};dx=next.x-pos.x;dz=next.z-pos.z;moving=Math.hypot(dx,dz)>.0001;Object.assign(pos,next);if(moving)hero.rotation.y=Math.atan2(dx,dz);}
     actions?.update(dt,moving,running,live.current.shieldEquipped);hall?.update(dt,pos);view.current=updateFollowCamera(follow,dx,dz,dt);
-    const contact=hazards.update(dt,pos);barrier.current=Math.max(0,barrier.current-dt);
+    runes.ward.update(dt);const encounterActive=!live.current.hud.questDone.includes(THREAD_SECRET);
+    const contact=hazards.update(encounterActive?dt:0,pos);hazards.root.visible=encounterActive;
+    if(encounterActive&&pos.z<35)runes.warn('lightning',setStatus);
+    const takeHit=(element:'fire'|'ice'|'shadow'|'lightning'|'water',raw:number)=>{
+     if(runes.ward.protects(element)){setStatus('Покров удержал '+(element==='lightning'?'молнию':element==='shadow'?'тёмный сгусток':'пламя')+'.');return;}
+     const damage=Math.min(health.current,incomingCombatDamage(raw,live.current.combatStats,false,element));
+     health.current=playtestHealth(health.current-damage,live.current.maxHp);setHp(health.current);live.current.onFieldHpChange(health.current);hitTime=.25;setHit(true);setStatus('Магический удар: −'+damage+'. Подбери защиту от этой стихии.');
+    };
+    const impacts=encounter.update(dt,{...pos,y:0},encounterActive,element=>runes.warn(element,setStatus));for(const element of impacts)takeHit(element,Math.ceil(live.current.maxHp*.1));
     if(hitTime>0){hitTime=Math.max(0,hitTime-dt);if(hitTime===0)setHit(false);}
-    if(contact){if(barrier.current>0)setStatus('Барьер поглотил молнию.');else{const damage=Math.min(health.current,Math.max(1,Math.ceil(live.current.maxHp*.12)));health.current=Math.max(0,health.current-damage);setHp(health.current);live.current.onFieldHpChange(health.current);hitTime=.25;setHit(true);setStatus('Молния с потолка: −'+damage+' здоровья.');if(health.current===0){exiting=true;clear();live.current.onRespawn();return;}}}
+    if(contact)takeHit('lightning',Math.ceil(live.current.maxHp*.1));
+    if(health.current===0){exiting=true;clear();live.current.onRespawn();return;}
+
+    if(Math.hypot(pos.x-THREAD_WELL_POSITION.x,pos.z-THREAD_WELL_POSITION.z)<23){
+     runes.warn('insight',setStatus);
+     if(runes.ward.has('insight')&&runes.complete('threads'))setStatus('Ансуз и Пертр раскрыли память: чёрная нить питает Владыку Пепельного легиона. Останови источник в резиденции сочетанием Кеназ + Турисаз. +20000 капель.',10000);
+    }
     hudTime+=dt;if(hudTime>.18){hudTime=0;setNearDoor(atDoor());setNearKeeper(threadHallNearKeeper(pos.x,pos.z));}if(clockTime-lastSave>1){lastSave=clockTime;persist();}
    }
    hero.position.set(pos.x,0,pos.z);target.set(pos.x,8,pos.z);const desired=new THREE.Vector3(pos.x+Math.sin(follow.yaw)*27,22,pos.z+Math.cos(follow.yaw)*27),direction=desired.clone().sub(target),distance=direction.length();ray.set(target,direction.normalize());ray.far=distance;
-   const solids=hall?.root.children.filter(o=>o instanceof THREE.Mesh&&!(o.material as THREE.Material).transparent)??[],hit=ray.intersectObjects(solids,false)[0];if(hit)desired.copy(target).addScaledVector(direction,Math.max(2,hit.distance-1.3));camera.position.lerp(desired,1-Math.exp(-10*dt));camera.lookAt(target);playerFire.update(active?dt:0,camera);renderer.render(scene,camera);
+   const solids=hall?.root.children.filter(o=>o instanceof THREE.Mesh&&!(o.material as THREE.Material).transparent)??[],hit=ray.intersectObjects(solids,false)[0];if(hit)desired.copy(target).addScaledVector(direction,Math.max(2,hit.distance-1.3));camera.position.lerp(desired,1-Math.exp(-10*dt));camera.lookAt(target);playerFire.update(active?dt:0,camera);runeVfx.update(active?dt:0,hero.position,runes.ward);renderer.render(scene,camera);
   }tick();
-  return()=>{persist();alive=false;combat.current={attack:()=>{},shield:()=>{},magic:()=>{}};clearRef.current=()=>{};doorAction.current=()=>{};window.clearTimeout(timeout);cancelAnimationFrame(frame);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();equipment?.dispose();playerFire.dispose();hall?.dispose();dispose(scene);renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();};
+  return()=>{runes.ward.reset();runeVfx.dispose();encounter.dispose();persist();alive=false;combat.current={attack:()=>{},shield:()=>{},magic:()=>{}};clearRef.current=()=>{};doorAction.current=()=>{};window.clearTimeout(timeout);cancelAnimationFrame(frame);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();equipment?.dispose();playerFire.dispose();hall?.dispose();dispose(scene);renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();};
  },[retry]);
  const stop=()=>clearRef.current();const steer=(e:React.PointerEvent<HTMLButtonElement>)=>{if(pointer.current!==e.pointerId||paused.current||!ready)return;const r=e.currentTarget.getBoundingClientRect(),dx=e.clientX-r.left-r.width/2,dz=e.clientY-r.top-r.height/2,limit=r.width*.32,n=Math.max(limit,Math.hypot(dx,dz));input.current={x:dx/n,z:dz/n};if(knob.current)knob.current.style.transform=`translate(${input.current.x*36}px,${input.current.z*36}px)`;};
  return <section className="muspelheim-world thread-vault-world muspelheim-interior" aria-label="Хранилище трёх нитей" style={{position:'relative',flex:1,minHeight:0,overflow:'hidden',touchAction:'none',background:'#14121c'}}>
@@ -80,11 +102,11 @@ export default function ThreadVault3D(props:Props){
   <div className="thread-vault-title"><b>Хранилище трёх нитей</b><span>Белая · Красная · Чёрная</span></div>
   <div className="thread-vault-health">Vicki · {hp}/{props.maxHp}<progress aria-label="Здоровье Vicki" value={hp} max={props.maxHp}/></div>
   {!dialog&&!panelOpen&&<><button className="mid3d-ui mid3d-joy muspelheim-joystick" disabled={!ready} aria-label="Управление Vicki: тяни в нужном направлении" onPointerDown={e=>{if(!ready||pointer.current!==null)return;e.preventDefault();pointer.current=e.pointerId;basis.current=view.current;e.currentTarget.setPointerCapture(e.pointerId);steer(e);}} onPointerMove={steer} onPointerUp={stop} onPointerCancel={stop} onLostPointerCapture={stop}><span ref={knob} className="mid3d-knob" aria-hidden="true"/><img src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/></button>
-  <MuspelheimActionWheel base={BASE} shieldEquipped={props.shieldEquipped} onAttack={()=>combat.current.attack()} onShield={()=>combat.current.shield()} onMagic={()=>combat.current.magic()} onBarrier={()=>{barrier.current=2.5;setStatus('Магический барьер: защита от молний на 2,5 секунды.');}} doorReady={nearDoor&&ready} onDoor={()=>doorAction.current()} onRunChange={value=>{run.current=value;}}/>
+  <MuspelheimActionWheel base={BASE} shieldEquipped={props.shieldEquipped} onAttack={()=>combat.current.attack()} onShield={()=>combat.current.shield()} onMagic={()=>combat.current.magic()} onBarrier={()=>{if(ready&&!paused.current&&!document.hidden)setStatus(runes.cast().message);}} doorReady={nearDoor&&ready} onDoor={()=>doorAction.current()} onRunChange={value=>{run.current=value;}}/>
 
   {nearKeeper&&<button className="muspelheim-btn thread-vault-talk" onClick={()=>{stop();setDialog(true);}}>Поговорить с Хранителем</button>}</>}
   {!dialog&&<MuspelheimInteriorHUD data={props.hud} location="Хранилище трёх нитей" hp={hp} stop={stop} onPauseChange={setPanelOpen}/>}
   <div className="muspelheim-status" role="status" hidden={!status&&!failed}>{status}{failed&&<><button className="muspelheim-btn" onClick={()=>setRetry(v=>v+1)}>Повторить загрузку</button><button className="muspelheim-btn" onClick={props.onBack}>Вернуться ко входу</button></>}</div>
-  {dialog&&<div className="muspelheim-ui-overlay"><section className="muspelheim-ui-panel" role="dialog" aria-modal="true" aria-label="Хранитель трёх нитей"><h3>Хранитель трёх нитей</h3><p>«Ты вошла в Хранилище. Здесь белая, красная и чёрная нити поднимаются из одного колодца. Смотри на них, но не пытайся оборвать».</p><p>«Когда захочешь уйти, возвращайся через дверь, которой пришла».</p><details><summary>Авторство моделей</summary><p><a href={THREAD_WELL_CREDIT.url} target="_blank" rel="noopener noreferrer">{THREAD_WELL_CREDIT.title} — {THREAD_WELL_CREDIT.author}</a>, CC BY 4.0. Колодец из Нифльхейма увеличен для зала, сохранены исходные материалы; добавлены три огненные нити.</p><p><a href={THREAD_KEEPER_CREDIT.url} target="_blank" rel="noopener noreferrer">{THREAD_KEEPER_CREDIT.title} — {THREAD_KEEPER_CREDIT.author}</a>, CC BY 4.0. Использована копия подготовленной модели со скелетом; изменены роль, масштаб и поза ожидания.</p></details><button className="muspelheim-btn" onClick={()=>setDialog(false)}>Продолжить осмотр</button></section></div>}
+  {dialog&&<div className="muspelheim-ui-overlay"><section className="muspelheim-ui-panel" role="dialog" aria-modal="true" aria-label="Хранитель трёх нитей"><h3>Хранитель трёх нитей</h3><p>«Ты вошла в Хранилище. Здесь белая, красная и чёрная нити поднимаются из одного колодца. Смотри на них, но не пытайся оборвать».</p><p>{props.hud.questDone.includes(THREAD_SECRET)?'«Ты увидела память чёрной нити. Она питает источник Владыки Пепельного легиона в резиденции. Кеназ и Турисаз остановят его»':'«Молнии проверят твою защиту, а я — свет против тьмы. У колодца пробуди Ансуз и Пертр: память откроется. Не обрывай сами нити»'}</p><details><summary>Авторство моделей</summary><p><a href={THREAD_WELL_CREDIT.url} target="_blank" rel="noopener noreferrer">{THREAD_WELL_CREDIT.title} — {THREAD_WELL_CREDIT.author}</a>, CC BY 4.0. Колодец из Нифльхейма увеличен для зала, сохранены исходные материалы; добавлены три огненные нити.</p><p><a href={THREAD_KEEPER_CREDIT.url} target="_blank" rel="noopener noreferrer">{THREAD_KEEPER_CREDIT.title} — {THREAD_KEEPER_CREDIT.author}</a>, CC BY 4.0. Использована копия подготовленной модели со скелетом; изменены роль, масштаб и поза ожидания.</p></details><button className="muspelheim-btn" onClick={()=>setDialog(false)}>Продолжить осмотр</button></section></div>}
  </section>;
 }

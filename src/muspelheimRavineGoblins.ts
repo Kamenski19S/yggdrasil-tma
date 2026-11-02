@@ -14,7 +14,7 @@ import type {CharacterBody} from './characterCollision';
 export const RAVINE_GOBLIN_HEIGHT=MINE_CHARACTER_HEIGHT.helper*2;
 export const RAVINE_GOBLIN_COUNT=18;
 export const RAVINE_GOBLIN_ATTACK=28;
-export const RAVINE_SPELL={range:42,cooldown:.9,wardDuration:2.5,wardCooldown:5};
+export const RAVINE_SPELL={range:42,cooldown:.9,wardDuration:5,wardCooldown:6};
 type Point={x:number;y:number;z:number};
 /** Copies of the mine helper; source meshes and mine materials remain untouched. */
 export function createRavineGoblins(source:THREE.Object3D,clips:THREE.AnimationClip[],floor:(x:number,z:number)=>number|null,walkable:(from:Point,to:Point)=>boolean,contact:(from:Point,to:Point)=>boolean,vfxBase='',onDefeated:()=>string=()=>''){
@@ -36,21 +36,20 @@ export function createRavineGoblins(source:THREE.Object3D,clips:THREE.AnimationC
   actor.root.position.copy(new THREE.Vector3(home.x,home.y,home.z));root.add(actor.root);
   const element=RAVINE_ELEMENTS[i%RAVINE_ELEMENTS.length],profile=element==='ice'?ICE_STRIKE:element==='fire'?FIRE_STRIKE:element==='shadow'?SHADOW_STRIKE:LIGHTNING_STRIKE;const magic=createGateMagic(home,{},profile);return {actor,home,station,offset,magic,element,direction:i%2?1:-1};
  });
- const ward=new THREE.Mesh(new THREE.SphereGeometry(9,20,12),new THREE.MeshBasicMaterial({color:'#6cecff',transparent:true,opacity:.19,wireframe:true,depthWrite:false}));ward.visible=false;root.add(ward);
+
 
  const hurt=(a:typeof actors[number],damage:number)=>{const before=a.magic.life.hp;a.magic.life.hurt(damage);if(before>0&&a.magic.life.hp===0){a.magic.reset();return onDefeated();}return '';};
- let time=0,spellCooldown=0,wardCooldown=0,wardLeft=0;
+ let time=0,spellCooldown=0;
  const target=(hero:Point)=>actors.filter(a=>a.magic.life.hp>0&&a.actor.root.position.distanceTo(new THREE.Vector3(hero.x,hero.y,hero.z))<RAVINE_SPELL.range&&Math.abs(a.home.y-hero.y)<6&&contact(hero,a.home)).sort((a,b)=>Math.hypot(a.home.x-hero.x,a.home.z-hero.z)-Math.hypot(b.home.x-hero.x,b.home.z-hero.z))[0];
- return {root,actors,hurt,pauseForInterior(){wardLeft=wardCooldown=spellCooldown=0;actors.forEach(a=>a.magic.reset());clearEffects();},
+ return {root,actors,hurt,pauseForInterior(){spellCooldown=0;actors.forEach(a=>a.magic.reset());clearEffects();},
   get ailments(){return ailments;},get moveScale(){return magicMoveScale(ailments);},get immobilized(){return ailments.freeze>0||ailments.fall>0;},
   steer:(x:number,z:number)=>disorientedMove(x,z,ailments,time),
-  updateVfx(dt:number,camera:THREE.Camera,hero?:THREE.Object3D){if(hero&&!bound&&hero.getObjectByProperty('isSkinnedMesh',true)){ice.bindHero(hero);lightning.bindHero(hero);bound=true;}ice.frost(lastHero,ailments.freeze,ailments.slow);ice.update(dt,camera);lightning.update(dt,camera,ailments.disorient);fire.update(dt,camera,lastHero,ailments.burn);shadow.update(dt,camera,lastHero,drain.remaining);},get warding(){return wardLeft>0;},
+  updateVfx(dt:number,camera:THREE.Camera,hero?:THREE.Object3D){if(hero&&!bound&&hero.getObjectByProperty('isSkinnedMesh',true)){ice.bindHero(hero);lightning.bindHero(hero);bound=true;}ice.frost(lastHero,ailments.freeze,ailments.slow);ice.update(dt,camera);lightning.update(dt,camera,ailments.disorient);fire.update(dt,camera,lastHero,ailments.burn);shadow.update(dt,camera,lastHero,drain.remaining);},
   get bodies():CharacterBody[]{return actors.filter(a=>a.magic.life.hp>0).map(a=>({...a.home,radius:1.6,height:RAVINE_GOBLIN_HEIGHT,solid:true}));},
   hud(hero:Point){const a=target(hero);return a?{hp:a.magic.life.hp,active:true,name:'Гном · '+ELEMENTS[a.element].name+' · только магия'}:null;},
   cast(hero:Point,damage:number){if(ailments.freeze>0||ailments.fall>0)return 'Vicki пока не может колдовать.';if(spellCooldown>0)return 'Заклинание восстанавливается.';const a=target(hero);if(!a)return 'В пределах магии нет видимой цели.';spellCooldown=RAVINE_SPELL.cooldown;const reward=hurt(a,Math.max(1,damage));return a.magic.life.hp?`Руническая магия: −${damage}. Гном: ${a.magic.life.hp}/420.`:'Вулканический гном повержен магией. '+reward;},
-  protect(){if(ailments.freeze>0||ailments.fall>0)return 'Vicki пока не может поднять барьер.';if(wardCooldown>0)return 'Магический барьер восстанавливается.';wardLeft=RAVINE_SPELL.wardDuration;wardCooldown=RAVINE_SPELL.wardCooldown;return 'Магический барьер: защита от заклинаний на 2,5 секунды.';},
-  reset(){wardLeft=wardCooldown=spellCooldown=0;actors.forEach(a=>{a.magic.life.reset();a.magic.reset();});clearEffects();},
-  update(dt:number,hero:Point,available:boolean,reduceDamage:(raw:number,element:Element)=>number=raw=>raw){if(dt<=0)return {hits:0,blocked:0,damage:0,drops:0,message:''};Object.assign(lastHero,hero);if(!available)clearEffects();time+=dt;spellCooldown=Math.max(0,spellCooldown-dt);wardCooldown=Math.max(0,wardCooldown-dt);wardLeft=Math.max(0,wardLeft-dt);ward.visible=wardLeft>0;ward.position.set(hero.x,hero.y+7,hero.z);let hits=0,blocked=0,damage=available?reduceDamage(stepAilments(ailments,dt),'fire'):0,drops=available?stepShadowDrain(drain,dt):0,message='';
+  reset(){spellCooldown=0;actors.forEach(a=>{a.magic.life.reset();a.magic.reset();});clearEffects();},
+  update(dt:number,hero:Point,available:boolean,reduceDamage:(raw:number,element:Element)=>number=raw=>raw,protects:(element:Element)=>boolean=()=>false,onThreat:(element:Element)=>void=()=>{}){if(dt<=0)return {hits:0,blocked:0,damage:0,drops:0,message:''};Object.assign(lastHero,hero);if(!available)clearEffects();time+=dt;spellCooldown=Math.max(0,spellCooldown-dt);let hits=0,blocked=0,damage=available?reduceDamage(stepAilments(ailments,dt),'fire')*(protects('fire')?0:1):0,drops=available?stepShadowDrain(drain,dt)*(protects('shadow')?0:1):0,message='';
    actors.forEach((a,i)=>{
     const alive=a.magic.life.hp>0,near=Math.hypot(a.home.x-hero.x,a.home.z-hero.z)<34&&Math.abs(a.home.y-hero.y)<6;
     let moving=false;
@@ -61,7 +60,8 @@ export function createRavineGoblins(source:THREE.Object3D,clips:THREE.AnimationC
     }
     if(alive&&near)a.actor.root.rotation.y=Math.atan2(hero.x-a.home.x,hero.z-a.home.z);
     const origin={x:a.home.x,y:a.home.y+5,z:a.home.z},event=a.magic.step(dt,hero,available,origin,(near||a.magic.projectiles.length>0)&&contact(a.home,hero),(x,z)=>floor(x,z));
-    if(event.impact){const shielded=wardLeft>0;if(a.element==='ice')ice.impact({x:hero.x,y:hero.y+7,z:hero.z},shielded);else if(a.element==='lightning')lightning.strike(origin,hero);else if(a.element==='fire')fire.impact(hero,shielded);else shadow.impact();if(shielded)blocked++;else {hits++;if(a.element==='shadow'){applyShadowDrain(drain,false);message='Тёмный туман отнимает по 1 капле бессмертия в секунду.';}else {damage+=reduceDamage(ELEMENTS[a.element].damage,a.element);message=applyElement(ailments,a.element,false);}}}
+    if(event.started)onThreat(a.element);
+    if(event.impact){const shielded=protects(a.element);if(a.element==='ice')ice.impact({x:hero.x,y:hero.y+7,z:hero.z},shielded);else if(a.element==='lightning')lightning.strike(origin,hero);else if(a.element==='fire')fire.impact(hero,shielded);else shadow.impact();if(shielded)blocked++;else {hits++;if(a.element==='shadow'){applyShadowDrain(drain,false);message='Тёмный туман отнимает по 1 капле бессмертия в секунду.';}else {damage+=reduceDamage(ELEMENTS[a.element].damage,a.element);message=applyElement(ailments,a.element,false);}}}
     a.actor.root.visible=!a.magic.life.hidden;a.actor.root.rotation.z=alive?0:-Math.PI/2;
     if(a.actor.root.position.distanceTo(new THREE.Vector3(hero.x,hero.y,hero.z))<110)a.actor.update(time,moving,false,a.magic.stage==='charge'?'work':'run');
     if(alive&&a.magic.stage==='charge'){if(a.element==='ice')ice.charge(origin,hero);else if(a.element==='fire')fire.charge(origin);else if(a.element==='shadow')shadow.charge(origin);}

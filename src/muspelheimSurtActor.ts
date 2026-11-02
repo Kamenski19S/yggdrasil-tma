@@ -4,7 +4,7 @@ import {SUMMIT_FLOOR_Y} from './muspelheimSummit';
 export const SURT_ACTOR_ASSET='Muspelheim_Surt_Golem.glb';
 export const SURT_SWORD_ASSET='Muspelheim_Surt_Devil_Sword.glb';
 export const SURT_HEIGHT=30;
-export const SURT_TEST_GATE_OPEN=true;
+export const SURT_TEST_GATE_OPEN=false;
 export const SURT_CREDITS=[
  {title:'Character Free Golem Rock',author:'OSCAR CREATIVO',url:'https://sketchfab.com/3d-models/character-free-golem-rock-by-oscar-creativo-9383d3630e2945c5bdac5f7063308037'},
  {title:'FREE | Devil Sword',author:'nodgerty',url:'https://sketchfab.com/3d-models/free-devil-sword-db8b00e922024647bbdd7d124bd1d339'},

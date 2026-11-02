@@ -1,8 +1,9 @@
 import React,{createContext,useContext,useEffect,useId,useRef,useState} from 'react';
+import {findRunicRecipe,type RunicRitual} from './runicCombinations';
 import {RUNE_CATALOG} from './world';
 import {normalizeRunePair,selectPairRune,type RunePair} from './runePairSelection';
 
-export type RuneSelection={owned:readonly string[];pair:RunePair;onChange:(pair:RunePair)=>void};
+export type RuneSelection={done:readonly string[];onDiscover:(id:string)=>void;onRitual:(event:RunicRitual)=>void;owned:readonly string[];pair:RunePair;onChange:(pair:RunePair)=>void};
 export const MuspelheimRuneSelection=createContext<RuneSelection|null>(null);
 
 /** Two thumb-sized slots below the joystick, shared by every Muspelheim scene. */
@@ -29,6 +30,7 @@ export function MuspelheimRuneSelect({onOpen}:{onOpen:()=>void}){
   {slot!==null&&<section id={id} className="muspelheim-rune-picker" aria-label={`Выбрать руну ${slot+1}`}>
    <div className="muspelheim-rune-picker-title"><b>Руна {slot+1}</b><button type="button" onClick={close} aria-label="Закрыть выбор рун">×</button></div>
    {available.length?<div className="muspelheim-rune-options">{available.map(r=><button type="button" key={r.id} aria-pressed={pair[slot]===r.id} onClick={()=>choose(r.id)}><span aria-hidden="true">{r.symbol}</span><small>{r.name}</small></button>)}</div>:<p>Получи руны в боях или найди их в мире.</p>}
+   <p>{findRunicRecipe(pair,owned)?.name??'Выбери сочетание'} · Нажми «Барьер», чтобы пробудить руны.</p>
    {pair[slot]&&<button type="button" className="muspelheim-rune-clear" onClick={()=>choose('')}>Очистить ячейку</button>}
   </section>}
  </div>;

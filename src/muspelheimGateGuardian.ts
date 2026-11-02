@@ -4,7 +4,7 @@ import type {AssassinPoint} from './muspelheimAssassinCombat';
 export const GATE_GUARDIAN_ASSET='Muspelheim_Surt_Gate_Golem.glb';
 export const GATE_GUARDIAN_POSITION={x:-299,z:-366};
 export const GATE_GUARDIAN_HEIGHT=22;
-export const GATE_GUARDIAN_COMBAT_ENABLED=false;
+export const GATE_GUARDIAN_COMBAT_ENABLED=true;
 export const GATE_GUARDIAN_CREDIT={title:'Volcanic Stone Lava Magma Golem',author:'Pigcraft',url:'https://sketchfab.com/3d-models/volcanic-stone-lava-magma-golem-751d9b868f8a4c5d96deae299a70b98c'};
 export function createGateGuardian(model:THREE.Object3D,clips:THREE.AnimationClip[],groundY=40.05,clock=Date.now){
  model.updateMatrixWorld(true);model.traverse(o=>{if(o instanceof THREE.SkinnedMesh)o.computeBoundingBox();});const box=new THREE.Box3().setFromObject(model),scale=GATE_GUARDIAN_HEIGHT/(box.max.y-box.min.y),fit=new THREE.Group();fit.scale.setScalar(scale);model.position.y-=box.min.y;fit.add(model);
