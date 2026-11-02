@@ -1,3 +1,4 @@
+import {useInteriorRuneHint} from './useInteriorRuneHint';
 import {useRunicWard} from './useRunicWard';
 import {createRunicWardVfx} from './runicWardVfx';
 import {createInteriorRunicEncounter} from './interiorRunicEncounter';
@@ -24,6 +25,7 @@ type Props={combatStats:CombatStats;armorAppearance:ArmorAppearance;hud:Interior
 function dispose(root:THREE.Object3D){const gs=new Set<THREE.BufferGeometry>(),ms=new Set<THREE.Material>(),ts=new Set<THREE.Texture>();root.traverse(o=>{if(o instanceof THREE.InstancedMesh)o.dispose();if(o instanceof THREE.Mesh||o instanceof THREE.Sprite||o instanceof THREE.Points||o instanceof THREE.Line){if(!(o instanceof THREE.Sprite))gs.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material]){ms.add(m);for(const v of Object.values(m))if(v instanceof THREE.Texture)ts.add(v);}}});gs.forEach(g=>g.dispose());ms.forEach(m=>m.dispose());ts.forEach(t=>t.dispose());}
 export default function AshLord3D(props:Props){
  const runes=useRunicWard();
+ const [runeHint,showRuneHint]=useInteriorRuneHint();
  const host=useRef<HTMLDivElement>(null),input=useRef({x:0,z:0}),pointer=useRef<number|null>(null),knob=useRef<HTMLSpanElement>(null),run=useRef(false),view=useRef(0),basis=useRef(0),live=useRef(props);live.current=props;
  const [dialog,setDialog]=useState(false),[nearKeeper,setNearKeeper]=useState(false),[failed,setFailed]=useState(false),[retry,setRetry]=useState(0),[ready,setReady]=useState(false),[status,setStatus]=useTransientStatus('Открывается Резиденция Владыки…');
  const [hp,setHp]=useState(props.fieldHp??props.maxHp),[hit,setHit]=useState(false),[nearDoor,setNearDoor]=useState(false);const doorAction=useRef(()=>{}),health=useRef(props.fieldHp??props.maxHp);
@@ -73,20 +75,20 @@ export default function AshLord3D(props:Props){
     actions?.update(dt,moving,running,live.current.shieldEquipped);hall?.update(dt,pos);view.current=updateFollowCamera(follow,dx,dz,dt);
     runes.ward.update(dt);const encounterActive=!live.current.hud.questDone.includes(ASH_SOURCE_SEALED);
     const contact=hazards.update(encounterActive?dt:0,pos);hazards.root.visible=encounterActive;
-    if(encounterActive&&pos.z<35)runes.warn('lightning',setStatus);
+    if(encounterActive&&pos.z<35)showRuneHint('lightning');
     const takeHit=(element:'fire'|'ice'|'shadow'|'lightning'|'water',raw:number)=>{
      if(runes.ward.protects(element)){setStatus('Покров удержал '+(element==='lightning'?'молнию':element==='shadow'?'тёмный сгусток':'пламя')+'.');return;}
      const damage=Math.min(health.current,incomingCombatDamage(raw,live.current.combatStats,false,element));
      health.current=playtestHealth(health.current-damage,live.current.maxHp);setHp(health.current);live.current.onFieldHpChange(health.current);hitTime=.25;setHit(true);setStatus('Магический удар: −'+damage+'. Подбери защиту от этой стихии.');
     };
-    const impacts=encounter.update(dt,{...pos,y:0},encounterActive,element=>runes.warn(element,setStatus));for(const element of impacts)takeHit(element,Math.ceil(live.current.maxHp*.1));
+    const impacts=encounter.update(dt,{...pos,y:0},encounterActive,element=>{showRuneHint(element);runes.warn(element,()=>{});});for(const element of impacts)takeHit(element,Math.ceil(live.current.maxHp*.1));
     if(hitTime>0){hitTime=Math.max(0,hitTime-dt);if(hitTime===0)setHit(false);}
     if(contact)takeHit('lightning',Math.ceil(live.current.maxHp*.1));
     if(health.current===0){exiting=true;clear();live.current.onRespawn();return;}
 
     const sealed=live.current.hud.questDone.includes(ASH_SOURCE_SEALED);hall?.setSourceSealed(sealed);
     if(Math.hypot(pos.x-ASH_SOURCE.x,pos.z-ASH_SOURCE.z)<20){
-     runes.warn('seal',setStatus);
+     showRuneHint(live.current.hud.questDone.includes(THREAD_SECRET)?'seal':'secret');
      if(runes.ward.has('seal')&&!sealed){if(!live.current.hud.questDone.includes(THREAD_SECRET))setStatus('Сначала раскрой память чёрной нити в Хранилище: Ансуз + Пертр у колодца.');else if(runes.complete('source'))setStatus('Печать жара остановила источник. Нити к Владыке погасли, магия резиденции утихла. +25000 капель.',10000);}
     }
     hudTime+=dt;if(hudTime>.18){hudTime=0;setNearDoor(atDoor());setNearKeeper(ashLordNear(pos.x,pos.z));}if(clockTime-lastSave>1){lastSave=clockTime;persist();}
@@ -98,6 +100,7 @@ export default function AshLord3D(props:Props){
  },[retry]);
  const stop=()=>clearRef.current();const steer=(e:React.PointerEvent<HTMLButtonElement>)=>{if(pointer.current!==e.pointerId||paused.current||!ready)return;const r=e.currentTarget.getBoundingClientRect(),dx=e.clientX-r.left-r.width/2,dz=e.clientY-r.top-r.height/2,limit=r.width*.32,n=Math.max(limit,Math.hypot(dx,dz));input.current={x:dx/n,z:dz/n};if(knob.current)knob.current.style.transform=`translate(${input.current.x*36}px,${input.current.z*36}px)`;};
  return <section className="muspelheim-world thread-vault-world muspelheim-interior" aria-label="Резиденция Владыки" style={{position:'relative',flex:1,minHeight:0,overflow:'hidden',touchAction:'none',background:'#181b1e'}}>
+  {runeHint&&!dialog&&!panelOpen&&<div role="status" style={{position:'absolute',top:150,left:12,right:12,zIndex:16,padding:'10px 12px',border:'1px solid #d4ad64',borderRadius:10,background:'#24170ef2',color:'#ffe5a4',fontSize:12,textAlign:'center',pointerEvents:'none'}}>{runeHint}</div>}
   {hit&&<div className="interior-lightning-hit" aria-hidden="true"/>}
   <div ref={host} style={{position:'absolute',inset:0}}/>
   <div className="thread-vault-title"><b>Резиденция Владыки</b><span>Хранитель Вечного Жара</span></div>
