@@ -44,7 +44,9 @@ export function createMuspelheimArmy(templates:Template[],nav:ReturnType<typeof 
   const patrol=(p:Point,dt:number,floor:(x:number,z:number,y:number)=>number|null)=>{
    wait-=dt;if(wait>0)return false;
    if(!patrolTarget||distance(p,patrolTarget)<3||stuckTime>3){
-    const pool=index<21?field:nav.nodes;
+    // Keep the original dark elf in her entrance area instead of a world-wide patrol.
+    const local=index===1?nav.nodes.filter(q=>distance(q,home)<=40):[];
+    const pool=index===1?(local.length?local:[home]):index<21?field:nav.nodes;
     do{patrolTarget=pool[(index*139+patrolChoice++*97)%pool.length];}while(pool.length>1&&distance(p,patrolTarget)<12&&patrolChoice%pool.length!==0);
     destination=undefined;stuckTime=0;
    }
@@ -57,7 +59,7 @@ export function createMuspelheimArmy(templates:Template[],nav:ReturnType<typeof 
    stuckTime+=dt;wait=.15;return false;
 
   };
-  const actor=createShadowAssassin(model,clips[kind],home.y,clock,{position:home,height:13.8+(index%3)*.35,radius:3.1,name:['Воительница','Тёмная эльфийка','Теневой воин'][kind]+` · ${index<21?'патруль':'лагерь'} ${index<21?index+1:index-20}`,cooldownKey:`yggdrasil:muspelheim:army:v1:${index}:defeatedAt`,respawnMs,combatEnabled:true,turnSpeed:2.8,leash:1600,notice:25,speed:10,navigate,patrol,animationDistance:220});
+  const actor=createShadowAssassin(model,clips[kind],home.y,clock,{position:home,height:13.8+(index%3)*.35,radius:3.1,name:['Воительница','Тёмная эльфийка','Теневой воин'][kind]+` · ${index<21?'патруль':'лагерь'} ${index<21?index+1:index-20}`,cooldownKey:`yggdrasil:muspelheim:army:v1:${index}:defeatedAt`,respawnMs,combatEnabled:true,turnSpeed:2.8,leash:index===1?100:1600,notice:25,speed:10,navigate,patrol,animationDistance:220});
   const update=actor.update;actor.update=(dt,hero,available=true,floor=()=>home.y,contact)=>{
    tickTime+=dt;
    const near=hero?distance(actor.combat.position,hero):Infinity,interval=near<140?0:near<220?.08:.22;

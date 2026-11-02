@@ -14,8 +14,8 @@ export function createAssassinCombat(home:AssassinPoint,options:{now?:()=>number
  };
  return {
   position,get hidden(){return phase==='dead'&&defeatedAt!==undefined&&now()-defeatedAt>=ASSASSIN_COMBAT.disappearMs;},get hp(){return hp;},get phase(){return phase;},reset,
-  interrupt(seconds=2){if(phase==='dead')return;stun=Math.max(stun,seconds);phase='chase';elapsed=0;impacted=false;cooldown=0;},
-  hurt(damage:number){if(phase==='dead'||damage<=0)return false;hp=Math.max(0,hp-damage);if(!hp){phase='dead';elapsed=0;defeatedAt=now();options.onDefeated?.(defeatedAt);}else if(phase==='idle'||phase==='return')phase='chase';return true;},
+  interrupt(seconds=2){if(phase==='dead')return;stun=Math.max(stun,seconds);if(phase==='attack')phase='chase';elapsed=0;impacted=false;cooldown=0;},
+  hurt(damage:number){if(phase==='dead'||damage<=0)return false;hp=Math.max(0,hp-damage);if(!hp){phase='dead';elapsed=0;defeatedAt=now();options.onDefeated?.(defeatedAt);}else if(phase==='return')phase='idle';return true;},
   step(dt:number,hero:AssassinPoint,available:boolean,floor:(x:number,z:number,y:number)=>number|null,contact:()=>boolean=()=>true){
    const event={impact:false,started:false,walking:false,dying:false,respawned:false};
    if(phase==='dead'){if(defeatedAt!==undefined&&now()-defeatedAt>=respawnMs&&(distance(hero,home)>(options.spawnClearance??6)||Math.abs(hero.y-home.y)>6)){reset();event.respawned=true;}else{elapsed+=dt;event.dying=true;}return event;}
@@ -24,7 +24,7 @@ export function createAssassinCombat(home:AssassinPoint,options:{now?:()=>number
    const near=distance(position,hero),valid=available&&Math.abs(hero.y-position.y)<6&&distance(home,hero)<=(options.leash??ASSASSIN_COMBAT.leash);
    if(!valid&&phase!=='idle'&&phase!=='return'){phase='return';elapsed=0;}
    if(phase==='return'){move(home,dt,floor);event.walking=distance(position,home)>.3;if(!event.walking)reset();return event;}
-   if(phase==='idle'){if(valid&&near<=(options.notice??ASSASSIN_COMBAT.notice)){phase='chase';cooldown=.5;}else return event;}
+   if(phase==='idle'){if(valid&&near<=(options.notice??ASSASSIN_COMBAT.notice)&&contact()){phase='chase';cooldown=.5;}else return event;}
    if(phase==='attack'){
     elapsed+=dt;
     if(!impacted&&elapsed>=ASSASSIN_COMBAT.impact){impacted=true;event.impact=valid&&near<=ASSASSIN_COMBAT.reach+1&&distance(hero,target)<7&&contact();}
