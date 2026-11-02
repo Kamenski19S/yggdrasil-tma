@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {buildSync} from 'esbuild';
+globalThis.window={};
+let stored='{}';
+globalThis.localStorage={getItem:()=>stored};
+const file=new URL('./.rune-pair-test.mjs',import.meta.url);
+buildSync({stdin:{contents:`export * from './src/runePairSelection';export {loadSave} from './src/core';`,resolveDir:process.cwd()},bundle:true,format:'esm',platform:'node',packages:'external',outfile:file.pathname,logLevel:'silent'});
+try{
+ const {normalizeRunePair:normalize,selectPairRune:select,loadSave}=await import(file.href);
+ const owned=['isaGuard','algizGuard','kenazShard'];
+ assert.deepEqual(normalize(undefined,owned,'isaGuard'),['isaGuard','']);
+ assert.deepEqual(normalize(['missing',17],owned),['','']);
+ assert.deepEqual(normalize(['isaGuard','isaGuard'],owned),['isaGuard','']);
+ const pair=select(['isaGuard','algizGuard'],0,'kenazShard',owned);
+ assert.deepEqual(pair,['kenazShard','algizGuard']);
+ assert.deepEqual(select(pair,0,'missing',owned),pair,'Cannot select a rune the player has not earned');
+ assert.deepEqual(select(pair,0,'algizGuard',owned),['algizGuard','kenazShard'],'Selecting the other slot swaps choices');
+ assert.deepEqual(pair,['kenazShard','algizGuard'],'Input remains immutable');
+ assert.deepEqual(select(pair,1,'',owned),['kenazShard','']);
+ stored=JSON.stringify({runes:owned,equippedRune:'isaGuard'});
+ const legacy=loadSave();assert.deepEqual(legacy.muspelheimRunePair,['isaGuard','']);
+ stored=JSON.stringify({...legacy,muspelheimRunePair:pair});
+ const restored=loadSave();assert.deepEqual(restored.muspelheimRunePair,pair,'Pair survives the real save loader');
+ assert.deepEqual(restored.runes,owned,'Selection does not consume runes');
+ assert.equal(restored.equippedRune,'isaGuard','Existing passive equipment remains intact');
+ stored=JSON.stringify({...restored,runes:['kenazShard']});
+ assert.deepEqual(loadSave().muspelheimRunePair,['kenazShard',''],'Unavailable selection clears on load');
+ console.log('PASS: legacy saves, owned-only choices, swaps, clearing, immutable state and save roundtrip without consuming runes.');
+}finally{fs.unlinkSync(file);}

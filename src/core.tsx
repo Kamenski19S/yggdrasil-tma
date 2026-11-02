@@ -1,3 +1,4 @@
+import {normalizeRunePair,type RunePair} from './runePairSelection';
 import {settleNiflheimArtifact} from './worldArtifacts';
 import {settleNidhoggReward} from './nidhoggBalance';
 import { EMPTY_POTION_BOOSTS, normalizePotionBoosts, type PotionBoosts } from "./potionEffects";
@@ -293,7 +294,7 @@ export const SHIELD_ASSETS=['Shield_Round.glb','Shield_Stylized.glb','Shield_Gil
 export const shieldForgeKey=(asset:string)=>asset===SHIELD_ASSETS[0]?'shield':'shield:'+asset;
 
 
-export type Save = { sparks: number; immortalityDrops:number; millStored:number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; equippedArtifact:string; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; lootCounts:Record<string,number>; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; fieldHp:number|null; frostGuard:number; potionBoosts:PotionBoosts; forgeLevels: Record<string,number>; forgeFreeUsed: boolean; gathered:string[]; gatherRespawnAt:Record<string,number>; stock:GatherStock; locationCooldowns:Record<string,number>; villageOrders:Record<string,number>; repairStock:Record<string,number>; runeSteel:number };
+export type Save = { sparks: number; immortalityDrops:number; millStored:number; done: string[]; gift: string; hero: { id: string; name: string } | null; trials: string[]; artifacts: string[]; equippedArtifact:string; watch: number; streak: number; powers: string[]; heroSkin: HeroSkin; heroWeapon: HeroWeapon; shieldAsset:string; ownedShields:string[]; ownedWeapons: string[]; lootCounts:Record<string,number>; equippedGear: GearId[]; potions: string[]; runes: string[]; equippedRune:string; muspelheimRunePair?:RunePair; fieldHp:number|null; frostGuard:number; potionBoosts:PotionBoosts; forgeLevels: Record<string,number>; forgeFreeUsed: boolean; gathered:string[]; gatherRespawnAt:Record<string,number>; stock:GatherStock; locationCooldowns:Record<string,number>; villageOrders:Record<string,number>; repairStock:Record<string,number>; runeSteel:number };
 
 
 export const GATHER_RESPAWN_MS=15*60*1000;
@@ -363,6 +364,7 @@ export const loadSave = (): Save => {
       s.done=[...new Set([...s.done,'guardian:rune','guardian:stage:rune'])];
     }
     if(typeof s.equippedRune!=="string"||!s.runes.includes(s.equippedRune))s.equippedRune=s.runes.includes('uruzStrength')?'uruzStrength':'';
+    s.muspelheimRunePair=normalizeRunePair(s.muspelheimRunePair,s.runes,s.equippedRune);
     if(s.fieldHp!==null&&(!Number.isFinite(s.fieldHp)||s.fieldHp<0))s.fieldHp=null;
     s.potionBoosts=normalizePotionBoosts(s.potionBoosts);
     if(!Number.isFinite(s.frostGuard)||s.frostGuard<0)s.frostGuard=0;
