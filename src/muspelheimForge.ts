@@ -42,7 +42,7 @@ export function createMuspelheimForge(source:THREE.Object3D){
   if(p.z>doorZ-2&&Math.abs(p.x)<6.8*1.1-padding)return p.z<doorZ+3&&opening<.95;
   return Math.abs(p.x)<26+padding&&p.z>-26-padding&&p.z<25+padding;
  };
- return {root,hinge,doorTriangles,setRampTexture:(texture:THREE.Texture)=>{rampMaterial.map=texture;rampMaterial.needsUpdate=true;},near,floorAt,blocks,open:()=>{requested=true;},get opening(){return opening;},get entering(){return requested;},
+ return {root,hinge,doorTriangles,setRampTexture:(texture:THREE.Texture)=>{rampMaterial.map=texture;rampMaterial.needsUpdate=true;},near,floorAt,blocks,open:()=>{requested=true;},get opening(){return opening;},get entering(){return requested;},cancelRequest:()=>{requested=false;},
   canEnter:(x:number,z:number)=>{const p=local(x,z);return opening>=.99&&Math.abs(p.x)<5&&p.z<doorZ+1&&p.z>doorZ-3;},
   update:(dt:number,x:number,z:number)=>{if(requested&&!near(x,z))requested=false;const target=requested||near(x,z);opening=THREE.MathUtils.clamp(opening+(target?1:-1)*dt/.85,0,1);portal.visible=opening>.06;hinge.rotation.y=-opening*opening*(3-2*opening)*Math.PI*.56;return requested&&opening>=.99;}
  };

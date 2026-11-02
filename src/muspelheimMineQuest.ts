@@ -1,3 +1,4 @@
+import {settleMuspelheimSwords} from './muspelheimForgeStock';
 import {applyBanditLoot,type BanditLoot} from './banditLoot';
 import {OCEAN_GUARDIAN} from './ashMineGuardianCombat';
 import type {Save} from './core';
@@ -27,7 +28,7 @@ export function applyMineEvent(save:Save,event:MineEvent,loot?:BanditLoot):Save{
   return reward({...save,done:add(event),immortalityDrops:save.immortalityDrops+guard.reward});
  }
  if(event==='guardian')return p.guardianDefeated?save:reward({...save,done:add('guardian'),immortalityDrops:save.immortalityDrops+OCEAN_GUARDIAN.reward});
- if(event==='gold'&&p.guardianDefeated&&p.cleared&&!p.goldTaken)return {...save,done:add('gold'),lootCounts:{...save.lootCounts,[FIRE_GOLD]:p.gold+FIRE_GOLD_COST}};
+ if(event==='gold'&&p.guardianDefeated&&p.cleared&&!p.goldTaken)return settleMuspelheimSwords({...save,done:add('gold'),lootCounts:{...save.lootCounts,[FIRE_GOLD]:p.gold+FIRE_GOLD_COST}});
  if(event==='pay'&&p.goldTaken&&!p.paid&&p.gold>=FIRE_GOLD_COST)return {...save,done:add('paid'),lootCounts:{...save.lootCounts,[FIRE_GOLD]:p.gold-FIRE_GOLD_COST}};
  return save;
 }

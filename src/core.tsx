@@ -205,9 +205,9 @@ export type HeroWeapon = "swordBakufu"|"swordLionsRoar"|"swordPrototype"|"defaul
 
 
 export const WEAPON_POWER:Record<HeroWeapon,number>={
-  swordBakufu:8,swordLionsRoar:9,swordPrototype:10,default:0,sword2:2,swordBig:4,swordGolden:6,swordNidhogg:10,swordStar:7,axeGiant:7,hammerRune:7,bladeObsidian:8,
+  swordBakufu:120,swordLionsRoar:170,swordPrototype:240,default:12,sword2:22,swordBig:36,swordGolden:52,swordNidhogg:88,swordStar:64,axeGiant:7,hammerRune:7,bladeObsidian:76,
   knife:1,dagger2:2,axe:3,axeSmall:2,axeDouble:5,
-  mace:2,hammerDouble:5,spear:3,claymore:5,scythe:4
+  mace:2,hammerDouble:5,spear:3,claymore:44,scythe:4
 };
 
 
