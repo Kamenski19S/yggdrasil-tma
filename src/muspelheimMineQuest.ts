@@ -1,3 +1,4 @@
+import {applyBanditLoot,type BanditLoot} from './banditLoot';
 import {OCEAN_GUARDIAN} from './ashMineGuardianCombat';
 import type {Save} from './core';
 export const FIRE_GOLD='muspelheimFireGold';
@@ -14,7 +15,8 @@ export function mineProgress(done:readonly string[],gold=0){
  const defeated=MINE_GUARDS.filter(g=>done.includes(mineKey('guard:'+g.id))).map(g=>g.id);
  return {guardianDefeated:done.includes(mineKey('guardian')),entered:done.includes(mineKey('entered')),defeated,cleared:defeated.length===MINE_GUARDS.length,goldTaken:done.includes(mineKey('gold')),paid:done.includes(mineKey('paid')),gold};
 }
-export function applyMineEvent(save:Save,event:MineEvent):Save{
+export function applyMineEvent(save:Save,event:MineEvent,loot?:BanditLoot):Save{
+ const reward=(next:Save)=>loot?applyBanditLoot(next,{...loot,drops:0}):next;
  const p=mineProgress(save.done,save.lootCounts[FIRE_GOLD]||0);
  const add=(id:string)=>[...save.done,mineKey(id)];
  if(event==='enter')return p.entered?save:{...save,done:add('entered')};
@@ -22,9 +24,9 @@ export function applyMineEvent(save:Save,event:MineEvent):Save{
  if(event.startsWith('guard:')){
   const guard=MINE_GUARDS.find(g=>'guard:'+g.id===event);
   if(!guard||save.done.includes(mineKey(event)))return save;
-  return {...save,done:add(event),immortalityDrops:save.immortalityDrops+guard.reward};
+  return reward({...save,done:add(event),immortalityDrops:save.immortalityDrops+guard.reward});
  }
- if(event==='guardian')return p.guardianDefeated?save:{...save,done:add('guardian'),immortalityDrops:save.immortalityDrops+OCEAN_GUARDIAN.reward};
+ if(event==='guardian')return p.guardianDefeated?save:reward({...save,done:add('guardian'),immortalityDrops:save.immortalityDrops+OCEAN_GUARDIAN.reward});
  if(event==='gold'&&p.guardianDefeated&&p.cleared&&!p.goldTaken)return {...save,done:add('gold'),lootCounts:{...save.lootCounts,[FIRE_GOLD]:p.gold+FIRE_GOLD_COST}};
  if(event==='pay'&&p.goldTaken&&!p.paid&&p.gold>=FIRE_GOLD_COST)return {...save,done:add('paid'),lootCounts:{...save.lootCounts,[FIRE_GOLD]:p.gold-FIRE_GOLD_COST}};
  return save;

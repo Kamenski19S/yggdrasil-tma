@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 type Point={x:number;y:number;z:number};
+export type FireTrapEnemy={position:Point;hp:number;hurt:(damage:number)=>boolean;stun:(seconds:number)=>void};
 export type GroundTrap=Point&{kind:'fire'|'sand';radius:number;age:number;cooldown:number;damageTime:number};
 export const FIRE_TRAP={stunSeconds:1,escapeSeconds:2.1,hitInterval:1.35};
 export const fireTrapDamage=(defense:number)=>Math.max(90,140-Math.max(0,defense));
@@ -17,6 +18,8 @@ export function groundTrapLayout(floor:(x:number,z:number)=>number|null,allowed:
  return traps;
 }
 export function createGroundTraps(traps:GroundTrap[],floor:(x:number,z:number)=>number|null){
+ const heroExposure=new Map<GroundTrap,number>();
+ const exposures=new Map<GroundTrap,Map<FireTrapEnemy,{time:number;hitIn:number}>>();
  const root=new THREE.Group();root.name='Скрытые огненные и песчаные ловушки';let capture:{trap:GroundTrap;time:number;x:number;z:number;y:number}|null=null;
  const vertex='varying vec2 uvTrap;void main(){uvTrap=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}';
  const views=traps.map(t=>{const group=new THREE.Group();group.visible=false;group.position.set(t.x,t.y+.12,t.z);root.add(group);
@@ -26,12 +29,21 @@ export function createGroundTraps(traps:GroundTrap[],floor:(x:number,z:number)=>
   if(t.kind==='fire')for(let j=0;j<4;j++){const plane=new THREE.Mesh(new THREE.PlaneGeometry(10,15),flame);plane.position.y=7.5;plane.rotation.y=j*Math.PI/4;group.add(plane);}
   else{const points=Array.from({length:80},(_,i)=>{const a=i*2.4,r=2+(i%10)*.35;return [Math.cos(a)*r,(i%7)*.12+.08,Math.sin(a)*r];}).flat(),geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(points,3));const dust=new THREE.Points(geometry,new THREE.PointsMaterial({color:'#b89456',size:.3,transparent:true,opacity:.7,depthWrite:false}));group.add(dust);}
   return {group,surface,flame};});
- return {root,traps,get captured(){return capture;},reset(){capture=null;traps.forEach((t,i)=>{t.age=-1;views[i].group.visible=false;});},
-  update(dt:number,hero:Point){const event={fireHits:0,fireStarted:false,fireFatal:false,caught:false,swallowed:false};if(dt<=0)return event;
-   for(let i=0;i<traps.length;i++){const t=traps[i],v=views[i];t.cooldown=Math.max(0,t.cooldown-dt);const inside=Math.hypot(hero.x-t.x,hero.z-t.z)<t.radius&&Math.abs(hero.y-t.y)<2.5;
-    if(t.age<0&&t.cooldown===0&&inside&&!capture){t.age=0;t.damageTime=0;t.cooldown=t.kind==='sand'?90:35;v.group.visible=true;if(t.kind==='fire')event.fireStarted=true;if(t.kind==='sand'){capture={trap:t,time:0,x:hero.x,z:hero.z,y:t.y};event.caught=true;}}
+ return {root,traps,get captured(){return capture;},reset(){capture=null;exposures.clear();heroExposure.clear();traps.forEach((t,i)=>{t.age=-1;views[i].group.visible=false;});},
+  update(dt:number,hero:Point,enemies:FireTrapEnemy[]=[]){const event={fireHits:0,fireStarted:false,fireFatal:false,caught:false,swallowed:false};if(dt<=0)return event;
+   for(let i=0;i<traps.length;i++){const t=traps[i],v=views[i];t.cooldown=Math.max(0,t.cooldown-dt);const contains=(p:Point)=>Math.hypot(p.x-t.x,p.z-t.z)<t.radius&&Math.abs(p.y-t.y)<2.5;const inside=contains(hero);
+    const victims=t.kind==='fire'?enemies.filter(e=>e.hp>0&&contains(e.position)):[];
+    if(t.age<0&&t.cooldown===0&&(inside&&!capture||victims.length>0)){t.age=0;t.damageTime=0;t.cooldown=t.kind==='sand'?90:35;v.group.visible=true;if(t.kind==='sand'){capture={trap:t,time:0,x:hero.x,z:hero.z,y:t.y};event.caught=true;}}
     if(t.age>=0){t.age+=dt;v.surface.uniforms.time.value=t.age;v.flame.uniforms.time.value=t.age;v.group.rotation.y=t.kind==='sand'?t.age*.35:0;
-     if(t.kind==='fire'){if(inside&&t.age>=FIRE_TRAP.escapeSeconds)event.fireFatal=true;t.damageTime-=dt;if(inside&&t.damageTime<=0){event.fireHits++;t.damageTime=FIRE_TRAP.hitInterval;}if(t.age>=7){t.age=-1;v.group.visible=false;}}
+     if(t.kind==='fire'){
+      let contacts=exposures.get(t);if(!contacts){contacts=new Map();exposures.set(t,contacts);}
+      for(const enemy of contacts.keys())if(!victims.includes(enemy))contacts.delete(enemy);
+      for(const enemy of victims){let contact=contacts.get(enemy);if(!contact){contact={time:0,hitIn:0};contacts.set(enemy,contact);enemy.stun(FIRE_TRAP.stunSeconds);}
+       contact.time+=dt;contact.hitIn-=dt;
+       if(contact.time>=FIRE_TRAP.escapeSeconds)enemy.hurt(enemy.hp);
+       else if(contact.hitIn<=0){enemy.hurt(fireTrapDamage(0));contact.hitIn=FIRE_TRAP.hitInterval;}
+      }
+      if(inside){const elapsed=heroExposure.get(t);if(elapsed===undefined){event.fireStarted=true;t.damageTime=0;}const time=(elapsed??0)+dt;heroExposure.set(t,time);if(time>=FIRE_TRAP.escapeSeconds)event.fireFatal=true;}else heroExposure.delete(t);t.damageTime-=dt;if(inside&&t.damageTime<=0){event.fireHits++;t.damageTime=FIRE_TRAP.hitInterval;}if(t.age>=7){t.age=-1;exposures.delete(t);heroExposure.delete(t);v.group.visible=false;}}
      else if(!capture&&t.age>3){t.age=-1;v.group.visible=false;}
     }
    }
