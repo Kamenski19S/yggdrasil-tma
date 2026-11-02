@@ -29,6 +29,8 @@
     "meshoptimizer": "0.23.0",
     "sharp": "0.34.5",
     "typescript": "^5.5.3",
-    "vite": "^5.3.4"
+    "vite": "^5.3.4",
+    "@gltf-transform/core": "4.5.1",
+    "@gltf-transform/functions": "4.5.1"
   }
 }

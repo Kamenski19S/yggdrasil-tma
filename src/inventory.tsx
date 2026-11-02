@@ -1,3 +1,4 @@
+import {MUSPELHEIM_FORGE_MODELS} from './muspelheimForgeStock';
 import { potionBoostKind, type PotionBoosts } from "./potionEffects";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
@@ -37,6 +38,7 @@ export function InventorySection({kind,potions,runes,equippedRune,lootCounts,run
 
 
 export const FORGE_WEAPON_MODELS = [
+  ...MUSPELHEIM_FORGE_MODELS,
   ['Sword_Golden.glb','Погибель Нидхёгга','swordNidhogg'],['Sword_Big.glb','Меч звёздного серебра','swordStar'],['Axe_Double.glb','Секира ледяного великана','axeGiant'],['Hammer_Double.glb','Молот древних рун','hammerRune'],['Claymore.glb','Обсидиановый клинок','bladeObsidian'],
   ['Sword.glb','Меч','default'],['Sword_2.glb','Меч II','sword2'],['Sword_Big.glb','Большой меч','swordBig'],['Sword_Golden.glb','Золотой меч','swordGolden'],
   ['Axe.glb','Топор','axe'],['Axe_Small.glb','Малый топор','axeSmall'],['Axe_Double.glb','Двойной топор','axeDouble'],['Spear.glb','Копьё','spear'],
@@ -95,8 +97,10 @@ export const STEEL_CRAFT_RECIPES:SteelCraftRecipe[]=[
 
 
 
-export function ForgeWeaponWall({owned,ownedShields,selected,selectedShield,onChoose,niflheim=false}:{niflheim?:boolean;owned:string[];ownedShields:string[];selected:HeroWeapon;selectedShield:string|null;onChoose:(asset:string,name:string,id:string)=>void}) {
-  const models=niflheim?FORGE_WEAPON_MODELS.filter(([asset,,id])=>['swordGolden','swordNidhogg','swordStar','axeGiant','hammerRune','bladeObsidian'].includes(id)||asset==='Shield_Celtic_Golden.glb'):FORGE_WEAPON_MODELS.filter(([, ,id])=>!['swordNidhogg','swordStar','axeGiant','hammerRune','bladeObsidian'].includes(id));
+export function ForgeWeaponWall({owned,ownedShields,selected,selectedShield,onChoose,niflheim=false,muspelheim=false}:{muspelheim?:boolean;niflheim?:boolean;owned:string[];ownedShields:string[];selected:HeroWeapon;selectedShield:string|null;onChoose:(asset:string,name:string,id:string)=>void}) {
+  const newAssets=new Set<string>(MUSPELHEIM_FORGE_MODELS.map(x=>x[0]));
+  const models=muspelheim?FORGE_WEAPON_MODELS.filter(([asset,,id])=>newAssets.has(asset)||['swordGolden','swordNidhogg','swordStar','axeGiant','hammerRune','bladeObsidian'].includes(id)||asset==='Shield_Celtic_Golden.glb'):niflheim?FORGE_WEAPON_MODELS.filter(([asset,,id])=>['swordGolden','swordNidhogg','swordStar','axeGiant','hammerRune','bladeObsidian'].includes(id)||asset==='Shield_Celtic_Golden.glb'):FORGE_WEAPON_MODELS.filter(([asset, ,id])=>!newAssets.has(asset)&&!['swordNidhogg','swordStar','axeGiant','hammerRune','bladeObsidian'].includes(id));
+  const rows=niflheim?Math.ceil(models.length/3):4,wallHeight=niflheim?rows*3.13:9.4;
   const canvas=useRef<HTMLCanvasElement>(null);
   useEffect(()=>{
     const target=canvas.current;
@@ -109,7 +113,7 @@ export function ForgeWeaponWall({owned,ownedShields,selected,selectedShield,onCh
     const scene=new THREE.Scene();
     scene.add(new THREE.HemisphereLight(0xffe8c5,0x6c584c,2.8));
     const lamp=new THREE.DirectionalLight(0xffbd74,2.2);lamp.position.set(-3,7,8);scene.add(lamp);
-    const camera=new THREE.OrthographicCamera(-5.5,5.5,4.7,-4.7,.1,100);
+    const camera=new THREE.OrthographicCamera(-5.5,5.5,wallHeight/2,-wallHeight/2,.1,100);
     camera.position.set(0,0,22);camera.lookAt(0,0,0);
     const loader=new GLTFLoader();
     let active=true;
@@ -133,13 +137,13 @@ export function ForgeWeaponWall({owned,ownedShields,selected,selectedShield,onCh
         // Each of the three Niflheim columns is ~3.35 units wide and the
         // row is 2.95 high. Leave padding so blades and the shield fit.
         mount.scale.setScalar((niflheim?1.95:1.48)/span);
-        mount.position.set(niflheim?(index%3-1)*3.35:(index%5-2)*2.17,niflheim?(1-Math.floor(index/3))*3.13:(1.5-Math.floor(index/5))*2.28+.22,0);
+        mount.position.set(niflheim?(index%3-1)*3.35:(index%5-2)*2.17,niflheim?((rows-1)/2-Math.floor(index/3))*3.13:(1.5-Math.floor(index/5))*2.28+.22,0);
         scene.add(mount);
         renderer.render(scene,camera);
       }).catch(error=>console.warn('Forge display model unavailable',asset,error));
     });
     return()=>{active=false;scene.traverse((o:any)=>{if(o.isMesh){o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach((m:any)=>m.dispose?.());else o.material?.dispose?.();}});renderer.dispose();};
-  },[niflheim]);
-  return <><div className="forge-wall" style={niflheim?{aspectRatio:"11 / 9.4"}:undefined}><canvas ref={canvas}/><div className="forge-wall-labels" style={niflheim?{gridTemplateColumns:"repeat(3,minmax(0,1fr))",gridTemplateRows:"repeat(3,minmax(0,1fr))"}:undefined}>{models.map(([asset,name,id])=><button type="button" className={'forge-wall-label'+(id&&owned.includes(id)?' owned':'')+(ownedShields.includes(asset)?' owned':'')+(asset===selectedShield||(!asset.startsWith('Shield_')&&id===selected)?' equipped':'')} key={id||asset} aria-label={'Выбрать '+name} onClick={()=>onChoose(asset,name,id)}>{name}</button>)}</div></div>
+  },[niflheim,muspelheim]);
+  return <><div className="forge-wall" style={niflheim?{aspectRatio:`11 / ${wallHeight}`}:undefined}><canvas ref={canvas}/><div className="forge-wall-labels" style={niflheim?{gridTemplateColumns:"repeat(3,minmax(0,1fr))",gridTemplateRows:`repeat(${rows},minmax(0,1fr))`}:undefined}>{models.map(([asset,name,id])=><button type="button" className={'forge-wall-label'+(id&&owned.includes(id)?' owned':'')+(ownedShields.includes(asset)?' owned':'')+(asset===selectedShield||(!asset.startsWith('Shield_')&&id===selected)?' equipped':'')} key={id||asset} aria-label={'Выбрать '+name} onClick={()=>onChoose(asset,name,id)}>{name}</button>)}</div></div>
     <p className="forge-wall-note">Выбери полученное оружие или щит. Остальные щиты откроются по мере прохождения.</p></>;
 }

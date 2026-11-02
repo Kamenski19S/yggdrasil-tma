@@ -201,18 +201,18 @@ export type Screen = { t: "tree" } | { t: "realm"; id: string } | { t: "choose" 
 export type HeroSkin = "viking" | "valkyrie";
 
 
-export type HeroWeapon = "default"|"sword2"|"swordBig"|"swordGolden"|"swordNidhogg"|"swordStar"|"axeGiant"|"hammerRune"|"bladeObsidian"|"knife"|"dagger2"|"axe"|"axeSmall"|"axeDouble"|"mace"|"hammerDouble"|"spear"|"claymore"|"scythe";
+export type HeroWeapon = "swordBakufu"|"swordLionsRoar"|"swordPrototype"|"default"|"sword2"|"swordBig"|"swordGolden"|"swordNidhogg"|"swordStar"|"axeGiant"|"hammerRune"|"bladeObsidian"|"knife"|"dagger2"|"axe"|"axeSmall"|"axeDouble"|"mace"|"hammerDouble"|"spear"|"claymore"|"scythe";
 
 
 export const WEAPON_POWER:Record<HeroWeapon,number>={
-  default:0,sword2:2,swordBig:4,swordGolden:6,swordNidhogg:10,swordStar:7,axeGiant:7,hammerRune:7,bladeObsidian:8,
+  swordBakufu:8,swordLionsRoar:9,swordPrototype:10,default:0,sword2:2,swordBig:4,swordGolden:6,swordNidhogg:10,swordStar:7,axeGiant:7,hammerRune:7,bladeObsidian:8,
   knife:1,dagger2:2,axe:3,axeSmall:2,axeDouble:5,
   mace:2,hammerDouble:5,spear:3,claymore:5,scythe:4
 };
 
 
 export const WEAPON_ASSET:Record<Exclude<HeroWeapon,"default">,string>={
-  sword2:'Sword_2.glb',swordBig:'Sword_Big.glb',swordGolden:'Sword_Golden.glb',
+  swordBakufu:'Sword_Bakufu.glb',swordLionsRoar:'Sword_LionsRoar.glb',swordPrototype:'Sword_PrototypeRancour.glb',sword2:'Sword_2.glb',swordBig:'Sword_Big.glb',swordGolden:'Sword_Golden.glb',
   swordNidhogg:'Sword_Golden.glb',swordStar:'Sword_Big.glb',axeGiant:'Axe_Double.glb',hammerRune:'Hammer_Double.glb',bladeObsidian:'Claymore.glb',
   knife:'Dagger.glb',dagger2:'Dagger_2.glb',axe:'Axe.glb',axeSmall:'Axe_Small.glb',axeDouble:'Axe_Double.glb',
   mace:'Hammer_Small.glb',hammerDouble:'Hammer_Double.glb',spear:'Spear.glb',claymore:'Claymore.glb',scythe:'Scythe.glb'
@@ -287,7 +287,7 @@ for(const [kind,amount,salt] of [['wood',25,1],['twigs',30,2],['herbs',30,3]] as
 export const GEAR_IDS:GearId[]=["armor","shield","helmet","boots"];
 
 
-export const SHIELD_ASSETS=['Shield_Round.glb','Shield_Round_2.glb','Shield_Heater.glb','Shield_Heater_2.glb','Shield_Celtic_Golden.glb'];
+export const SHIELD_ASSETS=['Shield_Round.glb','Shield_Stylized.glb','Shield_GilGalad.glb','Shield_Glass.glb','Shield_Round_2.glb','Shield_Heater.glb','Shield_Heater_2.glb','Shield_Celtic_Golden.glb'];
 
 
 export const shieldForgeKey=(asset:string)=>asset===SHIELD_ASSETS[0]?'shield':'shield:'+asset;

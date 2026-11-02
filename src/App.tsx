@@ -1,3 +1,4 @@
+import {grantMuspelheimForgeStock,MUSPELHEIM_SWORDS} from './muspelheimForgeStock';
 import {drainImmortalityDrops} from './shadowStrike';
 import {claimCraterSword} from './muspelheimCraterQuest';
 import {applyMineEvent,FIRE_GOLD,type MineEvent} from './muspelheimMineQuest';
@@ -189,6 +190,7 @@ const [roadT, setRoadT] = useState(0.06);
   const enterForge=(position?:{x:number;z:number},realm="midgard")=>{
     if(forgeTransition)return;
     setForgeRealm(realm);setPendingForgeWeapon(null);
+    if(realm==="muspelheim")setSave(grantMuspelheimForgeStock);
     if(position){if(realm==="muspelheim")muspelheimReturn.current={...position};else if(realm==="niflheim")niflheimReturn.current={...position};else midgardReturn.current={...position};}
     const goldenSwordReady=MIDGARD_GUARDIAN_ORDER.slice(0,-1).every(id=>save.done.includes("guardian:stage:"+id));
     if(realm==="midgard"&&goldenSwordReady&&!save.ownedWeapons.includes("swordGolden")){
@@ -210,6 +212,7 @@ const [roadT, setRoadT] = useState(0.06);
   const confirmHero = () => { if (!pick || !pickName) return; setSave(s => ({ ...s, hero: { id: pick, name: "Vicki" },heroSkin:"valkyrie" })); haptic("success"); say("Путь начинается, " + pickName + "!"); setScreen({ t: "tree" }); };
   const heroDef = save.hero ? HEROES.find(h => h.id === save.hero!.id)! : null;
   const forgeItems = [
+    ...MUSPELHEIM_SWORDS.map(([,name,id])=>({id,icon:"⚔️",name,kind:"weapon",owned:save.ownedWeapons.includes(id)})),
     {id:"default",icon:"⚔️",name:"Меч валькирии",kind:"weapon",owned:true},
     {id:"sword2",icon:"⚔️",name:"Меч II",kind:"weapon",owned:save.ownedWeapons.includes("sword2")},
     {id:"swordBig",icon:"⚔️",name:"Большой меч",kind:"weapon",owned:save.ownedWeapons.includes("swordBig")},
@@ -1260,7 +1263,7 @@ const [roadT, setRoadT] = useState(0.06);
             : "Дар кузнеца: первое улучшение любого доступного предмета бесплатно."}</div>
           <div className="forge-group-title">{forgeRealm==="muspelheim"?"Оружейная стена":forgeRealm==="niflheim"?"Оружие для Нифльхейма":"Стена оружия Вёлунда"}</div>
           {forgeRealm==="niflheim"&&<div className="forge-note">Оружие Мидгарда остаётся доступным. Новые клинки и секиры куются по рецептам хранителей. Для победы над Нидхёггом потребуется особое преобразование золотого меча.</div>}
-          <ForgeWeaponWall niflheim={forgeRealm!=="midgard"} owned={save.ownedWeapons} ownedShields={save.ownedShields} selected={pendingForgeWeapon||save.heroWeapon} selectedShield={equipped('shield')?save.shieldAsset:null} onChoose={chooseForgeWeapon}/>
+          <ForgeWeaponWall muspelheim={forgeRealm==="muspelheim"} niflheim={forgeRealm!=="midgard"} owned={save.ownedWeapons} ownedShields={save.ownedShields} selected={pendingForgeWeapon||save.heroWeapon} selectedShield={equipped('shield')?save.shieldAsset:null} onChoose={chooseForgeWeapon}/>
           {pendingForgeWeapon&&pendingForgeWeapon!==save.heroWeapon&&<div className="forge-note" style={{padding:12,border:'1px solid #c69c53',margin:'8px 0'}}>
             Выбрано для осмотра: <b>{FORGE_WEAPON_MODELS.find(item=>item[2]===pendingForgeWeapon)?.[1]}</b>. Текущее оружие остаётся в руке до подтверждения.
             <div style={{display:'flex',gap:8,marginTop:10}}>

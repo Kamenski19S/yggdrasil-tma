@@ -23,7 +23,8 @@ export function createMuspelheimHeroEquipment(model:THREE.Object3D,options:Equip
     if(spec.shield&&spec.asset==='Shield_Round.glb')item.scale.z=.22;
     item.updateWorldMatrix(true,true);const box=new THREE.Box3().setFromObject(item),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
     const span=spec.shield?Math.max(size.x,size.y,size.z):size.y;if(span<.001)throw Error('Empty equipment model: '+spec.asset);
-    item.position.set(-center.x,spec.shield?-center.y:-box.min.y,-center.z);
+    const fittedSword=['Sword_Bakufu.glb','Sword_LionsRoar.glb','Sword_PrototypeRancour.glb'].includes(spec.asset);
+    if(!fittedSword)item.position.set(-center.x,spec.shield?-center.y:-box.min.y,-center.z);
     const mount=new THREE.Group();mount.name=spec.shield?'Vicki equipped shield':'Vicki equipped '+state.weapon;mount.scale.setScalar((spec.shield?.38:state.weapon==='spear'?.82:.57)/span);mount.position.set(0,spec.shield?.075:-.065,spec.shield?-.016:.015);
     if(spec.shield)mount.rotation.y=Math.PI;else mount.rotation.x=-.2;mount.add(item);next.push(mount);
    }}catch(error){items.forEach(options.dispose);throw error;}
