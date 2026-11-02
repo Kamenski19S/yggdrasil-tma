@@ -76,6 +76,7 @@ export function createSurtActor(model:THREE.Object3D,sword:THREE.Object3D){
   return {impact,started};
  };
  return {root,hand,palm,swordGrip,swordTip,bladeLength,sparks,impactPoint,update,get phase(){return phase;},get impactCount(){return impactCount;},
+  combatPose(stage:string,time:number,impact=false){phase='standing';away=0;pose(1,stage==='warn'?smooth(time/2):stage==='impact'?1-smooth(time/.5):0,time);if(impact)emitImpact();},
   greetingView(hero:THREE.Vector3){if(phase==='seated'||phase==='standing'||hero.distanceTo(root.position)>60)return null;const position=vec(THREE.MathUtils.clamp(hero.x+4,root.position.x-14,root.position.x+14),SUMMIT_FLOOR_Y+18,Math.min(hero.z+18,-387));const target=vec(root.position.x,SUMMIT_FLOOR_Y+14,root.position.z+9);return {position,target,yaw:Math.atan2(position.x-target.x,position.z-target.z)};},
   previewMotion(motion:Motion,time=0){pose(motion==='seated'?0:motion==='rise'?smooth(time/2.8):1,motion==='attack'?(time%2<1?smooth(time%2):1-smooth(time%2-1)):0,time,motion==='walk');},
   blocks(x:number,z:number,footY:number,padding=2){return footY<SUMMIT_FLOOR_Y+SURT_HEIGHT&&footY+14>SUMMIT_FLOOR_Y&&((x-root.position.x)/(8+padding))**2+((z-root.position.z-7)/(6+padding))**2<1;},

@@ -1,0 +1,8 @@
+import * as THREE from 'three';
+import type {createSurtCombat} from './surtCombat';
+export function createSurtCombatVfx(){
+ const root=new THREE.Group(),rings=Array.from({length:3},()=>{const m=new THREE.Mesh(new THREE.RingGeometry(.86,1,48),new THREE.MeshBasicMaterial({color:'#ff5428',transparent:true,opacity:.8,side:THREE.DoubleSide,depthWrite:false}));m.rotation.x=-Math.PI/2;root.add(m);return m;});
+ const aura=new THREE.Mesh(new THREE.CylinderGeometry(10,15,27,32,1,true),new THREE.MeshBasicMaterial({color:'#ff6d20',transparent:true,opacity:.16,side:THREE.DoubleSide,depthWrite:false,wireframe:true}));root.add(aura);
+ const wave=new THREE.Mesh(new THREE.TorusGeometry(1,.07,6,64),new THREE.MeshBasicMaterial({color:'#ffb641',transparent:true,opacity:.85,depthWrite:false}));wave.rotation.x=-Math.PI/2;root.add(wave);
+ return {root,update(c:ReturnType<typeof createSurtCombat>,time:number){root.visible=c.active;if(!c.active)return;const o=c.origin;aura.position.set(o.x,o.y+14,o.z);const a=aura.material as THREE.MeshBasicMaterial;a.color.set(c.phase==='opening'?'#9cefff':'#ff6d20');a.opacity=(.08+c.flame/700)*(1+.2*Math.sin(time*9));wave.visible=c.attack==='wave'&&(c.phase==='warn'||c.phase==='impact');wave.position.set(o.x,o.y+1,o.z);wave.scale.setScalar(c.phase==='warn'?12+c.elapsed*17.7:65);rings.forEach((m,i)=>{m.visible=c.attack!=='wave'&&i<c.targets.length&&(c.phase==='warn'||c.phase==='impact');const t=c.targets[i];if(t){m.position.set(t.x,t.y+.2,t.z);m.scale.setScalar(c.attack==='blade'?7:5);(m.material as THREE.MeshBasicMaterial).opacity=c.phase==='impact'?1:.5+.3*Math.sin(time*12);}});},dispose(){root.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();(o.material as THREE.Material).dispose();}});}};
+}
