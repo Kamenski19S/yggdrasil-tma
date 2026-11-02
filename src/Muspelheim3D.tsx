@@ -1,3 +1,4 @@
+import {createMuspelheimArmorAppearance,type ArmorAppearance} from './muspelheimArmor';
 import type {MuspelheimLootKind} from './muspelheimCombatLoot';
 import {selectVisibleEnemy} from './muspelheimEnemyHud';
 import {MUSPELHEIM_EQUIPMENT_CREDITS} from './muspelheimForgeStock';
@@ -78,7 +79,7 @@ import {ROCK_ASSETS,ROCK_CREDITS,rockWallLayout,rockWallBlocks,moveAlongRockWall
 
 const GATEWAY_WALL_ANCHOR={x:GATEWAY_POSITION.x,z:GATEWAY_POSITION.z-20*GATEWAY_SCALE,halfWidth:41*GATEWAY_SCALE};
 
-export type Props={onCombatReward:(kind?:MuspelheimLootKind)=>string;keepGpu?:boolean;suspended?:boolean;respawnRequest?:number;onEnterLord?:(position:{x:number;z:number;y:number})=>void;onEnterVault?:()=>void;inventory:Omit<React.ComponentProps<typeof InventorySection>,'kind'>;questDone:string[];onClaimCraterSword:()=>void;onOpenMill:(position:{x:number;z:number;y?:number})=>void;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;combatStats:CombatStats;fieldHp:number|null;onFieldHpChange:(hp:number)=>void;onDrainDrops:(amount:number)=>void;onEnterMine:()=>void;onForge:(position:{x:number;z:number})=>void;startPosition?:{x:number;z:number;y?:number};minePaid:boolean;fireGold:number;onPayKeeper:()=>void;gateOpen:boolean;canOpenGate:boolean;assembled:boolean;briefed:boolean;onInstallCrystal:()=>void;onTrial:()=>void};
+export type Props={armorAppearance:ArmorAppearance;onCombatReward:(kind?:MuspelheimLootKind)=>string;keepGpu?:boolean;suspended?:boolean;respawnRequest?:number;onEnterLord?:(position:{x:number;z:number;y:number})=>void;onEnterVault?:()=>void;inventory:Omit<React.ComponentProps<typeof InventorySection>,'kind'>;questDone:string[];onClaimCraterSword:()=>void;onOpenMill:(position:{x:number;z:number;y?:number})=>void;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;combatStats:CombatStats;fieldHp:number|null;onFieldHpChange:(hp:number)=>void;onDrainDrops:(amount:number)=>void;onEnterMine:()=>void;onForge:(position:{x:number;z:number})=>void;startPosition?:{x:number;z:number;y?:number};minePaid:boolean;fireGold:number;onPayKeeper:()=>void;gateOpen:boolean;canOpenGate:boolean;assembled:boolean;briefed:boolean;onInstallCrystal:()=>void;onTrial:()=>void};
 function dispose(root:THREE.Object3D){
  const textures=new Set<THREE.Texture>(),materials=new Set<THREE.Material>(),geometries=new Set<THREE.BufferGeometry>();
  root.traverse(o=>{if(o instanceof THREE.Mesh||o instanceof THREE.Points||o instanceof THREE.Sprite){if(o instanceof THREE.Mesh||o instanceof THREE.Points)geometries.add(o.geometry);if(o instanceof THREE.InstancedMesh)o.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){materials.add(m);Object.values(m).forEach(v=>{if(v instanceof THREE.Texture)textures.add(v);});}}});
@@ -103,7 +104,9 @@ export default function Muspelheim3D(props:Props){
  const [nearVault,setNearVault]=useState(false);const openVault=useRef<()=>void>(()=>{});
  const [nearForge,setNearForge]=useState(false);const openForge=useRef<()=>void>(()=>{});
  const refreshEquipment=useRef<()=>void>(()=>{});
- useEffect(()=>{refreshEquipment.current();},[props.weapon,props.shieldAsset,props.shieldEquipped]);
+ const armorLook=useRef<ReturnType<typeof createMuspelheimArmorAppearance>>();
+ useEffect(()=>{armorLook.current?.update(props.armorAppearance);},[props.armorAppearance.armor,props.armorAppearance.helmet,props.armorAppearance.boots]);
+ useEffect(()=>{refreshEquipment.current();},[props.weapon,props.shieldAsset,props.shieldEquipped,props.armorAppearance.shield]);
  const respawn=useRef<()=>void>(()=>{}),openWell=useRef<()=>void>(()=>{});
  const [iceSafe,setIceSafe]=useState(false),[wellSafe,setWellSafe]=useState(false),[nearStranger,setNearStranger]=useState(false),[wellDialog,setWellDialog]=useState(false);
  useEffect(()=>{if(props.suspended)return;const value=props.fieldHp===0?0:(recovering.current||groundInjury.current)?Math.max(1,Math.min(props.fieldHp??1,props.combatStats.maxHp)):playtestHealth(props.fieldHp??props.combatStats.maxHp,props.combatStats.maxHp);if(!recovering.current&&!groundInjury.current&&props.fieldHp!==0&&MAGIC_PLAYTEST_INVULNERABLE&&props.fieldHp!==value)props.onFieldHpChange(value);life.current=value;setHp(value);setDefeated(value===0);},[props.fieldHp,props.combatStats.maxHp,props.suspended]);
@@ -247,6 +250,7 @@ export default function Muspelheim3D(props:Props){
    heroActions=createMuspelheimHeroActions(g.scene,mixer,g.animations);
    attackAction.current=()=>{if(loadedWorld()&&!paused.current&&!falling&&!transitioningForge&&!transitioningMine){clear();if(!ravineGoblins?.immobilized&&heroActions?.attack()){if(ymirRunes?.canStrike(hero.position,hero.rotation.y))return;const enemy=enemies().filter(e=>e.combatEnabled&&e.combat.hp>0&&hero.position.distanceTo(e.root.position)<15).sort((a,b)=>hero.position.distanceToSquared(a.root.position)-hero.position.distanceToSquared(b.root.position))[0];if(enemy)hero.rotation.y=Math.atan2(enemy.root.position.x-hero.position.x,enemy.root.position.z-hero.position.z);}}};
    shieldAction.current=()=>{if(loadedWorld()&&!paused.current&&!falling&&live.current.shieldEquipped){clear();if(!ravineGoblins?.immobilized)heroActions?.shield();}};
+   armorLook.current=createMuspelheimArmorAppearance(g.scene);armorLook.current.update(live.current.armorAppearance);
    equipment=createMuspelheimHeroEquipment(g.scene,{load:async asset=>(await loader.parseAsync(await cachedGlbBuffer(`${BASE}img/models/${asset}`),`${BASE}img/models/`)).scene,weaponAsset:weapon=>weapon==='default'?'Sword.glb':WEAPON_ASSET[weapon],prepare:(item,asset,weapon,isShield)=>{textureSteelOnWeapon(item,asset);if(!isShield)styleNiflheimWeapon(item,weapon);},dispose});
    refreshEquipment.current=()=>{heroReady=false;equipment!.update(live.current).then(applied=>{if(alive&&applied){heroReady=true;ready();}}).catch(()=>{if(alive){loadError=true;setStatus('Оружие Vicki не загрузилось. Повтори загрузку.');setFailed(true);}});};
    refreshEquipment.current();
@@ -400,7 +404,7 @@ if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.c
      if(!life.current){clear();setDefeated(true);setStatus('Vicki потеряла силы в бою.');}
     }
    }
-   const goblinEvent=ravineGoblins?.update(combatActive?dt:0,hero.position,!iceSanctuaryContains(p.x,p.z)&&!(nornsWell?.shelters(p.x,p.z,hero.position.y)??false));
+   const goblinEvent=ravineGoblins?.update(combatActive?dt:0,hero.position,!iceSanctuaryContains(p.x,p.z)&&!(nornsWell?.shelters(p.x,p.z,hero.position.y)??false),(raw,element)=>incomingCombatDamage(raw,live.current.combatStats,false,element));
    if(goblinEvent?.blocked)setStatus('Магический барьер поглотил заклинание гнома.');
    if(goblinEvent?.drops)live.current.onDrainDrops(goblinEvent.drops);
    if(goblinEvent?.message)setStatus(goblinEvent.message);
@@ -470,7 +474,7 @@ if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.c
    if(hitFlash>0&&fireActive){hitFlash-=dt;if(hitFlash<=0)setFireHit(false);}
    if(fireRain&&ashVolcano)fireRain.update(fireActive?dt:0,hero.position,ashVolcano.vent,camera,()=>{
     if(life.current<=0||iceSanctuaryContains(hero.position.x,hero.position.z)||isSurtTerritory(hero.position.x,hero.position.z)||nornsWell?.shelters(hero.position.x,hero.position.z,hero.position.y))return;
-    const damage=Math.min(life.current,fireStrikeDamage(live.current.combatStats.maxHp));life.current=combatHealth(life.current-damage,live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);
+    const damage=Math.min(life.current,incomingCombatDamage(fireStrikeDamage(live.current.combatStats.maxHp),live.current.combatStats,false,'fire'));life.current=combatHealth(life.current-damage,live.current.combatStats.maxHp);setHp(life.current);live.current.onFieldHpChange(life.current);hitFlash=.4;setFireHit(true);
     setStatus(`Огненный удар пробил броню: −${damage} здоровья. Ищи укрытие!`);
     if(life.current===0){clear();setDefeated(true);setStatus('Огненный дождь лишил Vicki сил.');}
    });

@@ -1,4 +1,4 @@
-import {ELEMENTS,RAVINE_ELEMENTS,createAilments,applyElement,stepAilments,magicMoveScale,disorientedMove} from './elementalMagic';
+import {type Element,ELEMENTS,RAVINE_ELEMENTS,createAilments,applyElement,stepAilments,magicMoveScale,disorientedMove} from './elementalMagic';
 import {createIceStrikeVfx} from './iceStrikeVfx';
 import {createLightningStrikeVfx} from './lightningStrikeVfx';
 import {createFireStrikeVfx,FIRE_STRIKE} from './fireStrikeVfx';
@@ -50,7 +50,7 @@ export function createRavineGoblins(source:THREE.Object3D,clips:THREE.AnimationC
   cast(hero:Point,damage:number){if(ailments.freeze>0||ailments.fall>0)return 'Vicki пока не может колдовать.';if(spellCooldown>0)return 'Заклинание восстанавливается.';const a=target(hero);if(!a)return 'В пределах магии нет видимой цели.';spellCooldown=RAVINE_SPELL.cooldown;const reward=hurt(a,Math.max(1,damage));return a.magic.life.hp?`Руническая магия: −${damage}. Гном: ${a.magic.life.hp}/420.`:'Вулканический гном повержен магией. '+reward;},
   protect(){if(ailments.freeze>0||ailments.fall>0)return 'Vicki пока не может поднять барьер.';if(wardCooldown>0)return 'Магический барьер восстанавливается.';wardLeft=RAVINE_SPELL.wardDuration;wardCooldown=RAVINE_SPELL.wardCooldown;return 'Магический барьер: защита от заклинаний на 2,5 секунды.';},
   reset(){wardLeft=wardCooldown=spellCooldown=0;actors.forEach(a=>{a.magic.life.reset();a.magic.reset();});clearEffects();},
-  update(dt:number,hero:Point,available:boolean){if(dt<=0)return {hits:0,blocked:0,damage:0,drops:0,message:''};Object.assign(lastHero,hero);if(!available)clearEffects();time+=dt;spellCooldown=Math.max(0,spellCooldown-dt);wardCooldown=Math.max(0,wardCooldown-dt);wardLeft=Math.max(0,wardLeft-dt);ward.visible=wardLeft>0;ward.position.set(hero.x,hero.y+7,hero.z);let hits=0,blocked=0,damage=available?stepAilments(ailments,dt):0,drops=available?stepShadowDrain(drain,dt):0,message='';
+  update(dt:number,hero:Point,available:boolean,reduceDamage:(raw:number,element:Element)=>number=raw=>raw){if(dt<=0)return {hits:0,blocked:0,damage:0,drops:0,message:''};Object.assign(lastHero,hero);if(!available)clearEffects();time+=dt;spellCooldown=Math.max(0,spellCooldown-dt);wardCooldown=Math.max(0,wardCooldown-dt);wardLeft=Math.max(0,wardLeft-dt);ward.visible=wardLeft>0;ward.position.set(hero.x,hero.y+7,hero.z);let hits=0,blocked=0,damage=available?reduceDamage(stepAilments(ailments,dt),'fire'):0,drops=available?stepShadowDrain(drain,dt):0,message='';
    actors.forEach((a,i)=>{
     const alive=a.magic.life.hp>0,near=Math.hypot(a.home.x-hero.x,a.home.z-hero.z)<34&&Math.abs(a.home.y-hero.y)<6;
     let moving=false;
@@ -61,7 +61,7 @@ export function createRavineGoblins(source:THREE.Object3D,clips:THREE.AnimationC
     }
     if(alive&&near)a.actor.root.rotation.y=Math.atan2(hero.x-a.home.x,hero.z-a.home.z);
     const origin={x:a.home.x,y:a.home.y+5,z:a.home.z},event=a.magic.step(dt,hero,available,origin,(near||a.magic.projectiles.length>0)&&contact(a.home,hero),(x,z)=>floor(x,z));
-    if(event.impact){const shielded=wardLeft>0;if(a.element==='ice')ice.impact({x:hero.x,y:hero.y+7,z:hero.z},shielded);else if(a.element==='lightning')lightning.strike(origin,hero);else if(a.element==='fire')fire.impact(hero,shielded);else shadow.impact();if(shielded)blocked++;else {hits++;if(a.element==='shadow'){applyShadowDrain(drain,false);message='Тёмный туман отнимает по 1 капле бессмертия в секунду.';}else {damage+=ELEMENTS[a.element].damage;message=applyElement(ailments,a.element,false);}}}
+    if(event.impact){const shielded=wardLeft>0;if(a.element==='ice')ice.impact({x:hero.x,y:hero.y+7,z:hero.z},shielded);else if(a.element==='lightning')lightning.strike(origin,hero);else if(a.element==='fire')fire.impact(hero,shielded);else shadow.impact();if(shielded)blocked++;else {hits++;if(a.element==='shadow'){applyShadowDrain(drain,false);message='Тёмный туман отнимает по 1 капле бессмертия в секунду.';}else {damage+=reduceDamage(ELEMENTS[a.element].damage,a.element);message=applyElement(ailments,a.element,false);}}}
     a.actor.root.visible=!a.magic.life.hidden;a.actor.root.rotation.z=alive?0:-Math.PI/2;
     if(a.actor.root.position.distanceTo(new THREE.Vector3(hero.x,hero.y,hero.z))<110)a.actor.update(time,moving,false,a.magic.stage==='charge'?'work':'run');
     if(alive&&a.magic.stage==='charge'){if(a.element==='ice')ice.charge(origin,hero);else if(a.element==='fire')fire.charge(origin);else if(a.element==='shadow')shadow.charge(origin);}

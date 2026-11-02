@@ -1,3 +1,4 @@
+import {createMuspelheimArmorAppearance,type ArmorAppearance} from './muspelheimArmor';
 import {createCeilingLightning} from './muspelheimInteriorHazards';
 import {useTransientStatus} from './useTransientStatus';
 import {createPlayerFireball} from './playerFireball';
@@ -13,12 +14,14 @@ import {screenMoveToWorld,updateFollowCamera,type FollowCameraState} from './mus
 import {createMuspelheimHeroActions} from './muspelheimHeroActions';
 import {createMuspelheimHeroEquipment} from './muspelheimHeroEquipment';
 import './muspelheimUI.css';
-type Props={hud:InteriorHUDData;onBack:()=>void;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;fieldHp:number|null;maxHp:number;onFieldHpChange:(hp:number)=>void;onRespawn:()=>void};
+type Props={armorAppearance:ArmorAppearance;hud:InteriorHUDData;onBack:()=>void;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;fieldHp:number|null;maxHp:number;onFieldHpChange:(hp:number)=>void;onRespawn:()=>void};
 function dispose(root:THREE.Object3D){const gs=new Set<THREE.BufferGeometry>(),ms=new Set<THREE.Material>(),ts=new Set<THREE.Texture>();root.traverse(o=>{if(o instanceof THREE.InstancedMesh)o.dispose();if(o instanceof THREE.Mesh||o instanceof THREE.Sprite){if(o instanceof THREE.Mesh)gs.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material]){ms.add(m);for(const v of Object.values(m))if(v instanceof THREE.Texture)ts.add(v);}}});gs.forEach(g=>g.dispose());ms.forEach(m=>m.dispose());ts.forEach(t=>t.dispose());}
 export default function ThreadVault3D(props:Props){
  const host=useRef<HTMLDivElement>(null),input=useRef({x:0,z:0}),pointer=useRef<number|null>(null),knob=useRef<HTMLSpanElement>(null),run=useRef(false),view=useRef(0),basis=useRef(0),live=useRef(props);live.current=props;
  const [dialog,setDialog]=useState(false),[nearKeeper,setNearKeeper]=useState(false),[failed,setFailed]=useState(false),[retry,setRetry]=useState(0),[ready,setReady]=useState(false),[status,setStatus]=useTransientStatus('Открывается Хранилище трёх нитей…');
  const [hp,setHp]=useState(props.fieldHp??props.maxHp),[hit,setHit]=useState(false),[nearDoor,setNearDoor]=useState(false);const doorAction=useRef(()=>{}),barrier=useRef(0),health=useRef(props.fieldHp??props.maxHp);
+ const armorLook=useRef<ReturnType<typeof createMuspelheimArmorAppearance>>();
+ useEffect(()=>{armorLook.current?.update(props.armorAppearance);},[props.armorAppearance.armor,props.armorAppearance.helmet,props.armorAppearance.boots]);
  useEffect(()=>{health.current=props.fieldHp??props.maxHp;setHp(health.current);},[props.fieldHp,props.maxHp]);
  const [panelOpen,setPanelOpen]=useState(false);const combat=useRef({attack:()=>{},shield:()=>{},magic:()=>{}});const paused=useRef(false);paused.current=dialog||panelOpen;const clearRef=useRef(()=>{});
  useEffect(()=>{
@@ -48,6 +51,7 @@ export default function ThreadVault3D(props:Props){
    const [vicki,well,keeper]=assets;hall=createThreadHall(well.scene,keeper.scene,`${BASE}img/`);scene.add(hall.root);
    const bounds=new THREE.Box3().setFromObject(vicki.scene),scale=13.94/(bounds.max.y-bounds.min.y);vicki.scene.scale.setScalar(scale);vicki.scene.position.y=-bounds.min.y*scale;hero.add(vicki.scene);mixer=new THREE.AnimationMixer(vicki.scene);actions=createMuspelheimHeroActions(vicki.scene,mixer,vicki.animations);
    combat.current={attack:()=>{if(!paused.current)actions?.attack();},shield:()=>{if(!paused.current&&live.current.shieldEquipped)actions?.shield();},magic:()=>{if(!paused.current&&loaded)setStatus(playerFire.cast(hero,0)?'Алый огненный сгусток!':'Магия восстанавливается.');}};
+   armorLook.current=createMuspelheimArmorAppearance(vicki.scene);armorLook.current.update(live.current.armorAppearance);
    equipment=createMuspelheimHeroEquipment(vicki.scene,{load:async asset=>(await load(asset)).scene,weaponAsset:weapon=>weapon==='default'?'Sword.glb':WEAPON_ASSET[weapon],prepare:(item,asset,weapon,isShield)=>{textureSteelOnWeapon(item,asset);if(!isShield)styleNiflheimWeapon(item,weapon);},dispose});
    await equipment.update(live.current);if(!alive)return;loaded=true;setReady(true);setNearDoor(atDoor());setStatus('Хранилище трёх нитей.',2800);saveThreadVaultVisit(pos);
   };

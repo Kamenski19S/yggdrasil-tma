@@ -1,6 +1,7 @@
+import {styleTemperedShield,type ArmorAppearance} from './muspelheimArmor';
 import * as THREE from 'three';
 import type {HeroWeapon} from './core';
-export type HeroLoadout={weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean};
+export type HeroLoadout={weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;armorAppearance?:ArmorAppearance};
 type EquipmentOptions={load:(asset:string)=>Promise<THREE.Object3D>;weaponAsset:(weapon:HeroWeapon)=>string;prepare:(item:THREE.Object3D,asset:string,weapon:HeroWeapon,isShield:boolean)=>void;dispose:(item:THREE.Object3D)=>void};
 /** Swap complete loadouts atomically; late responses cannot restore an older selection. */
 export function createMuspelheimHeroEquipment(model:THREE.Object3D,options:EquipmentOptions){
@@ -19,7 +20,7 @@ export function createMuspelheimHeroEquipment(model:THREE.Object3D,options:Equip
    const failure=loaded.find(result=>result.status==='rejected');if(failure){items.forEach(options.dispose);throw failure.reason;}
    const next:THREE.Group[]=[];
    try{for(let i=0;i<specs.length;i++){
-    const spec=specs[i],item=items[i];options.prepare(item,spec.asset,state.weapon,spec.shield);
+    const spec=specs[i],item=items[i];options.prepare(item,spec.asset,state.weapon,spec.shield);if(spec.shield)styleTemperedShield(item,state.armorAppearance?.shield||0);
     if(spec.shield&&spec.asset==='Shield_Round.glb')item.scale.z=.22;
     item.updateWorldMatrix(true,true);const box=new THREE.Box3().setFromObject(item),size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
     const span=spec.shield?Math.max(size.x,size.y,size.z):size.y;if(span<.001)throw Error('Empty equipment model: '+spec.asset);

@@ -1,3 +1,5 @@
+import {gearProtection,forgeTemperingLimit} from './gearProtection';
+import {armorTemperFlag,muspelheimArmorAppearance} from './muspelheimArmor';
 import {grantMuspelheimForgeStock,MUSPELHEIM_SWORDS,canForgeBakufu,forgeBakufu} from './muspelheimForgeStock';
 import {drainImmortalityDrops} from './shadowStrike';
 import {claimCraterSword} from './muspelheimCraterQuest';
@@ -240,7 +242,7 @@ const [roadT, setRoadT] = useState(0.06);
   const forgeLevel=(id:string)=>Math.max(0,Number(save.forgeLevels[id]||0));
   const equipped=(id:GearId)=>save.equippedGear.includes(id);
   const gearLevel=(id:GearId)=>equipped(id)?forgeLevel(id==='shield'?shieldForgeKey(save.shieldAsset):id):0;
-  const gearHp=()=>gearLevel('armor')*8+gearLevel('helmet')*3+(equipped('armor')?8:0)+(equipped('helmet')?3:0);
+  const gearHp=()=>gearProtection(save,screen.t==='forge'?forgeRealm:'id'in screen?screen.id:'midgard').hp;
   const gearDefense=()=>Math.floor((gearLevel('armor')+gearLevel('helmet'))/2)+(equipped('armor')?1:0);
   const activeRuneDef=()=>RUNE_CATALOG.find(r=>r.id===save.equippedRune);
   const runeLevel=(id:string)=>Math.min(3,1+Math.max(0,Number(save.forgeLevels['rune:'+id])||0));
@@ -265,17 +267,14 @@ const [roadT, setRoadT] = useState(0.06);
     setSave(s=>{
       const already=s.equippedGear.includes(id);
       const nextGear=already?s.equippedGear.filter(gear=>gear!==id):[...s.equippedGear,id];
-      const hpFrom=(list:GearId[])=>
-        (list.includes('armor')?(Number(s.forgeLevels.armor)||0)*8+8:0)+
-        (list.includes('helmet')?(Number(s.forgeLevels.helmet)||0)*3+3:0);
-      const factor=livingWaterActive(s.done)?2:1;
-      const oldBonus=hpFrom(s.equippedGear)*factor,newBonus=hpFrom(nextGear)*factor;
+      const realm=screen.t==='forge'?forgeRealm:'id'in screen?screen.id:'midgard';
+      const before=equipmentCombatStats(s,heroDef||{hp:100,str:10,en:10},realm),after=equipmentCombatStats({...s,equippedGear:nextGear},heroDef||{hp:100,str:10,en:10},realm);
       return {...s,equippedGear:nextGear,
-        fieldHp:s.fieldHp===null?null:Math.min((heroDef?.hp||100)*factor+newBonus,Math.max(1,s.fieldHp+newBonus-oldBonus))};
+        fieldHp:s.fieldHp===null?null:Math.min(after.maxHp,Math.max(1,s.fieldHp+after.maxHp-before.maxHp))};
     });
     haptic();say((isOn?'Снято: ':'Надето: ')+(forgeItems.find(item=>item.id===id)?.name||id));
   };
-  const forgeLimit=(weaponOrShield:boolean)=>forgeRealm!=="midgard"?(weaponOrShield?20:15):(weaponOrShield?10:5);
+  const forgeLimit=(weaponOrShield:boolean)=>forgeTemperingLimit(forgeRealm,weaponOrShield);
   const forgeCost=(id:string)=>save.forgeFreeUsed?2+forgeLevel(id==='shield'?shieldForgeKey(save.shieldAsset):id)*2:0;
   const improveForgeItem=(item:typeof forgeItems[number])=>{
     if(!item.owned){say("Этот предмет ещё нужно получить в награду за испытание.");return;}
@@ -288,13 +287,11 @@ const [roadT, setRoadT] = useState(0.06);
     if(save.immortalityDrops<cost){say("Недостаточно Капель бессмертия. Нужно: "+cost);return;}
     setSave(s=>{
       if(s.stock.ashWood<ashCost||s.immortalityDrops<cost)return s;
-      const factor=livingWaterActive(s.done)?2:1;
-      const hpBonus=(key==='armor'&&s.equippedGear.includes('armor')?8:key==='helmet'&&s.equippedGear.includes('helmet')?3:0)*factor;
-      const oldHpBonus=(s.equippedGear.includes('armor')?(Number(s.forgeLevels.armor)||0)*8+8:0)+
-        (s.equippedGear.includes('helmet')?(Number(s.forgeLevels.helmet)||0)*3+3:0);
-      return {...s,stock:{...s.stock,ashWood:s.stock.ashWood-ashCost},immortalityDrops:s.immortalityDrops-cost,
-        forgeFreeUsed:true,forgeLevels:{...s.forgeLevels,[key]:(s.forgeLevels[key]||0)+1},
-        fieldHp:s.fieldHp===null?null:Math.min(((heroDef?.hp||100)+oldHpBonus)*factor+hpBonus,s.fieldHp+hpBonus)};
+      const next={...s,stock:{...s.stock,ashWood:s.stock.ashWood-ashCost},immortalityDrops:s.immortalityDrops-cost,
+        done:forgeRealm==='muspelheim'?[...new Set([...s.done,armorTemperFlag(key)])]:s.done,
+        forgeFreeUsed:true,forgeLevels:{...s.forgeLevels,[key]:(s.forgeLevels[key]||0)+1}};
+      const hero=heroDef||{hp:100,str:10,en:10},before=equipmentCombatStats(s,hero,forgeRealm),after=equipmentCombatStats(next,hero,forgeRealm);
+      return {...next,fieldHp:s.fieldHp===null?null:Math.min(after.maxHp,s.fieldHp+Math.max(0,after.maxHp-before.maxHp))};
     });
     haptic("success");
     say((cost===0?"Первая ковка бесплатна. ":"")+item.name+": закалка +1");
@@ -657,7 +654,7 @@ const [roadT, setRoadT] = useState(0.06);
       {(screen.t === "realm"||screen.t === "forge"&&forgeRealm==="muspelheim") && (() => {
   const realm = REALMS.find(r => r.id === (screen.t==='realm'?screen.id:'muspelheim'))!;
 
-  if(realm.id==='muspelheim'){const crystal=waterCrystalProgress(save.done);return <div style={{display:screen.t==='forge'?'none':'flex',flex:1,minHeight:0}}><React.Suspense fallback={<div className="content">Дорога в Муспельхейм открывается…</div>}><Muspelheim3D suspended={screen.t==='forge'} keepGpu={screen.t==='forge'} onCombatReward={kind=>{const loot=rollMuspelheimCombatLoot(Math.random,kind);setSave(s=>applyBanditLoot(s,loot));haptic('success');return `+${loot.drops} капель бессмертия · ${loot.runes.map(lootDisplayName).join(', ')} · ${loot.potions.map(lootDisplayName).join(', ')}`;}} inventory={{potions:save.potions,runes:save.runes,equippedRune:save.equippedRune,lootCounts:save.lootCounts,runeLevels:save.forgeLevels,hp:Math.min(currentCombat().maxHp,save.fieldHp??currentCombat().maxHp),maxHp:currentCombat().maxHp,frostGuard:save.frostGuard,potionBoosts:save.potionBoosts,onUsePotion:useInventoryPotion,onEquipRune:equipInventoryRune,onFuseRune:fuseInventoryRune}} onOpenMill={position=>{muspelheimReturn.current={...position};setMillRealm("muspelheim");go({t:"mill"});}} startPosition={muspelheimReturn.current} onForge={position=>enterForge(position,"muspelheim")} questDone={save.done} onClaimCraterSword={()=>{setSave(s=>claimCraterSword(s));haptic('success');say('Меч кузнеца жерла получен.');}} fireGold={save.lootCounts[FIRE_GOLD]||0} onMineEvent={(event:MineEvent)=>{const loot=rollMuspelheimCombatLoot();setSave(s=>applyMineEvent(s,event,loot));}} onDrainDrops={amount=>setSave(s=>({...s,immortalityDrops:drainImmortalityDrops(s.immortalityDrops,amount)}))} combatStats={currentCombat()} fieldHp={save.fieldHp} onFieldHpChange={hp=>setSave(s=>({...s,fieldHp:hp}))} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")} gateOpen={crystal.gateOpen} canOpenGate={crystal.canOpenGate} assembled={crystal.assembled} briefed={crystal.strangerBriefed} onInstallCrystal={()=>{setSave(s=>applyCrystalEvent(s,'openGate'));haptic('success');say('Кристалл установлен. Первые врата Муспельхейма открыты!');}} onTrial={()=>openGate(realm)}/></React.Suspense></div>;}
+  if(realm.id==='muspelheim'){const crystal=waterCrystalProgress(save.done);return <div style={{display:screen.t==='forge'?'none':'flex',flex:1,minHeight:0}}><React.Suspense fallback={<div className="content">Дорога в Муспельхейм открывается…</div>}><Muspelheim3D armorAppearance={muspelheimArmorAppearance(save)} suspended={screen.t==='forge'} keepGpu={screen.t==='forge'} onCombatReward={kind=>{const loot=rollMuspelheimCombatLoot(Math.random,kind);setSave(s=>applyBanditLoot(s,loot));haptic('success');return `+${loot.drops} капель бессмертия · ${loot.runes.map(lootDisplayName).join(', ')} · ${loot.potions.map(lootDisplayName).join(', ')}`;}} inventory={{potions:save.potions,runes:save.runes,equippedRune:save.equippedRune,lootCounts:save.lootCounts,runeLevels:save.forgeLevels,hp:Math.min(currentCombat().maxHp,save.fieldHp??currentCombat().maxHp),maxHp:currentCombat().maxHp,frostGuard:save.frostGuard,potionBoosts:save.potionBoosts,onUsePotion:useInventoryPotion,onEquipRune:equipInventoryRune,onFuseRune:fuseInventoryRune}} onOpenMill={position=>{muspelheimReturn.current={...position};setMillRealm("muspelheim");go({t:"mill"});}} startPosition={muspelheimReturn.current} onForge={position=>enterForge(position,"muspelheim")} questDone={save.done} onClaimCraterSword={()=>{setSave(s=>claimCraterSword(s));haptic('success');say('Меч кузнеца жерла получен.');}} fireGold={save.lootCounts[FIRE_GOLD]||0} onMineEvent={(event:MineEvent)=>{const loot=rollMuspelheimCombatLoot();setSave(s=>applyMineEvent(s,event,loot));}} onDrainDrops={amount=>setSave(s=>({...s,immortalityDrops:drainImmortalityDrops(s.immortalityDrops,amount)}))} combatStats={currentCombat()} fieldHp={save.fieldHp} onFieldHpChange={hp=>setSave(s=>({...s,fieldHp:hp}))} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")} gateOpen={crystal.gateOpen} canOpenGate={crystal.canOpenGate} assembled={crystal.assembled} briefed={crystal.strangerBriefed} onInstallCrystal={()=>{setSave(s=>applyCrystalEvent(s,'openGate'));haptic('success');say('Кристалл установлен. Первые врата Муспельхейма открыты!');}} onTrial={()=>openGate(realm)}/></React.Suspense></div>;}
 
   if(realm.id==='niflheim')return <React.Suspense fallback={<div className="content" style={{background:'#b8cedd',color:'#243d4d',padding:24}}>Дорога в Нифльхейм открывается…</div>}><Niflheim3D sealWallet={{drops:save.immortalityDrops,steel:save.runeSteel}} onSealEvent={(event:NiflheimSealEvent)=>setSave(s=>applyNiflheimSealEvent(s,event))} onAmuletEvent={event=>setSave(s=>applyAmuletEvent(s,event))} onCrystalEvent={event=>setSave(s=>applyCrystalEvent(s,event))} combatStats={currentCombat()} onPotionBoostUsed={consumePotionBoost} onFrostGuardHit={()=>setSave(s=>({...s,frostGuard:Math.max(0,s.frostGuard-1)}))} questDone={save.done} onMemoryEvent={event=>setSave(s=>applyMemoryEvent(s,event))} onDragonEvent={(event:DragonEvent)=>setSave(s=>applyDragonQuestEvent(s,event))} onLiberationEvent={(event:LiberationEvent)=>setSave(s=>applyLiberationEvent(s,event))} onFieldHpChange={hp=>setSave(s=>({...s,fieldHp:hp}))} useBattlePotion={useInventoryPotion} locationCooldowns={save.locationCooldowns} onEnterUnderground={position=>{niflheimReturn.current={...position};go({t:"underground"});}} initialPosition={niflheimReturn.current} onRemember={rememberNiflheimPosition} onForge={position=>enterForge(position,"niflheim")} onOpenMill={()=>{setMillRealm("niflheim");go({t:"mill"});}} inventory={{potions:save.potions,runes:save.runes,equippedRune:save.equippedRune,lootCounts:save.lootCounts,runeLevels:save.forgeLevels,hp:Math.min(currentCombat().maxHp,save.fieldHp??currentCombat().maxHp),maxHp:currentCombat().maxHp,frostGuard:save.frostGuard,potionBoosts:save.potionBoosts,onUsePotion:useInventoryPotion,onEquipRune:equipInventoryRune,onFuseRune:fuseInventoryRune}} weapon={save.heroWeapon} shieldAsset={save.shieldAsset} shieldEquipped={equipped("shield")}/></React.Suspense>;
 
@@ -1256,7 +1253,7 @@ const [roadT, setRoadT] = useState(0.06);
           <div className="forge-head">
             <div className="forge-title">{forgeRealm==="muspelheim"?"Кузница Муспельхейма":forgeRealm==="niflheim"?"Кузница хранителей":"Кузница Вёлунда"}</div>
             <div className="forge-master">«Сталь помнит каждый бой. Отдай её огню — и она вернётся сильнее».</div>
-            <div className="forge-advice"><b>Совет:</b> выбери оружие или щит на стене. Их предел закалки +{forgeLimit(true)}; броня, шлем и сапоги — до +{forgeLimit(false)}. Для оружия и щитов начиная с +5 дополнительно нужна ясеневая древесина ×1. В запасе: {save.stock.ashWood}.</div>
+            <div className="forge-advice"><b>Совет:</b> выбери оружие или щит на стене. Их предел закалки +{forgeLimit(true)}; броня, шлем и сапоги — до +{forgeLimit(false)}. Огненный цвет появляется после закалки предмета в этой кузнице. Для оружия и щитов начиная с +5 дополнительно нужна ясеневая древесина ×1. В запасе: {save.stock.ashWood}.</div>
             <div className="forge-wallet"><span>Запас:</span><b><SparkDrop/> {save.immortalityDrops}</b><span>Капель бессмертия</span></div>
           </div>
           <div className={"forge-free"+(!save.forgeFreeUsed?" ready":"")}>{save.forgeFreeUsed
@@ -1275,7 +1272,7 @@ const [roadT, setRoadT] = useState(0.06);
           </div>}
           <div className="forge-equipped"><span>В руке: {save.heroWeapon==='default'?('Меч валькирии'):FORGE_WEAPON_MODELS.find(item=>item[2]===save.heroWeapon)?.[1]} · сила +{WEAPON_POWER[save.heroWeapon]} · закалка +{forgeLevel(save.heroWeapon)}</span>
             <button disabled={forgeLevel(save.heroWeapon)>=forgeLimit(true)} onClick={()=>improveForgeItem(forgeItems.find(item=>item.id===save.heroWeapon)!)}>{forgeLevel(save.heroWeapon)>=forgeLimit(true)?'Максимум +'+forgeLimit(true):<><strong>Закалить</strong> {save.forgeFreeUsed?<>{forgeCost(save.heroWeapon)}<SparkDrop/>{forgeAshCost(true,forgeLevel(save.heroWeapon),!save.forgeFreeUsed)>0?" + ясень ×1":""}</>:'бесплатно'}</>}</button></div>
-          <div className="forge-combat-values">⚔️ Урон: {currentCombat().attack} · ❤️ Здоровье: {currentCombat().maxHp} · 🛡️ Защита: {currentCombat().defense} · защита щита: {currentCombat().shieldDefense}{livingWaterActive(save.done)&&<strong> · Живая вода ×2</strong>}</div>
+          <div className="forge-combat-values">⚔️ Урон: {currentCombat().attack} · ❤️ Здоровье: {currentCombat().maxHp} · 🛡️ Защита: {currentCombat().defense} · защита щита: {currentCombat().shieldDefense}{forgeRealm==='muspelheim'&&<> · поглощение: {Math.round((currentCombat().damageReduction||0)*100)}% · огнестойкость: {Math.round((currentCombat().fireResistance||0)*100)}%</>}{livingWaterActive(save.done)&&<strong> · Живая вода ×2</strong>}</div>
           {forgeRealm==="niflheim"&&(()=>{
             const q=dragonProgress(save.done);
             const canForge=q.met&&q.ember&&q.ice.length===3&&q.obsidian.length===3&&save.runeSteel>=2&&save.runes.includes('tiwazValor')&&save.ownedWeapons.includes('swordGolden')&&q.worldFreed&&!q.forged;
@@ -1309,7 +1306,7 @@ const [roadT, setRoadT] = useState(0.06);
           }}/>
           <div className="forge-group-title">Экипировка</div>
           <div className="forge-grid">{gear.map(forgeButton)}</div>
-                    <div className="forge-note"><b>Закалка действует в бою.</b> Оружие усиливает обычный удар; броня и шлем добавляют здоровье и снижают урон; щит крепче держит защиту; улучшенные сапоги помогают быстрее восстановить энергию.</div>
+                    <div className="forge-note"><b>Закалка действует в бою.</b> Оружие усиливает обычный удар; броня и шлем добавляют здоровье и снижают урон; щит крепче держит защиту; в Муспельхейме сапоги также добавляют здоровье и снижают урон. Огненный цвет появляется у предмета после его закалки здесь.</div>
           <button className="forge-exit" onClick={()=>{haptic();go({t:"realm",id:forgeRealm});}}>🔥 Открыть дверь и вернуться в {forgeRealm==="muspelheim"?"Муспельхейм":forgeRealm==="niflheim"?"Нифльхейм":"Мидгард"}</button>
         </div>;
       })()}
