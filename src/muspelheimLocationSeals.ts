@@ -1,5 +1,5 @@
 import type {Save} from './core';
-export const LOCATION_SEALS_VERSION='muspelheim:location-seals:v1';
+export const LOCATION_SEALS_VERSION='muspelheim:location-seals:v2';
 const rune=(id:string,name:string,symbol:string)=>({id,name,symbol});
 const R={
  fehu:rune('fehuWealth','Феху','ᚠ'),uruz:rune('uruzStrength','Уруз','ᚢ'),thurisaz:rune('thurisazStrike','Турисаз','ᚦ'),ansuz:rune('ansuzWisdom','Ансуз','ᚨ'),raido:rune('raidoPath','Райдо','ᚱ'),kenaz:rune('kenazShard','Кеназ','ᚲ'),gebo:rune('geboGift','Гебо','ᚷ'),wunjo:rune('wunjoLuck','Вуньо','ᚹ'),hagalaz:rune('hagalazBreak','Хагалаз','ᚺ'),nauthiz:rune('nauthizEndurance','Наутиз','ᚾ'),isa:rune('isaGuard','Иса','ᛁ'),jera:rune('jeraHarvest','Йера','ᛃ'),eihwaz:rune('eihwazResilience','Эйваз','ᛇ'),perthro:rune('perthroFate','Пертр','ᛈ'),algiz:rune('algizGuard','Альгиз','ᛉ'),sowilo:rune('sowiloLight','Соулу','ᛋ'),tiwaz:rune('tiwazValor','Тейваз','ᛏ'),berkano:rune('berkanoHeal','Беркана','ᛒ'),ehwaz:rune('ehwazMotion','Эваз','ᛖ'),mannaz:rune('mannazMind','Манназ','ᛗ'),laguz:rune('laguzFlow','Лагуз','ᛚ'),ingwaz:rune('ingwazReserve','Ингваз','ᛜ'),dagaz:rune('dagazDawn','Дагаз','ᛞ'),othala:rune('othalaLegacy','Отала','ᛟ')
@@ -19,7 +19,8 @@ export const MUSPELHEIM_LOCATION_SEALS=[
 export type LocationSeal=typeof MUSPELHEIM_LOCATION_SEALS[number];
 export type LocationSealId=LocationSeal['id'];
 export const locationSealKey=(id:string)=>'muspelheim:location:open:'+id;
-export const locationIsOpen=(done:readonly string[],id:string)=>done.includes(locationSealKey(id));
+export const locationSealPaidKey=(id:string)=>'muspelheim:location:paid:'+id;
+export const locationIsOpen=(done:readonly string[],id:string)=>done.includes(locationSealPaidKey(id));
 export type SealWallet={drops:number;runes:readonly string[];counts:Record<string,number>;levels:Record<string,number>};
 export const sealRuneLevel=(wallet:SealWallet,id:string)=>wallet.runes.includes(id)?Math.min(3,1+Math.max(0,Number(wallet.levels['rune:'+id])||0)):0;
 export const sealRuneCount=(wallet:SealWallet,id:string)=>wallet.runes.includes(id)?Math.max(1,Math.floor(Number(wallet.counts[id])||1)):0;
@@ -37,21 +38,13 @@ export function unlockMuspelheimLocation(save:Save,id:string):Save{
  const lootCounts={...save.lootCounts},forgeLevels={...save.forgeLevels};let runes=[...save.runes],equippedRune=save.equippedRune;
  for(const r of quote.seal.runes){const remaining=sealRuneCount({drops:0,runes,counts:lootCounts,levels:forgeLevels},r.id)-1;lootCounts[r.id]=remaining;if(remaining===0){runes=runes.filter(id=>id!==r.id);delete forgeLevels['rune:'+r.id];if(equippedRune===r.id)equippedRune='';}}
  const pair=save.muspelheimRunePair?.filter(id=>runes.includes(id));
- return {...save,immortalityDrops:save.immortalityDrops-quote.seal.cost,done:[...save.done,locationSealKey(id)],lootCounts,forgeLevels,runes,equippedRune,muspelheimRunePair:pair?.length===2?[pair[0],pair[1]]:undefined};
+ return {...save,immortalityDrops:save.immortalityDrops-quote.seal.cost,done:[...save.done,locationSealKey(id),locationSealPaidKey(id)],lootCounts,forgeLevels,runes,equippedRune,muspelheimRunePair:pair?.length===2?[pair[0],pair[1]]:undefined};
 }
-/** One-time upgrade: preserve completed old locations and the route leading to them. */
-export function migrateMuspelheimLocationSeals(save:Save,ymirReleased=false,interior=''):Save{
+/** Story progress is never proof of payment. Remove the v1 inferred openings once. */
+export function migrateMuspelheimLocationSeals(save:Save):Save{
  if(save.done.includes(LOCATION_SEALS_VERSION))return save;
- let through=-1;
- const remember=(index:number,yes:boolean)=>{if(yes)through=Math.max(through,index);};
- remember(0,save.done.some(k=>k.startsWith('muspelheim:forge:')));
- remember(3,ymirReleased);
- remember(4,save.done.includes('muspelheim:threads:secret')||interior==='vault');
- remember(5,save.done.includes('muspelheim:ashLord:sourceSealed')||interior==='residence');
- remember(6,save.done.some(k=>k.startsWith('muspelheim:ashMine:'))||interior==='mine');
- remember(7,save.done.some(k=>k.startsWith('muspelheim:crater:trial:')||k==='muspelheim:crater:sword'));
- remember(8,save.done.includes('muspelheim:surt:calmed'));
- return {...save,done:[...new Set([...save.done,LOCATION_SEALS_VERSION,...MUSPELHEIM_LOCATION_SEALS.slice(0,through+1).map(s=>locationSealKey(s.id))])]};
+ const autoOpenKeys=new Set(MUSPELHEIM_LOCATION_SEALS.filter(s=>!locationIsOpen(save.done,s.id)).map(s=>locationSealKey(s.id)));
+ return {...save,done:[...save.done.filter(key=>!autoOpenKeys.has(key)),LOCATION_SEALS_VERSION]};
 }
 export type SealPoint={x:number;z:number};
 export function sealContains(seal:LocationSeal,p:SealPoint,padding=0){return Math.abs(p.x-seal.cx)<seal.rx+padding&&Math.abs(p.z-seal.cz)<seal.rz+padding;}
@@ -61,3 +54,4 @@ export function blockingLocationSeal(done:readonly string[],from:SealPoint,to:Se
 export function nearbyLocationSeal(done:readonly string[],p:SealPoint){
  return MUSPELHEIM_LOCATION_SEALS.filter(s=>!locationIsOpen(done,s.id)&&Math.hypot(p.x-s.x,p.z-s.z)<s.radius+16).sort((a,b)=>Math.hypot(p.x-a.x,p.z-a.z)-Math.hypot(p.x-b.x,p.z-b.z))[0];
 }
+

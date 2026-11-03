@@ -1,7 +1,4 @@
 import {migrateMuspelheimLocationSeals,unlockMuspelheimLocation} from './muspelheimLocationSeals';
-import {readMineCheckpoint} from './ashMineSession';
-import {readThreadVaultVisit} from './threadVaultSession';
-import {readAshLordVisit} from './ashLordSession';
 import {settleSurtVictory} from './surtCombat';
 import {applyRunicRitual,RUNE_HINT_PREFIX} from './runicCombinations';
 import {normalizeRunePair} from './runePairSelection';
@@ -58,11 +55,7 @@ export function App() {
     return recovery==='underground'?{t:'underground'}:recovery?{t:'realm',id:recovery}:{t:'tree'};
   });
   const millScreenActiveRef=useRef(false);
-  const [save, setSave] = useState<Save>(()=>{
-    let ymirReleased=false;try{ymirReleased=localStorage.getItem('yggdrasil:muspelheim:ymir:memory-released')==='1';}catch{}
-    const interior=readMineCheckpoint()?'mine':readAshLordVisit()?'residence':readThreadVaultVisit()?'vault':'';
-    return migrateMuspelheimLocationSeals(applyPersonalPlaytestGrant(settleNiflheimSealRewards(loadSave()),telegramLaunchUsername(tg?.initDataUnsafe?.user,window.location.hash,window.location.search)),ymirReleased,interior);
-  });
+  const [save, setSave] = useState<Save>(()=>migrateMuspelheimLocationSeals(applyPersonalPlaytestGrant(settleNiflheimSealRewards(loadSave()),telegramLaunchUsername(tg?.initDataUnsafe?.user,window.location.hash,window.location.search))));
   const [selectedArtifact,setSelectedArtifact]=useState("");
   const [pick, setPick] = useState("viking");
   const [heroTab,setHeroTab]=useState<"equipment"|"story">("equipment");
@@ -1534,5 +1527,6 @@ const [roadT, setRoadT] = useState(0.06);
     </div>
   );
 }
+
 
 
