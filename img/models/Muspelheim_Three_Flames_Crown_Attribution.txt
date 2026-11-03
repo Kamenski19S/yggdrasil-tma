@@ -1,0 +1,5 @@
+Elena of Avalor - Crown
+Author: Jorge Vásquez Pérez (https://sketchfab.com/yorchnet)
+Source: https://sketchfab.com/3d-models/elena-of-avalor-crown-69c39084aaf24057a796c9b3f558fd52
+License: CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)
+Changes for Yggdrasil: joined primitives, simplified mesh, converted legacy specular/glossiness materials to PBR retaining original colors, quantized and Meshopt-compressed geometry; runtime scaling and animated head-bone attachment.
