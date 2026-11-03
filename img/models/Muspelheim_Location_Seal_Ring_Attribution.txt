@@ -1,0 +1,5 @@
+Magic Ring - Red by Noob Model :D (https://sketchfab.com/koontanch)
+Source: https://sketchfab.com/3d-models/magic-ring-red-08b6d10747ae4319a5d6fb1c2a47be92
+License: Creative Commons Attribution 4.0 (https://creativecommons.org/licenses/by/4.0/)
+Original GLB supplied by the project owner. Runtime normalization, scaling and animated rune overlay added for Yggdrasil.
+Legacy specular/glossiness material converted to current glTF PBR; embedded textures and native animation preserved.
