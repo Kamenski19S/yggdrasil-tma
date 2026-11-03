@@ -21,6 +21,7 @@ export function millRewardSettings(realm:string){
   :{dropsMin:MILL_BONUS_DROPS_MIN,dropsRange:MILL_BONUS_DROPS_RANGE,potionQuantity:MILL_POTION_QUANTITY,runeQuantity:MILL_RUNE_QUANTITY};
 }
 export function millProductionRate(realm:string,difference:number,balancedSeconds:number){
+ if(realm==='muspelheim')return 48;
  if(realm==='niflheim')return 12;
  return difference===0?4+Math.min(2,Math.floor(balancedSeconds/5)):difference===1?2:1;
 }
