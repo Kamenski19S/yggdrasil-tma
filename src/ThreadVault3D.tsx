@@ -21,7 +21,7 @@ import {screenMoveToWorld,updateFollowCamera,type FollowCameraState} from './mus
 import {createMuspelheimHeroActions} from './muspelheimHeroActions';
 import {createMuspelheimHeroEquipment} from './muspelheimHeroEquipment';
 import './muspelheimUI.css';
-type Props={combatStats:CombatStats;armorAppearance:ArmorAppearance;hud:InteriorHUDData;onBack:()=>void;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;fieldHp:number|null;maxHp:number;onFieldHpChange:(hp:number)=>void;onRespawn:()=>void};
+type Props={suspended?:boolean;combatStats:CombatStats;armorAppearance:ArmorAppearance;hud:InteriorHUDData;onBack:()=>void;weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;fieldHp:number|null;maxHp:number;onFieldHpChange:(hp:number)=>void;onRespawn:()=>void};
 function dispose(root:THREE.Object3D){const gs=new Set<THREE.BufferGeometry>(),ms=new Set<THREE.Material>(),ts=new Set<THREE.Texture>();root.traverse(o=>{if(o instanceof THREE.InstancedMesh)o.dispose();if(o instanceof THREE.Mesh||o instanceof THREE.Sprite){if(o instanceof THREE.Mesh)gs.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material]){ms.add(m);for(const v of Object.values(m))if(v instanceof THREE.Texture)ts.add(v);}}});gs.forEach(g=>g.dispose());ms.forEach(m=>m.dispose());ts.forEach(t=>t.dispose());}
 export default function ThreadVault3D(props:Props){
  const runes=useRunicWard();
@@ -32,7 +32,8 @@ export default function ThreadVault3D(props:Props){
  const armorLook=useRef<ReturnType<typeof createMuspelheimArmorAppearance>>();
  useEffect(()=>{armorLook.current?.update(props.armorAppearance);},[props.armorAppearance.armor,props.armorAppearance.helmet,props.armorAppearance.boots]);
  useEffect(()=>{health.current=props.fieldHp??props.maxHp;setHp(health.current);},[props.fieldHp,props.maxHp]);
- const [panelOpen,setPanelOpen]=useState(false);const combat=useRef({attack:()=>{},shield:()=>{},magic:()=>{}});const paused=useRef(false);paused.current=dialog||panelOpen;const clearRef=useRef(()=>{});
+ const [panelOpen,setPanelOpen]=useState(false);const combat=useRef({attack:()=>{},shield:()=>{},magic:()=>{}});const paused=useRef(false);paused.current=!!props.suspended||dialog||panelOpen;const clearRef=useRef(()=>{});
+ useEffect(()=>{if(props.suspended)clearRef.current();},[props.suspended]);
  useEffect(()=>{
   const mount=host.current;if(!mount)return;let renderer:THREE.WebGLRenderer;
   setFailed(false);setReady(false);
@@ -69,7 +70,7 @@ export default function ThreadVault3D(props:Props){
   const timeout=window.setTimeout(()=>{if(alive&&!loaded){setFailed(true);setStatus('Загрузка зала затянулась. Повтори загрузку или вернись ко входу.');}},60000);
   const clock=new THREE.Clock(),ray=new THREE.Raycaster();camera.position.set(pos.x,22,pos.z+28);const target=new THREE.Vector3();let hudTime=0;
   function tick(){
-   if(!alive)return;frame=requestAnimationFrame(tick);const dt=Math.min(clock.getDelta(),.08),active=loaded&&!paused.current&&!document.hidden&&!exiting;let dx=0,dz=0,moving=false;
+   if(!alive)return;frame=requestAnimationFrame(tick);if(live.current.suspended){clock.getDelta();return;}const dt=Math.min(clock.getDelta(),.08),active=loaded&&!paused.current&&!document.hidden&&!exiting;let dx=0,dz=0,moving=false;
    if(active){clockTime+=dt;let x=input.current.x+Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft')),z=input.current.z+Number(keys.has('KeyS')||keys.has('ArrowDown'))-Number(keys.has('KeyW')||keys.has('ArrowUp'));const length=Math.hypot(x,z),running=run.current||keys.has('ShiftLeft')||keys.has('ShiftRight');
     if(length){x/=Math.max(1,length);z/=Math.max(1,length);const move=screenMoveToWorld(x,z,basis.current),speed=running?26:17,nx=pos.x+move.x*speed*dt,nz=pos.z+move.z*speed*dt;let next={x:nx,z:nz};if(!threadHallWalkable(nx,nz))next=threadHallWalkable(nx,pos.z)?{x:nx,z:pos.z}:threadHallWalkable(pos.x,nz)?{x:pos.x,z:nz}:{...pos};dx=next.x-pos.x;dz=next.z-pos.z;moving=Math.hypot(dx,dz)>.0001;Object.assign(pos,next);if(moving)hero.rotation.y=Math.atan2(dx,dz);}
     actions?.update(dt,moving,running,live.current.shieldEquipped);hall?.update(dt,pos);view.current=updateFollowCamera(follow,dx,dz,dt);

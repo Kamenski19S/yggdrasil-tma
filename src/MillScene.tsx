@@ -1,3 +1,4 @@
+import {applyFireWheelMaterial,createFireWheelEffects} from './fireMillWheel';
 import {STEEL_MILL_ASSET,prepareSteelWheel,steelMillMaterial,steelMillHouseFrame} from './steelMill';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
@@ -13,7 +14,7 @@ import {millControlActive,tickMillGiftClock,millProductionRate,millRewardSetting
 export type MillFind='drops'|'potion'|'rune';
 type RiverParcel={kind:MillFind;start:number;end:number};
 export function MillScene({realm='midgard',stored,balance,onProduce,onCollect,onFind,onBack}:{realm?:string;stored:number;balance:number;onProduce:(amount:number)=>void;onCollect:()=>void;onFind:(kind:MillFind)=>string;onBack:()=>void}){
-  const steelMill=realm==='niflheim';
+  const steelMill=realm==='niflheim',fireMill=realm==='muspelheim',metalWheel=steelMill||fireMill;
   const rewards=millRewardSettings(realm);
   const mount=useRef<HTMLDivElement>(null);
   const runningRef=useRef(false);
@@ -379,6 +380,8 @@ export function MillScene({realm='midgard',stored,balance,onProduce,onCollect,on
     // the lower third below the water line instead of leaving it suspended.
     wheelPivot.position.set(-2.9,1.35,-3.2);
     scene.add(wheelPivot);wheelRef.current=wheelPivot;
+    const fireFx=fireMill?createFireWheelEffects():null;if(fireFx){fireFx.root.position.copy(wheelPivot.position);scene.add(fireFx.root);fireFx.root.visible=false;}
+    let fireFinish:ReturnType<typeof applyFireWheelMaterial>|undefined;
 
     // Structural mill supports: a stone pier at the house/channel edge,
     // a timber shaft from the mill wall to the hub and triangular braces.
@@ -410,7 +413,7 @@ export function MillScene({realm='midgard',stored,balance,onProduce,onCollect,on
     const bearing=new THREE.Mesh(new THREE.CylinderGeometry(.46,.46,.36,20),steelMill?steelMillMaterial(true):new THREE.MeshStandardMaterial({color:0x5f4424,roughness:.82,metalness:.06}));
     bearing.rotation.z=Math.PI/2;bearing.position.set(-2.74,1.35,-3.2);bearing.castShadow=true;scene.add(bearing);
 
-    const wheelUrl=`${BASE}img/models/${steelMill?STEEL_MILL_ASSET:'water_wheel.glb'}`;
+    const wheelUrl=`${BASE}img/models/${metalWheel?STEEL_MILL_ASSET:'water_wheel.glb'}`;
     cachedGlbBuffer(wheelUrl).then(buffer=>{
       if(!alive)return;
       const absolute=new URL(wheelUrl,window.location.href).href;
@@ -418,7 +421,7 @@ export function MillScene({realm='midgard',stored,balance,onProduce,onCollect,on
       loader.parse(buffer,basePath,gltf=>{
         if(!alive)return;
         const model=gltf.scene;
-        if(steelMill){wheelPivot.add(prepareSteelWheel(model));setLoaded(true);return;}
+        if(metalWheel){wheelPivot.add(prepareSteelWheel(model));if(fireMill){fireFinish=applyFireWheelMaterial(model);if(fireFx)fireFx.root.visible=true;}setLoaded(true);return;}
         model.traverse(o=>{
           const mesh=o as THREE.Mesh;
           if(mesh.isMesh){mesh.castShadow=true;mesh.receiveShadow=true;}
@@ -454,7 +457,7 @@ export function MillScene({realm='midgard',stored,balance,onProduce,onCollect,on
       }
       net.visible=now<netUntilRef.current;
       if(net.visible){parcelGroup.visible=true;parcelGroup.position.set(-1.3,.55,5.8);}
-      if(wheelRef.current&&runningRef.current){const amount=dt*(.68+flowRef.current*.23+(balanced ? .18 : 0));if(steelMill)wheelRef.current.rotation.x-=amount;else wheelRef.current.rotation.z-=amount;}
+      if(wheelRef.current&&runningRef.current){const amount=dt*(.68+flowRef.current*.23+(balanced ? .18 : 0));if(metalWheel)wheelRef.current.rotation.x-=amount;else wheelRef.current.rotation.z-=amount;}
       if(gateRef.current){
         const targetY=.28+(flowRef.current-1)*.55;
         gateRef.current.position.y+=(targetY-gateRef.current.position.y)*Math.min(1,dt*7);
@@ -465,6 +468,7 @@ export function MillScene({realm='midgard',stored,balance,onProduce,onCollect,on
       }
       waterTexture.offset.y-=dt*(runningRef.current?(.16+flowRef.current*.055):.035);
       water.material instanceof THREE.MeshStandardMaterial&&(water.material.emissiveIntensity=.22+(runningRef.current?.05:0)+flowRef.current*.02+Math.sin(performance.now()*.002)*.05);
+      fireFinish?.update(clock.elapsedTime);fireFx?.update(clock.elapsedTime,wheelPivot.rotation.x,runningRef.current);
       renderer.render(scene,camera);
     };
     animate();
@@ -478,16 +482,17 @@ export function MillScene({realm='midgard',stored,balance,onProduce,onCollect,on
 
     return()=>{
       alive=false;cancelAnimationFrame(frame);window.removeEventListener("resize",resize);
+      fireFx?.dispose();
       wheelRef.current=null;gateRef.current=null;
       millTextures.forEach(texture=>texture.dispose());buildingTextures.dispose();
       scene.traverse(o=>{
         const mesh=o as THREE.Mesh;
         if(mesh.isMesh){mesh.geometry?.dispose?.();const mats=Array.isArray(mesh.material)?mesh.material:[mesh.material];mats.forEach((m:any)=>m?.dispose?.());}
       });
-      renderer.dispose();
+      renderer.dispose();renderer.forceContextLoss();
       renderer.domElement.remove();
     };
-  },[steelMill]);
+  },[steelMill,fireMill]);
 
   const collect=()=>{
     if(stored<=0)return;
@@ -500,7 +505,7 @@ export function MillScene({realm='midgard',stored,balance,onProduce,onCollect,on
     <div className="mill-vignette"/>
     <div className="mill-title">
       <img className="mill-frame-img" src={`${BASE}img/models/mill_title_panel.png`} alt=""/>
-      <b>{steelMill?'СТАЛЬНАЯ МЕЛЬНИЦА':'МЕЛЬНИЦА БЕССМЕРТИЯ'}</b>
+      <b>{fireMill?'ОГНЕННАЯ МЕЛЬНИЦА':steelMill?'СТАЛЬНАЯ МЕЛЬНИЦА':'МЕЛЬНИЦА БЕССМЕРТИЯ'}</b>
     </div>
 
     <div className="mill-top-stats">
@@ -546,7 +551,7 @@ export function MillScene({realm='midgard',stored,balance,onProduce,onCollect,on
         <img className="mill-frame-img" src={`${BASE}img/models/storage_round_button.png`} alt=""/>
       </button>
 
-      <button className="mill-icon-btn home" aria-label="Вернуться в Мидгард" title="Вернуться в Мидгард" onClick={()=>{runningRef.current=false;setRunning(false);onBack();}}>
+      <button className="mill-icon-btn home" aria-label="Вернуться в мир" title="Вернуться в мир" onClick={()=>{runningRef.current=false;setRunning(false);onBack();}}>
         <img className="mill-frame-img" src={`${BASE}img/models/home_button.png`} alt=""/>
       </button>
     </div>
