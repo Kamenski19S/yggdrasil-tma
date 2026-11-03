@@ -16,6 +16,7 @@ export function tickMillGiftClock(remainingMs:number,elapsedMs:number,active:boo
 }
 
 export function millRewardSettings(realm:string){
+ if(realm==='muspelheim')return {dropsMin:2400,dropsRange:2401,potionQuantity:20,runeQuantity:16};
  return realm==='niflheim'
   ?{dropsMin:600,dropsRange:601,potionQuantity:5,runeQuantity:4}
   :{dropsMin:MILL_BONUS_DROPS_MIN,dropsRange:MILL_BONUS_DROPS_RANGE,potionQuantity:MILL_POTION_QUANTITY,runeQuantity:MILL_RUNE_QUANTITY};
