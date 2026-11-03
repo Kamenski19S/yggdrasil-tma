@@ -108,6 +108,15 @@ export default function Muspelheim3D(props:Props){
  const [trapFocusAvailable,setTrapFocusAvailable]=useState(false),focusTrap=useRef<()=>void>(()=>{});
  const [passageDoor,setPassageDoor]=useState('');const openPassageDoor=useRef<()=>void>(()=>{});
  const sprint=useRef(false),live=useRef(props);live.current=props;
+ const [sealHint,setSealHint]=useState('');
+ useEffect(()=>{
+  if(!nearSeal){setSealHint('');return;}
+  const quote=locationSealQuote(live.current.questDone,live.current.sealWallet,nearSeal),seal=quote.seal;
+  if(!seal)return;
+  setSealHint(quote.ready?`${seal.name}: ${seal.cost.toLocaleString('ru-RU')} капель · ${seal.runes.map(r=>r.name).join(' + ')} III. Кнопка двери — открыть.`:`${seal.name}: сначала открой ${quote.next?.name??'предыдущие печати'}. Порядок — на карте.`);
+  const timer=window.setTimeout(()=>setSealHint(''),3000);
+  return ()=>window.clearTimeout(timer);
+ },[nearSeal]);
  const recovering=useRef(false),pendingRespawn=useRef(false);
  const groundInjury=useRef(false);
  const life=useRef(props.fieldHp===0?0:playtestHealth(props.fieldHp??props.combatStats.maxHp,props.combatStats.maxHp));
@@ -552,11 +561,10 @@ if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.c
  const nextSealNumber=nextSeal?MUSPELHEIM_LOCATION_SEALS.findIndex(s=>s.id===nextSeal.id)+1:9;
  const tasks=[{name:'Усмирить пламя Сурта',done:props.questDone.includes(SURT_CALMED)},...CRATER_TRIALS.map(t=>({name:t.title,done:props.questDone.includes(craterTrialKey(t.id))})),{name:'Получить меч кузнеца жерла',done:props.questDone.includes(CRATER_SWORD_KEY)},{name:'Открыть первые врата',done:props.gateOpen},{name:'Найти пепельную шахту',done:progress.entered},...MINE_GUARDS.map(g=>({name:g.name,done:progress.defeated.includes(g.id)})),{name:'Победить хранителя подземного озера',done:progress.guardianDefeated},{name:'Забрать огненное золото',done:progress.goldTaken},{name:'Передать золото хранителю врат',done:progress.paid}];
  return <section className="muspelheim-world" style={{position:'relative',flex:1,minHeight:0,overflow:'hidden',background:'#24110e',touchAction:'none'}} aria-label="Муспельхейм">
-   {nearSeal&&!modal&&<button className="muspelheim-btn primary" style={{position:'absolute',zIndex:25,bottom:150,left:150,right:12}} onClick={()=>{stop();setSealDialog(nearSeal);}}>Снять руническую печать</button>}
    {sealDialog&&(()=>{const quote=locationSealQuote(props.questDone,props.sealWallet,sealDialog),seal=quote.seal;if(!seal)return null;const opened=locationIsOpen(props.questDone,seal.id);return <div className="muspelheim-gate-backdrop"><div className="muspelheim-gate-panel" style={{top:'10%',width:340,maxHeight:'80%',overflowY:'auto'}} role="dialog" aria-modal="true" aria-label={'Открыть: '+seal.name}><h3>{seal.name}</h3>{opened?<><p>Печать снята навсегда. Проход открыт.</p><p>{nextSeal?'Следующая локация: '+nextSeal.name+'. '+LOCATION_ROUTE_HINTS[nextSeal.id]:'Все девять печатей сняты.'}</p></>:<><p>Снять печать: {seal.cost.toLocaleString('ru-RU')} капель и три руны III уровня.</p><p>Капли: {props.sealWallet.drops.toLocaleString('ru-RU')}{quote.missingDrops>0?' · не хватает '+quote.missingDrops.toLocaleString('ru-RU'):''}</p>{seal.runes.map(r=><p key={r.id}>{sealRuneLevel(props.sealWallet,r.id)>=3&&sealRuneCount(props.sealWallet,r.id)>0?'✓':'○'} {r.symbol} {r.name} III ×1 · в запасе: {sealRuneCount(props.sealWallet,r.id)}, уровень: {sealRuneLevel(props.sealWallet,r.id)||'—'}</p>)}{!quote.ready&&<p>Печати снимаются по порядку. Сейчас открой: {quote.next?.name}.</p>}<p>Капли и по одной руне каждого вида будут списаны. Оплата один раз. Усилить руны можно в запасе: три одинаковые копии дают следующий уровень.</p><button className="muspelheim-btn primary" disabled={!quote.canPay} onClick={()=>{if(nearSeal===seal.id&&quote.canPay)props.onUnlockLocation(seal.id);}}>Заплатить и открыть</button></>}<button className="muspelheim-btn" onClick={()=>setSealDialog(null)}>{opened?'Продолжить путь':'Позже'}</button></div></div>;})()}
   <div ref={host} style={{position:'absolute',inset:0}}/>
   <div className="muspelheim-fire-flash" style={{opacity:fireHit?.65:0}} aria-hidden="true"/>
-  {!modal&&nextSeal&&<button className="muspelheim-next-seal" style={{position:'absolute',zIndex:8,top:174,left:78,right:78,maxWidth:260,margin:'0 auto',padding:'6px 8px',border:'1px solid #c89952',borderRadius:9,background:'#241510df',color:'#ffe2a4',fontSize:10,lineHeight:1.35,textAlign:'left'}} onClick={()=>openPanel(()=>setMapOpen(true))} aria-label={'Следующая локация: '+nextSeal.name+'. Открыть карту'}><b style={{display:'block'}}>Следующая печать {nextSealNumber}/9 · {nextSeal.name}</b><span>Показать на карте →</span></button>}
+  {sealHint&&!modal&&<div role="status" aria-live="polite" className="muspelheim-seal-hint" style={{position:'absolute',zIndex:8,bottom:64,left:12,right:12,padding:'6px 9px',border:'1px solid #b99456',borderRadius:8,background:'#241510db',color:'#ffe2a4',fontSize:10,lineHeight:1.35,textAlign:'center',pointerEvents:'none'}}>{sealHint}</div>}
   <div className="muspelheim-fire-health"><span>Vicki · {hp}/{props.combatStats.maxHp}</span><progress value={hp} max={props.combatStats.maxHp}/><small>{iceSafe?'Ледяное святилище · защита и восстановление':wellSafe?'Колодец норн · укрытие от огня':surtSafe?'Территория Сурта · огненного дождя нет':'Огненный дождь'}</small></div>
   {!modal&&goblinHud?.active&&<div className="muspelheim-assassin-health" role="status"><b>{goblinHud.name}</b><span>{goblinHud.hp}/420</span><progress value={goblinHud.hp} max={420}/></div>}
   {!modal&&!goblinHud?.active&&assassinHud.active&&<div className="muspelheim-assassin-health" role="status"><b>{assassinHud.name}</b><span>{assassinHud.hp}/{ASSASSIN_COMBAT.maxHp}</span><progress value={assassinHud.hp} max={ASSASSIN_COMBAT.maxHp}/></div>}
@@ -680,5 +688,6 @@ if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.c
 
  </section>;
 }
+
 
 
