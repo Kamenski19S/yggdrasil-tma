@@ -1,3 +1,4 @@
+import {MuspelheimGuide} from './MuspelheimGuide';
 import {MUSPELHEIM_LOCATION_SEALS,LOCATION_ROUTE_HINTS,nextLocationSeal,locationIsOpen,locationSealQuote,sealRuneLevel,sealRuneCount,blockingLocationSeal,nearbyLocationSeal,type SealWallet,type LocationSealId} from './muspelheimLocationSeals';
 import {createLocationSealVfx,LOCATION_RING_ASSET,LOCATION_RING_CREDIT} from './muspelheimSealVfx';
 import {createSurtCombat,SURT_CALMED} from './surtCombat';
@@ -579,7 +580,7 @@ if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.c
   {!modal&&<div role="status" className="muspelheim-status" hidden={!status&&!failed}>{status}{failed&&<button className="muspelheim-btn" onClick={()=>{stop();setRetry(v=>v+1);}}>Повторить загрузку</button>}</div>}
   {inventoryOpen&&<div className="muspelheim-ui-overlay"><section className="muspelheim-ui-panel" role="dialog" aria-modal="true" aria-label="Запас Vicki"><h3>Запас Vicki</h3><InventorySection {...props.inventory} kind="potions" hp={hp}/><InventorySection {...props.inventory} kind="runes" hp={hp}/><button className="muspelheim-btn" onClick={()=>setInventoryOpen(false)}>Вернуться в игру</button></section></div>}
   {journalOpen&&<div className="muspelheim-ui-overlay"><section className="muspelheim-ui-panel" role="dialog" aria-modal="true" aria-label="Пройденные задания Муспельхейма"><h3>Пройденные задания</h3>{tasks.map(t=><p key={t.name}>{t.done?'✓':'○'} {t.name}</p>)}<button className="muspelheim-btn" onClick={()=>setJournalOpen(false)}>Вернуться в игру</button></section></div>}
-  {guideOpen&&<div className="muspelheim-ui-overlay"><section className="muspelheim-ui-panel" role="dialog" aria-modal="true" aria-label="Летопись Муспельхейма"><h3>Муспельхейм · мир первозданного огня</h3><div className="muspelheim-overview-actions"><button className="muspelheim-btn" onClick={()=>{setGuideOpen(false);setMapOpen(true);}}>Карта</button><button className="muspelheim-btn" onClick={()=>{setGuideOpen(false);setJournalOpen(true);}}>Задания</button><button className="muspelheim-btn" onClick={()=>{setGuideOpen(false);setGate(true);}}>Врата и путь к Сурту</button></div><p>Тёмные нити привели Vicki к Сурту. Ей предстоит усмирить его пламя и узнать, куда ведут нити.</p><p>Странница у колодца трёх норн знает о закалке двух стихий. Ледяное святилище укрывает от огня и возвращает силы.</p><p>В пепельной шахте добывают огненное золото. Пройди её стражей и хранителя озера, забери золото и передай хранителю врат.</p><p>Огненный дождь пробивает броню. Щит не спасёт от падающего огня — ищи укрытие и следи за летящим огнём. После гибели Vicki возрождается в ледяном святилище: золотая аура за 15 секунд полностью восстанавливает здоровье.</p><button className="muspelheim-btn" onClick={()=>setGuideOpen(false)}>Продолжить путь</button></section></div>}
+  {guideOpen&&<MuspelheimGuide done={props.questDone} onClose={()=>setGuideOpen(false)} onMap={()=>{setGuideOpen(false);setMapOpen(true);}}/>}
   {mapOpen&&<div style={{position:'absolute',zIndex:40,inset:0,touchAction:'pan-y',display:'grid',placeItems:'center',background:'#000a',padding:16}}><div role="dialog" aria-modal="true" aria-label="Карта Муспельхейма" className="card" style={{maxWidth:420,maxHeight:'85%',overflowY:'auto',padding:16,background:'#291911',color:'#ffe2ac'}}><h3>Карта Муспельхейма</h3>{nextSeal?<p style={{color:'#ffd578'}}>Следующая печать {nextSealNumber}/9: <b>{nextSeal.name}</b><br/>{LOCATION_ROUTE_HINTS[nextSeal.id]}</p>:<p>Все девять печатей сняты.</p>}
    <svg viewBox="0 0 300 220" style={{display:'block',width:'100%',maxHeight:240,background:'#241713',borderRadius:8}} aria-label="Расширенный мир, мост и положение Vicki">
     <polygon points={WORLD_OUTLINE.map(([x,z])=>{const p=muspelheimMapPoint(x,z);return `${p.x},${p.y}`;}).join(' ')} fill="#573122" stroke="#77777c" strokeWidth="8"/>
@@ -688,6 +689,7 @@ if(!GATE_GUARDIAN_COMBAT_ENABLED||minePaid.current)gateGuardian?.update(paused.c
 
  </section>;
 }
+
 
 
 

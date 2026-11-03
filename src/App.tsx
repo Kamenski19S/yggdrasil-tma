@@ -12,7 +12,7 @@ import {createArtifactCombat} from './artifactCombat';
 import {RuneExchange} from './RuneExchange';
 import {applyRuneExchange} from './runeExchange';
 import {loadWorld,consumeWorldRecovery} from './worldLoading';
-import {applyPersonalPlaytestGrant,telegramLaunchUsername,redeemPersonalPlaytestCode,personalPlaytestGrantClaimed} from './personalPlaytestGrant';
+import {applyPersonalPlaytestGrant,telegramLaunchUsername,redeemPersonalPlaytestCode,muspelheimPlaytestGrantClaimed} from './personalPlaytestGrant';
 import {AMULET_NAME,amuletProgress,applyAmuletEvent} from './niflheimAmulet';
 import {CRYSTAL_NAME,applyCrystalEvent,waterCrystalProgress} from './waterCrystalQuest';
 import {equipmentCombatStats,livingWaterActive,realmRuneAttackBonus} from './combatStats';
@@ -1224,7 +1224,7 @@ const [roadT, setRoadT] = useState(0.06);
               {claimed ? <button className="btn" disabled>Дар получен • вернись завтра</button> : <button className="btn gold" onClick={claimGift}>Забрать дар +{LADDER[next - 1]} ✨</button>}
             </div>
             <div className="card center"><div className="qhead2">Код подарка</div>
-              {personalPlaytestGrantClaimed(save)?<p role="status">Подарок для прохождения Нифльхейма получен: +1 000 000 капель.</p>:<form onSubmit={e=>{e.preventDefault();const next=redeemPersonalPlaytestCode(save,giftCode);if(next===save){setGiftCodeMessage('Код не найден. Проверь написание.');return;}setSave(current=>redeemPersonalPlaytestCode(current,giftCode));setGiftCode('');setGiftCodeMessage('');say('Получено 1 000 000 Капель бессмертия!');haptic('success');}}>
+              {muspelheimPlaytestGrantClaimed(save)?<p role="status">Подарок для оставшихся печатей Муспельхейма получен.</p>:<form onSubmit={e=>{e.preventDefault();const next=redeemPersonalPlaytestCode(save,giftCode);if(next===save){setGiftCodeMessage('Код не найден. Проверь написание.');return;}setSave(current=>redeemPersonalPlaytestCode(current,giftCode));setGiftCode('');setGiftCodeMessage('');say('Получено '+(next.immortalityDrops-save.immortalityDrops).toLocaleString('ru-RU')+' Капель бессмертия!');haptic('success');}}>
                 <label htmlFor="gift-code">Введи код подарка</label><input id="gift-code" value={giftCode} onChange={e=>setGiftCode(e.target.value)} autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={64} style={{width:'100%',boxSizing:'border-box',padding:12,margin:'10px 0',fontSize:16}}/>
                 <button className="btn gold" type="submit" disabled={!giftCode.trim()}>Получить подарок</button>{giftCodeMessage&&<p role="status">{giftCodeMessage}</p>}
               </form>}
