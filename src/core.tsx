@@ -396,7 +396,7 @@ export const loadSave = (): Save => {
     if(s.done?.includes("guardian:stage:hoddmimir")&&!s.done.includes("world:complete:midgard")){
       s.done=[...new Set([...s.done,"world:complete:midgard"])];
     }
-    const confirmedArtifacts=Object.keys(ARTIFACTS).filter(id=>s.done?.includes("world:complete:"+id));
+    const confirmedArtifacts=Object.keys(ARTIFACTS).filter(id=>(id==="muspelheim"?s.done?.includes("muspelheim:crown:assembled"):s.done?.includes("world:complete:"+id)));
     s.artifacts=confirmedArtifacts;
     if(typeof s.equippedArtifact!=="string"||!confirmedArtifacts.includes(s.equippedArtifact))s.equippedArtifact="";
     if (!s.watch) s.watch = Date.now();
@@ -605,7 +605,7 @@ export const QUESTS: Record<string, Quest[]> = {
 
 export const ARTIFACTS: Record<string, string> = {
   midgard: "Мегингъёрд — пояс силы",
-  muspelheim: "Пламя Муспеля",
+  muspelheim: "Венец трёх пламен",
   niflheim: "Осколок Хвергельмира",
   jotunheim: "Камень Ифинга",
   vanaheim: "Ветер Ньёрда",
@@ -616,12 +616,12 @@ export const ARTIFACTS: Record<string, string> = {
 };
 
 
-export type ArtifactDef={name:string;symbol:string;world:string;description:string;effect:string;attackPercent?:number;defensePercent?:number;attack?:number;rune?:number;defense?:number;power?:number};
+export type ArtifactDef={name:string;symbol:string;world:string;description:string;effect:string;attackPercent?:number;runePercent?:number;defensePercent?:number;attack?:number;rune?:number;defense?:number;power?:number};
 
 
 export const ARTIFACT_INFO:Record<string,ArtifactDef>={
   midgard:{name:ARTIFACTS.midgard,symbol:"⚡",world:"Мидгард",description:"Пояс силы, полученный после завершения пути Мидгарда. Активный артефакт усиливает физическую мощь героя.",effect:"+15% к обычному удару. Каждый пятый успешный удар оружием наносит ещё на 30% больше урона.",attackPercent:.15},
-  muspelheim:{name:ARTIFACTS.muspelheim,symbol:"🔥",world:"Муспельхейм",description:"Частица первородного огня Муспельхейма.",effect:"+1 к обычному и +1 к руническому удару.",attack:1,rune:1},
+  muspelheim:{name:ARTIFACTS.muspelheim,symbol:"👑",world:"Муспельхейм",description:"Венец, собранный Странницей из осколков Имира, Хранилища и резиденции после усмирения Сурта. При активации появляется на голове Вики.",effect:"+20% к удару оружием и руническому удару во всех мирах, включая финальный.",attackPercent:.20,runePercent:.20},
   niflheim:{name:ARTIFACTS.niflheim,symbol:"❄️",world:"Нифльхейм",description:"Осколок возрождённого источника, полученный за победу над Нидхёггом и освобождение Нифльхейма. Холодная вода хранит силу защиты.",effect:"+15% к защите во всех мирах. Один раз за бой спасает от смертельного удара, оставляя 15% максимального здоровья.",defensePercent:.15},
   jotunheim:{name:ARTIFACTS.jotunheim,symbol:"🪨",world:"Ётунхейм",description:"Камень из земли великанов, хранящий их стойкость.",effect:"+1 к защите и +1 к общей силе.",defense:1,power:1},
   vanaheim:{name:ARTIFACTS.vanaheim,symbol:"🌬️",world:"Ванахейм",description:"Дар ветров Ванахейма, несущий движение и внутреннюю силу.",effect:"+1 к руническому удару и +1 к общей силе.",rune:1,power:1},
@@ -642,5 +642,6 @@ export function BgImg({ name, className }: { name: string; className: string }) 
     />
   );
 }
+
 
 

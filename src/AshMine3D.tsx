@@ -1,3 +1,4 @@
+import {syncArtifactCrown,disposeArtifactCrown} from './artifactCrown';
 import {useRunicWard} from './useRunicWard';
 import {createRunicWardVfx} from './runicWardVfx';
 import {createArrowDefeatSequence} from './arrowDefeat';
@@ -206,8 +207,8 @@ export default function AshMine3D(props:Props){
    layout.root.updateWorldMatrix(true,true);
    const pose=followMineCamera(cameraState,{x:pos.x,y:hero.position.y,z:pos.z},dt,layout.floorAt,layout.root);
    camera.position.copy(pose.position);camera.lookAt(pose.target);view.current=pose.yaw;if(camera.fov!==pose.fov){camera.fov=pose.fov;camera.updateProjectionMatrix();}
-   fireVfx.update(active?dt:0,camera,hero.position,ailments.burn);shadowVfx.update(active?dt:0,camera,hero.position,shadowDrain.remaining);lightningVfx.update(active?dt:0,camera,ailments.disorient);iceVfx.frost(hero.position,ailments.freeze,ailments.slow);iceVfx.update(active?dt:0,camera);vfx.update(active?dt:0,camera);lamp.position.set(pos.x,hero.position.y+18,pos.z+6);playerFire.syncCamera(camera);renderer.render(scene,camera);
-  }tick();return()=>{runes.ward.reset();runeVfx.dispose();if(loaded&&!exiting)persist();alive=false;clearControls.current=()=>{};applyExternalHealth.current=()=>{};refreshEquipment.current=()=>{};equipment?.dispose();playerFire.dispose();window.clearTimeout(timeout);cancelAnimationFrame(frame);clear();observer.disconnect();window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();iceVfx.dispose();lightningVfx.dispose();shadowVfx.dispose();fireVfx.dispose();vfx.dispose();guardian?.dispose();guards.forEach(g=>g.actor.dispose());workers.forEach(w=>w.actor.dispose());arrowTraps?.dispose();dispose(scene);goldReflection?.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();};
+   fireVfx.update(active?dt:0,camera,hero.position,ailments.burn);shadowVfx.update(active?dt:0,camera,hero.position,shadowDrain.remaining);lightningVfx.update(active?dt:0,camera,ailments.disorient);iceVfx.frost(hero.position,ailments.freeze,ailments.slow);iceVfx.update(active?dt:0,camera);vfx.update(active?dt:0,camera);lamp.position.set(pos.x,hero.position.y+18,pos.z+6);playerFire.syncCamera(camera);syncArtifactCrown(hero,live.current.combatStats.artifactId,BASE);renderer.render(scene,camera);
+  }tick();return()=>{runes.ward.reset();runeVfx.dispose();if(loaded&&!exiting)persist();alive=false;clearControls.current=()=>{};applyExternalHealth.current=()=>{};refreshEquipment.current=()=>{};equipment?.dispose();playerFire.dispose();window.clearTimeout(timeout);cancelAnimationFrame(frame);clear();observer.disconnect();window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',clear);mixer?.stopAllAction();iceVfx.dispose();lightningVfx.dispose();shadowVfx.dispose();fireVfx.dispose();vfx.dispose();guardian?.dispose();guards.forEach(g=>g.actor.dispose());workers.forEach(w=>w.actor.dispose());arrowTraps?.dispose();dispose(scene);goldReflection?.dispose();disposeArtifactCrown(hero);renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();};
  },[retry]);
  useEffect(()=>refreshEquipment.current(),[props.weapon,props.shieldAsset,props.shieldEquipped,props.armorAppearance.shield]);
  useEffect(()=>{if(props.fieldHp!==null)applyExternalHealth.current(props.fieldHp);},[props.fieldHp]);
@@ -226,4 +227,5 @@ export default function AshMine3D(props:Props){
 
  <div role="status" className="ash-mine-status" hidden={!status&&!failed}>{status}{failed&&<button className="muspelheim-btn" onClick={()=>setRetry(n=>n+1)}>Повторить</button>}</div></section>;
 }
+
 

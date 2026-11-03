@@ -1,3 +1,4 @@
+import {syncArtifactCrown,disposeArtifactCrown} from './artifactCrown';
 import {createArtifactCombat} from './artifactCombat';
 import {NIFLHEIM_SEALS} from './niflheimSeals';
 import {amuletProgress,finalDragonReady,protectedDragonFire} from './niflheimAmulet';
@@ -265,9 +266,9 @@ export default function NidhoggUnderground({combatStats,fieldHp,onFieldHpChange,
       flightTarget.set(pos.x,groundY+3.5,pos.z-8);
       if(flying)flightTarget.lerp(encounter!.anchor.position,.6);
       camera.position.lerp(flightCamera,1-Math.exp(-dt*4));camera.lookAt(flightTarget);
-      const near=Math.abs(pos.x)<5&&pos.z>20;if(near!==wasNear){wasNear=near;setNearExit(near);}renderer.render(scene,camera);raf=requestAnimationFrame(frame);
+      const near=Math.abs(pos.x)<5&&pos.z>20;if(near!==wasNear){wasNear=near;setNearExit(near);}syncArtifactCrown(hero,combatRef.current.artifactId,BASE);renderer.render(scene,camera);raf=requestAnimationFrame(frame);
     };raf=requestAnimationFrame(frame);
-    return()=>{attackRef.current=()=>{};healRef.current=()=>{};shieldRef.current=()=>{};dragonFire.dispose();alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',reset);document.removeEventListener('visibilitychange',reset);reset();mixer?.stopAllAction();dragonMixer?.stopAllAction();dispose(scene);assets.forEach(t=>t.dispose());renderer.dispose();renderer.domElement.remove();};
+    return()=>{attackRef.current=()=>{};healRef.current=()=>{};shieldRef.current=()=>{};dragonFire.dispose();alive=false;cancelAnimationFrame(raf);observer.disconnect();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',reset);document.removeEventListener('visibilitychange',reset);reset();mixer?.stopAllAction();dragonMixer?.stopAllAction();dispose(scene);assets.forEach(t=>t.dispose());disposeArtifactCrown(hero);renderer.dispose();renderer.domElement.remove();};
   },[weapon,shieldAsset,shieldEquipped]);
   const steer=(e:React.PointerEvent<HTMLButtonElement>)=>{if(pointer.current!==e.pointerId)return;const rect=e.currentTarget.getBoundingClientRect(),r=rect.width*.36;let x=(e.clientX-rect.left-rect.width/2)/r,z=(e.clientY-rect.top-rect.height/2)/r;const length=Math.hypot(x,z);if(length>1){x/=length;z/=length;}analog.current={x,z};if(knob.current)knob.current.style.transform=`translate(${x*r}px,${z*r}px)`;};
   return <div style={{position:'relative',flex:1,minHeight:0,overflow:'hidden',background:'#121d24',touchAction:'none'}}>
@@ -295,3 +296,4 @@ export default function NidhoggUnderground({combatStats,fieldHp,onFieldHpChange,
 
   </div>;
 }
+

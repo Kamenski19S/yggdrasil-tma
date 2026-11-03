@@ -18,7 +18,7 @@ export function equipmentCombatStats(save:Save,hero:{hp:number;str:number;en:num
  const multiplier=livingWaterActive(save.done)?2:1;
  return {multiplier,damageReduction:gear.damageReduction,fireResistance:gear.fireResistance,controlResistance:gear.controlResistance,artifactId:save.equippedArtifact,
   attack:Math.round((hero.str+WEAPON_POWER[save.heroWeapon]+swordTemperingBonus(save.heroWeapon,WEAPON_POWER[save.heroWeapon],level(save.heroWeapon))+runeBonus('attack')+(artifact?.attack||0))*(1+(artifact?.attackPercent||0)))*multiplier,
-  runeAttack:(hero.en+2+runeBonus('rune')+(artifact?.rune||0)+realmRuneAttackBonus(realm))*multiplier,
+  runeAttack:Math.round((hero.en+2+runeBonus('rune')+(artifact?.rune||0)+realmRuneAttackBonus(realm))*(1+(artifact?.runePercent||0)))*multiplier,
   maxHp:(hero.hp+gear.hp)*multiplier,
   defense:Math.round((gear.defense+Math.floor(shield/3)+runeBonus('defense')+(artifact?.defense||0))*(1+(artifact?.defensePercent||0)))*multiplier,
   shieldDefense:(equipped('shield')?1+shield:0)*multiplier};
@@ -35,3 +35,4 @@ export function dragonStrikeDamage(raw:number,stats:CombatStats,shielded:boolean
  const damage=incomingCombatDamage(raw,stats);
  return shielded?Math.ceil(damage/2):damage;
 }
+
