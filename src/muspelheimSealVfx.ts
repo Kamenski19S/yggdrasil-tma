@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import {MUSPELHEIM_LOCATION_SEALS,locationIsOpen} from './muspelheimLocationSeals';
+export const LOCATION_RING_SCALE=.7;
 export const LOCATION_RING_ASSET='Muspelheim_Location_Seal_Ring.glb';
 export const LOCATION_RING_CREDIT={title:'Magic Ring - Red',author:'Noob Model :D',url:'https://sketchfab.com/3d-models/magic-ring-red-08b6d10747ae4319a5d6fb1c2a47be92',license:'CC-BY-4.0'};
-/** Shared geometry/textures; two counter-rotating rings, no point lights or per-frame allocations. */
+/** Preserve the authored ground-facing model, its beam depth and native animation. */
 export function createLocationSealVfx(){
  const root=new THREE.Group();root.name='Платные рунические преграды Муспельхейма';
  const textures=new Map<string,THREE.CanvasTexture>();
@@ -41,17 +42,20 @@ export function createLocationSealVfx(){
  const rimMaterial=new THREE.MeshBasicMaterial({color:'#ff442b',transparent:true,opacity:.85,blending:THREE.AdditiveBlending,depthWrite:false});
  const veilMaterial=new THREE.MeshBasicMaterial({color:'#9b1026',side:THREE.DoubleSide,transparent:true,opacity:.16,depthWrite:false});
  const runeMaterials=new Map<string,THREE.MeshBasicMaterial>();
- const entries=MUSPELHEIM_LOCATION_SEALS.map(seal=>{const group=new THREE.Group();group.name=seal.name+' · печать';group.rotation.y=seal.yaw;root.add(group);const fit=new THREE.Group(),runes=new THREE.Group();group.add(fit,runes);const fallback=new THREE.Mesh(fallbackGeometry,rimMaterial);fit.add(fallback);const veil=new THREE.Mesh(veilGeometry,veilMaterial);group.add(veil);
-  for(let i=0;i<12;i++){const symbol=seal.runes[i%3].symbol;let material=runeMaterials.get(symbol);if(!material){material=new THREE.MeshBasicMaterial({map:glyph(symbol),transparent:true,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending});runeMaterials.set(symbol,material);}const mesh=new THREE.Mesh(runeGeometry,material),a=i*Math.PI/6;mesh.position.set(Math.cos(a)*.79,Math.sin(a)*.79,.12);mesh.rotation.z=a-Math.PI/2;runes.add(mesh);}group.scale.setScalar(seal.radius);return {seal,group,fit,runes,veil,fallback,mixer:undefined as THREE.AnimationMixer|undefined};});
+ const entries=MUSPELHEIM_LOCATION_SEALS.map(seal=>{const group=new THREE.Group();group.name=seal.name+' · печать';group.rotation.y=seal.yaw;root.add(group);const fit=new THREE.Group(),runes=new THREE.Group();group.add(fit,runes);runes.rotation.x=-Math.PI/2;const fallback=new THREE.Mesh(fallbackGeometry,rimMaterial);fallback.rotation.x=-Math.PI/2;fit.add(fallback);const veil=new THREE.Mesh(veilGeometry,veilMaterial);veil.rotation.x=-Math.PI/2;veil.position.y=.08;group.add(veil);
+  for(let i=0;i<12;i++){const symbol=seal.runes[i%3].symbol;let material=runeMaterials.get(symbol);if(!material){material=new THREE.MeshBasicMaterial({map:glyph(symbol),transparent:true,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending});runeMaterials.set(symbol,material);}const mesh=new THREE.Mesh(runeGeometry,material),a=i*Math.PI/6;mesh.position.set(Math.cos(a)*.79,Math.sin(a)*.79,.12);mesh.rotation.z=a-Math.PI/2;runes.add(mesh);}group.scale.setScalar(seal.radius*LOCATION_RING_SCALE);return {seal,group,fit,runes,veil,fallback,mixer:undefined as THREE.AnimationMixer|undefined};});
  let model:THREE.Object3D|undefined;
  return {root,
-  attach(source:THREE.Object3D,clips:THREE.AnimationClip[]){model=source;source.traverse(o=>{if(o instanceof THREE.Mesh)for(const m of Array.isArray(o.material)?o.material:[o.material]){m.depthWrite=false;if(m instanceof THREE.MeshStandardMaterial)m.emissiveIntensity=1.7;}});source.updateWorldMatrix(true,true);const box=new THREE.Box3().setFromObject(source),size=box.getSize(new THREE.Vector3());
-   for(const e of entries){const clone=source.clone(true),plane=new THREE.Group();plane.add(clone);if(size.y<=size.x&&size.y<=size.z)plane.rotation.x=Math.PI/2;else if(size.x<=size.y&&size.x<=size.z)plane.rotation.y=Math.PI/2;plane.updateWorldMatrix(true,true);const b=new THREE.Box3().setFromObject(plane),center=b.getCenter(new THREE.Vector3()),dims=b.getSize(new THREE.Vector3()),scale=2/Math.max(dims.x,dims.y);const offset=new THREE.Group();offset.add(plane);plane.position.sub(center);offset.scale.set(scale,scale,scale*.04);e.fit.add(offset);e.fallback.visible=false;e.mixer=new THREE.AnimationMixer(clone);for(const clip of clips)e.mixer.clipAction(clip).play();}
+  attach(source:THREE.Object3D,clips:THREE.AnimationClip[]){model=source;source.traverse(o=>{if(o instanceof THREE.Mesh)for(const m of Array.isArray(o.material)?o.material:[o.material]){m.depthWrite=false;if(m instanceof THREE.MeshStandardMaterial)m.emissiveIntensity=1.7;}});source.updateWorldMatrix(true,true);
+   const box=new THREE.Box3().setFromObject(source),center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3()),scale=2/Math.max(size.x,size.z);
+   for(const e of entries){const clone=source.clone(true),offset=new THREE.Group(),fit=new THREE.Group();offset.position.set(-center.x,-box.min.y,-center.z);offset.add(clone);fit.scale.setScalar(scale);fit.add(offset);e.fit.add(fit);e.fallback.visible=false;e.mixer=new THREE.AnimationMixer(clone);for(const clip of clips)e.mixer.clipAction(clip).play();}
+
   },
   update(dt:number,done:readonly string[],floor:(x:number,z:number)=>number|null,door?:THREE.Vector3){
-   for(const e of entries){const opened=locationIsOpen(done,e.seal.id);e.group.visible=true;e.runes.visible=!opened;e.veil.visible=!opened;const p=e.seal.id==='residence'&&door?door:e.seal;const y=e.seal.id==='residence'&&door?door.y:(floor(p.x,p.z)??0)+e.seal.radius;e.group.position.set(p.x,y,p.z);e.mixer?.update(dt);e.fit.rotation.z+=dt*.13;e.runes.rotation.z-=dt*.24;}
+   for(const e of entries){const opened=locationIsOpen(done,e.seal.id);e.group.visible=true;e.runes.visible=!opened;e.veil.visible=!opened;const p=e.seal.id==='residence'&&door?door:e.seal;const y=e.seal.id==='residence'&&door?door.y+.15:(floor(p.x,p.z)??0)+.15;e.group.position.set(p.x,y,p.z);e.mixer?.update(dt);e.fit.rotation.y+=dt*.13;e.runes.rotation.z-=dt*.24;}
   },
   dispose(){for(const e of entries)e.mixer?.stopAllAction();root.removeFromParent();fallbackGeometry.dispose();veilGeometry.dispose();runeGeometry.dispose();rimMaterial.dispose();veilMaterial.dispose();for(const m of runeMaterials.values())m.dispose();for(const t of textures.values())t.dispose();if(model){const geometries=new Set<THREE.BufferGeometry>(),materials=new Set<THREE.Material>(),maps=new Set<THREE.Texture>();model.traverse(o=>{if(o instanceof THREE.Mesh){geometries.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material]){materials.add(m);for(const v of Object.values(m))if(v instanceof THREE.Texture)maps.add(v);}}});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());maps.forEach(t=>t.dispose());}}
  };
 }
+
 

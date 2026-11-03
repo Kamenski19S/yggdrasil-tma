@@ -20,17 +20,33 @@ export type LocationSeal=typeof MUSPELHEIM_LOCATION_SEALS[number];
 export type LocationSealId=LocationSeal['id'];
 export const locationSealKey=(id:string)=>'muspelheim:location:open:'+id;
 export const locationSealPaidKey=(id:string)=>'muspelheim:location:paid:'+id;
-export const locationIsOpen=(done:readonly string[],id:string)=>done.includes(locationSealPaidKey(id));
+export const nextLocationSeal=(done:readonly string[])=>MUSPELHEIM_LOCATION_SEALS.find(s=>!done.includes(locationSealPaidKey(s.id)));
+export function locationIsOpen(done:readonly string[],id:string){
+ const index=MUSPELHEIM_LOCATION_SEALS.findIndex(s=>s.id===id);
+ return index>=0&&MUSPELHEIM_LOCATION_SEALS.slice(0,index+1).every(s=>done.includes(locationSealPaidKey(s.id)));
+}
+export const LOCATION_ROUTE_HINTS:Record<LocationSealId,string>={
+ forge:'Справа от первых врат, по дороге к кузнице.',
+ sanctuary:'По западной дороге к ледяному зданию у стены.',
+ norns:'К колодцу у каньона, где ждёт Странница.',
+ ymir:'К белому столбу памяти, рядом с западной дорогой.',
+ vault:'Дальше на запад, к каменному входу Хранилища трёх нитей.',
+ residence:'В крепость Пепельного легиона, к резиденции Владыки.',
+ mine:'В ущелье, к полукруглому спуску в пепельную шахту.',
+ volcano:'По восточной дороге к вулкану с тремя некромантами.',
+ surt:'Через магический проход и комнату испытания, к началу лестницы Сурта.'
+};
 export type SealWallet={drops:number;runes:readonly string[];counts:Record<string,number>;levels:Record<string,number>};
 export const sealRuneLevel=(wallet:SealWallet,id:string)=>wallet.runes.includes(id)?Math.min(3,1+Math.max(0,Number(wallet.levels['rune:'+id])||0)):0;
 export const sealRuneCount=(wallet:SealWallet,id:string)=>wallet.runes.includes(id)?Math.max(1,Math.floor(Number(wallet.counts[id])||1)):0;
 export function locationSealQuote(done:readonly string[],wallet:SealWallet,id:string){
  const index=MUSPELHEIM_LOCATION_SEALS.findIndex(s=>s.id===id),seal=MUSPELHEIM_LOCATION_SEALS[index];
  const previous=index>0?MUSPELHEIM_LOCATION_SEALS[index-1]:undefined;
- const ready=!!seal&&(!previous||locationIsOpen(done,previous.id));
+ const next=nextLocationSeal(done);
+ const ready=!!seal&&next?.id===id;
  const missingDrops=seal?Math.max(0,seal.cost-wallet.drops):0;
  const missingRunes=seal?.runes.filter(r=>sealRuneCount(wallet,r.id)<1||sealRuneLevel(wallet,r.id)<3)??[];
- return {seal,previous,ready,missingDrops,missingRunes,canPay:!!seal&&!locationIsOpen(done,id)&&ready&&missingDrops===0&&missingRunes.length===0};
+ return {seal,previous,next,ready,missingDrops,missingRunes,canPay:!!seal&&!locationIsOpen(done,id)&&ready&&missingDrops===0&&missingRunes.length===0};
 }
 export function unlockMuspelheimLocation(save:Save,id:string):Save{
  const quote=locationSealQuote(save.done,{drops:save.immortalityDrops,runes:save.runes,counts:save.lootCounts,levels:save.forgeLevels},id);
@@ -54,4 +70,5 @@ export function blockingLocationSeal(done:readonly string[],from:SealPoint,to:Se
 export function nearbyLocationSeal(done:readonly string[],p:SealPoint){
  return MUSPELHEIM_LOCATION_SEALS.filter(s=>!locationIsOpen(done,s.id)&&Math.hypot(p.x-s.x,p.z-s.z)<s.radius+16).sort((a,b)=>Math.hypot(p.x-a.x,p.z-a.z)-Math.hypot(p.x-b.x,p.z-b.z))[0];
 }
+
 
