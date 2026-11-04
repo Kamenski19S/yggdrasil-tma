@@ -1,3 +1,4 @@
+import {FantasyHealthBar} from './FantasyHealthBar';
 import {readMuspelheimPosition,writeMuspelheimPosition,type MuspelheimPosition} from './muspelheimPosition';
 import {applyCrownEvent,settleCrownFragments,recoverOwnerCrown} from './muspelheimCrownQuest';
 import {migrateMuspelheimLocationSeals,unlockMuspelheimLocation} from './muspelheimLocationSeals';
@@ -1150,7 +1151,7 @@ const [roadT, setRoadT] = useState(0.06);
               <div className="dside">
                 <span className="dface" style={{ borderColor: realm.color, color: realm.color }}><BgImg name={MASTER_IMG[realm.id]} className="himg" />{m.sym}</span>
                 <span className="dname" style={{ color: realm.color }}>{m.name}</span>
-                <span className="dhp"><span className="dhpfill" style={{ width: Math.max(0, (mhp / m.hp) * 100) + "%", background: realm.color }} /></span>
+                <FantasyHealthBar value={mhp} max={m.hp} name={m.name} colour={realm.color}/>
                 <span className="dnum">{mhp}/{m.hp}</span>
                 <span className="energy-label">энергия</span>
                 <span className="denergy">{Array.from({ length: COMBAT_ENERGY }).map((_, i) => {const c=combatEnergyColor(men);return <span key={i} className={"pip"+(i<men?" on":"")} style={i<men?{background:c,boxShadow:`0 0 7px ${c}`}:{}}/>;})}</span>
@@ -1159,7 +1160,7 @@ const [roadT, setRoadT] = useState(0.06);
               <div className="dside">
                 <span className="dface" style={{ borderColor: heroDef!.color, color: heroDef!.color }}><BgImg name={heroDef!.img} className="himg" />{heroDef!.sym}</span>
                 <span className="dname" style={{ color: heroDef!.color }}>{save.hero!.name}</span>
-                <span className="dhp"><span className="dhpfill" style={{ width: Math.min(100,Math.max(0,(hhp/Math.max(1,hmax))*100))+"%", background: "#7ee787" }} /></span>
+                <FantasyHealthBar value={hhp} max={hmax}/>
                 <span className="dnum">{hhp}/{hmax}</span>
                 <span className="energy-label">энергия</span>
                 <span className="denergy">{Array.from({ length: COMBAT_ENERGY }).map((_, i) => {const c=combatEnergyColor(hen);return <span key={i} className={"pip"+(i<hen?" on":"")} style={i<hen?{background:c,boxShadow:`0 0 7px ${c}`}:{}}/>;})}</span>

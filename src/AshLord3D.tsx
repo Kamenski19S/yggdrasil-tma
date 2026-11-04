@@ -1,3 +1,4 @@
+import {FantasyHealthBar} from './FantasyHealthBar';
 import {syncArtifactCrown,disposeArtifactCrown} from './artifactCrown';
 import {useInteriorRuneHint} from './useInteriorRuneHint';
 import {useRunicWard} from './useRunicWard';
@@ -106,7 +107,7 @@ export default function AshLord3D(props:Props){
   {hit&&<div className="interior-lightning-hit" aria-hidden="true"/>}
   <div ref={host} style={{position:'absolute',inset:0}}/>
   <div className="thread-vault-title"><b>Резиденция Владыки</b><span>Хранитель Вечного Жара</span></div>
-  <div className="thread-vault-health">Vicki · {hp}/{props.maxHp}<progress aria-label="Здоровье Vicki" value={hp} max={props.maxHp}/></div>
+  <div className="thread-vault-health">Vicki · {hp}/{props.maxHp}<FantasyHealthBar value={hp} max={props.maxHp}/></div>
   {!dialog&&!panelOpen&&<><button className="mid3d-ui mid3d-joy muspelheim-joystick" disabled={!ready} aria-label="Управление Vicki: тяни в нужном направлении" onPointerDown={e=>{if(!ready||pointer.current!==null)return;e.preventDefault();pointer.current=e.pointerId;basis.current=view.current;e.currentTarget.setPointerCapture(e.pointerId);steer(e);}} onPointerMove={steer} onPointerUp={stop} onPointerCancel={stop} onLostPointerCapture={stop}><span ref={knob} className="mid3d-knob" aria-hidden="true"/><img src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/></button>
   <MuspelheimActionWheel base={BASE} shieldEquipped={props.shieldEquipped} onAttack={()=>combat.current.attack()} onShield={()=>combat.current.shield()} onMagic={()=>combat.current.magic()} onBarrier={()=>{if(ready&&!paused.current&&!document.hidden)setStatus(runes.cast().message);}} doorReady={nearDoor&&ready} onDoor={()=>doorAction.current()} onRunChange={value=>{run.current=value;}}/>
 

@@ -1,3 +1,4 @@
+import {FantasyHealthBar} from './FantasyHealthBar';
 import {syncArtifactCrown,disposeArtifactCrown} from './artifactCrown';
 import {NIFLHEIM_VICTORY_STORY,MUSPELHEIM_STRANGER_STORY} from './niflheimEnding';
 import {createArtifactCombat} from './artifactCombat';
@@ -1271,8 +1272,8 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     </section></div>}
     {battle?.id.startsWith('sealGuardian:')&&<div className="nifl-seal-battle" role="group" aria-label="Бой со стражником">
       <div className="nifl-seal-health">
-        <div className="nifl-seal-fighter"><b>Валькирия</b><span>♥ {battle.heroHp}/{inventory.maxHp}</span><div className="nifl-seal-meter"><i style={{width:Math.max(0,100*battle.heroHp/inventory.maxHp)+'%',background:'#63d58f'}}/></div></div>
-        <div className="nifl-seal-fighter"><b>Страж печати · {sealById(battle.id.slice('sealGuardian:'.length))?.order}/{NIFLHEIM_SEALS.length}</b><span>♥ {battle.hp}/{battle.maxHp}</span><div className="nifl-seal-meter"><i style={{width:Math.max(0,100*battle.hp/battle.maxHp)+'%',background:'#d7717e'}}/></div></div>
+        <div className="nifl-seal-fighter"><b>Валькирия</b><span>♥ {battle.heroHp}/{inventory.maxHp}</span><FantasyHealthBar value={battle.heroHp} max={inventory.maxHp}/></div>
+        <div className="nifl-seal-fighter"><b>Страж печати · {sealById(battle.id.slice('sealGuardian:'.length))?.order}/{NIFLHEIM_SEALS.length}</b><span>♥ {battle.hp}/{battle.maxHp}</span><FantasyHealthBar value={battle.hp} max={battle.maxHp} name={sealById(battle.id.slice('sealGuardian:'.length))?.name??battle.id}/></div>
       </div>
       <div className="nifl-seal-controls" onPointerDown={e=>e.stopPropagation()}>
         <div className="nifl-seal-energy">{Array.from({length:5},(_,i)=><span key={i} style={{background:i<battle.energy?'#35cf94':'#354b56'}}/>)}<small>{battle.log}</small></div>
@@ -1284,7 +1285,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
     </div>}
     {battle&&!battle.id.startsWith('sealGuardian:')&&<div className="nifl-overlay" style={{zIndex:22,alignItems:"flex-end"}}><section className="nifl-panel" role="dialog" aria-modal="true" aria-label="Бой за освобождение" style={{maxWidth:440,marginTop:"auto",marginBottom:12}}>
       <h3>⚔️ {trialById(battle.id)?.name}</h3>
-      <p>❤️ Vicki: {battle.heroHp}/{inventory.maxHp} · ⚔️ Противник: {battle.hp}/{battle.maxHp}</p>
+      <p>❤️ Vicki: {battle.heroHp}/{inventory.maxHp} · ⚔️ Противник: {battle.hp}/{battle.maxHp}</p><FantasyHealthBar value={battle.heroHp} max={inventory.maxHp}/><FantasyHealthBar value={battle.hp} max={battle.maxHp} name={trialById(battle.id)?.name??battle.id}/>
       <p>{battle.log}</p><p>Энергия: {battle.energy}/5 · Руна: {battle.runeCharge}/2</p>
       <button disabled={battle.energy<1} onClick={()=>battleAction('hit')}>⚔️ Ударить</button>
       <button disabled={!shieldEquipped} onClick={()=>battleAction('shield')}>🛡️ Щит</button>

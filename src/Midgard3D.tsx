@@ -1,3 +1,4 @@
+import {FantasyHealthBar} from './FantasyHealthBar';
 import {syncArtifactCrown,disposeArtifactCrown} from './artifactCrown';
 import {createArtifactCombat} from './artifactCombat';
 import {BattleActions} from './BattleActions';
@@ -5408,9 +5409,9 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
     </div>}
     {banditOpponent&&whisperPhase==="closed"&&<div className="mid3d-ui" style={{top:80,left:"50%",transform:"translateX(-50%)",width:"min(calc(100% - 120px),290px)",padding:"8px 12px",borderRadius:12,background:"#fff",border:"1px solid #d9d9d9",color:"#111",pointerEvents:"none",zIndex:12}}>
       <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}><span>Vicki</span><span>{banditHeroHp}/{whisperStats.maxHp}</span></div>
-      <div style={{height:5,background:"#382b29",borderRadius:6,overflow:"hidden",marginBottom:6}}><div style={{height:"100%",width:`${Math.max(0,banditHeroHp/whisperStats.maxHp*100)}%`,background:"#72c46e",transition:"width .25s"}}/></div>
+      <FantasyHealthBar value={banditHeroHp} max={whisperStats.maxHp}/>
       <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:3}}><span>{banditOpponent.name}</span><span>{banditOpponent.hp}/{banditOpponent.maxHp}</span></div>
-      <div style={{height:5,background:"#382b29",borderRadius:6,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.max(0,banditOpponent.hp/banditOpponent.maxHp*100)}%`,background:"#e45244",transition:"width .25s"}}/></div>
+      <FantasyHealthBar value={banditOpponent.hp} max={banditOpponent.maxHp} name={banditOpponent.name}/>
     </div>}
     {banditVictory&&whisperPhase==="closed"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
       <div className="whisper-reward-icon">⚔</div><div className="whisper-reward-rarity">{banditVictory.name} повержен</div>
@@ -5486,8 +5487,8 @@ export function Midgard3D({ h, skin, weapon, gear, gearLevels, shieldAsset, on, 
       <button onPointerDown={e=>e.stopPropagation()} onClick={()=>{setRitualOpen(false);on("ritual:ygg")}}>🌳 Зов Иггдрасиля — пережить смертельный удар</button>
     </div>}
     {whisperBattleStartedRef.current&&whisperPhase!=="closed"&&whisperPhase!=="question"&&<div className="mid3d-ui whisper-bars">
-      <div className="whisper-unit"><b>{h.race}</b><small>❤ {whisperHeroHp}/{whisperStats.maxHp}</small></div>
-      <div className="whisper-unit"><b>{activeGuardian.name}</b><small>❤ {whisperGuardHp}/{activeGuardian.hp}</small></div>
+      <div className="whisper-unit"><b>{h.race}</b><small>❤ {whisperHeroHp}/{whisperStats.maxHp}</small><FantasyHealthBar value={whisperHeroHp} max={whisperStats.maxHp}/></div>
+      <div className="whisper-unit"><b>{activeGuardian.name}</b><small>❤ {whisperGuardHp}/{activeGuardian.hp}</small><FantasyHealthBar value={whisperGuardHp} max={activeGuardian.hp} name={activeGuardian.name}/></div>
     </div>}
     {whisperFx&&whisperPhase==="fight"&&<i key={whisperFx.key} className={"mid3d-ui whisper-battle-fx "+whisperFx.kind}/>}
     {whisperPhase==="question"&&<div className="mid3d-ui whisper-cloud" onPointerDown={e=>e.stopPropagation()}>
