@@ -45,3 +45,9 @@ body :is(.muspelheim-status,.ash-mine-status,.nifl-status,.nidhogg-status,.mid3d
 }
 body :is(.muspelheim-status,.ash-mine-status):has(button){max-height:80px!important;z-index:30}
 @media(max-width:350px){.fantasy-world-actions{left:132px;right:8px}body .muspelheim-interior :is(.thread-vault-talk,.ash-mine-interact,.ash-mine-exit){left:132px!important;right:8px!important}body .nifl-near{right:8px!important;width:calc(100% - 140px)!important}}
+
+.nifl-field-health{box-sizing:border-box;position:absolute;top:80px;left:80px;width:calc(100% - 170px);max-width:160px;z-index:8;pointer-events:none;color:#fff1d5;font-size:10px;line-height:13px;text-shadow:0 1px 3px #000}
+.nifl-field-health>span{display:block;white-space:nowrap}
+.nifl-field-health[data-hit=true]{color:#ffc7bd}
+.nifl-field-health[data-hit=true] .fantasy-health{filter:drop-shadow(0 0 3px #e14d4d)}
+@media(max-width:350px){.nifl-field-health{left:70px;width:calc(100% - 150px);font-size:9px}}
