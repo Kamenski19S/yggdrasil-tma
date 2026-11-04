@@ -1,0 +1,15 @@
+LICENSE - FREE FANTASY HUD SAMPLER (free sampler)
+
+YOU MAY
+- Use these assets for free in unlimited personal and commercial projects
+- Modify, recolour, crop and combine them
+
+YOU MAY NOT
+- Resell, redistribute or give away the asset files themselves, as-is or modified
+- Include them in another asset pack, template or UI library
+
+No attribution required, though it is always welcome.
+
+Source: FREE Fantasy HUD Sampler by Antahonist
+https://antahonist.itch.io/free-fantasy-hud-sampler-rpg-ui-pieces
+Prepared for Yggdrasil: transparent margins cropped; lossless WebP conversion.
