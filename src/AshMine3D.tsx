@@ -226,7 +226,7 @@ export default function AshMine3D(props:Props){
  {defeated&&<div className="muspelheim-gate-backdrop"><div className="muspelheim-gate-panel"><h3>Vicki потеряла силы</h3><p>Бой остановлен. Побеждённые стражники и предметы сохранены.</p><button className="muspelheim-btn" onClick={()=>actions.current.respawn()}>Возродиться в святилище</button></div></div>}
  {failed&&<button className="muspelheim-btn ash-mine-exit" onClick={props.onBack}>Вернуться из-за ошибки загрузки</button>}
 
- <div role="status" className="ash-mine-status" hidden={!status&&!failed}>{status}{failed&&<button className="muspelheim-btn" onClick={()=>setRetry(n=>n+1)}>Повторить</button>}</div></section>;
+ <div role="status" className="ash-mine-status" onPointerDown={e=>e.stopPropagation()} hidden={!status&&!failed}>{status}{failed&&<button className="muspelheim-btn" onClick={()=>setRetry(n=>n+1)}>Повторить</button>}</div></section>;
 }
 
 
