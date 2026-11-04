@@ -13,10 +13,12 @@ export function mountArtifactCrown(root:THREE.Object3D,head:THREE.Object3D,model
  root.updateWorldMatrix(true,true);model.updateWorldMatrix(true,true);
  const b=new THREE.Box3().setFromObject(model),size=b.getSize(new THREE.Vector3()),center=b.getCenter(new THREE.Vector3()),span=Math.max(size.x,size.z);if(span<=0)throw Error('Empty crown geometry');
  const offset=new THREE.Group();offset.position.set(-center.x,-b.min.y,-center.z);offset.add(model);const fit=new THREE.Group();fit.scale.setScalar(1/span);fit.add(offset);
- const body=new THREE.Box3().setFromObject(root),height=body.max.y-body.min.y,worldScale=head.getWorldScale(new THREE.Vector3()),width=height*.12;
+ const body=new THREE.Box3().setFromObject(root),height=body.max.y-body.min.y,worldScale=head.getWorldScale(new THREE.Vector3()),width=height*.132;
  const mount=new THREE.Group();mount.name='Венец трёх пламен · активный артефакт';mount.scale.set(width/Math.max(.00001,Math.abs(worldScale.x)),width/Math.max(.00001,Math.abs(worldScale.y)),width/Math.max(.00001,Math.abs(worldScale.z)));
  const target=head.getWorldPosition(new THREE.Vector3());let tip:THREE.Object3D|undefined;head.traverse(o=>{if(o!==head&&(o as THREE.Bone).isBone&&/head.*(?:top|end)/i.test(o.name))tip=o;});
  if(tip)target.lerp(tip.getWorldPosition(new THREE.Vector3()),.72);else target.y+=height*.07;
+ // Clear Vicki's raised hairline: lift the band by 3.5% of hero height.
+ target.addScaledVector(new THREE.Vector3(0,1,0).applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion())),height*.035);
  mount.position.copy(head.worldToLocal(target));
  mount.quaternion.copy(head.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(root.getWorldQuaternion(new THREE.Quaternion())));
  mount.add(fit);head.add(mount);return mount;
