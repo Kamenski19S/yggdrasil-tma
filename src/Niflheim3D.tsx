@@ -1185,7 +1185,7 @@ export default function Niflheim3D({sealWallet,onSealEvent,combatStats,onPotionB
       <button type="button" className="mid3d-realm-title nifl-realm-title" aria-label="Открыть летопись Нифльхейма" onPointerDown={e=>e.stopPropagation()} onClick={()=>{clearInput();setGuideOpen(true);}}><img className="mid3d-top-button-art" src={`${BASE}img/models/ui_niflheim.webp`} alt="" draggable={false}/></button>
       <button className="mid3d-top-btn" aria-label="Мельница капель бессмертия" onClick={()=>{clearInput();remember.current({...position.current});onOpenMill();}}><img className="mid3d-top-button-art" src={`${BASE}img/models/ui_mill.png`} alt="" draggable={false}/></button>
     </div>
-    {!battle&&<NiflheimHealthHUD hp={inventory.hp} maxHp={inventory.maxHp}/>}
+    <NiflheimHealthHUD hp={battle?.heroHp??inventory.hp} maxHp={inventory.maxHp}/>
     {status&&!modalActive&&<div className="nifl-status" onPointerDown={e=>e.stopPropagation()}>{status}</div>}
     <button className="mid3d-ui mid3d-joy nifl-joystick" aria-label="Управление Vicki: тяни в нужном направлении" onPointerDown={startStick} onPointerMove={steerStick} onPointerUp={stopStick} onPointerCancel={stopStick} onLostPointerCapture={stopStick}><img src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/><span className="mid3d-knob" ref={stick}/></button>
     <button className="mid3d-ui mid3d-block" aria-label="Прикрыться щитом" disabled={!shieldEquipped} onClick={()=>{if(battleRef.current?.id.startsWith('sealGuardian:')){battleActionRef.current?.('shield');return;}if(!paused.current){clearInput();guardUntil.current=performance.now()+1250;}}}><img className="mid3d-control-art" src={`${BASE}img/models/ui_shield.png`} alt="" draggable={false}/></button>
