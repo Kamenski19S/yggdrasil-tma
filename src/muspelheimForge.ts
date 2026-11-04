@@ -7,6 +7,8 @@ export const FORGE_YAW=Math.atan2(FORGE_FACING_TARGET.x-FORGE_POSITION.x,FORGE_F
 const facingCos=Math.cos(FORGE_YAW),facingSin=Math.sin(FORGE_YAW);
 export function forgeWorldPoint(x:number,z:number){return {x:FORGE_POSITION.x+FORGE_SCALE*(facingCos*x+facingSin*z),z:FORGE_POSITION.z+FORGE_SCALE*(-facingSin*x+facingCos*z)};}
 export const FORGE_RETURN=forgeWorldPoint(0,36);
+/** A kept-alive scene must leave the doorway even if its saved position is stale. */
+export function forgeResumePosition(returningFromForge:boolean,saved?:{x:number;z:number;y?:number}){return returningFromForge?{...FORGE_RETURN}:saved;}
 export const FORGE_CREDIT={title:'Fantasy Building',author:'-X-ScornGames',url:'https://sketchfab.com/3d-models/fantasybuilding-8e0fbb61f9db460f90cceff61db71522'};
 /** The uploaded building has one fused shell. Separate its original wooden leaf. */
 export function createMuspelheimForge(source:THREE.Object3D){
@@ -47,3 +49,4 @@ export function createMuspelheimForge(source:THREE.Object3D){
   update:(dt:number,x:number,z:number)=>{if(requested&&!near(x,z))requested=false;const target=requested||near(x,z);opening=THREE.MathUtils.clamp(opening+(target?1:-1)*dt/.85,0,1);portal.visible=opening>.06;hinge.rotation.y=-opening*opening*(3-2*opening)*Math.PI*.56;return requested&&opening>=.99;}
  };
 }
+
