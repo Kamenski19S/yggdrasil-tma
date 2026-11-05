@@ -1,0 +1,6 @@
+Mountain Range 01 — solararchitect
+Source: https://sketchfab.com/3d-models/mountain-range-01-6dff907d427f4c9f8d301075f8019c82
+Author: https://sketchfab.com/solararchitect
+License: Creative Commons Attribution 4.0 International
+https://creativecommons.org/licenses/by/4.0/
+Changes: geometry simplified from 524,288 to 24,000 triangles; textures resized to 768px and recompressed as JPEG; tangents removed and normals recalculated. Mesh partitions welded before simplification to keep a continuous terrain surface. Original coordinate transforms and attribution retained. Runtime scale and position adjusted for Yggdrasil's Jotunheim terrain.
