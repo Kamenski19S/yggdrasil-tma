@@ -40,7 +40,7 @@ export default function Jotunheim3D(props:Props){
    const box=new THREE.Box3().setFromObject(vicki.scene),scale=HERO_HEIGHT/Math.max(.001,box.max.y-box.min.y);vicki.scene.scale.setScalar(scale);vicki.scene.position.y=-box.min.y*scale;hero.add(vicki.scene);hero.position.set(pos.x,ground+.08,pos.z);hero.rotation.y=Math.PI;
    mixer=new THREE.AnimationMixer(vicki.scene);actions=createMuspelheimHeroActions(vicki.scene,mixer,vicki.animations);createMuspelheimArmorAppearance(vicki.scene).update(props.armorAppearance);
    equipment=createMuspelheimHeroEquipment(vicki.scene,{load:async asset=>(await load(asset)).scene,weaponAsset:weapon=>weapon==='default'?'Sword.glb':WEAPON_ASSET[weapon],prepare:(item,asset,weapon,isShield)=>{textureSteelOnWeapon(item,asset);if(!isShield)styleNiflheimWeapon(item,weapon);},dispose});
-   await equipment.update(props);if(!alive)return;loaded=true;camera.position.set(pos.x,ground+CAMERA_HEIGHT,pos.z+CAMERA_DISTANCE);camera.lookAt(pos.x,ground+8,pos.z-CAMERA_LOOK_AHEAD);setReady(true);setError('');persist();
+   await equipment.update(props);if(!alive)return;loaded=true;camera.position.set(pos.x,ground+CAMERA_HEIGHT,pos.z+CAMERA_DISTANCE);camera.lookAt(pos.x,ground+3,pos.z-CAMERA_LOOK_AHEAD);setReady(true);setError('');persist();
   }
   loadAll().catch(reason=>{if(alive){console.error(reason);setError('Не удалось загрузить Йотунхейм. Повтори загрузку.');}});
   const timeout=window.setTimeout(()=>{if(alive&&!loaded)setError('Загрузка затянулась. Можно повторить попытку.');},60000),clock=new THREE.Clock(),focus=new THREE.Vector3(),desired=new THREE.Vector3();let lastOverview=false;
@@ -56,7 +56,7 @@ export default function Jotunheim3D(props:Props){
     }
     hero.position.set(pos.x,terrain.height(pos.x,pos.z)!+.08,pos.z);actions?.update(creditsRef.current?0:dt,moving,running,props.shieldEquipped);view.current=updateFollowCamera(follow,dx,dz,dt);
     const fov=overviewRef.current?55:48;if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
-    if(overviewRef.current){desired.set(0,950/Math.min(1,camera.aspect),720);focus.set(0,70,0);}else{focus.set(pos.x,hero.position.y+10,pos.z);const p=terrainSafeCameraPosition(focus,{x:pos.x+Math.sin(follow.yaw)*CAMERA_DISTANCE,y:hero.position.y+CAMERA_HEIGHT,z:pos.z+Math.cos(follow.yaw)*CAMERA_DISTANCE},terrain.height,5);desired.set(p.x,p.y,p.z);const ahead=CAMERA_LOOK_AHEAD*Math.min(1,Math.hypot(p.x-pos.x,p.z-pos.z)/CAMERA_DISTANCE);focus.set(pos.x-Math.sin(follow.yaw)*ahead,hero.position.y+8,pos.z-Math.cos(follow.yaw)*ahead);}
+    if(overviewRef.current){desired.set(0,950/Math.min(1,camera.aspect),720);focus.set(0,70,0);}else{focus.set(pos.x,hero.position.y+10,pos.z);const p=terrainSafeCameraPosition(focus,{x:pos.x+Math.sin(follow.yaw)*CAMERA_DISTANCE,y:hero.position.y+CAMERA_HEIGHT,z:pos.z+Math.cos(follow.yaw)*CAMERA_DISTANCE},terrain.height,5);desired.set(p.x,p.y,p.z);const ahead=CAMERA_LOOK_AHEAD*Math.min(1,Math.hypot(p.x-pos.x,p.z-pos.z)/CAMERA_DISTANCE);focus.set(pos.x-Math.sin(follow.yaw)*ahead,hero.position.y+3,pos.z-Math.cos(follow.yaw)*ahead);}
     if(lastOverview!==overviewRef.current){camera.position.copy(desired);lastOverview=overviewRef.current;}else camera.position.lerp(desired,1-Math.exp(-7*dt));camera.lookAt(focus);saveTime+=dt;if(saveTime>1){saveTime=0;persist();}
    }
    renderer.render(scene,camera);
