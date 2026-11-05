@@ -15,6 +15,8 @@ export function createJotunheimTerrain(root:THREE.Object3D){
  type Triangle={ax:number;az:number;ay:number;bx:number;bz:number;by:number;cx:number;cz:number;cy:number;den:number};
  const cells=new Map<string,Triangle[]>(),a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3();
  const cell=(n:number)=>Math.floor(n/cellSize);
+ function rebuild(){
+ cells.clear();wrapper.updateMatrixWorld(true);bounds.setFromObject(wrapper);
  root.traverse(object=>{
   if(!(object instanceof THREE.Mesh))return;
   object.receiveShadow=true;
@@ -31,6 +33,8 @@ export function createJotunheimTerrain(root:THREE.Object3D){
    }
   }
  });
+ }
+ rebuild();
  function height(x:number,z:number):number|null{
   if(x<bounds.min.x||x>bounds.max.x||z<bounds.min.z||z>bounds.max.z)return null;
   let top=-Infinity;
@@ -41,5 +45,5 @@ export function createJotunheimTerrain(root:THREE.Object3D){
   }
   return Number.isFinite(top)?top:null;
  }
- return {root:wrapper,bounds,height};
+ return {root:wrapper,bounds,height,rebuild};
 }
