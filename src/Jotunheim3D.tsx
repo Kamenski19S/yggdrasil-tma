@@ -9,6 +9,8 @@ import {screenMoveToWorld,updateFollowCamera,terrainSafeCameraPosition,type Foll
 import {createJotunheimTerrain,JOTUNHEIM_TERRAIN_ASSET,JOTUNHEIM_SPAWN} from './jotunheimTerrain';
 import './jotunheimUI.css';
 type Props={weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;armorAppearance:ArmorAppearance};
+const HERO_HEIGHT=17.5;
+const CAMERA_DISTANCE=38,CAMERA_HEIGHT=25,CAMERA_LOOK_AHEAD=24;
 const POSITION_KEY='yggdrasil:jotunheim:position:v1';
 function readPosition(){try{const p=JSON.parse(localStorage.getItem(POSITION_KEY)||'null');if(p&&Number.isFinite(p.x)&&Number.isFinite(p.z))return {x:Number(p.x),z:Number(p.z)};}catch{}return {...JOTUNHEIM_SPAWN};}
 function dispose(root:THREE.Object3D){const gs=new Set<THREE.BufferGeometry>(),ms=new Set<THREE.Material>(),ts=new Set<THREE.Texture>();root.traverse(o=>{if(o instanceof THREE.Mesh){gs.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material]){ms.add(m);for(const v of Object.values(m))if(v instanceof THREE.Texture)ts.add(v);}}});gs.forEach(g=>g.dispose());ms.forEach(m=>m.dispose());ts.forEach(t=>t.dispose());}
@@ -21,7 +23,7 @@ export default function Jotunheim3D(props:Props){
   let alive=true,frame=0,loaded=false,saveTime=0;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.2;mount.appendChild(renderer.domElement);
   const scene=new THREE.Scene();scene.background=new THREE.Color('#adc4d3');scene.fog=new THREE.Fog('#adc4d3',450,1800);scene.add(new THREE.HemisphereLight('#eef5ff','#5d6550',2));const light=new THREE.DirectionalLight('#fff1d5',2.4);light.position.set(-300,700,250);scene.add(light);
-  const camera=new THREE.PerspectiveCamera(55,1,.5,3500),hero=new THREE.Group();scene.add(hero);const pos=readPosition(),follow:FollowCameraState={yaw:0,targetYaw:0,turnTime:0};view.current=basis.current=0;
+  const camera=new THREE.PerspectiveCamera(48,1,.5,3500),hero=new THREE.Group();scene.add(hero);const pos=readPosition(),follow:FollowCameraState={yaw:0,targetYaw:0,turnTime:0};view.current=basis.current=0;
   let terrain:ReturnType<typeof createJotunheimTerrain>|undefined,actions:ReturnType<typeof createMuspelheimHeroActions>|undefined,mixer:THREE.AnimationMixer|undefined,equipment:ReturnType<typeof createMuspelheimHeroEquipment>|undefined;
   const persist=()=>{if(loaded)try{localStorage.setItem(POSITION_KEY,JSON.stringify(pos));}catch{}};
   const keys=new Set<string>(),clear=()=>{input.current={x:0,z:0};pointer.current=null;run.current=false;keys.clear();if(knob.current)knob.current.style.transform='';persist();};clearRef.current=clear;
@@ -35,10 +37,10 @@ export default function Jotunheim3D(props:Props){
    const [mountains,vicki]=assets;terrain=createJotunheimTerrain(mountains.scene);scene.add(terrain.root);
    if(terrain.height(pos.x,pos.z)==null||Math.abs(pos.x)>580||Math.abs(pos.z)>580)Object.assign(pos,JOTUNHEIM_SPAWN);
    const ground=terrain.height(pos.x,pos.z);if(ground==null)throw Error('Не найдено место появления Вики.');
-   const box=new THREE.Box3().setFromObject(vicki.scene),scale=13.94/Math.max(.001,box.max.y-box.min.y);vicki.scene.scale.setScalar(scale);vicki.scene.position.y=-box.min.y*scale;hero.add(vicki.scene);hero.position.set(pos.x,ground+.08,pos.z);hero.rotation.y=Math.PI;
+   const box=new THREE.Box3().setFromObject(vicki.scene),scale=HERO_HEIGHT/Math.max(.001,box.max.y-box.min.y);vicki.scene.scale.setScalar(scale);vicki.scene.position.y=-box.min.y*scale;hero.add(vicki.scene);hero.position.set(pos.x,ground+.08,pos.z);hero.rotation.y=Math.PI;
    mixer=new THREE.AnimationMixer(vicki.scene);actions=createMuspelheimHeroActions(vicki.scene,mixer,vicki.animations);createMuspelheimArmorAppearance(vicki.scene).update(props.armorAppearance);
    equipment=createMuspelheimHeroEquipment(vicki.scene,{load:async asset=>(await load(asset)).scene,weaponAsset:weapon=>weapon==='default'?'Sword.glb':WEAPON_ASSET[weapon],prepare:(item,asset,weapon,isShield)=>{textureSteelOnWeapon(item,asset);if(!isShield)styleNiflheimWeapon(item,weapon);},dispose});
-   await equipment.update(props);if(!alive)return;loaded=true;camera.position.set(pos.x,ground+30,pos.z+42);camera.lookAt(pos.x,ground+8,pos.z);setReady(true);setError('');persist();
+   await equipment.update(props);if(!alive)return;loaded=true;camera.position.set(pos.x,ground+CAMERA_HEIGHT,pos.z+CAMERA_DISTANCE);camera.lookAt(pos.x,ground+8,pos.z-CAMERA_LOOK_AHEAD);setReady(true);setError('');persist();
   }
   loadAll().catch(reason=>{if(alive){console.error(reason);setError('Не удалось загрузить Йотунхейм. Повтори загрузку.');}});
   const timeout=window.setTimeout(()=>{if(alive&&!loaded)setError('Загрузка затянулась. Можно повторить попытку.');},60000),clock=new THREE.Clock(),focus=new THREE.Vector3(),desired=new THREE.Vector3();let lastOverview=false;
@@ -53,7 +55,8 @@ export default function Jotunheim3D(props:Props){
      }
     }
     hero.position.set(pos.x,terrain.height(pos.x,pos.z)!+.08,pos.z);actions?.update(creditsRef.current?0:dt,moving,running,props.shieldEquipped);view.current=updateFollowCamera(follow,dx,dz,dt);
-    if(overviewRef.current){desired.set(0,950/Math.min(1,camera.aspect),720);focus.set(0,70,0);}else{focus.set(pos.x,hero.position.y+8,pos.z);const p=terrainSafeCameraPosition(focus,{x:pos.x+Math.sin(follow.yaw)*42,y:hero.position.y+30,z:pos.z+Math.cos(follow.yaw)*42},terrain.height,5);desired.set(p.x,p.y,p.z);}
+    const fov=overviewRef.current?55:48;if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
+    if(overviewRef.current){desired.set(0,950/Math.min(1,camera.aspect),720);focus.set(0,70,0);}else{focus.set(pos.x,hero.position.y+10,pos.z);const p=terrainSafeCameraPosition(focus,{x:pos.x+Math.sin(follow.yaw)*CAMERA_DISTANCE,y:hero.position.y+CAMERA_HEIGHT,z:pos.z+Math.cos(follow.yaw)*CAMERA_DISTANCE},terrain.height,5);desired.set(p.x,p.y,p.z);const ahead=CAMERA_LOOK_AHEAD*Math.min(1,Math.hypot(p.x-pos.x,p.z-pos.z)/CAMERA_DISTANCE);focus.set(pos.x-Math.sin(follow.yaw)*ahead,hero.position.y+8,pos.z-Math.cos(follow.yaw)*ahead);}
     if(lastOverview!==overviewRef.current){camera.position.copy(desired);lastOverview=overviewRef.current;}else camera.position.lerp(desired,1-Math.exp(-7*dt));camera.lookAt(focus);saveTime+=dt;if(saveTime>1){saveTime=0;persist();}
    }
    renderer.render(scene,camera);
