@@ -68,7 +68,7 @@ function refineEntrance(mesh:THREE.Mesh){
  const emit=(v:number[])=>entries.forEach(([,a],i)=>{for(let c=0;c<a.itemSize;c++)output[i].push(v[offsets[i]+c]);});
  function triangle(a:number[],b:number[],c:number[],depth=0){
   const p=[position(a),position(b),position(c)],xs=p.map(v=>v.x-GATEWAY_SITE.x),zs=p.map(v=>v.z-GATEWAY_SITE.z);
-  const nearby=Math.min(...xs)<60&&Math.max(...xs)>-60&&Math.min(...zs)<105&&Math.max(...zs)>-235;
+  const nearby=Math.min(...xs)<60&&Math.max(...xs)>-60&&Math.min(...zs)<145&&Math.max(...zs)>-235;
   const lengths=p.map((v,i)=>{const w=p[(i+1)%3];return (v.x-w.x)**2+(v.z-w.z)**2;}),edge=lengths.indexOf(Math.max(...lengths));
   if(nearby&&lengths[edge]>16&&depth<20){
    const vs=[a,b,c],u=vs[edge],v=vs[(edge+1)%3],w=vs[(edge+2)%3],mid=u.map((n,i)=>(n+v[i])/2);
@@ -91,6 +91,7 @@ export function installJotunheimGateway(model:THREE.Object3D,terrain:ReturnType<
  model.scale.set(GATEWAY_SCALE.x,GATEWAY_SCALE.y,GATEWAY_SCALE.z);
  model.position.set(GATEWAY_SITE.x,baseY,GATEWAY_SITE.z);model.updateMatrixWorld(true);
  const local=(x:number,z:number)=>({x:(x-GATEWAY_SITE.x)/GATEWAY_SCALE.x,z:(z-GATEWAY_SITE.z)/GATEWAY_SCALE.z});
+ const frontEnd=(GATEWAY_VIEW.z-GATEWAY_SITE.z)/GATEWAY_SCALE.z+35;
  const point=new THREE.Vector3(),inverse=new THREE.Matrix4();
  terrain.root.traverse(object=>{
   if(!(object instanceof THREE.Mesh))return;
@@ -98,12 +99,12 @@ export function installJotunheimGateway(model:THREE.Object3D,terrain:ReturnType<
   inverse.copy(object.matrixWorld).invert();const positions=object.geometry.getAttribute('position');
   for(let i=0;i<positions.count;i++){
    point.fromBufferAttribute(positions,i).applyMatrix4(object.matrixWorld);const {x,z}=local(point.x,point.z);
-   if(z< -280||z>LENGTH+36||Math.abs(x)>110)continue;
+   if(z< -280||z>frontEnd||Math.abs(x)>110)continue;
    const width=z<0?44:40+THREE.MathUtils.clamp(z/LENGTH,0,1)*26;
-   // A level landing continues behind the arch; farther downhill it merges into the original hill.
-   const blend=smooth((width+36-Math.abs(x))/36)*smooth((z+280)/190)*smooth((LENGTH+36-z)/28);
+   // Level ground before the first tread, and a rear landing blending into the hill.
+   const blend=smooth((width+36-Math.abs(x))/36)*smooth((z+280)/190)*smooth((frontEnd-z)/20);
    if(blend<=0)continue;
-   const target=baseY+(z<0?LANDING:LANDING*(1-THREE.MathUtils.clamp(z/LENGTH,0,1))-.5);
+   const target=baseY+(z<0?LANDING:z>=LENGTH?0:Math.max(0,LANDING*(1-z/LENGTH)-.5));
    point.y=THREE.MathUtils.lerp(point.y,target,blend);point.applyMatrix4(inverse);positions.setXYZ(i,point.x,point.y,point.z);
   }
   positions.needsUpdate=true;object.geometry.computeVertexNormals();object.geometry.computeBoundingBox();object.geometry.computeBoundingSphere();

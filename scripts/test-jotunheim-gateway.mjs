@@ -19,6 +19,12 @@ try{
    assert(Math.abs(y-visible)<.0001,'Rear exit collision diverges from rendered hill');previous=y;
   }
  }
+ // Spawn and shortcut stand on a level approach with real ground before the first tread.
+ assert(GATEWAY_VIEW.z>GATEWAY_SITE.z+16*5.4*GATEWAY_SCALE.z+25);
+ assert(!gate.onStairs(GATEWAY_VIEW.x,GATEWAY_VIEW.z));
+ for(const dx of [-8,0,8])for(let z=GATEWAY_SITE.z+16*5.4*GATEWAY_SCALE.z+.5;z<=579;z+=.5){
+  assert(Math.abs(terrain.height(GATEWAY_VIEW.x+dx,z)-gate.baseY)<.05,`Uneven front approach at ${dx},${z}`);
+ }
  // A real level terrace, wide enough to turn and walk beyond the doorway.
  for(const dx of [-8,0,8])for(let dz=-10;dz>=-65;dz-=1){
   const y=terrain.height(GATEWAY_SITE.x+dx,GATEWAY_SITE.z+dz);
