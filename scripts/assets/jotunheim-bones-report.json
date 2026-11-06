@@ -1,0 +1,32 @@
+[
+  {
+    "file": "Jotunheim_Bone_Ribs.glb",
+    "vertices": 15360,
+    "triangles": 10688,
+    "bytes": 676324
+  },
+  {
+    "file": "Jotunheim_Bone_Spine.glb",
+    "vertices": 10660,
+    "triangles": 7728,
+    "bytes": 510900
+  },
+  {
+    "file": "Jotunheim_Bone_Barricade.glb",
+    "vertices": 12914,
+    "triangles": 8632,
+    "bytes": 499820
+  },
+  {
+    "file": "Jotunheim_Bone_Skull.glb",
+    "vertices": 9970,
+    "triangles": 7472,
+    "bytes": 521368
+  },
+  {
+    "file": "Jotunheim_Bone_Arch.glb",
+    "vertices": 680,
+    "triangles": 1352,
+    "bytes": 33596
+  }
+]

@@ -8,6 +8,7 @@ import {createMuspelheimArmorAppearance,type ArmorAppearance} from './muspelheim
 import {screenMoveToWorld,updateFollowCamera,terrainSafeCameraPosition,type FollowCameraState} from './muspelheimCamera';
 import {createJotunheimTerrain,JOTUNHEIM_TERRAIN_ASSET,JOTUNHEIM_SPAWN} from './jotunheimTerrain';
 import {installJotunheimGateway,JOTUNHEIM_GATEWAY_ASSET,GATEWAY_VIEW} from './jotunheimGateway';
+import {JOTUNHEIM_BONE_ASSETS,installJotunheimBoundary,jotunheimBoundaryBlocks} from './jotunheimBoundary';
 import './jotunheimUI.css';
 type Props={weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;armorAppearance:ArmorAppearance};
 const HERO_HEIGHT=19.25;
@@ -33,10 +34,12 @@ export default function Jotunheim3D(props:Props){
   const resize=()=>{const w=mount.clientWidth,h=mount.clientHeight;if(w&&h){renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}};const observer=new ResizeObserver(resize);observer.observe(mount);resize();
   const loader=new GLTFLoader(),load=async(asset:string)=>loader.parseAsync(await cachedGlbBuffer(`${BASE}img/models/${asset}`),`${BASE}img/models/`);
   async function loadAll(){
-   const results=await Promise.allSettled([load(JOTUNHEIM_TERRAIN_ASSET),load('Vika-3d-animated-optimized.glb'),load(JOTUNHEIM_GATEWAY_ASSET)]),assets=results.flatMap(r=>r.status==='fulfilled'?[r.value]:[]);
+   const results=await Promise.allSettled([load(JOTUNHEIM_TERRAIN_ASSET),load('Vika-3d-animated-optimized.glb'),load(JOTUNHEIM_GATEWAY_ASSET),...Object.values(JOTUNHEIM_BONE_ASSETS).map(load)]),assets=results.flatMap(r=>r.status==='fulfilled'?[r.value]:[]);
    if(!alive){assets.forEach(a=>dispose(a.scene));return;}if(results.some(r=>r.status==='rejected')){assets.forEach(a=>dispose(a.scene));throw Error('Не удалось загрузить ландшафт или Вики.');}
    const [mountains,vicki,gateModel]=assets;terrain=createJotunheimTerrain(mountains.scene);scene.add(terrain.root);gateway=installJotunheimGateway(gateModel.scene,terrain);scene.add(gateway.root);
-   if(gateway.blocks(pos.x,pos.z)){Object.assign(pos,GATEWAY_VIEW);}
+   const bones=Object.fromEntries(Object.keys(JOTUNHEIM_BONE_ASSETS).map((kind,i)=>[kind,assets[i+3].scene])) as unknown as Record<keyof typeof JOTUNHEIM_BONE_ASSETS,THREE.Object3D>;
+   scene.add(installJotunheimBoundary(bones,terrain).root);
+   if(gateway.blocks(pos.x,pos.z)||jotunheimBoundaryBlocks(pos.x,pos.z)){Object.assign(pos,GATEWAY_VIEW);}
    if(gateway.height(pos.x,pos.z)==null||Math.abs(pos.x)>580||Math.abs(pos.z)>580)Object.assign(pos,JOTUNHEIM_SPAWN);
    const ground=gateway.height(pos.x,pos.z);if(ground==null)throw Error('Не найдено место появления Вики.');
    const box=new THREE.Box3().setFromObject(vicki.scene),scale=HERO_HEIGHT/Math.max(.001,box.max.y-box.min.y);vicki.scene.scale.setScalar(scale);vicki.scene.position.y=-box.min.y*scale;hero.add(vicki.scene);hero.position.set(pos.x,ground+.08,pos.z);hero.rotation.y=Math.PI;
@@ -53,7 +56,7 @@ export default function Jotunheim3D(props:Props){
     let dx=0,dz=0,moving=false;const running=run.current||keys.has('ShiftLeft')||keys.has('ShiftRight');
     if(!creditsRef.current){let x=input.current.x+Number(keys.has('KeyD')||keys.has('ArrowRight'))-Number(keys.has('KeyA')||keys.has('ArrowLeft')),z=input.current.z+Number(keys.has('KeyS')||keys.has('ArrowDown'))-Number(keys.has('KeyW')||keys.has('ArrowUp'));const length=Math.hypot(x,z);
      if(length){x/=Math.max(1,length);z/=Math.max(1,length);const move=screenMoveToWorld(x,z,basis.current),speed=running?42:25,sx=move.x*speed*dt,sz=move.z*speed*dt;
-      const walk=(nx:number,nz:number)=>{if(Math.abs(nx)>580||Math.abs(nz)>580)return false;if(gateway?.blocks(nx,nz))return false;const y=gateway?.height(nx,nz)??terrain!.height(nx,nz),onSteps=gateway?.onStairs(nx,nz)||gateway?.onStairs(pos.x,pos.z);return y!=null&&Math.abs(y-hero.position.y)<=Math.max(onSteps?3.5:0,Math.hypot(nx-pos.x,nz-pos.z)*2.5+.2);};
+      const walk=(nx:number,nz:number)=>{if(jotunheimBoundaryBlocks(nx,nz))return false;if(gateway?.blocks(nx,nz))return false;const y=gateway?.height(nx,nz)??terrain!.height(nx,nz),onSteps=gateway?.onStairs(nx,nz)||gateway?.onStairs(pos.x,pos.z);return y!=null&&Math.abs(y-hero.position.y)<=Math.max(onSteps?3.5:0,Math.hypot(nx-pos.x,nz-pos.z)*2.5+.2);};
       const next=walk(pos.x+sx,pos.z+sz)?{x:pos.x+sx,z:pos.z+sz}:walk(pos.x+sx,pos.z)?{x:pos.x+sx,z:pos.z}:walk(pos.x,pos.z+sz)?{x:pos.x,z:pos.z+sz}:pos;dx=next.x-pos.x;dz=next.z-pos.z;Object.assign(pos,next);moving=Math.hypot(dx,dz)>.0001;if(moving)hero.rotation.y=Math.atan2(dx,dz);
      }
     }
@@ -74,6 +77,6 @@ export default function Jotunheim3D(props:Props){
   {!ready&&<div className="jotunheim-loading" role="status">{error||'Загружается горная страна…'}{error&&<button onClick={()=>setRetry(n=>n+1)}>Повторить загрузку</button>}</div>}
   {ready&&!credits&&<><button className="jotunheim-joy" aria-label="Управление Вики: тяни в нужном направлении" onPointerDown={e=>{if(pointer.current!==null)return;e.preventDefault();pointer.current=e.pointerId;basis.current=overviewRef.current?0:view.current;e.currentTarget.setPointerCapture(e.pointerId);steer(e);}} onPointerMove={steer} onPointerUp={()=>clearRef.current()} onPointerCancel={()=>clearRef.current()} onLostPointerCapture={()=>clearRef.current()}><span ref={knob}/><img src={`${BASE}img/models/ui_joystick.png`} alt="" draggable={false}/></button>
   <button className="jotunheim-run" aria-label="Бег: удерживай кнопку" onPointerDown={e=>{e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);run.current=true;}} onPointerUp={()=>{run.current=false;}} onPointerCancel={()=>{run.current=false;}} onLostPointerCapture={()=>{run.current=false;}}>Бег</button></>}
-  {credits&&<div className="jotunheim-overlay"><section role="dialog" aria-modal="true" aria-label="О ландшафте Йотунхейма"><h3>Йотунхейм</h3><p>Каменный вход со ступенями установлен у южной границы мира. За вратами площадка плавно переходит в холм. «К входу» переносит Вики к подножию лестницы для осмотра.</p><p>Управление: джойстик или WASD / стрелки. Бег: удерживай кнопку или Shift. «Обзор мира» показывает весь ландшафт.</p><p><a href="https://sketchfab.com/3d-models/mountain-range-01-6dff907d427f4c9f8d301075f8019c82" target="_blank" rel="noopener noreferrer">Mountain Range 01 — solararchitect</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Для игры упрощена геометрия, сжаты текстуры и изменён масштаб.</p><button onClick={()=>setCredits(false)}>Продолжить</button></section></div>}
+  {credits&&<div className="jotunheim-overlay"><section role="dialog" aria-modal="true" aria-label="О ландшафте Йотунхейма"><h3>Йотунхейм</h3><p>Каменный вход со ступенями установлен у южной границы мира. За вратами площадка плавно переходит в холм. «К входу» переносит Вики к подножию лестницы для осмотра.</p><p>Границы горной страны хранят окаменевшие останки древних великанов и первобытных чудовищ. Между рёбрами, позвонками и скалами видны далёкие недоступные горы. Образы напоминают о костях Имира, ставших горами.</p><p>Управление: джойстик или WASD / стрелки. Бег: удерживай кнопку или Shift. «Обзор мира» показывает весь ландшафт.</p><p><a href="https://sketchfab.com/3d-models/mountain-range-01-6dff907d427f4c9f8d301075f8019c82" target="_blank" rel="noopener noreferrer">Mountain Range 01 — solararchitect</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Для игры упрощена геометрия, сжаты текстуры и изменён масштаб.</p><button onClick={()=>setCredits(false)}>Продолжить</button></section></div>}
  </section>;
 }
