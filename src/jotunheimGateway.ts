@@ -1,13 +1,61 @@
 import * as THREE from 'three';
-import type {createJotunheimTerrain} from './jotunheimTerrain';
+import {JOTUNHEIM_SPAWN,type createJotunheimTerrain} from './jotunheimTerrain';
 export const JOTUNHEIM_GATEWAY_ASSET='Jotunheim_Giant_Gateway.glb';
 export const GATEWAY_SITE={x:-140,z:465};
-export const GATEWAY_VIEW={x:-140,z:559};
-// Reduce the arch while retaining deep treads for Vicki's feet.
-export const GATEWAY_SCALE={x:.42,y:.42,z:.8};
+export const GATEWAY_VIEW={...JOTUNHEIM_SPAWN};
+// Leave headroom in the doorway while retaining deep treads for Vicki's feet.
+export const GATEWAY_SCALE={x:.65,y:.65,z:.8};
 const EDGES=[927,939,951,965,980,996,1013,1031,1051,1072,1094,1118,1143,1170,1199,1231,1253];
 const TREAD=5.4,LENGTH=16*TREAD,LANDING=32.6*GATEWAY_SCALE.y;
 const smooth=(n:number)=>{const t=THREE.MathUtils.clamp(n,0,1);return t*t*(3-2*t);};
+/** Copy the carved, textured front relief onto the rear, excluding the stairs.
+ * A half turn keeps the inscriptions readable from the other side. The existing
+ * stone core joins the two faces; the second relief extends out from its rear. */
+function addRearFacade(model:THREE.Object3D){
+ const copies:THREE.Mesh[]=[];
+ model.updateMatrixWorld(true);
+ model.traverse(object=>{
+  if(!(object instanceof THREE.Mesh))return;
+  const source:THREE.BufferGeometry=object.geometry,position=source.getAttribute('position'),index=source.index;
+  const entries=Object.entries(source.attributes),output=entries.map(()=>[] as number[]);
+  const read=(i:number)=>entries.map(([,a])=>Array.from({length:a.itemSize},(_,c)=>a.getComponent(i,c)));
+  const pi=entries.findIndex(([name])=>name==='position');
+  let count=0;
+  for(let i=0;i<(index?.count??position.count);i+=3){
+   const ids=[0,1,2].map(k=>index?index.getX(i+k):i+k);
+   // The carved front is the outward-facing primitive; the granite rear and
+   // the side walls face the opposite way or run across the depth of the arch.
+   const p=ids.map(k=>new THREE.Vector3().fromBufferAttribute(position,k));
+   const normal=p[1].clone().sub(p[0]).cross(p[2].clone().sub(p[0]));
+   if(normal.z<=0||p.some(v=>v.z<-.01))continue;
+   let polygon=ids.map(read);
+   // Clip at the top landing rather than copying any part of the front stairs.
+   const clipped:ReturnType<typeof read>[]=[];
+   for(let k=0;k<polygon.length;k++){
+    const a=polygon[k],b=polygon[(k+1)%polygon.length],ay=a[pi][1],by=b[pi][1],inside=ay>=32.6;
+    if(inside)clipped.push(a);
+    if(inside!==(by>=32.6)){
+     const t=(32.6-ay)/(by-ay);clipped.push(a.map((values,j)=>values.map((v,c)=>THREE.MathUtils.lerp(v,b[j][c],t))));
+    }
+   }
+   polygon=clipped;
+   for(let k=1;k<polygon.length-1;k++)for(const v of [polygon[0],polygon[k],polygon[k+1]]){
+    entries.forEach(([name],j)=>{
+     const values=[...v[j]];
+     if(name==='position'){values[0]=-values[0];values[2]=-8-values[2];}
+     if(name==='normal'||name==='tangent'){values[0]=-values[0];values[2]=-values[2];}
+     output[j].push(...values);
+    });count++;
+   }
+  }
+  if(!count)return;
+  const geometry=new THREE.BufferGeometry();entries.forEach(([name,a],j)=>geometry.setAttribute(name,new THREE.Float32BufferAttribute(output[j],a.itemSize)));
+  geometry.computeBoundingBox();geometry.computeBoundingSphere();
+  const copy=new THREE.Mesh(geometry,object.material);copy.name='Jotunheim_Rear_Carved_Facade';
+  copy.applyMatrix4(object.matrixWorld);copies.push(copy);
+ });
+ for(const copy of copies)model.add(copy);
+}
 // The source mountain has large triangles. Add vertices only around the entrance,
 // preserving interpolated UVs, so the visible ground can hold a level terrace.
 function refineEntrance(mesh:THREE.Mesh){
@@ -39,6 +87,7 @@ function refineEntrance(mesh:THREE.Mesh){
 /** Shape the actual textured GLB into stairs, a rear landing and a gradual hill exit. */
 export function installJotunheimGateway(model:THREE.Object3D,terrain:ReturnType<typeof createJotunheimTerrain>){
  const baseY=terrain.height(GATEWAY_SITE.x,GATEWAY_SITE.z+LENGTH*GATEWAY_SCALE.z)??0;
+ addRearFacade(model);
  model.scale.set(GATEWAY_SCALE.x,GATEWAY_SCALE.y,GATEWAY_SCALE.z);
  model.position.set(GATEWAY_SITE.x,baseY,GATEWAY_SITE.z);model.updateMatrixWorld(true);
  const local=(x:number,z:number)=>({x:(x-GATEWAY_SITE.x)/GATEWAY_SCALE.x,z:(z-GATEWAY_SITE.z)/GATEWAY_SCALE.z});
@@ -76,6 +125,6 @@ export function installJotunheimGateway(model:THREE.Object3D,terrain:ReturnType<
  function onStairs(x:number,z:number){const p=local(x,z);return p.z>=-10&&p.z<=LENGTH+2&&Math.abs(p.x)<58;}
  // Blend into a wider, higher view on both sides, including the upper stairs.
  function cameraWeight(x:number,z:number){const p=local(x,z);return smooth((130-Math.abs(p.x))/65)*smooth((p.z+160)/90)*smooth((190-p.z)/65);}
- function cameraLift(x:number,z:number){return 12*cameraWeight(x,z);}
+ function cameraLift(x:number,z:number){return 24*cameraWeight(x,z);}
  return {root:model,height,blocks,onStairs,cameraLift,cameraWeight,baseY};
 }

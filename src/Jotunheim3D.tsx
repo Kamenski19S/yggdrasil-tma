@@ -12,7 +12,7 @@ import './jotunheimUI.css';
 type Props={weapon:HeroWeapon;shieldAsset:string;shieldEquipped:boolean;armorAppearance:ArmorAppearance};
 const HERO_HEIGHT=19.25;
 const CAMERA_DISTANCE=38,CAMERA_HEIGHT=25,CAMERA_LOOK_AHEAD=24;
-const POSITION_KEY='yggdrasil:jotunheim:position:v1';
+const POSITION_KEY='yggdrasil:jotunheim:position:v2';
 function readPosition(){try{const p=JSON.parse(localStorage.getItem(POSITION_KEY)||'null');if(p&&Number.isFinite(p.x)&&Number.isFinite(p.z))return {x:Number(p.x),z:Number(p.z)};}catch{}return {...JOTUNHEIM_SPAWN};}
 function dispose(root:THREE.Object3D){const gs=new Set<THREE.BufferGeometry>(),ms=new Set<THREE.Material>(),ts=new Set<THREE.Texture>();root.traverse(o=>{if(o instanceof THREE.Mesh){gs.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material]){ms.add(m);for(const v of Object.values(m))if(v instanceof THREE.Texture)ts.add(v);}}});gs.forEach(g=>g.dispose());ms.forEach(m=>m.dispose());ts.forEach(t=>t.dispose());}
 export default function Jotunheim3D(props:Props){
@@ -58,7 +58,7 @@ export default function Jotunheim3D(props:Props){
      }
     }
     hero.position.set(pos.x,(gateway?.height(pos.x,pos.z)??terrain.height(pos.x,pos.z))!+.08,pos.z);actions?.update(creditsRef.current?0:dt,moving,running,props.shieldEquipped);view.current=updateFollowCamera(follow,dx,dz,dt);
-    const gateWeight=gateway?.cameraWeight(pos.x,pos.z)??0,distance=CAMERA_DISTANCE+50*gateWeight*Math.max(1,.65/camera.aspect);
+    const gateWeight=gateway?.cameraWeight(pos.x,pos.z)??0,distance=CAMERA_DISTANCE+90*gateWeight*Math.max(1,.65/camera.aspect);
     const fov=overviewRef.current?55:48+7*gateWeight;if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
     if(overviewRef.current){desired.set(0,950/Math.min(1,camera.aspect),720);focus.set(0,70,0);}else{focus.set(pos.x,hero.position.y+10,pos.z);const p=terrainSafeCameraPosition(focus,{x:pos.x+Math.sin(follow.yaw)*distance,y:hero.position.y+CAMERA_HEIGHT+10*gateWeight,z:pos.z+Math.cos(follow.yaw)*distance},gateway?.height??terrain.height,5);desired.set(p.x,p.y,p.z);const ahead=CAMERA_LOOK_AHEAD*Math.min(1,Math.hypot(p.x-pos.x,p.z-pos.z)/distance);focus.set(pos.x-Math.sin(follow.yaw)*ahead,hero.position.y+8+(gateway?.cameraLift(pos.x,pos.z)??0),pos.z-Math.cos(follow.yaw)*ahead);}
     if(lastOverview!==overviewRef.current){camera.position.copy(desired);lastOverview=overviewRef.current;}else camera.position.lerp(desired,1-Math.exp(-7*dt));camera.lookAt(focus);saveTime+=dt;if(saveTime>1){saveTime=0;persist();}

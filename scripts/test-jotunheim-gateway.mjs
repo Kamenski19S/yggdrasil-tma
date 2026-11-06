@@ -24,12 +24,12 @@ try{
   const y=terrain.height(GATEWAY_SITE.x+dx,GATEWAY_SITE.z+dz);
   assert(Math.abs(y-(gate.baseY+32.6*GATEWAY_SCALE.y))<.05,`Uneven rear terrace at ${dx},${dz}: ${y}`);
  }
- const bounds=new THREE.Box3().setFromObject(gate.root);assert(bounds.max.y-bounds.min.y<70);assert(5.4*GATEWAY_SCALE.z>=4,'Treads must retain foot room');
- assert(580-bounds.max.z<50,'Stair foot must be close to the playable edge');assert(GATEWAY_VIEW.z+38<=600,'Entry camera must stay on the landscape');
+ const bounds=new THREE.Box3().setFromObject(gate.root);assert(bounds.max.y-bounds.min.y>75&&bounds.max.y-bounds.min.y<90);assert(5.4*GATEWAY_SCALE.z>=4,'Treads must retain foot room');
+ assert(580-bounds.max.z<50,'Stair foot must be close to the playable edge');assert(GATEWAY_VIEW.z>bounds.max.z+15&&GATEWAY_VIEW.z<=580,'Spawn must be at the boundary in front of the stairs');
  // Both the lintel and the foot of the stairs fit a portrait camera from the entry shortcut.
  const {terrainSafeCameraPosition}=await server.ssrLoadModule('/src/muspelheimCamera.ts');
  for(const aspect of [600/920,945/1450,390/700])for(const z of [GATEWAY_VIEW.z,GATEWAY_SITE.z+45,GATEWAY_SITE.z+10]){
- const x=GATEWAY_SITE.x,y=gate.height(x,z),weight=gate.cameraWeight(x,z),distance=38+50*weight*Math.max(1,.65/aspect),camera=new THREE.PerspectiveCamera(48+7*weight,aspect,.5,3500);
+ const x=GATEWAY_SITE.x,y=gate.height(x,z),weight=gate.cameraWeight(x,z),distance=38+90*weight*Math.max(1,.65/aspect),camera=new THREE.PerspectiveCamera(48+7*weight,aspect,.5,3500);
  const cp=terrainSafeCameraPosition({x,y:y+10,z},{x,y:y+25+10*weight,z:z+distance},gate.height,5);
  camera.position.set(cp.x,cp.y,cp.z);camera.lookAt(x,y+8+gate.cameraLift(x,z),z-24);camera.updateMatrixWorld();
  for(const px of [bounds.min.x,bounds.max.x])for(const py of [gate.baseY+32.6*GATEWAY_SCALE.y,bounds.max.y]){
@@ -37,5 +37,16 @@ try{
   assert(Math.abs(p.x)<.96&&Math.abs(p.y)<.82,`Arch clipped at z=${z}, aspect=${aspect}: ${p.x},${p.y}`);
  }
  }
+ // Both sides use the same carved material, with no second staircase.
+ const rear=[];gate.root.traverse(o=>{if(o.name==='Jotunheim_Rear_Carved_Facade')rear.push(o);});assert(rear.length>0);
+ for(const m of rear){const b=new THREE.Box3().setFromObject(m);assert(b.max.z<GATEWAY_SITE.z-6);assert(b.min.y>=gate.baseY+32.6*GATEWAY_SCALE.y-.001);}
+ const upward=new THREE.Raycaster(),up=new THREE.Vector3(0,1,0);let ceilingSamples=0;
+ for(const dx of [-2,0,2])for(let dz=-16;dz<=10;dz+=2){
+  const floor=gate.height(GATEWAY_SITE.x+dx,GATEWAY_SITE.z+dz);
+  upward.set(new THREE.Vector3(GATEWAY_SITE.x+dx,floor+1,GATEWAY_SITE.z+dz),up);
+  const ceiling=upward.intersectObject(gate.root,true)[0]?.point.y;
+  if(ceiling!=null){ceilingSamples++;assert(ceiling-floor>=19.25+5,`Insufficient headroom at ${dx},${dz}: ${ceiling-floor}`);}
+ }
+ assert(ceilingSamples>=10,`Only ${ceilingSamples} ceiling samples hit real geometry`);
  console.log(`PASS: ${count} consecutive entrance path samples, step heights, clear doorway, pillar collision and unchanged distant terrain.`);
 }finally{await server.close();}

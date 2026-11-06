@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 export const JOTUNHEIM_TERRAIN_ASSET='Jotunheim_Mountain_Range.glb';
 export const JOTUNHEIM_SIZE=1200;
-export const JOTUNHEIM_SPAWN={x:0,z:480};
+export const JOTUNHEIM_SPAWN={x:-140,z:571};
 
 /** Index the actual transformed triangles so feet and camera follow the visible GLB. */
 export function createJotunheimTerrain(root:THREE.Object3D){
