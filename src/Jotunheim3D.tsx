@@ -58,8 +58,9 @@ export default function Jotunheim3D(props:Props){
      }
     }
     hero.position.set(pos.x,(gateway?.height(pos.x,pos.z)??terrain.height(pos.x,pos.z))!+.08,pos.z);actions?.update(creditsRef.current?0:dt,moving,running,props.shieldEquipped);view.current=updateFollowCamera(follow,dx,dz,dt);
-    const fov=overviewRef.current?55:48;if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
-    if(overviewRef.current){desired.set(0,950/Math.min(1,camera.aspect),720);focus.set(0,70,0);}else{focus.set(pos.x,hero.position.y+10,pos.z);const p=terrainSafeCameraPosition(focus,{x:pos.x+Math.sin(follow.yaw)*CAMERA_DISTANCE,y:hero.position.y+CAMERA_HEIGHT,z:pos.z+Math.cos(follow.yaw)*CAMERA_DISTANCE},gateway?.height??terrain.height,5);desired.set(p.x,p.y,p.z);const ahead=CAMERA_LOOK_AHEAD*Math.min(1,Math.hypot(p.x-pos.x,p.z-pos.z)/CAMERA_DISTANCE);focus.set(pos.x-Math.sin(follow.yaw)*ahead,hero.position.y+8+(gateway?.cameraLift(pos.x,pos.z)??0),pos.z-Math.cos(follow.yaw)*ahead);}
+    const gateWeight=gateway?.cameraWeight(pos.x,pos.z)??0,distance=CAMERA_DISTANCE+50*gateWeight*Math.max(1,.65/camera.aspect);
+    const fov=overviewRef.current?55:48+7*gateWeight;if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
+    if(overviewRef.current){desired.set(0,950/Math.min(1,camera.aspect),720);focus.set(0,70,0);}else{focus.set(pos.x,hero.position.y+10,pos.z);const p=terrainSafeCameraPosition(focus,{x:pos.x+Math.sin(follow.yaw)*distance,y:hero.position.y+CAMERA_HEIGHT+10*gateWeight,z:pos.z+Math.cos(follow.yaw)*distance},gateway?.height??terrain.height,5);desired.set(p.x,p.y,p.z);const ahead=CAMERA_LOOK_AHEAD*Math.min(1,Math.hypot(p.x-pos.x,p.z-pos.z)/distance);focus.set(pos.x-Math.sin(follow.yaw)*ahead,hero.position.y+8+(gateway?.cameraLift(pos.x,pos.z)??0),pos.z-Math.cos(follow.yaw)*ahead);}
     if(lastOverview!==overviewRef.current){camera.position.copy(desired);lastOverview=overviewRef.current;}else camera.position.lerp(desired,1-Math.exp(-7*dt));camera.lookAt(focus);saveTime+=dt;if(saveTime>1){saveTime=0;persist();}
    }
    renderer.render(scene,camera);

@@ -5,7 +5,7 @@ try{
  const {createJotunheimTerrain}=await server.ssrLoadModule('/src/jotunheimTerrain.ts'),{installJotunheimGateway,GATEWAY_SITE,GATEWAY_VIEW,GATEWAY_SCALE}=await server.ssrLoadModule('/src/jotunheimGateway.ts');
  const terrain=createJotunheimTerrain(await geometry('public/img/models/Jotunheim_Mountain_Range.glb'));const original=terrain.height(400,400),gate=installJotunheimGateway(await geometry('public/img/models/Jotunheim_Giant_Gateway.glb'),terrain);assert.equal(terrain.height(400,400),original);
  let last=gate.height(GATEWAY_VIEW.x,GATEWAY_VIEW.z),count=0;for(let z=GATEWAY_VIEW.z;z>=GATEWAY_SITE.z-35;z-=.5){const y=gate.height(GATEWAY_SITE.x,z);assert(Number.isFinite(y));assert(!gate.blocks(GATEWAY_SITE.x,z));assert(Math.abs(y-last)<=3.5,`Unwalkable step at z=${z}: ${y-last}`);assert(y>=terrain.height(GATEWAY_SITE.x,z)-.1,`Buried stairs at z=${z}`);last=y;count++;}
- assert(gate.blocks(GATEWAY_SITE.x+30,GATEWAY_SITE.z));assert(!gate.blocks(GATEWAY_SITE.x,GATEWAY_SITE.z));assert(gate.onStairs(GATEWAY_SITE.x,GATEWAY_SITE.z+40));
+ assert(gate.blocks(GATEWAY_SITE.x+20,GATEWAY_SITE.z));assert(!gate.blocks(GATEWAY_SITE.x,GATEWAY_SITE.z));assert(gate.onStairs(GATEWAY_SITE.x,GATEWAY_SITE.z+40));
 
  // The complete rear exit must follow the visible deformed landscape, without an invisible bridge or a cliff.
  const ray=new THREE.Raycaster(),down=new THREE.Vector3(0,-1,0);
@@ -19,13 +19,23 @@ try{
    assert(Math.abs(y-visible)<.0001,'Rear exit collision diverges from rendered hill');previous=y;
   }
  }
+ // A real level terrace, wide enough to turn and walk beyond the doorway.
+ for(const dx of [-8,0,8])for(let dz=-10;dz>=-65;dz-=1){
+  const y=terrain.height(GATEWAY_SITE.x+dx,GATEWAY_SITE.z+dz);
+  assert(Math.abs(y-(gate.baseY+32.6*GATEWAY_SCALE.y))<.05,`Uneven rear terrace at ${dx},${dz}: ${y}`);
+ }
  const bounds=new THREE.Box3().setFromObject(gate.root);assert(bounds.max.y-bounds.min.y<70);assert(5.4*GATEWAY_SCALE.z>=4,'Treads must retain foot room');
  assert(580-bounds.max.z<50,'Stair foot must be close to the playable edge');assert(GATEWAY_VIEW.z+38<=600,'Entry camera must stay on the landscape');
  // Both the lintel and the foot of the stairs fit a portrait camera from the entry shortcut.
  const {terrainSafeCameraPosition}=await server.ssrLoadModule('/src/muspelheimCamera.ts');
- const y=gate.height(GATEWAY_VIEW.x,GATEWAY_VIEW.z),camera=new THREE.PerspectiveCamera(48,600/920,.5,3500);
- const cp=terrainSafeCameraPosition({x:GATEWAY_VIEW.x,y:y+10,z:GATEWAY_VIEW.z},{x:GATEWAY_VIEW.x,y:y+25,z:GATEWAY_VIEW.z+38},gate.height,5);
- camera.position.set(cp.x,cp.y,cp.z);camera.lookAt(GATEWAY_VIEW.x,y+8+gate.cameraLift(GATEWAY_VIEW.x,GATEWAY_VIEW.z),GATEWAY_VIEW.z-24);camera.updateMatrixWorld();
- for(const p of [new THREE.Vector3(GATEWAY_SITE.x,bounds.max.y,GATEWAY_SITE.z),new THREE.Vector3(GATEWAY_SITE.x,gate.baseY,bounds.max.z)]){p.project(camera);assert(Math.abs(p.y)<.95,`Entrance clipped vertically: ${p.y}`);}
+ for(const aspect of [600/920,945/1450,390/700])for(const z of [GATEWAY_VIEW.z,GATEWAY_SITE.z+45,GATEWAY_SITE.z+10]){
+ const x=GATEWAY_SITE.x,y=gate.height(x,z),weight=gate.cameraWeight(x,z),distance=38+50*weight*Math.max(1,.65/aspect),camera=new THREE.PerspectiveCamera(48+7*weight,aspect,.5,3500);
+ const cp=terrainSafeCameraPosition({x,y:y+10,z},{x,y:y+25+10*weight,z:z+distance},gate.height,5);
+ camera.position.set(cp.x,cp.y,cp.z);camera.lookAt(x,y+8+gate.cameraLift(x,z),z-24);camera.updateMatrixWorld();
+ for(const px of [bounds.min.x,bounds.max.x])for(const py of [gate.baseY+32.6*GATEWAY_SCALE.y,bounds.max.y]){
+  const p=new THREE.Vector3(px,py,GATEWAY_SITE.z).project(camera);
+  assert(Math.abs(p.x)<.96&&Math.abs(p.y)<.82,`Arch clipped at z=${z}, aspect=${aspect}: ${p.x},${p.y}`);
+ }
+ }
  console.log(`PASS: ${count} consecutive entrance path samples, step heights, clear doorway, pillar collision and unchanged distant terrain.`);
 }finally{await server.close();}
