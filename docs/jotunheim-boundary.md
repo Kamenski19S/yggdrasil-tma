@@ -1,5 +1,7 @@
 # Jotunheim bone boundary
 
+Historical prototype, disabled at the user's request. The current game mounts the stone boundary documented in `jotunheim-stone-boundary.md`; these bone assets are not loaded by the world.
+
 The edge of the playable mountain country is marked by petrified remains of ancient giants and primordial monsters. Rib windows reveal unreachable distant peaks. The story draws on the image of Ymir's bones becoming mountains.
 
 ## Assets
