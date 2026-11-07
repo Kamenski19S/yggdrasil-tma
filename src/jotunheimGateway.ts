@@ -7,6 +7,20 @@ export const GATEWAY_VIEW={...JOTUNHEIM_SPAWN};
 export const GATEWAY_SCALE={x:.65,y:.65,z:.8};
 const EDGES=[927,939,951,965,980,996,1013,1031,1051,1072,1094,1118,1143,1170,1199,1231,1253];
 const TREAD=5.4,LENGTH=16*TREAD,LANDING=32.6*GATEWAY_SCALE.y;
+
+/** Close the two bypasses between the stair foot and the stone perimeter.
+ * The clear approach widens towards spawn; it overlaps the stair-side collision
+ * by six units so running diagonally cannot slip through their join. */
+export const GATEWAY_APPROACH={footZ:GATEWAY_SITE.z+LENGTH*GATEWAY_SCALE.z,frontZ:548,frontHalfWidth:55,overlap:6};
+export function jotunheimGatewayApproachBlocks(x:number,z:number){
+ const {footZ,frontZ,frontHalfWidth,overlap}=GATEWAY_APPROACH;
+ if(z<footZ-overlap)return false;
+ const stairZ=THREE.MathUtils.clamp((z-GATEWAY_SITE.z)/GATEWAY_SCALE.z,0,LENGTH);
+ const footWidth=(25.5+stairZ*.30-2)*GATEWAY_SCALE.x;
+ const width=THREE.MathUtils.lerp(footWidth,frontHalfWidth,THREE.MathUtils.clamp((z-footZ)/(frontZ-footZ),0,1));
+ return Math.abs(x-GATEWAY_SITE.x)>=width;
+}
+
 const smooth=(n:number)=>{const t=THREE.MathUtils.clamp(n,0,1);return t*t*(3-2*t);};
 /** Copy the carved, textured front relief onto the rear, excluding the stairs.
  * A half turn keeps the inscriptions readable from the other side. The existing

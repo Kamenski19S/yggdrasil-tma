@@ -6,7 +6,7 @@ import {createMuspelheimHeroActions} from './muspelheimHeroActions';
 import {createMuspelheimHeroEquipment} from './muspelheimHeroEquipment';
 import {createMuspelheimArmorAppearance,type ArmorAppearance} from './muspelheimArmor';
 import {screenMoveToWorld,updateFollowCamera,terrainSafeCameraPosition,type FollowCameraState} from './muspelheimCamera';
-import {createJotunheimTerrain,JOTUNHEIM_TERRAIN_ASSET,JOTUNHEIM_SPAWN} from './jotunheimTerrain';
+import {createJotunheimTerrain,JOTUNHEIM_TERRAIN_ASSET,JOTUNHEIM_SPAWN,JOTUNHEIM_CENTER_Z,JOTUNHEIM_LENGTH_SCALE} from './jotunheimTerrain';
 import {installJotunheimGateway,JOTUNHEIM_GATEWAY_ASSET,GATEWAY_VIEW} from './jotunheimGateway';
 import {JOTUNHEIM_STONE_ASSET,STONE_WALL_CREDIT,installJotunheimStoneBoundary,jotunheimStoneBlocks} from './jotunheimStoneBoundary';
 import {configureJotunheimGround,SAND_CREDIT} from './jotunheimGround';
@@ -38,7 +38,7 @@ export default function Jotunheim3D(props:Props){
    if(!alive){assets.forEach(a=>dispose(a.scene));return;}if(results.some(r=>r.status==='rejected')){assets.forEach(a=>dispose(a.scene));throw Error('Не удалось загрузить ландшафт или Вики.');}
    const [mountains,vicki,gateModel,wallModel]=assets;terrain=createJotunheimTerrain(mountains.scene);scene.add(terrain.root);gateway=installJotunheimGateway(gateModel.scene,terrain);scene.add(gateway.root);stoneWall=installJotunheimStoneBoundary(wallModel.scene,terrain);scene.add(stoneWall.root);groundSurface=configureJotunheimGround(terrain.root,`${BASE}img/`,renderer.capabilities.getMaxAnisotropy());
    if(gateway.blocks(pos.x,pos.z)||jotunheimStoneBlocks(pos.x,pos.z)){Object.assign(pos,GATEWAY_VIEW);}
-   if(gateway.height(pos.x,pos.z)==null||Math.abs(pos.x)>580||Math.abs(pos.z)>580)Object.assign(pos,JOTUNHEIM_SPAWN);
+   if(gateway.height(pos.x,pos.z)==null||jotunheimStoneBlocks(pos.x,pos.z))Object.assign(pos,JOTUNHEIM_SPAWN);
    const ground=gateway.height(pos.x,pos.z);if(ground==null)throw Error('Не найдено место появления Вики.');
    const box=new THREE.Box3().setFromObject(vicki.scene),scale=HERO_HEIGHT/Math.max(.001,box.max.y-box.min.y);vicki.scene.scale.setScalar(scale);vicki.scene.position.y=-box.min.y*scale;hero.add(vicki.scene);hero.position.set(pos.x,ground+.08,pos.z);hero.rotation.y=Math.PI;
    mixer=new THREE.AnimationMixer(vicki.scene);actions=createMuspelheimHeroActions(vicki.scene,mixer,vicki.animations);createMuspelheimArmorAppearance(vicki.scene).update(props.armorAppearance);
@@ -61,7 +61,7 @@ export default function Jotunheim3D(props:Props){
     hero.position.set(pos.x,(gateway?.height(pos.x,pos.z)??terrain.height(pos.x,pos.z))!+.08,pos.z);actions?.update(creditsRef.current?0:dt,moving,running,props.shieldEquipped);view.current=updateFollowCamera(follow,dx,dz,dt);
     const gateWeight=gateway?.cameraWeight(pos.x,pos.z)??0,distance=CAMERA_DISTANCE+90*gateWeight*Math.max(1,.65/camera.aspect);
     const fov=overviewRef.current?55:48+7*gateWeight;if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
-    if(overviewRef.current){desired.set(0,950/Math.min(1,camera.aspect),720);focus.set(0,70,0);}else{focus.set(pos.x,hero.position.y+10,pos.z);const p=terrainSafeCameraPosition(focus,{x:pos.x+Math.sin(follow.yaw)*distance,y:hero.position.y+CAMERA_HEIGHT+10*gateWeight,z:pos.z+Math.cos(follow.yaw)*distance},(x,z)=>{const floor=gateway?.height(x,z)??terrain!.height(x,z);return stoneWall?.cameraHeight(x,z,floor)??floor;},5);desired.set(p.x,p.y,p.z);const ahead=CAMERA_LOOK_AHEAD*Math.min(1,Math.hypot(p.x-pos.x,p.z-pos.z)/distance);focus.set(pos.x-Math.sin(follow.yaw)*ahead,hero.position.y+8+(gateway?.cameraLift(pos.x,pos.z)??0),pos.z-Math.cos(follow.yaw)*ahead);}
+    if(overviewRef.current){desired.set(0,950*JOTUNHEIM_LENGTH_SCALE/Math.min(1,camera.aspect),JOTUNHEIM_CENTER_Z+720*JOTUNHEIM_LENGTH_SCALE);focus.set(0,70,JOTUNHEIM_CENTER_Z);}else{focus.set(pos.x,hero.position.y+10,pos.z);const p=terrainSafeCameraPosition(focus,{x:pos.x+Math.sin(follow.yaw)*distance,y:hero.position.y+CAMERA_HEIGHT+10*gateWeight,z:pos.z+Math.cos(follow.yaw)*distance},(x,z)=>{const floor=gateway?.height(x,z)??terrain!.height(x,z);return stoneWall?.cameraHeight(x,z,floor)??floor;},5);desired.set(p.x,p.y,p.z);const ahead=CAMERA_LOOK_AHEAD*Math.min(1,Math.hypot(p.x-pos.x,p.z-pos.z)/distance);focus.set(pos.x-Math.sin(follow.yaw)*ahead,hero.position.y+8+(gateway?.cameraLift(pos.x,pos.z)??0),pos.z-Math.cos(follow.yaw)*ahead);}
     if(lastOverview!==overviewRef.current){camera.position.copy(desired);lastOverview=overviewRef.current;}else camera.position.lerp(desired,1-Math.exp(-7*dt));camera.lookAt(focus);
    }
    renderer.render(scene,camera);

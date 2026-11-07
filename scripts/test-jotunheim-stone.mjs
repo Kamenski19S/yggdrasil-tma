@@ -7,9 +7,9 @@ async function geometry(path){
  return (await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(a.buffer.slice(a.byteOffset,a.byteOffset+a.length),'')).scene;
 }
 try{
- const {JOTUNHEIM_STONE_ASSET,STONE_WALL_HEIGHT,STONE_WALL_EDGE,STONE_WALL_CREDIT,STONE_WALL_RUNS,jotunheimStoneBlocks:blocks,installJotunheimStoneBoundary}=await server.ssrLoadModule('/src/jotunheimStoneBoundary.ts');
- const {createJotunheimTerrain,JOTUNHEIM_SPAWN}=await server.ssrLoadModule('/src/jotunheimTerrain.ts');
- const {installJotunheimGateway,GATEWAY_SITE}=await server.ssrLoadModule('/src/jotunheimGateway.ts');
+ const {JOTUNHEIM_STONE_ASSET,STONE_WALL_HEIGHT,STONE_WALL_EDGE,STONE_WALL_NORTH,STONE_WALL_NORTH_LIMIT,STONE_WALL_CREDIT,STONE_WALL_RUNS,jotunheimStoneBlocks:blocks,installJotunheimStoneBoundary}=await server.ssrLoadModule('/src/jotunheimStoneBoundary.ts');
+ const {createJotunheimTerrain,JOTUNHEIM_SPAWN,JOTUNHEIM_NORTH}=await server.ssrLoadModule('/src/jotunheimTerrain.ts');
+ const {installJotunheimGateway,GATEWAY_SITE,GATEWAY_APPROACH}=await server.ssrLoadModule('/src/jotunheimGateway.ts');
  const path='public/img/models/'+JOTUNHEIM_STONE_ASSET,bytes=fs.statSync(path).size;assert(bytes<3_500_000);
  const raw=fs.readFileSync(path),json=JSON.parse(raw.subarray(20,20+raw.readUInt32LE(12)));
  assert(json.asset.extras.author.includes(STONE_WALL_CREDIT.author));assert(json.asset.extras.license.includes('4.0'));assert.equal(json.asset.extras.source,STONE_WALL_CREDIT.sourceUrl);assert(json.asset.extras.modifications);
@@ -20,24 +20,36 @@ try{
  wall.root.traverse(o=>{if(!o.isMesh)return;meshes++;const g=o.geometry,p=g.attributes.position;assert(p.array instanceof Float32Array);triangles+=(g.index?.count??p.count)/3;
   let maximumAbove=-Infinity;
   for(let i=0;i<p.count;i++)for(const a of ['position','normal','tangent']){const attr=g.getAttribute(a);if(attr)for(let c=0;c<attr.itemSize;c++)assert(Number.isFinite(attr.getComponent(i,c)),`Non-finite ${a}`);}
-  for(let i=0;i<p.count;i+=41){const x=p.getX(i),y=p.getY(i),z=p.getZ(i),floor=terrain.height(x,z);assert(Math.abs(x)<610&&Math.abs(z)<610);if(floor!=null){const above=y-floor;assert(above>=-8&&above<=STONE_WALL_HEIGHT+4,`Wall does not follow terrain: ${above}`);maximumAbove=Math.max(maximumAbove,above);samples++;}}
+  for(let i=0;i<p.count;i+=41){const x=p.getX(i),y=p.getY(i),z=p.getZ(i),floor=terrain.height(x,z);assert(Math.abs(x)<610&&z>JOTUNHEIM_NORTH-10&&z<610);if(floor!=null){const above=y-floor;assert(above>=-8&&above<=STONE_WALL_HEIGHT+4,`Wall does not follow terrain: ${above}`);maximumAbove=Math.max(maximumAbove,above);samples++;}}
   assert(maximumAbove>STONE_WALL_HEIGHT*.65,'Each section must rise above the visible ground');
   const b=new THREE.Box3().setFromBufferAttribute(p);
   assert(!(b.min.z<580&&b.max.z>GATEWAY_SITE.z+69&&b.min.x< -110&&b.max.x> -170),'Wall intersects the entrance approach');
  });
- assert(meshes<=12);assert(triangles<200_000,`Triangle budget: ${triangles}`);assert(!blocks(JOTUNHEIM_SPAWN.x,JOTUNHEIM_SPAWN.z));
+ assert(meshes<=12);assert(triangles<280_000,`Triangle budget: ${triangles}`);assert(!blocks(JOTUNHEIM_SPAWN.x,JOTUNHEIM_SPAWN.z));
  for(let z=JOTUNHEIM_SPAWN.z;z>=GATEWAY_SITE.z-35;z-=.5)for(const dx of [-15,0,15]){assert(!blocks(GATEWAY_SITE.x+dx,z));assert(Number.isFinite(gate.height(GATEWAY_SITE.x+dx,z)));}
- for(let t=-580;t<=580;t++){
-  assert(blocks(-581,t)&&blocks(581,t)&&blocks(t,-581)&&blocks(t,581));
-  assert(blocks(-549,t)&&blocks(549,t)&&blocks(t,-549));
-  if(t< -195||t> -85)assert(blocks(t,549));
+ // Both flanks are impassable from the first tread to the perimeter,
+ // while the centre path and an actual turning area in front remain open.
+ for(let z=GATEWAY_APPROACH.footZ-GATEWAY_APPROACH.overlap;z<=580;z+=.25){
+  assert(blocks(GATEWAY_SITE.x-56,z)&&blocks(GATEWAY_SITE.x+56,z));
+  assert(!blocks(GATEWAY_SITE.x,z));
  }
+ for(let z=GATEWAY_APPROACH.footZ;z<548;z+=.5){
+  const clear=[];for(let dx=-80;dx<=80;dx+=.25)if(!blocks(GATEWAY_SITE.x+dx,z))clear.push(dx);
+  assert(clear.length>0&&clear[0]>-56&&clear.at(-1)<56,'Approach must remain a continuous open funnel');
+ }
+ for(let t=JOTUNHEIM_NORTH+20;t<=580;t++)assert(blocks(-581,t)&&blocks(581,t)&&blocks(-549,t)&&blocks(549,t));
+ for(let x=-580;x<=580;x++){
+  assert(blocks(x,JOTUNHEIM_NORTH+19)&&blocks(x,581));
+  assert(blocks(x,STONE_WALL_NORTH_LIMIT-1));
+  if(x< -195||x> -85)assert(blocks(x,549));
+ }
+ assert(!blocks(0,-700),'The newly extended part of the world must be accessible');
  for(const run of STONE_WALL_RUNS){
   const sections=wall.segments.filter(s=>s.side===run.side&&s.start>=run.start-.001&&s.end<=run.end+.001);assert(sections.length);
   assert.equal(sections[0].start,run.start);assert(Math.abs(sections.at(-1).end-run.end)<.0001);
   for(let i=1;i<sections.length;i++)assert(Math.abs(sections[i].start-sections[i-1].end)<.0001,'Uncovered fence join');
  }
- assert(wall.cameraHeight(0,-STONE_WALL_EDGE,12)>=12+STONE_WALL_HEIGHT);
+ assert(wall.cameraHeight(0,STONE_WALL_NORTH,12)>=12+STONE_WALL_HEIGHT);
  assert.equal(wall.cameraHeight(JOTUNHEIM_SPAWN.x,STONE_WALL_EDGE,12),12,'Camera must see the open entry');
  console.log(`PASS: ${(bytes/1e6).toFixed(2)} MB attributed GLB, ${meshes} wall sections, ${triangles} triangles, ${samples} terrain samples, closed perimeter and open spawn corridor.`);
 }finally{await server.close();}

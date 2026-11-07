@@ -48,15 +48,26 @@ export function configureJotunheimGround(root:THREE.Object3D,base:string,maxAnis
    oldMaterials.add(source);for(const value of Object.values(source))if(value instanceof THREE.Texture)oldTextures.add(value);
    const material=new THREE.MeshStandardMaterial({map:mask,color:0xffffff,roughness:.96,metalness:0,side:source.side});
    material.onBeforeCompile=shader=>{
-    Object.assign(shader.uniforms,{groundSand:{value:sand},groundGrass:{value:grass},groundRock:{value:rock}});
-    shader.vertexShader='varying vec3 groundPosition;varying vec3 groundNormal;\n'+shader.vertexShader;
+    Object.assign(shader.uniforms,{groundSand:{value:sand},groundGrass:{value:grass},groundRock:{value:rock},groundWorldNormalMatrix:{value:new THREE.Matrix3().getNormalMatrix(object.matrixWorld)}});
+    shader.vertexShader='uniform mat3 groundWorldNormalMatrix;varying vec3 groundPosition;varying vec3 groundNormal;\n'+shader.vertexShader;
     shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
      groundPosition=(modelMatrix*vec4(position,1.)).xyz;
-     groundNormal=normalize(mat3(modelMatrix)*normal);`);
+     groundNormal=normalize(groundWorldNormalMatrix*normal);`);
     shader.fragmentShader=`varying vec3 groundPosition;varying vec3 groundNormal;
      uniform sampler2D groundSand;uniform sampler2D groundGrass;uniform sampler2D groundRock;
      vec3 groundSample(sampler2D surface,vec3 p,vec3 w,float size){
       return texture2D(surface,p.zy/size).rgb*w.x+texture2D(surface,p.xz/size).rgb*w.y+texture2D(surface,p.xy/size).rgb*w.z;
+     }
+     // Use only XZ for grass, as in Midgard. Independently shifted patches
+     // overlap with smooth weights rather than exposing a mirrored square grid.
+     vec2 grassOffset(vec2 cell){
+      return fract(sin(vec2(dot(cell,vec2(127.1,311.7)),dot(cell,vec2(269.5,183.3))))*43758.5453)*19.;
+     }
+     vec3 grassPatch(vec2 uv,vec2 cell){return texture2D(groundGrass,uv+grassOffset(cell)).rgb;}
+     vec3 continuousGrass(vec2 uv){
+      vec2 cell=floor(uv),f=fract(uv);f=f*f*(3.-2.*f);
+      return mix(mix(grassPatch(uv,cell),grassPatch(uv,cell+vec2(1.,0.)),f.x),
+       mix(grassPatch(uv,cell+vec2(0.,1.)),grassPatch(uv,cell+vec2(1.,1.)),f.x),f.y);
      }
      float groundNoise(vec2 p){
       vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
@@ -74,7 +85,7 @@ export function configureJotunheimGround(root:THREE.Object3D,base:string,maxAnis
      vec3 projection=pow(abs(normalize(groundNormal)),vec3(4.));
      projection/=max(.001,projection.x+projection.y+projection.z);
      vec3 sandColor=groundSample(groundSand,groundPosition,projection,12.);
-     vec3 grassColor=groundSample(groundGrass,groundPosition,projection,6.);
+     vec3 grassColor=continuousGrass(groundPosition.xz/8.);
      vec3 rockColor=groundSample(groundRock,groundPosition,projection,18.);
      // Match the subdued grass and cool stone of this mountain world.
      grassColor=mix(vec3(dot(grassColor,vec3(.2126,.7152,.0722))),grassColor,.78);
@@ -84,7 +95,7 @@ export function configureJotunheimGround(root:THREE.Object3D,base:string,maxAnis
      diffuseColor.rgb*=surface;
     `);
    };
-   material.customProgramCacheKey=()=> 'jotunheim-ground-triplanar-v1';return material;
+   material.customProgramCacheKey=()=> 'jotunheim-ground-continuous-grass-v2';return material;
   };
   object.material=Array.isArray(object.material)?object.material.map(replace):replace(object.material);
  });

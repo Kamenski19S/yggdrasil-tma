@@ -1,20 +1,22 @@
 import * as THREE from 'three';
-import type {createJotunheimTerrain} from './jotunheimTerrain';
+import {JOTUNHEIM_NORTH,type createJotunheimTerrain} from './jotunheimTerrain';
+import {jotunheimGatewayApproachBlocks} from './jotunheimGateway';
 
 export const JOTUNHEIM_STONE_ASSET='Jotunheim_Dunga_Stone.glb';
 export const STONE_WALL_CREDIT={title:'Dunga Stone',author:'Francesco Coldesina',authorUrl:'https://sketchfab.com/topfrank2013',sourceUrl:'https://sketchfab.com/3d-models/dunga-stone-506e4d2755cb4c64bb9d863636c41486',licenseUrl:'https://creativecommons.org/licenses/by/4.0/'};
 export const STONE_WALL_HEIGHT=28,STONE_WALL_EDGE=577,STONE_WALL_LIMIT=548;
+export const STONE_WALL_NORTH=JOTUNHEIM_NORTH+23,STONE_WALL_NORTH_LIMIT=JOTUNHEIM_NORTH+52;
 export type StoneWallRun={side:number;start:number;end:number};
 /** Four sides, with the only opening centred on the existing gateway. */
 export const STONE_WALL_RUNS:StoneWallRun[]=[
- {side:0,start:-577,end:577},{side:1,start:-577,end:577},
+ {side:0,start:-577,end:577},{side:1,start:STONE_WALL_NORTH,end:577},
  {side:2,start:-577,end:-205},{side:2,start:-75,end:577},
- {side:3,start:-577,end:577},
+ {side:3,start:STONE_WALL_NORTH,end:577},
 ];
 export function jotunheimStoneBlocks(x:number,z:number){
- if(!Number.isFinite(x)||!Number.isFinite(z)||Math.abs(x)>580||Math.abs(z)>580)return true;
- if(Math.abs(x)>STONE_WALL_LIMIT||z< -STONE_WALL_LIMIT)return true;
- return z>STONE_WALL_LIMIT&&(x< -195||x> -85);
+ if(!Number.isFinite(x)||!Number.isFinite(z)||Math.abs(x)>580||z<JOTUNHEIM_NORTH+20||z>580)return true;
+ if(Math.abs(x)>STONE_WALL_LIMIT||z<STONE_WALL_NORTH_LIMIT)return true;
+ return jotunheimGatewayApproachBlocks(x,z)||(z>STONE_WALL_LIMIT&&(x< -195||x> -85));
 }
 /** Reuse the scanned wall texture, baking each section onto the real terrain.
  * Vertices retain their height above the local ground, so even mountain slopes
@@ -41,7 +43,7 @@ export function installJotunheimStoneBoundary(model:THREE.Object3D,terrain:Retur
    // A tiny overlap hides the scan's irregular end edges at repeated joins.
    const start=run.start+i*length,end=start+length,mid=(start+end)/2;
    const cx=run.side===0||run.side===2?mid:run.side===1?STONE_WALL_EDGE:-STONE_WALL_EDGE;
-   const cz=run.side===1||run.side===3?mid:run.side===0?-STONE_WALL_EDGE:STONE_WALL_EDGE;
+   const cz=run.side===1||run.side===3?mid:run.side===0?STONE_WALL_NORTH:STONE_WALL_EDGE;
    segments.push({side:run.side,start,end});
    for(const source of sources){
     const geometry=source.geometry.clone();
@@ -69,7 +71,7 @@ export function installJotunheimStoneBoundary(model:THREE.Object3D,terrain:Retur
  // Camera rays see the wall as solid even at small holes in the scan.
  function cameraHeight(x:number,z:number,floor:number|null){
   for(const run of STONE_WALL_RUNS){
-   const cross=run.side===0?z+STONE_WALL_EDGE:run.side===1?x-STONE_WALL_EDGE:run.side===2?z-STONE_WALL_EDGE:x+STONE_WALL_EDGE;
+   const cross=run.side===0?z-STONE_WALL_NORTH:run.side===1?x-STONE_WALL_EDGE:run.side===2?z-STONE_WALL_EDGE:x+STONE_WALL_EDGE;
    const along=run.side===0||run.side===2?x:z;
    if(Math.abs(cross)<=halfDepth+2&&along>=run.start-1&&along<=run.end+1)return (floor??ground(x,z))+STONE_WALL_HEIGHT;
   }

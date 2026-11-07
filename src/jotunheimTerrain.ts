@@ -2,14 +2,18 @@ import * as THREE from 'three';
 
 export const JOTUNHEIM_TERRAIN_ASSET='Jotunheim_Mountain_Range.glb';
 export const JOTUNHEIM_SIZE=1200;
+export const JOTUNHEIM_LENGTH_SCALE=1.2;
+export const JOTUNHEIM_SOUTH=JOTUNHEIM_SIZE/2;
+export const JOTUNHEIM_NORTH=JOTUNHEIM_SOUTH-JOTUNHEIM_SIZE*JOTUNHEIM_LENGTH_SCALE;
+export const JOTUNHEIM_CENTER_Z=(JOTUNHEIM_NORTH+JOTUNHEIM_SOUTH)/2;
 export const JOTUNHEIM_SPAWN={x:-140,z:571};
 
 /** Index the actual transformed triangles so feet and camera follow the visible GLB. */
 export function createJotunheimTerrain(root:THREE.Object3D){
  const original=new THREE.Box3().setFromObject(root);
  const scale=JOTUNHEIM_SIZE/Math.max(original.max.x-original.min.x,original.max.z-original.min.z);
- const wrapper=new THREE.Group();wrapper.add(root);wrapper.scale.setScalar(scale);
- wrapper.position.set(-(original.min.x+original.max.x)*scale/2,-original.min.y*scale,-(original.min.z+original.max.z)*scale/2);
+ const wrapper=new THREE.Group();wrapper.add(root);wrapper.scale.set(scale,scale,scale*JOTUNHEIM_LENGTH_SCALE);
+ wrapper.position.set(-(original.min.x+original.max.x)*scale/2,-original.min.y*scale,-(original.min.z+original.max.z)*scale*JOTUNHEIM_LENGTH_SCALE/2+JOTUNHEIM_CENTER_Z);
  wrapper.updateMatrixWorld(true);
  const bounds=new THREE.Box3().setFromObject(wrapper),cellSize=JOTUNHEIM_SIZE/48;
  type Triangle={ax:number;az:number;ay:number;bx:number;bz:number;by:number;cx:number;cz:number;cy:number;den:number};
