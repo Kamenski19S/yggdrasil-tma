@@ -15,12 +15,17 @@ export function createJotunheimTerrain(root:THREE.Object3D){
  const wrapper=new THREE.Group();wrapper.add(root);wrapper.scale.set(scale,scale,scale*JOTUNHEIM_LENGTH_SCALE);
  wrapper.position.set(-(original.min.x+original.max.x)*scale/2,-original.min.y*scale,-(original.min.z+original.max.z)*scale*JOTUNHEIM_LENGTH_SCALE/2+JOTUNHEIM_CENTER_Z);
  wrapper.updateMatrixWorld(true);
- const bounds=new THREE.Box3().setFromObject(wrapper),cellSize=JOTUNHEIM_SIZE/48;
+ return {root:wrapper,...createJotunheimSurfaceIndex(wrapper)};
+}
+
+/** Shared triangle index for walking and camera collision on terrain and rock scans. */
+export function createJotunheimSurfaceIndex(root:THREE.Object3D,cellSize=25){
+ const bounds=new THREE.Box3().setFromObject(root);
  type Triangle={ax:number;az:number;ay:number;bx:number;bz:number;by:number;cx:number;cz:number;cy:number;den:number};
  const cells=new Map<string,Triangle[]>(),a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3();
  const cell=(n:number)=>Math.floor(n/cellSize);
  function rebuild(){
- cells.clear();wrapper.updateMatrixWorld(true);bounds.setFromObject(wrapper);
+ cells.clear();root.updateMatrixWorld(true);bounds.setFromObject(root);
  root.traverse(object=>{
   if(!(object instanceof THREE.Mesh))return;
   object.receiveShadow=true;
@@ -49,5 +54,5 @@ export function createJotunheimTerrain(root:THREE.Object3D){
   }
   return Number.isFinite(top)?top:null;
  }
- return {root:wrapper,bounds,height,rebuild};
+ return {bounds,height,rebuild};
 }

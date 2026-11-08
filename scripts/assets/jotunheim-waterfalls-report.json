@@ -1,0 +1,38 @@
+[
+  {
+    "file": "Jotunheim_Waterfall_Valley.glb",
+    "original": 13459668,
+    "optimized": 1489504,
+    "triangles": 73657,
+    "credit": {
+      "author": "Digitise3D (https://sketchfab.com/Digitise3D)",
+      "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+      "source": "https://sketchfab.com/3d-models/waterfall-d2584b93416a4bf6b543e520a8583d5d",
+      "title": "Waterfall"
+    }
+  },
+  {
+    "file": "Jotunheim_Waterfall_Hengifoss.glb",
+    "original": 9094100,
+    "optimized": 1279296,
+    "triangles": 54885,
+    "credit": {
+      "author": "matousekfoto (https://sketchfab.com/matousekfoto)",
+      "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+      "source": "https://sketchfab.com/3d-models/hengifoss-waterfall-f522842a45114d208361423730607c74",
+      "title": "Hengifoss waterfall"
+    }
+  },
+  {
+    "file": "Jotunheim_Waterfall_Mountain.glb",
+    "original": 4204980,
+    "optimized": 526228,
+    "triangles": 21103,
+    "credit": {
+      "author": "alban (https://sketchfab.com/alban)",
+      "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+      "source": "https://sketchfab.com/3d-models/day-243-waterfall-abc802469b564113b104b1323c4c7eee",
+      "title": "Day 243: Waterfall"
+    }
+  }
+]

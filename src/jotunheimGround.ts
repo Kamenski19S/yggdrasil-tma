@@ -80,7 +80,8 @@ export function configureJotunheimGround(root:THREE.Object3D,base:string,maxAnis
      // Gentle spatial variation breaks up a painted border, with no square tiles.
      weights=max(vec3(0.),weights+vec3(1.,-1.,0.)*(groundNoise(groundPosition.xz/7.)-.5)*.10);
      float slope=1.-abs(normalize(groundNormal).y);
-     weights.b+=smoothstep(.25,.65,slope)*.45;
+     // Newly raised mountain faces are rock, not vertically stretched meadow.
+     weights=mix(weights,vec3(0.,0.,max(.001,weights.r+weights.g+weights.b)),smoothstep(.35,.70,slope));
      weights/=max(.001,weights.r+weights.g+weights.b);
      vec3 projection=pow(abs(normalize(groundNormal)),vec3(4.));
      projection/=max(.001,projection.x+projection.y+projection.z);
@@ -95,7 +96,7 @@ export function configureJotunheimGround(root:THREE.Object3D,base:string,maxAnis
      diffuseColor.rgb*=surface;
     `);
    };
-   material.customProgramCacheKey=()=> 'jotunheim-ground-continuous-grass-v2';return material;
+   material.customProgramCacheKey=()=> 'jotunheim-ground-mountain-faces-v3';return material;
   };
   object.material=Array.isArray(object.material)?object.material.map(replace):replace(object.material);
  });
