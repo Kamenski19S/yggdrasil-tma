@@ -1,14 +1,14 @@
 import * as THREE from 'three';
 import {createJotunheimSurfaceIndex,type createJotunheimTerrain} from './jotunheimTerrain';
 export const WATERFALL_SITES=[
- {asset:'Jotunheim_Waterfall_Valley.glb',x:-300,z:150,height:140,sink:16,yaw:Math.PI/2,title:'Первый водопад',author:'Digitise3D',authorUrl:'https://sketchfab.com/Digitise3D',sourceUrl:'https://sketchfab.com/3d-models/waterfall-d2584b93416a4bf6b543e520a8583d5d'},
- {asset:'Jotunheim_Waterfall_Hengifoss.glb',x:260,z:-230,height:180,sink:28,yaw:0,title:'Hengifoss waterfall',author:'matousekfoto',authorUrl:'https://sketchfab.com/matousekfoto',sourceUrl:'https://sketchfab.com/3d-models/hengifoss-waterfall-f522842a45114d208361423730607c74'},
- {asset:'Jotunheim_Waterfall_Mountain.glb',x:-240,z:-570,height:110,sink:45,yaw:0,title:'Day 243: Waterfall',author:'alban',authorUrl:'https://sketchfab.com/alban',sourceUrl:'https://sketchfab.com/3d-models/day-243-waterfall-abc802469b564113b104b1323c4c7eee'},
+ {asset:'Jotunheim_Waterfall_Valley.glb',x:-300,z:150,height:140,front:1,sink:16,yaw:Math.PI/2,title:'Первый водопад',author:'Digitise3D',authorUrl:'https://sketchfab.com/Digitise3D',sourceUrl:'https://sketchfab.com/3d-models/waterfall-d2584b93416a4bf6b543e520a8583d5d'},
+ {asset:'Jotunheim_Waterfall_Hengifoss.glb',x:260,z:-230,height:180,front:1,sink:28,yaw:0,title:'Hengifoss waterfall',author:'matousekfoto',authorUrl:'https://sketchfab.com/matousekfoto',sourceUrl:'https://sketchfab.com/3d-models/hengifoss-waterfall-f522842a45114d208361423730607c74'},
+ {asset:'Jotunheim_Waterfall_Mountain.glb',x:-240,z:-570,height:110,front:-1,sink:25,yaw:Math.PI,title:'Day 243: Waterfall',author:'alban',authorUrl:'https://sketchfab.com/alban',sourceUrl:'https://sketchfab.com/3d-models/day-243-waterfall-abc802469b564113b104b1323c4c7eee'},
 ] as const;
 export const WATERFALL_CLIFF_ASSET='Muspelheim_Basalt_Cliff.glb';
 export const WATERFALL_CLIFF_CREDIT={title:'Cliff | Low-Poly | Game-ready',author:'kEam',sourceUrl:'https://sketchfab.com/3d-models/cliff-low-poly-game-ready-918dc8e1b1f0443993a251c1302510bf'};
 const smooth=(n:number)=>{const t=THREE.MathUtils.clamp(n,0,1);return t*t*(3-2*t);};
-type Site={x:number;z:number;height:number;width:number;depth:number;base:number};
+type Site={x:number;z:number;height:number;width:number;depth:number;base:number;front:number};
 /** A refined hill behind each scan closes its cut rear edge into the original
  * mountain. Interpolated attributes preserve the biome mask and original UVs. */
 function shapeMountains(terrain:ReturnType<typeof createJotunheimTerrain>,sites:Site[]){
@@ -34,12 +34,13 @@ function shapeMountains(terrain:ReturnType<typeof createJotunheimTerrain>,sites:
   for(let i=0;i<p.count;i++){
    world.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);const original=world.y;
    for(const s of sites){
-    const dx=(world.x-s.x)/(s.width*.85),dz=(world.z-s.z+s.depth*.28)/(s.depth*.9);
+    const localZ=(world.z-s.z)*s.front;
+    const dx=(world.x-s.x)/(s.width*.85),dz=(localZ+s.depth*.28)/(s.depth*.9);
     const radial=Math.max(0,1-dx*dx-dz*dz);
-    const rear=1-smooth((world.z-s.z+s.depth*.20)/(s.depth*.25));
+    const rear=1-smooth((localZ+s.depth*.20)/(s.depth*.25));
     world.y=Math.max(world.y,original+s.height*.85*smooth(radial)*rear);
     // Blend the foot into the valley without a raised rectangular platform.
-    const apron=Math.max(0,1-((world.x-s.x)/(s.width*.6))**2-((world.z-s.z-s.depth*.43)/(s.depth*.36))**2);
+    const apron=Math.max(0,1-((world.x-s.x)/(s.width*.6))**2-((localZ-s.depth*.43)/(s.depth*.36))**2);
     world.y=THREE.MathUtils.lerp(world.y,s.base-3,smooth(apron)*.85);
    }
    world.applyMatrix4(inverse);p.setXYZ(i,world.x,world.y,world.z);
@@ -54,7 +55,7 @@ function fit(root:THREE.Object3D,width:number,height:number,depth:number){
 /** Static landscape only: no animation mixer, new river, cave or water effect. */
 export function installJotunheimWaterfalls(models:THREE.Object3D[],cliff:THREE.Object3D,terrain:ReturnType<typeof createJotunheimTerrain>){
  const root=new THREE.Group();root.name='Three waterfall mountain sanctuaries';
- const sites:Site[]=models.map((m,i)=>{const def=WATERFALL_SITES[i],b=new THREE.Box3().setFromObject(m),size=b.getSize(new THREE.Vector3()),scale=def.height/size.y,width=size.x*scale,depth=size.z*scale;return {...def,width,depth,base:terrain.height(def.x,def.z+depth*.45)??0};});
+ const sites:Site[]=models.map((m,i)=>{const def=WATERFALL_SITES[i],b=new THREE.Box3().setFromObject(m),size=b.getSize(new THREE.Vector3()),scale=def.height/size.y,width=size.x*scale,depth=size.z*scale;return {...def,width,depth,base:terrain.height(def.x,def.z+def.front*depth*.45)??0};});
  shapeMountains(terrain,sites);
  // Cliff materials are shared by all nine framing pieces. Protect green moss
  // while grading only the exposed rock; the original Muspelheim asset is intact.
@@ -73,12 +74,11 @@ export function installJotunheimWaterfalls(models:THREE.Object3D[],cliff:THREE.O
   // Overlapping shoulders cover the scan borders; a rear cap joins the ridge.
   for(const side of [-1,1,0]){
    const back=side===0,model=cliff.clone(true),width=s.width*(back?1.18:.42),height=s.height*(back?.95:.84),depth=s.depth*(back?.42:.72),piece=fit(model,width,height,depth);
-   piece.position.set(s.x+side*s.width*.49,s.base-14,s.z-s.depth*(back?.29:.06));piece.rotation.y=side*.18;piece.name=`Waterfall ${i+1} ${back?'rear cap':'rock shoulder'}`;root.add(piece);
+   piece.position.set(s.x+side*s.width*.49,s.base-14,s.z-s.front*s.depth*(back?.29:.06));piece.rotation.y=(s.front<0?Math.PI:0)+side*.18;piece.name=`Waterfall ${i+1} ${back?'rear cap':'rock shoulder'}`;root.add(piece);
   }
  });root.updateMatrixWorld(true);
  const index=createJotunheimSurfaceIndex(root,20);
  const height=(x:number,z:number,floor:number|null)=>{const y=index.height(x,z);return y==null?floor:floor==null?y:Math.max(y,floor);};
- const viewpoints=sites.map(s=>({x:s.x,z:s.z+s.depth*.6+45}));
- function cameraWeight(x:number,z:number){let w=0;for(const s of sites){const d=Math.hypot(x-s.x,z-(s.z+s.depth*.35));w=Math.max(w,smooth((240-d)/130));}return w;}
- return {root,sites,height,viewpoints,cameraWeight};
+ const viewpoints=sites.map(s=>({x:s.x,z:s.z+s.front*(s.depth*.6+45),yaw:s.front<0?Math.PI:0}));
+ return {root,sites,height,viewpoints};
 }

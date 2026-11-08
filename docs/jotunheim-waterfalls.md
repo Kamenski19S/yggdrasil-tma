@@ -23,3 +23,11 @@ node scripts/prepare-jotunheim-waterfalls.mjs /path/to/waterfall.glb /path/to/he
 ```
 
 Validation: `npx tsc --noEmit`, `npx vite build`, and `node scripts/test-jotunheim-waterfalls.mjs`; existing terrain, gateway and perimeter tests remain applicable. Local offscreen rendered compositions were inspected; this does not replace a final check inside Telegram on the player's device.
+
+## Camera and third-site correction
+
+The follow view now uses a 38-unit low boom, without waterfall-specific distance or elevation boosts. Obstacles shorten or turn the boom rather than lifting it into an aerial view. The downward viewing angle is limited; portrait projection checks keep Vicki fully visible at about 50% of viewport height at the three inspection positions. Teleport shortcuts snap directly to the follow view.
+
+The entire third composition (scan, framing rocks, rear terrain mound and inspection viewpoint) is rotated by half a turn. Its opening is now to the north, with its rear slope on the south side. Its vertical placement is adjusted to the ground on that side. The first two compositions retain their direction.
+
+Additional validation: `node scripts/test-jotunheim-camera.mjs`, including high banks, narrow canyons and portrait views of all three sites.

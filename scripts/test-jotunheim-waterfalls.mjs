@@ -14,7 +14,7 @@ try{
  assert.equal(terrain.height(JOTUNHEIM_SPAWN.x,JOTUNHEIM_SPAWN.z),before,'Entrance terrain must remain unchanged');
  const ray=new THREE.Raycaster(),down=new THREE.Vector3(0,-1,0);let samples=0;
  for(let i=0;i<result.sites.length;i++){
-  const s=result.sites[i],p=result.viewpoints[i];assert(Number.isFinite(terrain.height(p.x,p.z)));assert(p.z>s.z+s.depth*.5);assert(p.z<548&&Math.abs(p.x)<548);
+  const s=result.sites[i],p=result.viewpoints[i];assert(Number.isFinite(terrain.height(p.x,p.z)));assert((p.z-s.z)*s.front>s.depth*.5);assert(p.z<548&&Math.abs(p.x)<548);
   const group=result.root.children[i*4],bounds=new THREE.Box3().setFromObject(group);assert(Math.abs(bounds.max.y-bounds.min.y-s.height)<.01);assert(bounds.max.y>terrain.height(s.x,s.z)+50,'Waterfall must remain above the terrain');
   for(let x=s.x-s.width*.7;x<=s.x+s.width*.7;x+=s.width/8)for(let z=s.z-s.depth*.6;z<=s.z+s.depth*.8;z+=s.depth/8){
    ray.set(new THREE.Vector3(x,1500,z),down);const expected=ray.intersectObject(result.root,true)[0]?.point.y??null,actual=result.height(x,z,null);assert.equal(actual===null,expected===null);
