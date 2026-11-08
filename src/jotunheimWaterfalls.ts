@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {createJotunheimSurfaceIndex,type createJotunheimTerrain} from './jotunheimTerrain';
+import {createWaterfallFoundations} from './jotunheimFoundations';
 export const WATERFALL_SITES=[
  {asset:'Jotunheim_Waterfall_Valley.glb',x:-300,z:150,height:140,front:1,sink:16,yaw:Math.PI/2,title:'Первый водопад',author:'Digitise3D',authorUrl:'https://sketchfab.com/Digitise3D',sourceUrl:'https://sketchfab.com/3d-models/waterfall-d2584b93416a4bf6b543e520a8583d5d'},
  {asset:'Jotunheim_Waterfall_Hengifoss.glb',x:260,z:-230,height:180,front:1,sink:28,yaw:0,title:'Hengifoss waterfall',author:'matousekfoto',authorUrl:'https://sketchfab.com/matousekfoto',sourceUrl:'https://sketchfab.com/3d-models/hengifoss-waterfall-f522842a45114d208361423730607c74'},
@@ -69,16 +70,18 @@ export function installJotunheimWaterfalls(models:THREE.Object3D[],cliff:THREE.O
    diffuseColor.rgb=mix(diffuseColor.rgb,vec3(gray)*vec3(.94,.98,1.02)+.025,.55*(1.-keepGreen));`);};
   material.customProgramCacheKey=()=> 'jotunheim-cliff-preserve-green-v1';cliffMaterials.set(m,material);return material;
  };o.material=Array.isArray(o.material)?o.material.map(adapt):adapt(o.material);});
+ const parts:THREE.Object3D[][]=[];
  sites.forEach((s,i)=>{
-  const land=fit(models[i],s.width,s.height,s.depth);land.rotation.y=WATERFALL_SITES[i].yaw;land.position.set(s.x,s.base-WATERFALL_SITES[i].sink,s.z);land.name=WATERFALL_SITES[i].title;root.add(land);
+  const land=fit(models[i],s.width,s.height,s.depth);land.rotation.y=WATERFALL_SITES[i].yaw;land.position.set(s.x,s.base-WATERFALL_SITES[i].sink,s.z);land.name=WATERFALL_SITES[i].title;root.add(land);parts.push([land]);
   // Overlapping shoulders cover the scan borders; a rear cap joins the ridge.
   for(const side of [-1,1,0]){
    const back=side===0,model=cliff.clone(true),width=s.width*(back?1.18:.42),height=s.height*(back?.95:.84),depth=s.depth*(back?.42:.72),piece=fit(model,width,height,depth);
-   piece.position.set(s.x+side*s.width*.49,s.base-14,s.z-s.front*s.depth*(back?.29:.06));piece.rotation.y=(s.front<0?Math.PI:0)+side*.18;piece.name=`Waterfall ${i+1} ${back?'rear cap':'rock shoulder'}`;root.add(piece);
+   piece.position.set(s.x+side*s.width*.49,s.base-14,s.z-s.front*s.depth*(back?.29:.06));piece.rotation.y=(s.front<0?Math.PI:0)+side*.18;piece.name=`Waterfall ${i+1} ${back?'rear cap':'rock shoulder'}`;root.add(piece);parts[i].push(piece);
   }
  });root.updateMatrixWorld(true);
+ const foundations=createWaterfallFoundations(parts,sites,cliff,terrain.height);root.add(foundations);root.updateMatrixWorld(true);
  const index=createJotunheimSurfaceIndex(root,20);
  const height=(x:number,z:number,floor:number|null)=>{const y=index.height(x,z);return y==null?floor:floor==null?y:Math.max(y,floor);};
  const viewpoints=sites.map(s=>({x:s.x,z:s.z+s.front*(s.depth*.6+45),yaw:s.front<0?Math.PI:0}));
- return {root,sites,height,viewpoints};
+ return {root,sites,height,viewpoints,foundations};
 }

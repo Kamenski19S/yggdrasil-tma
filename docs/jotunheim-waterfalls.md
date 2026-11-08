@@ -31,3 +31,11 @@ The follow view now uses a 38-unit low boom, without waterfall-specific distance
 The entire third composition (scan, framing rocks, rear terrain mound and inspection viewpoint) is rotated by half a turn. Its opening is now to the north, with its rear slope on the south side. Its vertical placement is adjusted to the ground on that side. The first two compositions retain their direction.
 
 Additional validation: `node scripts/test-jotunheim-camera.mjs`, including high banks, narrow canyons and portrait views of all three sites.
+
+## Full-world map and grounded scan edges
+
+The overview uses a separate orthographic camera fitted to the actual terrain, gateway, fence and waterfall bounds. Its frustum reserves space for the top controls and adapts on resize. Fog is disabled only for the map; the walking view retains its fog. A gold trace follows the real fence segments, with labels for the entry, three waterfalls and Vicki. Movement controls are hidden while viewing the map.
+
+Open lower scan cuts are detected after welding positions across texture-atlas seams. Overlapping instances of the existing `Muspelheim_Basalt_Cliff.glb` support those cuts, with their bases buried below the surrounding terrain footprint. High waterfall and foliage silhouettes remain open. The foundations also participate in walking and camera collision sampling.
+
+Validation: `node scripts/test-jotunheim-overview.mjs` checks complete bounds visibility in four portrait/landscape sizes and buried foundation bases and reuse of the existing cliff geometry. Offscreen geometry renders were inspected separately from the Telegram client.
