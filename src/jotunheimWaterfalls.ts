@@ -4,8 +4,7 @@ import type {createJotunheimTerrain} from './jotunheimTerrain';
 // Two lightweight geometry-based reconstructions of our GLB experiments.
 // No legacy scan, cliff, shoulder, foundation or terrain deformation is used.
 export const WATERFALL_SITES=[
- {asset:'waterfall_panels_jotunheim.glb',x:-165,z:180,title:'Водопад — отдельные стороны'},
- {asset:'waterfall_organic_jotunheim.glb',x:-95,z:180,title:'Водопад — цельная скала'},
+ {asset:'Jotunheim_First_Waterfall.glb',x:-145,z:180,title:'Первый водопад Йотунхейма'},
 ] as const;
 type Terrain=ReturnType<typeof createJotunheimTerrain>;
 const ROCKS=[0x595b5b,0x666865,0x74756e,0x4b5354,0x7e7b71,0x5f6369];
@@ -60,14 +59,21 @@ function makeVariant(index:number){const g=new THREE.Group();g.name=index?'Exper
  if(index){g.add(organic());addWater(g,-5.7,16.2);}else{for(const side of ['front','back','left','right'] as const)g.add(panel(side));g.add(summit());addWater(g,-5.35,14);}
  return g;
 }
-export function installJotunheimWaterfalls(terrain:Terrain){
- const root=new THREE.Group();root.name='Two experimental waterfalls - ten metre walking gap';
- const viewpoints:{x:number;z:number;yaw:number}[]=[];
- for(let i=0;i<2;i++){const s=WATERFALL_SITES[i],v=makeVariant(i),scale=3,base=terrain.height(s.x,s.z)??0;
-  v.scale.setScalar(scale);v.position.set(s.x,base-.3,s.z);root.add(v);
-  // The front of each model faces negative Z; keep enough room to circle it.
-  viewpoints.push({x:s.x,z:s.z-39,yaw:Math.PI});
+// Prefer the original user-made, image-textured GLB. Keep a temporary fallback
+// only while its binary asset has not yet been uploaded to GitHub.
+export function installJotunheimWaterfalls(terrain:Terrain, original?:THREE.Object3D){
+ const root=new THREE.Group();root.name='Jotunheim first waterfall';
+ const s=WATERFALL_SITES[0],base=terrain.height(s.x,s.z)??0;
+ const v=new THREE.Group();
+ if(original){
+  const bounds=new THREE.Box3().setFromObject(original),center=bounds.getCenter(new THREE.Vector3());
+  original.position.x-=center.x;
+  original.position.z-=center.z;
+  original.traverse(child=>{if(child instanceof THREE.Mesh){child.castShadow=true;child.receiveShadow=true;}});
+  v.add(original);
+ }else{
+  const fallback=makeVariant(1);fallback.scale.setScalar(2.5);v.add(fallback);
  }
- const height=(_x:number,_z:number,floor:number|null)=>floor;
- return {root,viewpoints,height,sites:WATERFALL_SITES};
+ v.position.set(s.x,base-.3,s.z);root.add(v);
+ return {root,viewpoints:[{x:s.x,z:s.z-65,yaw:Math.PI}],height:(_x:number,_z:number,floor:number|null)=>floor,sites:WATERFALL_SITES};
 }
