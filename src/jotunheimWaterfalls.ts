@@ -1,87 +1,73 @@
 import * as THREE from 'three';
-import {createJotunheimSurfaceIndex,type createJotunheimTerrain} from './jotunheimTerrain';
-import {createWaterfallFoundations} from './jotunheimFoundations';
+import type {createJotunheimTerrain} from './jotunheimTerrain';
+
+// Two lightweight geometry-based reconstructions of our GLB experiments.
+// No legacy scan, cliff, shoulder, foundation or terrain deformation is used.
 export const WATERFALL_SITES=[
- {asset:'Jotunheim_Waterfall_Valley.glb',x:-300,z:150,height:140,front:1,sink:16,yaw:Math.PI/2,title:'Первый водопад',author:'Digitise3D',authorUrl:'https://sketchfab.com/Digitise3D',sourceUrl:'https://sketchfab.com/3d-models/waterfall-d2584b93416a4bf6b543e520a8583d5d'},
- {asset:'Jotunheim_Waterfall_Hengifoss.glb',x:260,z:-230,height:180,front:1,sink:28,yaw:0,title:'Hengifoss waterfall',author:'matousekfoto',authorUrl:'https://sketchfab.com/matousekfoto',sourceUrl:'https://sketchfab.com/3d-models/hengifoss-waterfall-f522842a45114d208361423730607c74'},
- {asset:'Jotunheim_Waterfall_Mountain.glb',x:-240,z:-570,height:110,front:-1,sink:25,yaw:Math.PI,title:'Day 243: Waterfall',author:'alban',authorUrl:'https://sketchfab.com/alban',sourceUrl:'https://sketchfab.com/3d-models/day-243-waterfall-abc802469b564113b104b1323c4c7eee'},
+ {asset:'waterfall_panels_jotunheim.glb',x:-165,z:180,title:'Водопад — отдельные стороны'},
+ {asset:'waterfall_organic_jotunheim.glb',x:-95,z:180,title:'Водопад — цельная скала'},
 ] as const;
-export const WATERFALL_CLIFF_ASSET='Muspelheim_Basalt_Cliff.glb';
-export const WATERFALL_CLIFF_CREDIT={title:'Cliff | Low-Poly | Game-ready',author:'kEam',sourceUrl:'https://sketchfab.com/3d-models/cliff-low-poly-game-ready-918dc8e1b1f0443993a251c1302510bf'};
-const smooth=(n:number)=>{const t=THREE.MathUtils.clamp(n,0,1);return t*t*(3-2*t);};
-type Site={x:number;z:number;height:number;width:number;depth:number;base:number;front:number};
-/** A refined hill behind each scan closes its cut rear edge into the original
- * mountain. Interpolated attributes preserve the biome mask and original UVs. */
-function shapeMountains(terrain:ReturnType<typeof createJotunheimTerrain>,sites:Site[]){
- terrain.root.updateMatrixWorld(true);
- terrain.root.traverse(o=>{
-  if(!(o instanceof THREE.Mesh))return;
-  const source:THREE.BufferGeometry=o.geometry,entries=Object.entries(source.attributes),offsets:number[]=[];let stride=0;
-  for(const [,a] of entries){offsets.push(stride);stride+=a.itemSize;}
-  const pi=offsets[entries.findIndex(([n])=>n==='position')],out=entries.map(()=>[] as number[]),world=new THREE.Vector3(),inverse=new THREE.Matrix4().copy(o.matrixWorld).invert();
-  const read=(index:number)=>entries.flatMap(([,a])=>Array.from({length:a.itemSize},(_,c)=>a.getComponent(index,c)));
-  const pos=(v:number[])=>new THREE.Vector3(v[pi],v[pi+1],v[pi+2]).applyMatrix4(o.matrixWorld);
-  const emit=(v:number[])=>entries.forEach(([,a],j)=>{for(let c=0;c<a.itemSize;c++)out[j].push(v[offsets[j]+c]);});
-  function triangle(a:number[],b:number[],c:number[],depth=0){
-   const p=[pos(a),pos(b),pos(c)];
-   const nearby=sites.some(s=>Math.min(...p.map(v=>v.x))<s.x+s.width&&Math.max(...p.map(v=>v.x))>s.x-s.width&&Math.min(...p.map(v=>v.z))<s.z+s.depth&&Math.max(...p.map(v=>v.z))>s.z-s.depth*1.2);
-   const lengths=p.map((v,i)=>v.distanceToSquared(p[(i+1)%3])),edge=lengths.indexOf(Math.max(...lengths));
-   if(nearby&&lengths[edge]>144&&depth<18){const vs=[a,b,c],u=vs[edge],v=vs[(edge+1)%3],w=vs[(edge+2)%3],mid=u.map((n,i)=>(n+v[i])/2);triangle(u,mid,w,depth+1);triangle(mid,v,w,depth+1);}else{emit(a);emit(b);emit(c);}
-  }
-  const count=source.index?.count??source.getAttribute('position').count;
-  for(let i=0;i<count;i+=3)triangle(...[0,1,2].map(k=>read(source.index?source.index.getX(i+k):i+k)) as [number[],number[],number[]]);
-  const geometry=new THREE.BufferGeometry();entries.forEach(([n,a],j)=>geometry.setAttribute(n,new THREE.Float32BufferAttribute(out[j],a.itemSize)));
-  const p=geometry.getAttribute('position');
-  for(let i=0;i<p.count;i++){
-   world.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld);const original=world.y;
-   for(const s of sites){
-    const localZ=(world.z-s.z)*s.front;
-    const dx=(world.x-s.x)/(s.width*.85),dz=(localZ+s.depth*.28)/(s.depth*.9);
-    const radial=Math.max(0,1-dx*dx-dz*dz);
-    const rear=1-smooth((localZ+s.depth*.20)/(s.depth*.25));
-    world.y=Math.max(world.y,original+s.height*.85*smooth(radial)*rear);
-    // Blend the foot into the valley without a raised rectangular platform.
-    const apron=Math.max(0,1-((world.x-s.x)/(s.width*.6))**2-((localZ-s.depth*.43)/(s.depth*.36))**2);
-    world.y=THREE.MathUtils.lerp(world.y,s.base-3,smooth(apron)*.85);
-   }
-   world.applyMatrix4(inverse);p.setXYZ(i,world.x,world.y,world.z);
-  }
-  geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();o.geometry=geometry;source.dispose();
- });terrain.rebuild();
+type Terrain=ReturnType<typeof createJotunheimTerrain>;
+const ROCKS=[0x595b5b,0x666865,0x74756e,0x4b5354,0x7e7b71,0x5f6369];
+function colored(verts:number[],indices:number[],colors:number[],water=false){
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));g.setIndex(indices);g.computeVertexNormals();
+ return new THREE.Mesh(g,new THREE.MeshStandardMaterial({vertexColors:true,roughness:water?.28:1,metalness:water?.08:0,transparent:water,opacity:water?.72:1,side:THREE.DoubleSide,depthWrite:!water}));
 }
-function fit(root:THREE.Object3D,width:number,height:number,depth:number){
- root.updateMatrixWorld(true);const b=new THREE.Box3().setFromObject(root),size=b.getSize(new THREE.Vector3()),center=b.getCenter(new THREE.Vector3()),wrapper=new THREE.Group();wrapper.add(root);
- wrapper.scale.set(width/size.x,height/size.y,depth/size.z);root.position.sub(center);root.position.y+=size.y/2;return wrapper;
+function rgb(hex:number){const c=new THREE.Color(hex);return [c.r,c.g,c.b];}
+function panel(side:'front'|'back'|'left'|'right'){
+ const nx=26,nz=24,verts:number[]=[],ids:number[]=[],cs:number[]=[];
+ const seed={front:3,back:6,left:9,right:12}[side];
+ for(let j=0;j<=nz;j++)for(let i=0;i<=nx;i++){
+  const x=-9+18*i/nx,h=14*j/nz,u=i/nx,v=j/nz;
+  const edge=Math.pow(Math.max(0,Math.sin(Math.PI*u)),.45)*Math.pow(Math.max(.04,Math.sin(Math.PI*v)),.3);
+  const bump=(Math.sin(u*27+v*13+seed)*.23+Math.sin(u*52-v*34+seed)*.13)*edge;
+  const recess=1.1*Math.exp(-Math.pow(x/3.3,8))*Math.pow(Math.sin(Math.PI*Math.min(v,.99)),.3);
+  const p=side==='front'?[x,h,-5+bump+recess]:side==='back'?[-x,h,5+bump]:side==='left'?[-9+bump,h,x*5/9]:[9+bump,h,-x*5/9];
+  verts.push(...p);cs.push(...rgb(ROCKS[(Math.floor(i/4)+Math.floor(j/3)+seed)%ROCKS.length]));
+ }
+ for(let j=0;j<nz;j++)for(let i=0;i<nx;i++){const a=j*(nx+1)+i,b=a+1,c=a+nx+1,d=c+1;ids.push(a,c,b,b,c,d);}
+ return colored(verts,ids,cs);
 }
-/** Static landscape only: no animation mixer, new river, cave or water effect. */
-export function installJotunheimWaterfalls(models:THREE.Object3D[],cliff:THREE.Object3D,terrain:ReturnType<typeof createJotunheimTerrain>){
- const root=new THREE.Group();root.name='Three waterfall mountain sanctuaries';
- const sites:Site[]=models.map((m,i)=>{const def=WATERFALL_SITES[i],b=new THREE.Box3().setFromObject(m),size=b.getSize(new THREE.Vector3()),scale=def.height/size.y,width=size.x*scale,depth=size.z*scale;return {...def,width,depth,base:terrain.height(def.x,def.z+def.front*depth*.45)??0};});
- shapeMountains(terrain,sites);
- // Cliff materials are shared by all nine framing pieces. Protect green moss
- // while grading only the exposed rock; the original Muspelheim asset is intact.
- const cliffMaterials=new Map<THREE.Material,THREE.Material>();
- cliff.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const adapt=(m:THREE.Material)=>{
-  if(cliffMaterials.has(m))return cliffMaterials.get(m)!;
-  const source=m as THREE.MeshStandardMaterial,material=new THREE.MeshBasicMaterial({map:source.map,color:0xffffff,side:THREE.DoubleSide});
-  material.onBeforeCompile=shader=>{shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
-   float keepGreen=smoothstep(.005,.07,diffuseColor.g-max(diffuseColor.r,diffuseColor.b));
-   float gray=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
-   diffuseColor.rgb=mix(diffuseColor.rgb,vec3(gray)*vec3(.94,.98,1.02)+.025,.55*(1.-keepGreen));`);};
-  material.customProgramCacheKey=()=> 'jotunheim-cliff-preserve-green-v1';cliffMaterials.set(m,material);return material;
- };o.material=Array.isArray(o.material)?o.material.map(adapt):adapt(o.material);});
- const parts:THREE.Object3D[][]=[];
- sites.forEach((s,i)=>{
-  const land=fit(models[i],s.width,s.height,s.depth);land.rotation.y=WATERFALL_SITES[i].yaw;land.position.set(s.x,s.base-WATERFALL_SITES[i].sink,s.z);land.name=WATERFALL_SITES[i].title;root.add(land);parts.push([land]);
-  // Overlapping shoulders cover the scan borders; a rear cap joins the ridge.
-  for(const side of [-1,1,0]){
-   const back=side===0,model=cliff.clone(true),width=s.width*(back?1.18:.42),height=s.height*(back?.95:.84),depth=s.depth*(back?.42:.72),piece=fit(model,width,height,depth);
-   piece.position.set(s.x+side*s.width*.49,s.base-14,s.z-s.front*s.depth*(back?.29:.06));piece.rotation.y=(s.front<0?Math.PI:0)+side*.18;piece.name=`Waterfall ${i+1} ${back?'rear cap':'rock shoulder'}`;root.add(piece);parts[i].push(piece);
+function summit(){const verts:number[]=[],idx:number[]=[],cs:number[]=[];const nx=30,nz=18;
+ for(let j=0;j<=nz;j++)for(let i=0;i<=nx;i++){const x=-9+i*18/nx,z=-5+j*10/nz,y=Math.abs(x)<2.3?14.07:14+.3*Math.sin(x*.8)*Math.sin(z*.9);verts.push(x,y,z);cs.push(...rgb(ROCKS[(Math.floor(i/4)+Math.floor(j/3))%ROCKS.length]));}
+ for(let j=0;j<nz;j++)for(let i=0;i<nx;i++){const a=j*(nx+1)+i,b=a+1,c=a+nx+1,d=c+1;idx.push(a,b,c,b,d,c);}return colored(verts,idx,cs);
+}
+function organic(){const verts:number[]=[],idx:number[]=[],cs:number[]=[],na=96,nz=40;
+ for(let j=0;j<=nz;j++){const h=17*j/nz,t=j/nz,shrink=1-.19*t*t;
+  for(let i=0;i<na;i++){const a=i*2*Math.PI/na,c=Math.cos(a),s=Math.sin(a),jag=.48*Math.sin(7*a+h*.56)+.29*Math.sin(17*a-h*.8)+.16*Math.sin(41*a+h*.65);
+   let x=10*c*shrink*(1+jag/11),z=6*s*shrink*(1+jag/11);
+   if(s<-.4&&Math.abs(x)<2.75)z+=Math.pow(Math.sin(Math.PI*t),.4);
+   x+=.17*Math.sin(h*2.6+a*11)*Math.sin(Math.PI*t);z+=.14*Math.sin(h*3.6+a*13)*Math.sin(Math.PI*t);
+   verts.push(x,h,z);cs.push(...rgb(ROCKS[(Math.floor(a*10)+Math.floor(j/4))%ROCKS.length]));
   }
- });root.updateMatrixWorld(true);
- const foundations=createWaterfallFoundations(parts,sites,cliff,terrain.height);root.add(foundations);root.updateMatrixWorld(true);
- const index=createJotunheimSurfaceIndex(root,20);
- const height=(x:number,z:number,floor:number|null)=>{const y=index.height(x,z);return y==null?floor:floor==null?y:Math.max(y,floor);};
- const viewpoints=sites.map(s=>({x:s.x,z:s.z+s.front*(s.depth*.6+45),yaw:s.front<0?Math.PI:0}));
- return {root,sites,height,viewpoints,foundations};
+ }
+ for(let j=0;j<nz;j++)for(let i=0;i<na;i++){const a=j*na+i,b=j*na+(i+1)%na,c=(j+1)*na+i,d=(j+1)*na+(i+1)%na;idx.push(a,b,c,b,d,c);}
+ // close the peak and bottom so the rock is volumetric from all angles
+ for(let cap=0;cap<2;cap++){const center=verts.length/3;verts.push(0,cap?17.4:0,0);cs.push(...rgb(0x606662));const ring=cap?nz*na:0;for(let i=0;i<na;i++){const a=ring+i,b=ring+(i+1)%na;if(cap)idx.push(a,b,center);else idx.push(b,a,center);}}
+ return colored(verts,idx,cs);
+}
+function addWater(group:THREE.Group,front:number,height:number){
+ for(let layer=0;layer<4;layer++){const nx=10,nz=55,verts:number[]=[],idx:number[]=[],cs:number[]=[];
+  for(let j=0;j<=nz;j++)for(let i=0;i<=nx;i++){const h=.5+(height-.5)*j/nz,t=h/height,u=-1+2*i/nx;const x=u*1.6*(1+.18*(1-t)**2)+.12*Math.sin(t*16+layer*.6),z=front-.18-layer*.035+.12*Math.sin(h*2+u*6+layer*2);
+   verts.push(x,h,z);cs.push(...rgb(Math.sin(h*4+u*19+layer)**6>.6?0xc0f1f9:0x59b5d8));}
+  for(let j=0;j<nz;j++)for(let i=0;i<nx;i++){const a=j*(nx+1)+i,b=a+1,c=a+nx+1,d=c+1;idx.push(a,b,c,b,d,c);}
+  group.add(colored(verts,idx,cs,true));
+ }
+ const pool=new THREE.Mesh(new THREE.CylinderGeometry(3.7,3.7,.055,40),new THREE.MeshStandardMaterial({color:0x4b9db6,transparent:true,opacity:.76,roughness:.35}));pool.scale.z=.58;pool.position.set(0,.08,front-1.05);group.add(pool);
+ for(let i=0;i<24;i++){const a=2*Math.PI*i/24,r=1+.18*(i%4),p=new THREE.Mesh(new THREE.IcosahedronGeometry(.22+(i%3)*.05,0),new THREE.MeshStandardMaterial({color:0xc3e2ef,transparent:true,opacity:.86,roughness:.9}));p.scale.set(1.6,.35,1);p.position.set(r*Math.cos(a),.24,front-1.05+r*.6*Math.sin(a));group.add(p);}
+}
+function makeVariant(index:number){const g=new THREE.Group();g.name=index?'Experimental waterfall - continuous cliff':'Experimental waterfall - assembled panels';
+ if(index){g.add(organic());addWater(g,-5.7,16.2);}else{for(const side of ['front','back','left','right'] as const)g.add(panel(side));g.add(summit());addWater(g,-5.35,14);}
+ return g;
+}
+export function installJotunheimWaterfalls(terrain:Terrain){
+ const root=new THREE.Group();root.name='Two experimental waterfalls - ten metre walking gap';
+ const viewpoints:{x:number;z:number;yaw:number}[]=[];
+ for(let i=0;i<2;i++){const s=WATERFALL_SITES[i],v=makeVariant(i),scale=3,base=terrain.height(s.x,s.z)??0;
+  v.scale.setScalar(scale);v.position.set(s.x,base-.3,s.z);root.add(v);
+  // The front of each model faces negative Z; keep enough room to circle it.
+  viewpoints.push({x:s.x,z:s.z-39,yaw:Math.PI});
+ }
+ const height=(_x:number,_z:number,floor:number|null)=>floor;
+ return {root,viewpoints,height,sites:WATERFALL_SITES};
 }
